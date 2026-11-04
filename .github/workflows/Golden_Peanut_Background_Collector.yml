@@ -1,0 +1,175 @@
+name: Golden Peanut Background Collector
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-peanut-cloud-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Collect public GW2 prices into Cloudflare D1
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ vars.CF_DATABASE_ID }}
+        run: |
+          python3 - <<'PYCOLLECTOR'
+          """The Golden Peanut collector for GitHub Actions.
+          Fetches public GW2 Trading Post prices; writes to existing Cloudflare D1 schema.
+          """
+          import datetime
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          GW2_URL = 'https://api.guildwars2.com/v2/commerce/prices'
+          WATCH = sorted(set([
+              49424,19912,23202,23200,100992,43562,43564,99106,19913,46712,
+              43849,43845,43846,43783,103738,46708,49522,23183,24562,9461,
+              48807,75826,82791,11103,11928,44950,44956,13197,97398,97580,
+              67639,73843,96084,24691,83926,99068,14577,11230,24800,67638,
+              19793,19722,19719,49782,44941,19703,24291,19709,
+              41578,79344,79346,82205,73806,83214,74825,45896,23240,98199,
+              50018,72010,13452,38289,19795,19796,19797,19798,
+          ]))
+          ROTATE = 180
+          API_TIMEOUT = 40
+
+
+          def fetch_json(url, headers=None, payload=None):
+              req = urllib.request.Request(
+                  url, data=(json.dumps(payload).encode('utf-8') if payload is not None else None),
+                  headers={'Accept':'application/json', 'User-Agent':'GoldenPeanutCollector/1.0', **(headers or {})},
+                  method=('POST' if payload is not None else 'GET'))
+              try:
+                  with urllib.request.urlopen(req, timeout=API_TIMEOUT) as response:
+                      return json.loads(response.read().decode('utf-8'))
+              except urllib.error.HTTPError as error:
+                  # Never log request headers, Cloudflare tokens, or other secrets.
+                  raise RuntimeError(f'HTTP {error.code} from {urllib.parse.urlsplit(url).hostname}') from None
+
+
+          def cloudflare_query(sql, params=None):
+              account = os.environ['CF_ACCOUNT_ID'].strip()
+              database = os.environ['CF_DATABASE_ID'].strip()
+              token = os.environ['CF_API_TOKEN'].strip()
+              if not (account and database and token):
+                  raise RuntimeError('Missing CF_ACCOUNT_ID, CF_DATABASE_ID or CF_API_TOKEN')
+              url = f'https://api.cloudflare.com/client/v4/accounts/{account}/d1/database/{database}/query'
+              body = {'sql':sql}
+              if params is not None:
+                  body['params'] = [str(p) for p in params]
+              response = fetch_json(url, {
+                  'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'
+              }, body)
+              if not response.get('success') or response.get('errors'):
+                  errs = response.get('errors', [])
+                  raise RuntimeError('Cloudflare D1 query failed: ' + ', '.join(str(e.get('message', 'unknown')) for e in errs)[:250])
+              results = response.get('result') or []
+              if not all(part.get('success', False) for part in results):
+                  raise RuntimeError('Cloudflare D1 statement failed')
+              return results[0].get('results', []) if results else []
+
+
+          def state(key, fallback='0'):
+              rows = cloudflare_query('SELECT value FROM collector_state WHERE key=?', [key]);
+              return rows[0]['value'] if rows else fallback
+
+
+          def put_state(key, value):
+              cloudflare_query('INSERT INTO collector_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [key, str(value)])
+
+
+          def init_tables():
+              cloudflare_query('CREATE TABLE IF NOT EXISTS collector_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+              cloudflare_query('CREATE TABLE IF NOT EXISTS quote_observations (observed_at INTEGER NOT NULL, item_id INTEGER NOT NULL, buy_copper INTEGER NOT NULL, sell_copper INTEGER NOT NULL, buy_quantity INTEGER NOT NULL, sell_quantity INTEGER NOT NULL, PRIMARY KEY(observed_at, item_id))')
+              cloudflare_query('CREATE INDEX IF NOT EXISTS idx_quote_item_time ON quote_observations(item_id, observed_at DESC)')
+
+
+          def clean_number(value):
+              try:
+                  v = int(value)
+                  return v if 0 <= v <= 2**60 else 0
+              except (ValueError, TypeError, OverflowError):
+                  return 0
+
+
+          def collect():
+              init_tables()
+              # The official no-IDs response is the public item-ID catalogue, not trade volume.
+              all_ids = fetch_json(GW2_URL)
+              if not isinstance(all_ids, list) or len(all_ids) < 1000:
+                  raise RuntimeError('ArenaNet market catalogue unexpectedly incomplete')
+              all_ids = [i for i in all_ids if isinstance(i, int) and i > 0]
+              cursor = clean_number(state('github_cursor', '0'))
+              if cursor >= len(all_ids):
+                  cursor = 0
+              rotating = all_ids[cursor:cursor + ROTATE]
+              next_cursor = cursor + ROTATE
+              if next_cursor >= len(all_ids):
+                  next_cursor = 0
+              request_ids = sorted(set(WATCH + rotating))
+              observed = []
+              # Keep request URLs comfortably short and avoid a burst of parallel calls.
+              for offset in range(0, len(request_ids), 110):
+                  group = request_ids[offset:offset+110]
+                  url = GW2_URL + '?ids=' + ','.join(map(str,group))
+                  result = fetch_json(url)
+                  if not isinstance(result, list):
+                      raise RuntimeError('Invalid market price batch from ArenaNet')
+                  observed.extend(result)
+                  time.sleep(0.4)
+              if not observed:
+                  raise RuntimeError('No public market prices returned')
+              timestamp = int(time.time()) // 900 * 900
+              # Validate everything as integers before interpolating numeric SQL literals.
+              values = []
+              for row in observed:
+                  item_id = row.get('id') if isinstance(row, dict) else None
+                  if not isinstance(item_id, int) or item_id <= 0:
+                      continue
+                  buys = row.get('buys') or {}
+                  sells = row.get('sells') or {}
+                  values.append((timestamp, item_id,
+                                 clean_number(buys.get('unit_price')), clean_number(sells.get('unit_price')),
+                                 clean_number(buys.get('quantity')),clean_number(sells.get('quantity'))))
+              if not values:
+                  raise RuntimeError('No valid prices to store')
+              for start in range(0, len(values), 100):
+                  batch = values[start:start+100]
+                  sql = 'INSERT OR IGNORE INTO quote_observations (observed_at,item_id,buy_copper,sell_copper,buy_quantity,sell_quantity) VALUES ' + ','.join('(' + ','.join(map(str, row)) + ')' for row in batch)
+                  cloudflare_query(sql)
+              # Write cursor only AFTER all quote rows were stored; reruns are idempotent.
+              put_state('github_cursor', next_cursor)
+              put_state('last_run', timestamp)
+              put_state('last_received', len(values))
+              put_state('last_result', 'success')
+              put_state('last_attempt', int(time.time()))
+              # A small rolling window avoids indefinite D1 growth.
+              if datetime.datetime.now(datetime.timezone.utc).hour == 2:
+                  cloudflare_query('DELETE FROM quote_observations WHERE observed_at < ?', [timestamp-30*86400])
+              print(json.dumps({
+                  'status':'SUCCESS', 'received':len(values), 'watch_count':len(WATCH),
+                  'catalogue':len(all_ids), 'next_cursor':next_cursor,
+                  'saved_at_utc':datetime.datetime.fromtimestamp(timestamp,datetime.timezone.utc).isoformat(),
+                  'note':'Order book snapshots are not confirmed trading volume'
+              }))
+
+
+          if __name__ == '__main__':
+              collect()
+          PYCOLLECTOR
