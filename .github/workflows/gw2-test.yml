@@ -1,0 +1,10 @@
+name: Golden Peanut API Test
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test ArenaNet API
+        run: |
+          curl --fail-with-body --silent --show-error --location --max-time 30 --write-out '\nHTTP %{http_code}\n' 'https://api.guildwars2.com/v2/commerce/prices?ids=49424'
