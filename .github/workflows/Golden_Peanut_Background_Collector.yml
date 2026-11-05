@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "7,22,37,52 * * * *"
-    - cron: "35 4 * * *"
+    - cron: "35 4,16 * * *"
 
 permissions:
   contents: read
@@ -454,8 +454,8 @@ jobs:
                   sys.exit(1)
           PYGP5SHADOW
       - name: Stage 5.1 — prediction performance monitor (read-only)
-        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4 * * *') }}
-        continue-on-error: true
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4,16 * * *') }}
+        continue-on-error: false
         shell: bash
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -716,7 +716,7 @@ jobs:
               main()
           PYGP51MONITOR
       - name: Attach Stage 5.1 HTML research report
-        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4 * * *') }}
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4,16 * * *') }}
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
