@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "7,22,37,52 * * * *"
+    - cron: "35 4 * * *"
 
 permissions:
   contents: read
@@ -452,3 +453,274 @@ jobs:
                   print('STAGE5 SHADOW FAILED (original collector unaffected): ' + str(exc), file=sys.stderr)
                   sys.exit(1)
           PYGP5SHADOW
+      - name: Stage 5.1 — prediction performance monitor (read-only)
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4 * * *') }}
+        continue-on-error: true
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ vars.CF_DATABASE_ID }}
+        run: |
+          python3 - <<'PYGP51MONITOR'
+          """The Golden Peanut Stage 5.1 — read-only shadow prediction performance audit.
+          
+          Reads ONLY gp5_ tables. Produces a GitHub Actions summary and optional static HTML.
+          No trade placement, account keys, or allocation influence.
+          """
+          import datetime as dt
+          import html
+          import json
+          import math
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from collections import defaultdict
+          from pathlib import Path
+          
+          MODEL_NAMES = {
+              'ask_persistence_6h': 'Current ask persists',
+              'ask_median24h_6h': '24h historical median',
+          }
+          
+          
+          def number(v, default=0):
+              try:
+                  n = float(v)
+                  return n if math.isfinite(n) else default
+              except (TypeError, ValueError):
+                  return default
+          
+          
+          def integer(v, default=0):
+              return int(number(v, default))
+          
+          
+          def when(t):
+              if not t:
+                  return '—'
+              return dt.datetime.fromtimestamp(integer(t), dt.timezone.utc).strftime('%d %b %Y, %H:%M UTC')
+          
+          
+          def fmt_error(v, unit='copper'):
+              if v is None:
+                  return '—'
+              n = number(v)
+              if unit == 'percent':
+                  return f'{n:.2f}%'
+              return f'{n:,.1f}c'
+          
+          
+          def read_cloudflare(sql, params=()):
+              """Bounded server-to-server D1 API query. Error messages exclude SQL and token."""
+              account = os.environ.get('CF_ACCOUNT_ID', '').strip()
+              database = os.environ.get('CF_DATABASE_ID', '').strip()
+              token = os.environ.get('CF_API_TOKEN', '').strip()
+              if not account or not database or not token:
+                  raise RuntimeError('Cloudflare connection not configured')
+              url = f'https://api.cloudflare.com/client/v4/accounts/{account}/d1/database/{database}/query'
+              body = {'sql': sql}
+              if params:
+                  body['params'] = [str(p) for p in params]
+              req = urllib.request.Request(url, data=json.dumps(body).encode(), method='POST',
+                  headers={'Accept': 'application/json', 'Content-Type': 'application/json',
+                           'Authorization': 'Bearer ' + token, 'User-Agent': 'GoldenPeanutMonitor/5.1'})
+              try:
+                  with urllib.request.urlopen(req, timeout=35) as response:
+                      result = json.loads(response.read())
+              except urllib.error.HTTPError as exc:
+                  raise RuntimeError(f'Cloudflare D1 returned HTTP {exc.code}') from None
+              if not result.get('success') or result.get('errors'):
+                  raise RuntimeError('Cloudflare D1 rejected a monitor read')
+              chunks = result.get('result') or []
+              if not chunks or not chunks[0].get('success'):
+                  raise RuntimeError('Cloudflare D1 returned an unsuccessful monitor read')
+              return chunks[0].get('results') or []
+          
+          
+          def names_for(ids):
+              # Item-name lookup is optional and public. No API key or private data.
+              names = {}
+              if not ids:
+                  return names
+              url = 'https://api.guildwars2.com/v2/items?ids=' + ','.join(str(int(i)) for i in ids[:40])
+              req = urllib.request.Request(url, headers={'Accept': 'application/json',
+                                                         'User-Agent': 'GoldenPeanutMonitor/5.1'})
+              try:
+                  with urllib.request.urlopen(req, timeout=15) as response:
+                      rows = json.loads(response.read())
+                  if isinstance(rows, list):
+                      for item in rows:
+                          if isinstance(item, dict) and isinstance(item.get('name'), str):
+                              names[integer(item.get('id'))] = item['name'][:90]
+              except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+                  pass
+              return names
+          
+          
+          def data_snapshot(query):
+              present = query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('gp5_depth_v1', 'gp5_shadow_predictions_v1')")
+              table_names = {r.get('name') for r in present}
+              if not {'gp5_depth_v1', 'gp5_shadow_predictions_v1'}.issubset(table_names):
+                  return {'ready': False, 'message': 'Stage 5.0 tables not yet initialised',
+                          'tables_found': sorted(table_names), 'summary': {}, 'models': [],
+                          'paired': {}, 'markets': [], 'days': [], 'depth': {}}
+              summary = query('''SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending,
+                  SUM(CASE WHEN status='observed' THEN 1 ELSE 0 END) AS evaluated,
+                  SUM(CASE WHEN status='missed_window' THEN 1 ELSE 0 END) AS missed,
+                  COUNT(DISTINCT item_id) AS markets,
+                  MIN(created_at) AS first_prediction, MAX(created_at) AS last_prediction,
+                  MAX(evaluated_at) AS last_evaluation
+                  FROM gp5_shadow_predictions_v1''')[0]
+              depth = query('''SELECT COUNT(*) AS rows, COUNT(DISTINCT item_id) AS markets,
+                  MIN(observed_at) AS first_seen, MAX(observed_at) AS last_seen
+                  FROM gp5_depth_v1''')[0]
+              models = query('''SELECT model, COUNT(*) AS total,
+                  SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending,
+                  SUM(CASE WHEN status='observed' THEN 1 ELSE 0 END) AS evaluated,
+                  SUM(CASE WHEN status='missed_window' THEN 1 ELSE 0 END) AS missed,
+                  AVG(CASE WHEN status='observed' THEN abs_error_copper END) AS mae_copper,
+                  AVG(CASE WHEN status='observed' AND actual_ask_copper>0
+                    THEN 100.0 * abs_error_copper / actual_ask_copper END) AS mape,
+                  AVG(CASE WHEN status='observed' AND actual_ask_copper>0
+                    THEN CASE WHEN 100.0 * abs_error_copper / actual_ask_copper <=5 THEN 100.0 ELSE 0.0 END END) AS within_5_pct,
+                  COUNT(DISTINCT CASE WHEN status='observed' THEN item_id END) AS evaluated_markets
+                  FROM gp5_shadow_predictions_v1 GROUP BY model ORDER BY model''')
+              paired = query('''SELECT COUNT(*) AS pairs,
+                  COUNT(DISTINCT p.item_id) AS markets,
+                  AVG(p.abs_error_copper) AS persistence_mae,
+                  AVG(m.abs_error_copper) AS median_mae,
+                  SUM(CASE WHEN m.abs_error_copper < p.abs_error_copper THEN 1 ELSE 0 END) AS median_wins,
+                  SUM(CASE WHEN m.abs_error_copper > p.abs_error_copper THEN 1 ELSE 0 END) AS persistence_wins,
+                  SUM(CASE WHEN m.abs_error_copper = p.abs_error_copper THEN 1 ELSE 0 END) AS ties
+                  FROM gp5_shadow_predictions_v1 p
+                  INNER JOIN gp5_shadow_predictions_v1 m
+                     ON m.item_id=p.item_id AND m.created_at=p.created_at AND m.due_at=p.due_at
+                  WHERE p.model='ask_persistence_6h' AND m.model='ask_median24h_6h'
+                    AND p.status='observed' AND m.status='observed' ''')[0]
+              markets = query('''SELECT item_id, COUNT(*) AS predictions,
+                  SUM(CASE WHEN status='observed' THEN 1 ELSE 0 END) AS observed,
+                  AVG(CASE WHEN status='observed' AND actual_ask_copper>0
+                      THEN 100.0 * abs_error_copper / actual_ask_copper END) AS mape,
+                  MIN(created_at) AS first_prediction,
+                  MAX(created_at) AS last_prediction
+                  FROM gp5_shadow_predictions_v1 GROUP BY item_id
+                  ORDER BY observed DESC, predictions DESC LIMIT 16''')
+              days = query('''SELECT CAST(evaluated_at / 86400 AS INTEGER) AS utc_day, model,
+                  COUNT(*) AS evaluated,
+                  AVG(CASE WHEN actual_ask_copper>0 THEN 100.0 * abs_error_copper / actual_ask_copper END) AS mape
+                  FROM gp5_shadow_predictions_v1
+                  WHERE status='observed' AND evaluated_at>0
+                  GROUP BY CAST(evaluated_at / 86400 AS INTEGER), model
+                  ORDER BY utc_day DESC LIMIT 40''')
+              return {'ready': True, 'summary': summary, 'depth': depth, 'models': models,
+                      'paired': paired, 'markets': markets, 'days': days}
+          
+          
+          def build_report(data, names=None):
+              names = names or {}
+              s, depth = data['summary'], data['depth']
+              models, pair, markets, days = data['models'], data['paired'], data['markets'], data['days']
+              evaluated = integer(s.get('evaluated'))
+              pairs = integer(pair.get('pairs'))
+              markets_count = integer(pair.get('markets'))
+              confidence = ('Awaiting six-hour results' if not evaluated else
+                            'Exploratory only — fewer than 30 paired forecasts' if pairs < 30 else
+                            'Preliminary — need multiple market regimes and more samples' if pairs < 100 or markets_count < 4 else
+                            'Observational benchmark only — not execution-validated')
+              model_rows = []
+              for m in models:
+                  model_rows.append([MODEL_NAMES.get(m['model'], m['model']),
+                      str(integer(m['total'])), str(integer(m['evaluated'])), str(integer(m['pending'])),
+                      str(integer(m['missed'])), fmt_error(m['mae_copper']), fmt_error(m['mape'],'percent'),
+                      fmt_error(m['within_5_pct'],'percent')])
+              market_rows = []
+              for idx,m in enumerate(markets):
+                  label = names.get(integer(m['item_id'])) or ('Unnamed market '+str(idx+1))
+                  market_rows.append([label, str(integer(m['predictions'])),str(integer(m['observed'])),fmt_error(m['mape'],'percent')])
+              day_rows = []
+              for row in days:
+                  date = dt.datetime.fromtimestamp(integer(row['utc_day'])*86400,dt.timezone.utc).strftime('%d %b')
+                  day_rows.append([date,MODEL_NAMES.get(row['model'],row['model']),str(integer(row['evaluated'])),fmt_error(row['mape'],'percent')])
+              comparison = ('Not enough matched outcomes to compare the baselines.' if pairs < 30 else
+                  ('Persistence baseline has lower paired MAE.' if number(pair.get('persistence_mae')) < number(pair.get('median_mae')) else
+                   '24h median baseline has lower paired MAE.' if number(pair.get('median_mae')) < number(pair.get('persistence_mae')) else
+                   'The baseline errors are tied.') + ' This is a diagnostic, not proof of tradable performance.')
+              def md_table(headers, rows):
+                  return '\n'.join(['| '+' | '.join(headers)+' |', '| '+' | '.join('---' for _ in headers)+' |']
+                       + ['| '+' | '.join(str(v).replace('|','/') for v in r)+' |' for r in rows])
+              generated_at = dt.datetime.now(dt.timezone.utc).strftime('%d %b %Y, %H:%M UTC')
+              markdown = '\n'.join([
+                  '## 🥜 The Golden Peanut · Quantum prediction monitor',
+                  '**Read-only Stage 5.1 report** · Generated '+generated_at,
+                  '',
+                  f'**{integer(s.get("total"))} predictions** · {evaluated} evaluated · {integer(s.get("pending"))} pending · {integer(s.get("missed"))} missed evaluation windows',
+                  f'**Order-book research:** {integer(depth.get("rows"))} price-level observations across {integer(depth.get("markets"))} markets. Latest: {when(depth.get("last_seen"))}',
+                  '', '**Evidence level:** '+confidence,
+                  '', '### Model accuracy (future public quoted ASK only)',
+                  md_table(['Baseline','Created','Evaluated','Pending','Missed','MAE','Avg % error','Within 5%'],model_rows),
+                  '', '### Fair head-to-head: identical markets and prediction times',
+                  f'{pairs} matched comparisons across {markets_count} markets · Persistence MAE: {fmt_error(pair.get("persistence_mae"))} · 24h median MAE: {fmt_error(pair.get("median_mae"))} · Median wins: {integer(pair.get("median_wins"))} · Persistence wins: {integer(pair.get("persistence_wins"))} · Ties: {integer(pair.get("ties"))}',
+                  '', comparison,
+                  '', '### Market observations',
+                  md_table(['Market','Forecasts','Evaluated','Avg % error'], market_rows),
+                  '', '### Important limits',
+                  '- Outcomes are **quoted asks**, not confirmed completed sales or evidence that your orders would fill.',
+                  '- Missed evaluation windows stay separate and are not counted as accurate or inaccurate predictions.',
+                  '- **No trading decisions or capital allocations are modified by this report.**',
+                  '- If the sample is sparse, do not interpret low forecast error as a repeatable market edge.',
+                  ''])
+              def esc(v): return html.escape(str(v))
+              def web_table(headers, rows):
+                  h=''.join('<th>'+esc(c)+'</th>' for c in headers)
+                  body=''.join('<tr>'+''.join('<td>'+esc(c)+'</td>' for c in row)+'</tr>' for row in rows)
+                  return '<div class="table-wrap"><table><thead><tr>'+h+'</tr></thead><tbody>'+body+'</tbody></table></div>'
+              html_file = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Golden Peanut · Quantum Monitor</title><style>
+          :root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#090b1b;color:#f6f2ff}*{box-sizing:border-box}body{margin:0;padding:20px 14px 50px;background:radial-gradient(ellipse at 0 0,#332354a8,transparent 55%),linear-gradient(145deg,#0b0a19,#14162e)}.wrap{max-width:1100px;margin:0 auto}h1{font-size:clamp(24px,4vw,38px);margin:6px 0;color:#f7d69b}h2{font-size:18px;margin:0 0 14px;color:#eed4ff}p{margin:7px 0}.sub{color:#c7beda;font-size:13px}.notice{padding:13px 15px;background:#22223f;border-left:3px solid #89dfe8;border-radius:6px;font-size:13px;margin:18px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.card,.section{background:linear-gradient(150deg,#22203d,#15172f);border:1px solid #5b4b7a;border-radius:14px;padding:16px;margin:12px 0}.metric{font-size:26px;color:#f7d69b;font-weight:750;font-variant-numeric:tabular-nums}.label{font-size:12px;color:#c3bbd4}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #494066}th{color:#e8d5fa;font-size:12px}td{color:#f3eefc}.tiny{font-size:12px;color:#c6bdd7}.accent{height:3px;background:linear-gradient(90deg,#eabd76,#c982f3,#62ddec,#eb8bcb);border-radius:8px;margin:9px 0 18px}.foot{margin-top:28px;font-size:12px;color:#aaa6c0}@media(max-width:440px){.metric{font-size:22px}.card,.section{padding:12px}}</style></head><body><main class="wrap"><div class="sub">THE GOLDEN PEANUT · RESEARCH ONLY</div><h1>Quantum Intelligence Monitor</h1><div class="accent"></div><p class="sub">''' + esc(generated_at) + ''' · Public quoted asks, not executed trades.</p><div class="cards">''' + ''.join(
+                 '<div class="card"><div class="label">'+esc(title)+'</div><div class="metric">'+esc(value)+'</div></div>' for title,value in [
+                     ('Predictions logged',str(integer(s.get('total')))),('Evaluated',str(evaluated)),
+                     ('Awaiting evaluation',str(integer(s.get('pending')))),('Missed windows',str(integer(s.get('missed')))),
+                     ('Markets sampled',str(integer(depth.get('markets'))))]) + '''</div><div class="notice"><strong>Evidence level:</strong> '''+esc(confidence)+'''<p>Order-book observations: '''+str(integer(depth.get('rows')))+''' · Latest: '''+esc(when(depth.get('last_seen')))+'''</p></div><section class="section"><h2>Forecast error by baseline</h2>'''+web_table(['Baseline','Logged','Evaluated','Pending','Missed','Mean absolute error','Mean % error','Within 5%'],model_rows)+'''</section><section class="section"><h2>Fair paired comparison</h2><p>Matched observations: <strong>'''+str(pairs)+'''</strong> across <strong>'''+str(markets_count)+'''</strong> markets.</p><p>Persistence MAE: '''+esc(fmt_error(pair.get('persistence_mae')))+''' · 24h median MAE: '''+esc(fmt_error(pair.get('median_mae')))+'''</p><p class="tiny">'''+esc(comparison)+'''</p></section><section class="section"><h2>Market-by-market</h2>'''+web_table(['Market','Predictions','Evaluated','Average % error'],market_rows)+'''</section><section class="section"><h2>Recent evaluated days</h2>'''+web_table(['UTC day','Baseline','Evaluated','Avg % error'],day_rows)+'''</section><p class="foot">This report does not place or recommend orders. Historical quoted-ask accuracy does not establish achievable net trading profit or fill probability. Some public order-book changes may represent cancellations.</p></main></body></html>'''
+              return markdown, html_file
+          
+          
+          def main():
+              try:
+                  data = data_snapshot(read_cloudflare)
+                  if not data['ready']:
+                      summary = ('## 🥜 Quantum Monitor — waiting for Stage 5.0\n\n' + data['message'] +
+                                 '. The original collector is independent. No changes were made.\n')
+                      report = '<!doctype html><meta charset="utf-8"><title>Quantum Monitor</title><p>'+html.escape(data['message'])+'</p>'
+                  else:
+                      names = names_for([m['item_id'] for m in data['markets']])
+                      summary,report = build_report(data,names)
+                  Path('golden-peanut-quantum-report.html').write_text(report,encoding='utf-8')
+                  step_summary = os.environ.get('GITHUB_STEP_SUMMARY')
+                  if step_summary:
+                      with open(step_summary,'a',encoding='utf-8') as f:
+                          f.write(summary+'\n')
+                  print('STAGE51_MONITOR_SUCCESS '+json.dumps({
+                     'ready':data['ready'], 'predictions':integer(data['summary'].get('total')),
+                     'evaluated':integer(data['summary'].get('evaluated')),
+                     'markets':integer(data['depth'].get('markets')),
+                     'report':'golden-peanut-quantum-report.html'}))
+              except Exception as e:
+                  # The monitor is deliberately isolated from Stage 5.0 and the original collector.
+                  print('STAGE51_MONITOR_FAILED: '+str(e)[:200])
+                  raise
+          
+          
+          if __name__=='__main__':
+              main()
+          PYGP51MONITOR
+      - name: Attach Stage 5.1 HTML research report
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '35 4 * * *') }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-peanut-quantum-monitor
+          path: golden-peanut-quantum-report.html
+          if-no-files-found: ignore
+          retention-days: 14
