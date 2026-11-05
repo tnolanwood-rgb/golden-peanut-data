@@ -233,8 +233,23 @@ jobs:
                           return json.loads(res.read().decode('utf-8'))
                   except urllib.error.HTTPError as exc:
                       if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
-                          # Do not log tokens, URLs with credentials, or response body.
-                          raise RuntimeError(f'Upstream HTTP {exc.code} from {urllib.parse.urlsplit(url).hostname}') from None
+                          host = urllib.parse.urlsplit(url).hostname
+                          # Cloudflare's structured errors identify invalid SQL/API shapes.
+                          # Never log headers, tokens, request body, or arbitrary server text.
+                          details = ''
+                          if host == 'api.cloudflare.com':
+                              try:
+                                  body = json.loads(exc.read(4096).decode('utf-8'))
+                                  errors = body.get('errors') if isinstance(body, dict) else None
+                                  if isinstance(errors, list):
+                                      valid = [f"{int(e.get('code', 0))}: {str(e.get('message',''))[:180]}"
+                                               for e in errors if isinstance(e, dict)]
+                                      if valid:
+                                          details = '; '.join(valid[:2])[:300]
+                              except (ValueError, UnicodeDecodeError, TypeError):
+                                  pass
+                          raise RuntimeError(f'Upstream HTTP {exc.code} from {host}' +
+                                             (': ' + details if details else '')) from None
                       time.sleep(2 ** attempt)
               raise RuntimeError('Network retries exhausted')
 
@@ -246,8 +261,19 @@ jobs:
               if not all((account, database, token)):
                   raise RuntimeError('Missing Cloudflare connection environment')
               url = f'https://api.cloudflare.com/client/v4/accounts/{account}/d1/database/{database}/query'
-              resp = http_json(url, {'sql': sql, 'params': [str(p) for p in params]},
-                               {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+              # Match the confirmed-working original collector: omit params when empty.
+              # Cloudflare's D1 REST API treats params as OPTIONAL.
+              payload = {'sql': sql}
+              if params:
+                  payload['params'] = [str(p) for p in params]
+              try:
+                  resp = http_json(url, payload,
+                                  {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+              except RuntimeError as exc:
+                  # Only echo a tightly controlled operation identifier, not SQL values.
+                  operation = sql.lstrip().split(None, 2)
+                  label = (' '.join(operation[:2]) if len(operation) >= 2 else 'query')
+                  raise RuntimeError(f'D1 shadow {label} failed: {exc}') from None
               if not isinstance(resp, dict) or not resp.get('success') or resp.get('errors'):
                   raise RuntimeError('D1 shadow query failed')
               parts = resp.get('result') or []
