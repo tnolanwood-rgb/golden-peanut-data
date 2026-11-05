@@ -173,3 +173,250 @@ jobs:
           if __name__ == '__main__':
               collect()
           PYCOLLECTOR
+
+      - name: Stage 5.0 shadow research — order-book depth and forecast audit
+        if: success()
+        continue-on-error: true
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ vars.CF_DATABASE_ID }}
+        run: |
+          python3 - <<'PYGP5SHADOW'
+          """Golden Peanut Stage 5.0: isolated PUBLIC market depth / forecast shadow research.
+
+          No personal API key, account data, orders, or existing schema is modified.
+          This collector must run as a continue-on-error step AFTER the original price collector.
+          Predictions concern future best ASK quotes only; they are NOT fill predictions.
+          """
+          import datetime as dt
+          import json
+          import os
+          import statistics
+          import sys
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          LISTINGS_API = 'https://api.guildwars2.com/v2/commerce/listings'
+          PRIORITY_IDS = (49424, 86269, 43564, 100992, 19912, 23202,
+                          99106, 46712, 9461, 19722, 19719, 48807)
+          MAX_LEVELS = 5
+          HORIZON = 6 * 3600
+          EVALUATION_GRACE = 90 * 60
+          PREDICTION_HISTORY_HOURS = 24
+          MAX_ASK = 2**31 - 1
+
+
+          def safe_int(v, maximum=2**60):
+              if isinstance(v, bool):
+                  return 0
+              try:
+                  n = int(v)
+                  return n if 0 <= n <= maximum else 0
+              except (ValueError, TypeError, OverflowError):
+                  return 0
+
+
+          def http_json(url, payload=None, headers=None):
+              raw = json.dumps(payload).encode('utf-8') if payload is not None else None
+              req = urllib.request.Request(
+                  url, data=raw,
+                  method='POST' if raw is not None else 'GET',
+                  headers={'Accept': 'application/json', 'User-Agent': 'GoldenPeanutShadow/5.0',
+                           **(headers or {})})
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(req, timeout=35) as res:
+                          return json.loads(res.read().decode('utf-8'))
+                  except urllib.error.HTTPError as exc:
+                      if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                          # Do not log tokens, URLs with credentials, or response body.
+                          raise RuntimeError(f'Upstream HTTP {exc.code} from {urllib.parse.urlsplit(url).hostname}') from None
+                      time.sleep(2 ** attempt)
+              raise RuntimeError('Network retries exhausted')
+
+
+          def db_query(sql, params=()):
+              account = os.environ['CF_ACCOUNT_ID'].strip()
+              database = os.environ['CF_DATABASE_ID'].strip()
+              token = os.environ['CF_API_TOKEN'].strip()
+              if not all((account, database, token)):
+                  raise RuntimeError('Missing Cloudflare connection environment')
+              url = f'https://api.cloudflare.com/client/v4/accounts/{account}/d1/database/{database}/query'
+              resp = http_json(url, {'sql': sql, 'params': [str(p) for p in params]},
+                               {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+              if not isinstance(resp, dict) or not resp.get('success') or resp.get('errors'):
+                  raise RuntimeError('D1 shadow query failed')
+              parts = resp.get('result') or []
+              if not parts or not all(isinstance(p, dict) and p.get('success') for p in parts):
+                  raise RuntimeError('D1 shadow statement rejected')
+              return parts[0].get('results') or []
+
+
+          def initialize_schema():
+              # Only NEW gp5-prefixed tables; never ALTER/DELETE existing production tables.
+              db_query('''CREATE TABLE IF NOT EXISTS gp5_depth_v1 (
+                  observed_at INTEGER NOT NULL, item_id INTEGER NOT NULL,
+                  side TEXT NOT NULL, level_no INTEGER NOT NULL,
+                  price_copper INTEGER NOT NULL, quantity INTEGER NOT NULL,
+                  listing_count INTEGER NOT NULL,
+                  PRIMARY KEY(item_id, observed_at, side, level_no))''')
+              db_query('''CREATE TABLE IF NOT EXISTS gp5_shadow_predictions_v1 (
+                  item_id INTEGER NOT NULL, created_at INTEGER NOT NULL,
+                  model TEXT NOT NULL, due_at INTEGER NOT NULL,
+                  start_ask_copper INTEGER NOT NULL, forecast_ask_copper INTEGER NOT NULL,
+                  historical_samples INTEGER NOT NULL,
+                  status TEXT NOT NULL DEFAULT 'pending',
+                  evaluated_at INTEGER, actual_ask_copper INTEGER,
+                  abs_error_copper INTEGER,
+                  PRIMARY KEY(item_id, created_at, model, due_at))''')
+              db_query('CREATE INDEX IF NOT EXISTS gp5_prediction_due_v1 ON gp5_shadow_predictions_v1(status, due_at)')
+              db_query('CREATE INDEX IF NOT EXISTS gp5_depth_item_time_v1 ON gp5_depth_v1(item_id, observed_at DESC)')
+
+
+          def parse_depth(payload, observed_at):
+              if not isinstance(payload, list):
+                  raise RuntimeError('Unexpected listings response')
+              seen = set()
+              depth_rows = []
+              current_asks = {}
+              for item in payload:
+                  if not isinstance(item, dict):
+                      continue
+                  item_id = safe_int(item.get('id'))
+                  if item_id not in PRIORITY_IDS or item_id in seen:
+                      continue
+                  seen.add(item_id)
+                  for side in ('buys', 'sells'):
+                      levels = item.get(side)
+                      if not isinstance(levels, list):
+                          continue
+                      good = []
+                      for level in levels[:MAX_LEVELS]:
+                          if not isinstance(level, dict):
+                              continue
+                          p = safe_int(level.get('unit_price'), MAX_ASK)
+                          q = safe_int(level.get('quantity'))
+                          count = safe_int(level.get('listings'))
+                          if p > 0 and q > 0:
+                              good.append((p, q, count))
+                      # API buys ordered high->low and sells low->high; verify locally.
+                      prices = [p for p, _, _ in good]
+                      if prices != sorted(prices, reverse=(side == 'buys')):
+                          raise RuntimeError('Order book levels unexpectedly unordered')
+                      for idx, (p, q, count) in enumerate(good, 1):
+                          depth_rows.append((observed_at, item_id, side, idx, p, q, count))
+                      if side == 'sells' and good:
+                          current_asks[item_id] = good[0][0]
+              if not seen:
+                  raise RuntimeError('No requested markets returned by listings API')
+              return depth_rows, current_asks
+
+
+          def insert_rows(table, cols, rows, batch_size=40):
+              if not rows:
+                  return 0
+              ncols = len(cols)
+              for i in range(0, len(rows), batch_size):
+                  group = rows[i:i+batch_size]
+                  placeholders = ','.join(['(' + ','.join('?' for _ in range(ncols)) + ')' for _ in group])
+                  sql = 'INSERT OR IGNORE INTO ' + table + ' (' + ','.join(cols) + ') VALUES ' + placeholders
+                  params = tuple(v for row in group for v in row)
+                  db_query(sql, params)
+              return len(rows)
+
+
+          def historical_asks(item_id, timestamp):
+              # Historical prices only BEFORE prediction timestamp; no future leakage.
+              rows = db_query('''SELECT observed_at, sell_copper
+                  FROM quote_observations
+                  WHERE item_id=? AND observed_at<? AND observed_at>=? AND sell_copper>0
+                  ORDER BY observed_at DESC LIMIT 96''',
+                  (item_id, timestamp, timestamp - PREDICTION_HISTORY_HOURS*3600))
+              clean = [(safe_int(r.get('observed_at')), safe_int(r.get('sell_copper'), MAX_ASK))
+                       for r in rows if isinstance(r, dict)]
+              return [(t, p) for t, p in clean if p and t]
+
+
+          def make_predictions(current_asks, timestamp):
+              rows = []
+              for item_id, ask in sorted(current_asks.items()):
+                  history = historical_asks(item_id, timestamp)
+                  rows.append((item_id, timestamp, 'ask_persistence_6h', timestamp+HORIZON,
+                               ask, ask, len(history), 'pending'))
+                  # Median baseline only after 12 separate readings across >=4h.
+                  if len(history) >= 12 and history[0][0] - history[-1][0] >= 4*3600:
+                      median_ask = int(statistics.median([p for _, p in history]))
+                      rows.append((item_id, timestamp, 'ask_median24h_6h', timestamp+HORIZON,
+                                   ask, median_ask, len(history), 'pending'))
+              return rows
+
+
+          def evaluate_predictions(current_asks, timestamp):
+              due = db_query('''SELECT item_id, created_at, model, due_at
+                  FROM gp5_shadow_predictions_v1
+                  WHERE status='pending' AND due_at<=? ORDER BY due_at ASC LIMIT 240''', (timestamp,))
+              evaluated = 0
+              missed = 0
+              for r in due:
+                  item_id = safe_int(r.get('item_id'))
+                  created = safe_int(r.get('created_at'))
+                  due_at = safe_int(r.get('due_at'))
+                  model = r.get('model')
+                  if not isinstance(model, str) or model not in ('ask_persistence_6h', 'ask_median24h_6h'):
+                      continue
+                  if due_at <= created or due_at > timestamp:
+                      continue
+                  if timestamp - due_at > EVALUATION_GRACE:
+                      db_query('''UPDATE gp5_shadow_predictions_v1 SET status='missed_window', evaluated_at=?
+                          WHERE item_id=? AND created_at=? AND model=? AND due_at=? AND status='pending' ''',
+                          (timestamp, item_id, created, model, due_at))
+                      missed += 1
+                  elif item_id in current_asks:
+                      actual = current_asks[item_id]
+                      db_query('''UPDATE gp5_shadow_predictions_v1
+                          SET status='observed', evaluated_at=?, actual_ask_copper=?,
+                              abs_error_copper=ABS(forecast_ask_copper - ?)
+                          WHERE item_id=? AND created_at=? AND model=? AND due_at=? AND status='pending' ''',
+                          (timestamp, actual, actual, item_id, created, model, due_at))
+                      evaluated += 1
+                  # Missing item quote: leave pending until the grace period expires.
+              return evaluated, missed
+
+
+          def collect():
+              initialize_schema()
+              timestamp = int(time.time()) // 900 * 900
+              url = LISTINGS_API + '?ids=' + ','.join(map(str, PRIORITY_IDS))
+              payload = http_json(url)
+              levels, asks = parse_depth(payload, timestamp)
+              insert_rows('gp5_depth_v1',
+                          ('observed_at', 'item_id', 'side', 'level_no', 'price_copper', 'quantity', 'listing_count'), levels)
+              evaluated, missed = evaluate_predictions(asks, timestamp)
+              new_predictions = make_predictions(asks, timestamp)
+              insert_rows('gp5_shadow_predictions_v1',
+                          ('item_id', 'created_at', 'model', 'due_at', 'start_ask_copper',
+                           'forecast_ask_copper', 'historical_samples', 'status'), new_predictions)
+              # Prune at most once daily and only within the new shadow tables.
+              if dt.datetime.fromtimestamp(timestamp, dt.timezone.utc).hour == 2:
+                  db_query('DELETE FROM gp5_depth_v1 WHERE observed_at<?', (timestamp - 30*86400,))
+                  db_query('DELETE FROM gp5_shadow_predictions_v1 WHERE created_at<?', (timestamp - 90*86400,))
+              print(json.dumps({'shadow_stage':'5.0', 'status':'SUCCESS', 'observed_at_utc':
+                  dt.datetime.fromtimestamp(timestamp, dt.timezone.utc).isoformat(),
+                  'markets_returned': len(set(r[1] for r in levels)), 'depth_rows_processed': len(levels),
+                  'new_forecasts_attempted': len(new_predictions), 'outcomes_checked': evaluated,
+                  'outcomes_missed_window': missed,
+                  'note':'Forecasts predict quoted asks only, never actual trades or fill probabilities'}))
+
+
+          if __name__ == '__main__':
+              try:
+                  collect()
+              except Exception as exc:
+                  # Stage 5 must not stop the original collector: workflow uses continue-on-error.
+                  print('STAGE5 SHADOW FAILED (original collector unaffected): ' + str(exc), file=sys.stderr)
+                  sys.exit(1)
+          PYGP5SHADOW
