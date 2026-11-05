@@ -346,6 +346,12 @@ jobs:
               if not rows:
                   return 0
               ncols = len(cols)
+              # D1 permits at most 100 bound parameters per SQL statement.
+              # Leave headroom and calculate the cap for each table schema.
+              # Depth: 7 fields => 11 rows (77 params); forecasts: 8 => 10 (80).
+              if not ncols or ncols > 80:
+                  raise RuntimeError('Invalid shadow insert column count')
+              batch_size = min(batch_size, max(1, 80 // ncols))
               for i in range(0, len(rows), batch_size):
                   group = rows[i:i+batch_size]
                   placeholders = ','.join(['(' + ','.join('?' for _ in range(ncols)) + ')' for _ in group])
