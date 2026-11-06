@@ -24,6 +24,7 @@ PAGE_SIZE = 200
 MAX_CURRENT_PAGES = 20
 MAX_HISTORY_PAGES = 12
 QUERY_BATCH = 30
+MAX_D1_PARAMS = 100  # Cloudflare D1 hard limit, not SQLite's usual 999+
 NOW = lambda: int(time.time() * 1000)
 
 
@@ -132,8 +133,11 @@ def db(sql, params=()):
 def put_many(sql_prefix, records, width, suffix=''):
     if not records:
         return
-    for start in range(0, len(records), QUERY_BATCH):
-        rows = records[start:start + QUERY_BATCH]
+    if width <= 0 or width > MAX_D1_PARAMS:
+        raise MonitorProblem('D1 batch row width exceeds supported bindings')
+    batch_size = min(QUERY_BATCH, MAX_D1_PARAMS // width)
+    for start in range(0, len(records), batch_size):
+        rows = records[start:start + batch_size]
         # Keep NULLs as SQL literals so the REST API never receives JSON
         # null parameters. Everything else is bound, never SQL-interpolated.
         placeholders, flat = [], []
@@ -148,6 +152,8 @@ def put_many(sql_prefix, records, width, suffix=''):
                     cells.append('?')
                     flat.append(v)
             placeholders.append('(' + ','.join(cells) + ')')
+        if len(flat) > MAX_D1_PARAMS:
+            raise MonitorProblem('D1 batch exceeds 100 parameter safety limit')
         sql = sql_prefix + ','.join(placeholders) + (' ' + suffix if suffix else '')
         db(sql, flat)
 
