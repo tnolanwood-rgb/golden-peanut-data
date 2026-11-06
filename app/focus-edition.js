@@ -513,7 +513,8 @@ function renderOpportunityHome(){
   if(stop)stop.hidden=!scanning;
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
- host.replaceChildren();renderDeploymentPlanner(host,s);const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ host.replaceChildren();const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ if(fresh)renderDeploymentPlanner(host,s);
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
  if(!fresh){
   status.textContent=s?.opportunityBusy?'Checking your historical markets and current prices…':s?.opportunityStatus||'Checking markets…';
