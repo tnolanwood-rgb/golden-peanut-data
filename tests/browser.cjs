@@ -213,9 +213,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await lab.innerText(),/Already committed to buys/);
  assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'819');
  assert.ok((await lab.locator('.focus-deployment-market').count())>=3);
- assert.match(await lab.innerText(),/Conditional matched active-week net/);
+ assert.match(await lab.innerText(),/New plan · conditional active-week net/);
  const beforeAllocation=await lab.locator('.focus-deployment-metrics').innerText();
- assert.match(beforeAllocation,/Hypothetical new-buy allocation/);
+ assert.match(beforeAllocation,/Hypothetical NEW buy allocation/);
  assert.doesNotMatch(beforeAllocation,/NaN|undefined/);
  await lab.locator('.focus-deployment-input').fill('500');
  await lab.locator('.focus-deployment-input').press('Tab');
