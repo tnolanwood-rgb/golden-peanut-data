@@ -235,9 +235,53 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  await page.evaluate(()=>{GPFocus.goto('today');GPFocus.render();});
  assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'500');
+ // Android orientation can recreate the WebView document. The PWA requests
+ // portrait, and the app must retain the exact research screen on reload.
+ const requestedOrientation=await page.evaluate(async()=>(
+  await(await fetch('/manifest.webmanifest')).json()).orientation);
+ assert.equal(requestedOrientation,'portrait');
+ await page.evaluate(()=>{
+  const state=GoldenPeanutClean.State;
+  state.opportunityPlan.publicResearch=[{id:302,name:'Dire Pearl Reaver',type:'Weapon',rarity:'Exotic',
+   buy:4000,exit:8500,buyQty:30,sellQty:30,observations:2,at:new Date().toISOString(),openBuys:0}];
+  GPFocus.goto('today');GPFocus.render();
+ });
+ await page.locator('#focus-best-rows .focus-connected-market').filter({hasText:'Dire Pearl Reaver'}).click();
+ await page.waitForFunction(()=>{
+  const v=JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null');
+  return v?.tab==='trades'&&v?.tradeDetail===302&&v?.selectedMarket?.id===302;
+ });
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
+ await page.setViewportSize({width:844,height:390});
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
+ await page.reload(); // Worst-case native Activity teardown/recreation.
+ await page.waitForFunction(()=>window.GPFocus&&document.querySelector('#focus-trade-detail')&&!document.querySelector('#focus-trade-detail').hidden,
+  {timeout:7500}).catch(async error=>{
+  const state=await page.evaluate(()=>({saved:JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null'),
+   headline:document.querySelector('#focus-title')?.textContent,
+   selectedHidden:document.querySelector('#focus-trade-detail')?.hidden,
+   selectedText:document.querySelector('#focus-trade-detail')?.textContent?.slice(0,450),
+   selectedTab:[...document.querySelectorAll('[data-focus-page]')].filter(x=>!x.hidden).map(x=>x.dataset.focusPage),
+   errorText:document.querySelector('#focus-sync-state')?.textContent}));
+  console.log('ORIENTATION_RECOVERY_DIAG '+JSON.stringify(state));
+  throw error;
+ });
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true,
+  'page recreation must not redirect to Best Trades or erase the selected market');
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Dire Pearl Reaver/);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Restored this market after the phone reloaded/);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Refresh before trading/i);
+ assert.equal(await page.locator('#focus-title').innerText(),'Compare markets');
+ // After the Android wrapper loses its native backstack, in-app Back still works.
+ await page.getByRole('button',{name:'Back within Golden Peanut'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-list-view')&&!document.querySelector('#focus-trade-list-view').hidden,{timeout:7500});
+ assert.equal(await page.locator('#focus-trade-list-view').isVisible(),true);
+ assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
- const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config',s.account,'execution-learning-v1')).value.samples.length;});assert.equal(persisted,20);
+ const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config','Fixture.1234','execution-learning-v1'))?.value?.samples?.length||0;});assert.equal(persisted,20,'WebView reload must preserve account-scoped IndexedDB learning');
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
  await context.close();
 }}finally{await browser.close();server.close();}
