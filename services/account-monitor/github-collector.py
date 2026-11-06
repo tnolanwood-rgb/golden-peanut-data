@@ -286,8 +286,11 @@ def run():
         # URLs with credentials, or API response bodies are ever logged.
         safe = str(e)[:180]
         print('Monitor check inconclusive:', safe)
-        db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1
-              WHERE token_digest=? AND enabled=1''', [NOW(),safe,digest])
+        try:
+            db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1
+                  WHERE token_digest=? AND enabled=1''', [NOW(),safe,digest])
+        except MonitorProblem:
+            print('Failed to persist monitor error safely; completed account data remains unchanged.')
 
 
 if __name__ == '__main__':
