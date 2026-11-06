@@ -295,7 +295,7 @@ async function handle(request,env,ctx){
    privacy:'Credential encrypted in private Cloudflare D1; revoke through app or GW2 account security'});
  }
  const tokenDigest=await digest(key);
- const credentials=await env.DB.prepare('SELECT account_id,account_name,last_polled_at,last_success_at,last_error,consecutive_failures,enabled FROM gp_monitor_credentials WHERE token_digest=?')
+ const credentials=await env.DB.prepare('SELECT account_id,account_name,last_polled_at,last_success_at,last_error,consecutive_failures,enabled,encrypted FROM gp_monitor_credentials WHERE token_digest=?')
   .bind(tokenDigest).first();
  if(!credentials||credentials.enabled!==1)return response(request,404,{ok:false,error:'Background monitoring is not enrolled'});
  if(pathname==='/status'&&request.method==='GET'){
@@ -306,7 +306,8 @@ async function handle(request,env,ctx){
    env.DB.prepare('SELECT COUNT(*) as n FROM gp_monitor_nights WHERE account_id=?').bind(credentials.account_id).first()
   ]);
   return response(request,200,{ok:true,account:credentials.account_name,enabled:true,
-   intervalMinutes:10,lastPoll:credentials.last_polled_at,lastSuccess:credentials.last_success_at,
+   intervalMinutes:credentials.encrypted===null?30:10,backend:credentials.encrypted===null?'github-actions':'cloudflare-worker',
+   lastPoll:credentials.last_polled_at,lastSuccess:credentials.last_success_at,
    lastError:credentials.last_error,failures:credentials.consecutive_failures,
    currentBuys:buys?.n||0,currentSells:sells?.n||0,savedCompletedTrades:trades?.n||0,verifiedOrderNights:nights?.n||0});
  }
@@ -321,9 +322,16 @@ async function handle(request,env,ctx){
    env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_credentials WHERE account_id=?').bind(account)
+   // GitHub Actions must retain only an inactive salted-key digest tombstone
+   // so the scheduler NEVER recreates a user-deleted account next time. This
+   // is not the API key and cannot be used to access ArenaNet.
+   credentials.encrypted===null?
+    env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL,account_name=?,last_error=NULL WHERE account_id=?')
+     .bind('[Monitoring stopped]',account):
+    env.DB.prepare('DELETE FROM gp_monitor_credentials WHERE account_id=?').bind(account)
   ]);
-  return response(request,200,{ok:true,enabled:false,credentialDeleted:true,cloudRecordsErased:true});
+  return response(request,200,{ok:true,enabled:false,credentialDeleted:true,cloudRecordsErased:true,
+   requiresGithubSecretRemoval:credentials.encrypted===null});
  }
  if(pathname==='/events'&&request.method==='GET'){
   const cursor=Math.max(0,Math.min(1e12,Number(url.searchParams.get('after')||0)))||0;
