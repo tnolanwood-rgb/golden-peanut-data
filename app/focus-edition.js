@@ -679,6 +679,55 @@ function renderDeploymentPlanner(host,state){
  calculate();
  host.append(wrapper);
 }
+/* Secure, explicit opt-in for account monitoring independent of Android.
+ * No account credential is transmitted unless Enable is pressed. */
+function renderAccountWatcher(host,state){
+ const cloud=root.GPCloudAccount,account=state?.account;
+ if(!cloud||!account||!state?.key)return;
+ const info=cloud.status(account);
+ const wrapper=h('section','focus-account-watcher');
+ wrapper.append(h('strong','','ACCOUNT TRADE WATCHER'));
+ const intro=h('p','focus-muted');
+ if(!info.enabled){
+  intro.textContent='Local order checks work while this app is open. For completed buys, sales, partial fills and zero-fill periods when the phone is closed, enable the encrypted Cloudflare account monitor.';
+  wrapper.append(intro);
+  const enable=buttonNode('Enable background trade watching');
+  enable.disabled=info.syncing;
+  enable.addEventListener('click',async()=>{
+   if(!window.confirm('Enable background Trading Post monitoring? Your GW2 API key will be sent securely to your own Cloudflare Worker and kept encrypted. This service checks every ~10 minutes, cannot place orders, and cannot reconstruct intermediate changes between checks. You can stop it and erase cloud records later.'))return;
+   enable.disabled=true;enable.textContent='Connecting encrypted monitor…';
+   try{await cloud.enable(state);await cloud.refresh(state,{force:true});}
+   catch(e){window.alert('Background monitoring was not enabled: '+String(e?.message||e).slice(0,190));}
+   root.GPFocus?.render?.();
+  });
+  wrapper.append(enable);
+ }else{
+  const status=info.status,last=Number(status?.lastSuccess);
+  intro.textContent='Background monitor enabled · server-side account checks every ~10 minutes. '+
+   (last?'Last success '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+'. ':'First collection pending. ')+
+   (status?'Completed transaction records '+num(status.savedCompletedTrades||0)+
+    ' · active buys '+num(status.currentBuys||0)+' · active sells '+num(status.currentSells||0)+
+    ' · observed order nights '+num(status.verifiedOrderNights||0)+'. ':'')+
+   ' Cancellations are not counted as fills, and missing observations are never assumed successful.';
+  wrapper.append(intro);
+  const actions=h('div','focus-watcher-actions');
+  const check=buttonNode(info.syncing?'Checking cloud…':'Refresh cloud learning');
+  check.disabled=info.syncing;
+  check.addEventListener('click',async()=>{check.disabled=true;await cloud.refresh(state,{force:true});root.GPFocus?.render?.();});
+  actions.append(check);
+  const disable=buttonNode('Stop & erase cloud monitoring');
+  disable.addEventListener('click',async()=>{
+   if(!window.confirm('Stop cloud monitoring and delete its encrypted credential and cloud observations? Your local trading history stays intact.'))return;
+   disable.disabled=true;
+   try{await cloud.disable(state);}catch(e){window.alert('Could not disable monitor: '+String(e?.message||e));}
+   root.GPFocus?.render?.();
+  });
+  actions.append(disable);wrapper.append(actions);
+ }
+ if(info.lastError)wrapper.append(h('p','focus-alert','Cloud monitor: '+info.lastError));
+ host.append(wrapper);
+ function buttonNode(text){const b=h('button','focus-button focus-button-secondary',text);b.type='button';return b;}
+}
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -708,6 +757,7 @@ function renderOpportunityHome(){
    num(observedBuy)+' observed buy-fill units · '+num(observedSell)+' observed sell-fill units since tracking. '+
    'Updated when the app checks your account; it cannot monitor closed. Disappearing orders are not assumed filled.');
   host.append(line);
+  renderAccountWatcher(host,s);
   renderDeploymentPlanner(host,s);
  }
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
@@ -1082,6 +1132,12 @@ function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.
  * research model. Exact fills, active-day history and analogues stay distinct. */
 function renderCapacityExplorer(el,item){
  const state=State(),capacity=root.GPCapacity;
+ const cloud=root.GPCloudAccount;
+ if(cloud?.status?.(state?.account)?.enabled&&state?.key&&!cloud.peekNights?.(state.account,item.id)){
+  void cloud.fetchNights(state,item.id).then(()=>{
+   if(ui.tradeDetail===item.id)root.GPFocus?.render?.();
+  }).catch(()=>{});
+ }
  const buy=Number(item.buy||item.bid||0),exit=Number(item.exit||item.ask||0);
  if(!capacity||!state||!Number.isSafeInteger(buy)||!Number.isSafeInteger(exit)||buy<=0||exit<=buy)return;
  const section=h('section','focus-info-box focus-capacity-explorer');
@@ -1098,8 +1154,13 @@ function renderCapacityExplorer(el,item){
  const render=()=>{
   metrics.replaceChildren();
   const qty=Number(picker.value);
-  const buyEvidence=root.GPOpportunity?.nightlyExposure?.(state.orderEvidence,item.id,Date.now());
-  const sellEvidence=root.GPOpportunity?.nightlyExposure?.(state.sellOrderEvidence,item.id,Date.now());
+  const cloudNights=cloud?.peekNights?.(state.account,item.id);
+  const savedBuy=root.GPOpportunity?.nightlyExposure?.(state.orderEvidence,item.id,Date.now());
+  const savedSell=root.GPOpportunity?.nightlyExposure?.(state.sellOrderEvidence,item.id,Date.now());
+  const buyEvidence=cloudNights?.buys?.length>=5?
+   {supported:true,samples:cloudNights.buys.map(x=>({filled:x.filled})),source:'verified-cloud-nights'}:savedBuy;
+  const sellEvidence=cloudNights?.sells?.length>=5?
+   {supported:true,samples:cloudNights.sells.map(x=>({filled:x.filled})),source:'verified-cloud-nights'}:savedSell;
   let estimate;
   try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
    ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
@@ -1131,6 +1192,9 @@ function renderCapacityExplorer(el,item){
   }
   metrics.append(table);
   metrics.append(h('p','focus-capacity-evidence',estimate.readiness+(estimate.source==='comparable-markets'?' · SAME REFERENCE may apply to multiple items':'')));
+  if(cloudNights?.supported)metrics.append(h('p','focus-muted',
+   'Verified off-phone monitoring supplied '+num(cloudNights.buys.length)+' buy and '+num(cloudNights.sells.length)+
+   ' resale zero-inclusive overnight samples. Not market-wide turnover.'));
   metrics.append(h('p','focus-muted','Evidence: '+estimate.label+'. '+num(estimate.comparableMarkets)+' item(s), '+num(estimate.buyActiveDays)+' observed buying day(s), '+num(estimate.sellActiveDays)+' observed selling day(s).'));
   if(estimate.medianResaleLagDays!==null){
    metrics.append(h('p','focus-muted','Historical FIFO purchase-to-resale gap: median '+(estimate.medianResaleLagDays*24).toFixed(1)+' hours. This is NOT how long a newly submitted listing is guaranteed to wait.'));
