@@ -1,0 +1,40 @@
+name: Golden Peanut — Private Account Trade Collector
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11,41 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-peanut-private-account-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Record private GW2 buys, sells, and order-fill observations
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GW2_PRIVATE_MONITOR_KEY: ${{ secrets.GW2_PRIVATE_MONITOR_KEY }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      CF_DATABASE_ID: ${{ vars.CF_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Read private account history from ArenaNet (opt-in only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          if [ -z "${GW2_PRIVATE_MONITOR_KEY:-}" ]; then
+            echo "Private GW2 monitoring is not enrolled. Add GW2_PRIVATE_MONITOR_KEY as a GitHub Actions secret to opt in."
+            exit 0
+          fi
+          python3 services/account-monitor/github-collector.py
