@@ -1,10 +1,8 @@
-Approved Golden Peanut production repair — 2026-11-06
-Target: original Cloudflare Pages project thegoldenpeanut, branch main.
-Merged PR #8: f001fafd4a284ce697aa5b377770f4f973d182cb.
-Fix the forced 'Best trades' reset on startup after Android Activity recreation/rotation.
-Retain tab, item research detail, filters, market lot, hypothetical gold budget, scroll position, and back navigation.
-Request portrait orientation in installed PWA manifest and refresh its URL.
-Previously viewed quotes on restored detail are shown explicitly as stale.
-46 JS unit/integration tests and full desktop/mobile portrait-landscape-document-reload tests passed, run 42286926085.
-No Android APK build in this repository. Webmanifest controls installed PWA orientation only; native wrappers need AndroidManifest-level portrait config if not already set.
-No changed account key or account-scoped IndexedDB; no collector or D1 changes; no Trading Post orders made.
+Approved Golden Peanut production update — 6 Nov 2026
+Cloudflare Pages production only: thegoldenpeanut (existing project; main).
+PR #9: independently scrollable full market sections, remembered positions, 5-minute foreground GW2 account checks.
+PR #10: opt-in private watcher gated by proven service health. The private Cloudflare Worker is NOT deployed because token permission "No access to specified resource" blocked separate Worker deployment. Do not claim 24/7 monitoring works yet.
+User's GW2 API credential NEVER transmitted to a non-deployed private monitor; opt-in remains disabled until service health succeeds.
+Preserve prior account IndexedDB trade records, stored key, D1 public quote collector, all existing buy/sell orders, and application origin.
+Regression run #42296055352 verified desktop, Android viewport, market-scrolling, disabled unavailable monitor, and safe historical learning.
+Release deliberately does not modify Cloudflare Worker permissions or attempt an unapproved private Worker deploy.
