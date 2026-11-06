@@ -25,6 +25,20 @@ test('capability planning is NOT wallet-only: 12g free / 807g committed with a s
  assert.ok(r.unallocated>=0);
  assert.equal(new Set(r.rows.map(x=>x.id)).size,r.rows.length);
 });
+test('existing committed-book conditional earnings are never added to new research outcome',()=>{
+ const p=mk([winner(42)]);
+ p.activeBook={committed:8070091,covered:6200000,conditionalWeek:250000,
+  eligible:11,unverified:48,entries:[{id:902,units:4,scenarioUnits:2}]};
+ p.capitalReview={releasedSelective:2600000,reviews:[{review:true},{review:false}]};
+ const result=Portfolio.build(p,{budgetGold:820,wallet:123947,now});
+ assert.equal(result.existingBook.committed,8070091);
+ assert.equal(result.existingBook.conditionalActiveWeek,250000);
+ assert.equal(result.existingBook.unverified,48);
+ assert.equal(result.existingBook.reviewFlags,1);
+ assert.equal(result.existingBook.reviewFlaggedGold,2600000);
+ assert.notEqual(result.conditionalWeek,result.existingBook.conditionalActiveWeek);
+ assert.ok(!result.rows.some(r=>r.id===902));
+});
 test('repeated 3-4-unit executions may justify exploratory lots without claiming 50 resales',()=>{
  const p=mk([winner(55,'Pearl',{buyWeek25:4,sellWeek25:4,researchCap:12,capacityAfterPositions:12})]);
  const r=Portfolio.build(p,{budgetGold:100,now});
