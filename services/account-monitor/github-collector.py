@@ -65,10 +65,17 @@ def arena(path):
 def db(sql, params=()):
     url = 'https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query' % (
         os.environ['CF_ACCOUNT_ID'], os.environ['CF_DATABASE_ID'])
+    # Cloudflare's REST /query API accepts bound parameters as STRINGS.
+    # Python ints (and JSON nulls) are rejected with HTTP 400, even though
+    # Worker-local D1 bindings accept richer JS values. Integer column
+    # affinity in SQLite restores numeric storage/comparison semantics.
+    if any(x is None for x in params):
+        raise MonitorProblem('NULL must be emitted as a SQL literal for D1 REST')
+    bound = [str(x) for x in params]
     data, _ = request_json(url, headers={
         'Authorization': 'Bearer ' + os.environ['CF_API_TOKEN'],
         'Content-Type': 'application/json'
-    }, payload={'sql': sql, 'params': list(params)}, max_retries=1)
+    }, payload={'sql': sql, 'params': bound}, max_retries=1)
     if not data.get('success') or any(not x.get('success', False) for x in data.get('result', [])):
         raise MonitorProblem('Cloudflare private D1 query rejected')
     groups = data.get('result') or []
@@ -80,9 +87,21 @@ def put_many(sql_prefix, records, width, suffix=''):
         return
     for start in range(0, len(records), QUERY_BATCH):
         rows = records[start:start + QUERY_BATCH]
-        placeholders = '(' + ','.join('?' for _ in range(width)) + ')'
-        sql = sql_prefix + ','.join([placeholders] * len(rows)) + (' ' + suffix if suffix else '')
-        flat = [v for row in rows for v in row]
+        # Keep NULLs as SQL literals so the REST API never receives JSON
+        # null parameters. Everything else is bound, never SQL-interpolated.
+        placeholders, flat = [], []
+        for row in rows:
+            if len(row) != width:
+                raise MonitorProblem('D1 batch row width mismatch')
+            cells = []
+            for v in row:
+                if v is None:
+                    cells.append('NULL')
+                else:
+                    cells.append('?')
+                    flat.append(v)
+            placeholders.append('(' + ','.join(cells) + ')')
+        sql = sql_prefix + ','.join(placeholders) + (' ' + suffix if suffix else '')
         db(sql, flat)
 
 
