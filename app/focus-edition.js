@@ -689,10 +689,12 @@ function renderAccountWatcher(host,state){
  wrapper.append(h('strong','','ACCOUNT TRADE WATCHER'));
  const intro=h('p','focus-muted');
  if(!info.enabled){
-  intro.textContent='Local order checks work while this app is open. For completed buys, sales, partial fills and zero-fill periods when the phone is closed, enable the encrypted Cloudflare account monitor.';
+  intro.textContent=info.serviceReady?
+   'Local order checks work while this app is open. For completed buys, sales, partial fills and zero-fill periods when the phone is closed, you can enable the encrypted Cloudflare account monitor.':
+   'Account orders and completed trades are checked while this app is open. Off-phone monitoring is NOT ACTIVE: the private server is not yet accessible. The app will not transmit your GW2 key to an unavailable service.';
   wrapper.append(intro);
-  const enable=buttonNode('Enable background trade watching');
-  enable.disabled=info.syncing;
+  const enable=buttonNode(info.serviceReady?'Enable background trade watching':'Background monitoring unavailable');
+  enable.disabled=info.syncing||!info.serviceReady;
   enable.addEventListener('click',async()=>{
    if(!window.confirm('Enable background Trading Post monitoring? Your GW2 API key will be sent securely to your own Cloudflare Worker and kept encrypted. This service checks every ~10 minutes, cannot place orders, and cannot reconstruct intermediate changes between checks. You can stop it and erase cloud records later.'))return;
    enable.disabled=true;enable.textContent='Connecting encrypted monitor…';
