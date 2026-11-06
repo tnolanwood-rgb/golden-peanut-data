@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -59,8 +59,9 @@ async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();i
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
  try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
-function save(){try{const persist={tab:ui.tab,tradeFilter:ui.tradeFilter,bulkLot:ui.bulkLot,tradeSearch:ui.tradeSearch,tradeAll:ui.tradeAll,capitalMode:ui.capitalMode,orderLane:ui.orderLane,orderSearch:ui.orderSearch,orderAll:ui.orderAll,legendSection:ui.legendSection,marketResearchLot:ui.marketResearchLot};localStorage.setItem(STORE,JSON.stringify(persist));}catch{}}
-function load(){const old=safeGet();if(!old||typeof old!=='object')return;for(const key of ['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode','orderLane','orderSearch','orderAll','legendSection','marketResearchLot'])if(Object.hasOwn(old,key))ui[key]=old[key];if(!NAMES[ui.tab])ui.tab='today';if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);if(![1,3,5,10,20,50,100,250].includes(Number(ui.marketResearchLot)))ui.marketResearchLot=10;else ui.marketResearchLot=Number(ui.marketResearchLot);if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';}
+function save(){try{const persist={tab:ui.tab,tradeFilter:ui.tradeFilter,bulkLot:ui.bulkLot,tradeSearch:ui.tradeSearch,tradeAll:ui.tradeAll,capitalMode:ui.capitalMode,orderLane:ui.orderLane,orderSearch:ui.orderSearch,orderAll:ui.orderAll,legendSection:ui.legendSection,marketResearchLot:ui.marketResearchLot,portfolioBudgetGold:ui.portfolioBudgetGold};localStorage.setItem(STORE,JSON.stringify(persist));}catch{}}
+function load(){const old=safeGet();if(!old||typeof old!=='object')return;for(const key of ['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode','orderLane','orderSearch','orderAll','legendSection','marketResearchLot','portfolioBudgetGold'])if(Object.hasOwn(old,key))ui[key]=old[key];if(!NAMES[ui.tab])ui.tab='today';if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);if(![1,3,5,10,20,50,100,250].includes(Number(ui.marketResearchLot)))ui.marketResearchLot=10;else ui.marketResearchLot=Number(ui.marketResearchLot);if(ui.portfolioBudgetGold!==null&&(!Number.isFinite(Number(ui.portfolioBudgetGold))||Number(ui.portfolioBudgetGold)<0||Number(ui.portfolioBudgetGold)>50000))ui.portfolioBudgetGold=null;
+if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';}
 // Chromium can skip same-document history entries inserted without user activation.
 // Never seed a synthetic pushState on startup. Push real intra-app destinations
 // from user-initiated clicks, and keep a visible Back control as a PWA fallback.
@@ -410,6 +411,90 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
  }
  return {count,board};
 }
+/* A capital choice is a WHAT-IF allocation across real currently quoted
+ * markets, not a wallet balance and not authority to cancel any live order.
+ * Research never spends, frees or moves Trading Post coins. */
+function renderDeploymentPlanner(host,state){
+ const p=state?.opportunityPlan,model=root.GPPortfolio,snap=userSnapshot();
+ if(!p?.ok||!model||!snap)return;
+ const wallet=Number(snap.wallet)||0;
+ const committed=root.PeanutCore?.committedBuys?.(snap.buys||[])||0;
+ const total=wallet+committed;
+ const initial=ui.portfolioBudgetGold===null?Math.round(total/10000):Number(ui.portfolioBudgetGold);
+ const requested=Math.max(0,Math.min(50000,Number.isFinite(initial)?initial:0));
+ const wrapper=h('section','focus-deployment-lab');
+ wrapper.append(h('h3','','CAPITAL DEPLOYMENT · WHAT IF?'),
+  h('p','focus-muted','Evaluate your complete trading capacity, including coins committed to existing buy orders. No cancellations, new orders, or gold transfers are performed.'));
+ const controls=h('div','focus-deployment-controls'),
+   label=h('label','','Research funding (gold)');
+ const input=h('input','focus-deployment-input');
+ input.type='number';input.min='0';input.max='50000';input.step='1';input.value=String(requested);
+ input.setAttribute('aria-label','Hypothetical deployment budget in gold');
+ label.append(input);controls.append(label);
+ const shortcuts=h('div','focus-deployment-shortcuts');
+ const presets=[['Wallet',wallet],['Wallet + committed',total],['500g',5000000],['1,000g',10000000],['1,500g',15000000]];
+ for(const [title,amount] of presets){
+  const b=h('button','focus-button focus-button-secondary',title);b.type='button';
+  b.addEventListener('click',()=>{ui.portfolioBudgetGold=Math.round(amount/10000);save();renderOpportunityHome();});
+  shortcuts.append(b);
+ }
+ controls.append(shortcuts);
+ wrapper.append(controls);
+ const output=h('div','focus-deployment-results');wrapper.append(output);
+ const calculate=()=>{
+  output.replaceChildren();
+  const amount=Number(input.value);
+  if(!Number.isFinite(amount)||amount<0||amount>50000){output.append(h('p','focus-alert','Enter a research budget from 0 to 50,000 gold.'));return;}
+  const result=model.build(p,{budgetGold:amount,wallet,committed,now:Date.now()});
+  if(!result.ok){output.append(h('p','focus-alert',result.reason));return;}
+  const grid=h('div','focus-deployment-metrics');
+  const metric=(label,value)=>{const cell=h('div','focus-deployment-metric');cell.append(h('small','',label),h('strong','',value));grid.append(cell);};
+  metric('Spendable wallet now',cash(wallet));
+  metric('Already committed to buys',cash(committed));
+  metric('Existing orders · CONDITIONAL active-week net',result.existingBook.conditionalActiveWeek===null?'Not measured':cash(result.existingBook.conditionalActiveWeek));
+  metric('Existing book · evidence-backed items',num(result.existingBook.activeItems)+' · '+num(result.existingBook.unverified)+' unverified');
+  metric('Hypothetical NEW buy allocation',cash(result.spent));
+  metric('Unused research budget',cash(result.unallocated));
+  metric('New plan · conditional 24h reference',result.conditionalNight===null?'No supported reference':cash(result.conditionalNight));
+  metric('New plan · conditional active-week net',result.conditionalWeek===null?'Not supported':cash(result.conditionalWeek));
+  metric('New markets selected',num(result.selectedMarkets)+' / '+num(result.qualifiedMarkets)+' qualified');
+  output.append(grid);
+  output.append(h('p','focus-deployment-warning',
+   result.hypotheticalExceedsWallet?
+    'WHAT-IF ONLY: this budget exceeds your free wallet by '+cash(result.budget-wallet)+'. Existing orders are not cancelled; queue positions remain intact.':
+    'Wallet-sized scenario. No orders are submitted. A verified refresh is required before spending.'));
+  output.append(h('p','focus-muted',
+   'EXISTING and NEW plans are alternatives, NOT additive earnings. The new plan assumes its entire research budget is freely allocatable, which may require cancelling existing orders and losing queue priority. Current positions are shown separately. Active-week completed buying and selling on different dates does not prove another complete round will occur.'));
+  output.append(h('p','focus-muted',
+   'Missing zero-fill periods, cancellations, unlisted stock and changing resale demand prevent calibrated profit promises. Unverified public quotes add no modeled income.'));
+  if(result.rows.length){
+   const head=h('h4','','TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT');output.append(head);
+   for(const row of result.rows.slice(0,18)){
+    const button=h('button','focus-deployment-market');button.type='button';
+    button.dataset.researchId=String(row.id);
+    const identity=h('span','focus-deployment-market-name');
+    identity.append(h('strong','',row.name),
+     h('small','',num(row.quantity)+' units × '+cash(row.buy)+' · '+cash(row.cost)+' budget · '+(row.research?'personal completed-trade evidence':'UNVERIFIED one-unit public probe')));
+    const side=h('span','focus-deployment-market-value');
+    side.append(h('strong','',row.conditionalWeek===null?'No earnings estimate':cash(row.conditionalWeek)),
+      h('small','',row.conditionalWeek===null?'Quote only · validation probe':'Conditional active-week net, NOT a forecast'));
+    button.append(identity,side);
+    button.addEventListener('click',()=>openBoardMarket({...row,kind:'history',scenarioProfit:row.conditionalRound,quantity:row.quantity,confidence:fmtResearch(row)}));
+    output.append(button);
+   }
+  }else output.append(h('p','focus-muted','No independently qualified research lots fit this budget. We will not manufacture volume to use the balance.'));
+  if(result.unallocated>0)output.append(h('p','focus-muted',
+   cash(result.unallocated)+' remains hypothetical and unallocated. That can reflect insufficient observed throughput or risk limits; allocating it blindly would fabricate opportunity.'));
+  output.append(h('p','focus-muted',result.caveat));
+ };
+ function fmtResearch(x){return x.research?'Personal trade history · research only':'Public quote · execution unknown';}
+ input.addEventListener('change',()=>{const n=Number(input.value);
+  if(Number.isFinite(n)&&n>=0&&n<=50000){ui.portfolioBudgetGold=n;save();calculate();}
+  else calculate();
+ });
+ calculate();
+ host.append(wrapper);
+}
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -429,6 +514,7 @@ function renderOpportunityHome(){
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
  host.replaceChildren();const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ if(fresh)renderDeploymentPlanner(host,s);
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
  if(!fresh){
   status.textContent=s?.opportunityBusy?'Checking your historical markets and current prices…':s?.opportunityStatus||'Checking markets…';

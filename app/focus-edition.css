@@ -190,3 +190,29 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-main-back{font-size:23px;line-height:1;min-width:43px;flex-shrink:0}
 .focus-main-back[hidden]{display:none!important}
 @media(max-width:430px){.focus-market-lot-controls{margin:10px 4px 15px;padding:11px}.focus-market-lot-controls>small{min-width:0;flex-basis:100%;}}
+
+/* Deployment research — explicit separation of real wallet and hypothetical buy capacity. */
+.focus-deployment-lab{background:#15231b;border:1px solid #657c60;border-radius:14px;padding:14px;margin:12px 0 20px;}
+.focus-deployment-lab h3{font-size:15px;letter-spacing:.045em;margin:0 0 8px;color:#f3d293;}
+.focus-deployment-lab h4{font-size:12px;letter-spacing:.03em;color:#e8c68e;margin:18px 0 8px;}
+.focus-deployment-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:13px 0;}
+.focus-deployment-controls label{font-size:12px;font-weight:650;display:flex;flex-direction:column;gap:5px;}
+.focus-deployment-input{box-sizing:border-box;background:#203528;border:1px solid #779276;border-radius:9px;min-height:44px;color:#f5e2bd;font:inherit;font-size:17px;padding:8px 10px;width:155px;}
+.focus-deployment-shortcuts{display:flex;flex-wrap:wrap;gap:6px;}
+.focus-deployment-shortcuts button{min-height:39px;font-size:11px;padding:8px 10px;}
+.focus-deployment-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.focus-deployment-metric{border:1px solid #425d4c;border-radius:9px;padding:9px;min-width:0;}
+.focus-deployment-metric small{display:block;font-size:10px;color:#a3b9a9;line-height:1.4;}
+.focus-deployment-metric strong{display:block;font-size:13px;margin-top:4px;overflow-wrap:anywhere;}
+.focus-deployment-warning{font-size:12px;font-weight:650;color:#f0c283;margin:12px 0;}
+.focus-deployment-market{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#1c3023;border:1px solid #3b5943;color:inherit;padding:11px;border-radius:9px;margin:5px 0;width:100%;text-align:left;cursor:pointer;font:inherit;}
+.focus-deployment-market-name{min-width:0;flex:1;}
+.focus-deployment-market-name strong{display:block;font-size:13px;overflow-wrap:anywhere;}
+.focus-deployment-market-name small,.focus-deployment-market-value small{font-size:10px;color:#aec2af;display:block;line-height:1.45;}
+.focus-deployment-market-value{width:150px;flex-shrink:0;text-align:right;}
+.focus-deployment-market-value strong{font-size:12px;color:#f5d398;display:block;}
+@media(max-width:600px){.focus-deployment-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}
+.focus-deployment-market-value{width:115px;}
+.focus-deployment-market-name strong{font-size:12px;}}
+@media(max-width:360px){.focus-deployment-metrics{grid-template-columns:1fr 1fr;}
+.focus-deployment-market-value{width:97px;}}

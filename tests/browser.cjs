@@ -32,7 +32,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.evaluate(()=>history.state?.gpIndex),0);
 
  const setup=await page.evaluate(async()=>{
-  const s=GoldenPeanutClean.State;s.account='Fixture.1234';
+  const s=GoldenPeanutClean.State;s.account='Fixture.1234';s.opportunityDeepPaused=true; // isolate synthetic fixtures from a racing auto-discovery refresh
   s.snapshot=await s.api.snapshot('fixture-key-not-a-credential',s.account);s.ledger=[];
   await GPMarketFeed.load(s,{force:true});await GPMarketFeed.loadHistory({force:true});
   const now=Date.now(),DAY=86400000;
@@ -189,6 +189,52 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.locator('#focus-best-rows .focus-actual-winner').click();
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
 
+ // Genuine capital workflow regression: the planner must value committed capital
+ // as a separate WHAT-IF, not erase it with the tiny spendable wallet.
+ await page.evaluate(()=>{
+  const st=GoldenPeanutClean.State,at=new Date().toISOString();
+  st.snapshot.wallet=123947;st.snapshot.walletAt=at;
+  st.snapshot.buys=[{id:8001,item:990,q:1,price:8070091,created:Date.now()-86400000}];
+  const families=['Pearl','Exalted','Draconic','Emblazoned','Warbeast'];
+  st.opportunityPlan.marketChoices=families.map((family,i)=>({
+   id:2001+i,itemName:"Berserker's "+family+' Sample '+i,asOf:at,buy:10000,exit:20000,
+   repeatEvidence:true,buyWeeks:5,sellWeeks:5,buyWeek25:10,sellWeek25:10,
+   researchCap:12,capacityAfterPositions:12,cap:1,quantity:1,
+   ageDays:6,openBuys:0,openSells:0,deliveryUnits:0
+  }));
+  st.opportunityPlan.publicResearch=[];
+  st.opportunityPlan.activeBook={committed:8070091,entries:[]};
+  GPFocus.goto('today');GPFocus.render();
+ });
+ const lab=page.locator('#focus-best-rows .focus-deployment-lab');
+ assert.equal(await lab.count(),1);
+ assert.match(await lab.innerText(),/CAPITAL DEPLOYMENT/);
+ assert.match(await lab.innerText(),/WHAT-IF ONLY/);
+ assert.match(await lab.innerText(),/Already committed to buys/);
+ assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'819');
+ assert.ok((await lab.locator('.focus-deployment-market').count())>=3);
+ assert.match(await lab.innerText(),/New plan · conditional active-week net/);
+ const beforeAllocation=await lab.locator('.focus-deployment-metrics').innerText();
+ assert.match(beforeAllocation,/Hypothetical NEW buy allocation/);
+ assert.doesNotMatch(beforeAllocation,/NaN|undefined/);
+ await lab.locator('.focus-deployment-input').fill('500');
+ await lab.locator('.focus-deployment-input').press('Tab');
+ assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'500');
+ const elected=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')).portfolioBudgetGold);
+ assert.equal(elected,500);
+ const chosen=await page.evaluate(()=>{
+  const st=GoldenPeanutClean.State,b=GPPortfolio.build(st.opportunityPlan,
+   {budgetGold:500,wallet:st.snapshot.wallet,committed:8070091});
+  return {spent:b.spent,budget:b.budget,freeWallet:b.actualWallet,rows:b.rows.length};
+ });
+ assert.ok(chosen.spent>chosen.freeWallet,'500g WHAT-IF should not be wallet-capped');
+ assert.ok(chosen.spent<=chosen.budget);
+ assert.ok(chosen.rows>=3);
+ await lab.locator('.focus-deployment-market').first().click();
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
+ await page.evaluate(()=>{GPFocus.goto('today');GPFocus.render();});
+ assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'500');
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
  const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config',s.account,'execution-learning-v1')).value.samples.length;});assert.equal(persisted,20);
