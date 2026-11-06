@@ -1,6 +1,10 @@
 name: Golden Peanut — Full Public Market Snapshot
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/start-public-snapshot.txt'
   schedule:
     - cron: '17 3 * * *'
 permissions:
