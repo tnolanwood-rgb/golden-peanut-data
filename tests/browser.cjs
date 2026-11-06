@@ -287,7 +287,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    buysVerified:true,sellsVerified:true,delivery:{items:[],coins:0}};
   const items=Array.from({length:72},(_,i)=>({
    id:6000+i,name:"Magi's Exalted Test Coat "+i,type:'Armor',rarity:'Exotic',
-   buy:1200+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
+   buy:2100+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
   }));
   for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:'Armor',rarity:'Exotic'};
   s.opportunityPlan={...s.opportunityPlan,ok:true,asOf:stamp,publicResearch:items,
