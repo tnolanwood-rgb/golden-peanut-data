@@ -451,17 +451,22 @@ function renderDeploymentPlanner(host,state){
   const metric=(label,value)=>{const cell=h('div','focus-deployment-metric');cell.append(h('small','',label),h('strong','',value));grid.append(cell);};
   metric('Spendable wallet now',cash(wallet));
   metric('Already committed to buys',cash(committed));
-  metric('Hypothetical new-buy allocation',cash(result.spent));
+  metric('Existing orders · CONDITIONAL active-week net',result.existingBook.conditionalActiveWeek===null?'Not measured':cash(result.existingBook.conditionalActiveWeek));
+  metric('Existing book · evidence-backed items',num(result.existingBook.activeItems)+' · '+num(result.existingBook.unverified)+' unverified');
+  metric('Hypothetical NEW buy allocation',cash(result.spent));
   metric('Unused research budget',cash(result.unallocated));
-  metric('Conditional matched active-week net',result.conditionalWeek===null?'Not supported':cash(result.conditionalWeek));
-  metric('Markets selected',num(result.selectedMarkets)+' / '+num(result.qualifiedMarkets)+' qualified');
+  metric('New plan · conditional 24h reference',result.conditionalNight===null?'No supported reference':cash(result.conditionalNight));
+  metric('New plan · conditional active-week net',result.conditionalWeek===null?'Not supported':cash(result.conditionalWeek));
+  metric('New markets selected',num(result.selectedMarkets)+' / '+num(result.qualifiedMarkets)+' qualified');
   output.append(grid);
   output.append(h('p','focus-deployment-warning',
    result.hypotheticalExceedsWallet?
     'WHAT-IF ONLY: this budget exceeds your free wallet by '+cash(result.budget-wallet)+'. Existing orders are not cancelled; queue positions remain intact.':
     'Wallet-sized scenario. No orders are submitted. A verified refresh is required before spending.'));
   output.append(h('p','focus-muted',
-   'Figures are conditional on trading again at historical ACTIVE-WEEK pace and at the quoted spread. Unobserved zero-fill periods, cancellations and missing resale demand mean these are NOT expected weekly earnings.'));
+   'EXISTING and NEW plans are alternatives, NOT additive earnings. The new plan assumes its entire research budget is freely allocatable, which may require cancelling existing orders and losing queue priority. Current positions are shown separately. Active-week completed buying and selling on different dates does not prove another complete round will occur.'));
+  output.append(h('p','focus-muted',
+   'Missing zero-fill periods, cancellations, unlisted stock and changing resale demand prevent calibrated profit promises. Unverified public quotes add no modeled income.'));
   if(result.rows.length){
    const head=h('h4','','TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT');output.append(head);
    for(const row of result.rows.slice(0,18)){
