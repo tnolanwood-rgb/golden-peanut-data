@@ -64,6 +64,57 @@ test('stale quote and unverified existing positions cannot become new buys',()=>
  assert.ok(b.history.every(x=>x.cost===x.buy*x.quantity&&x.scenarioProfit>0));
  assert.ok(b.history.every(x=>x.quantity<=4));
 });
+test('cheap Pearl and exotic-armour leads are surfaced separately before expensive collectibles',()=>{
+ const p={...source,publicResearch:[
+  {...source.publicResearch[0],type:'Weapon',rarity:'Exotic'},
+  {...source.publicResearch[1],type:'Armor',rarity:'Exotic'},
+  {id:67276,name:"Jormag's Claw Fragment",type:'Consumable',subtype:'Unlock',rarity:'Rare',
+   buy:150026,exit:450000,buyQty:65,sellQty:86,observations:2,at:stamp,openBuys:0},
+  {id:901,name:"Magi's Draconic Boots",type:'Armor',rarity:'Exotic',
+   buy:5000,exit:8500,buyQty:25,sellQty:35,observations:2,at:stamp,openBuys:0}
+ ]};
+ const b=Board.build(p,{wallet:40651,now:NOW});
+ assert.deepEqual(b.pearlLeads.map(x=>x.id),[201]);
+ assert.deepEqual(b.armorLeads.map(x=>x.id).sort(),[202,901]);
+ assert.ok(!b.newMarkets.some(x=>x.id===67276));
+ assert.ok(b.pearlLeads.every(x=>x.buy<=b.available&&x.quantity===undefined));
+ assert.ok(b.armorLeads.every(x=>x.expectedProfit===undefined));
+ assert.equal(b.otherLeads.length,0);
+});
+test('expensive gold-per-unit spreads do not outrank cheaper wallet-eligible equipment',()=>{
+ const p={...source,publicResearch:[
+  {id:1001,name:"Dire Pearl Siren",type:'Weapon',rarity:'Exotic',
+   buy:8500,exit:15000,buyQty:30,sellQty:30,at:stamp},
+  {id:1002,name:"Visage of Dwayna",type:'Consumable',rarity:'Rare',
+   buy:200767,exit:430000,buyQty:80,sellQty:80,at:stamp}
+ ]};
+ const b=Board.build(p,{wallet:123947,now:NOW});
+ assert.deepEqual(b.pearlLeads.map(x=>x.id),[1001]);
+ assert.equal(b.otherLeads.length,0); // pricey speculative unlock not shown on the home page
+ assert.equal(b.newMarkets.length,2); // still available for deeper research
+});
+test('the full public catalogue feeds diverse cheap exotic live-requote seeds',async()=>{
+ const Feed=require('../app/public-market-feed.js');
+ const original=global.fetch;
+ const rows=Array.from({length:1000},(_,i)=>[i+1,'Generic item '+i,'Gizmo','Basic',100,102,10,10]);
+ const stats=['Rabid','Dire','Rampager\'s','Cleric\'s','Magi\'s','Assassin\'s','Berserker\'s'];
+ const expected=[];
+ for(let i=0;i<stats.length;i++){
+  const n=i*2;rows[n]=[n+1,stats[i]+' Pearl Reaver','Weapon','Exotic',5000+i*100,11000+i*100,20,20];
+  rows[n+1]=[n+2,stats[i]+' Exalted Coat','Armor','Exotic',7000+i*100,13000+i*100,20,20];
+  expected.push(n+1,n+2);
+ }
+ rows[30]=[31,"Jormag's Claw Fragment",'Consumable','Rare',150026,440000,100,100];
+ const response={schema:'golden-peanut-public-v1',generated_at:Math.floor(Date.now()/1000),
+  count:rows.length,items:rows};
+ global.fetch=async()=>({ok:true,json:async()=>response});
+ try{
+  await Feed.load({meta:{},db:{putMetadataBatch:async()=>{}}},{force:true});
+  const ids=Feed.equipmentSeeds({limit:50,maxBid:100000});
+  for(const id of expected)assert.ok(ids.includes(id),'missing equipment id '+id);
+  assert.ok(!ids.includes(31));
+ }finally{global.fetch=original;}
+});
 test('empty/stale candidate set does not invent funded trades',()=>{
  const b=Board.build({ok:true,budget:0,marketChoices:[],publicResearch:[]},{wallet:0,now:NOW});
  assert.deepEqual(b.history,[]);assert.deepEqual(b.newMarkets,[]);assert.deepEqual(b.forecast,[]);

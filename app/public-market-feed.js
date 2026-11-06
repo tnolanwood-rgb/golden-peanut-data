@@ -54,6 +54,52 @@ async function load(state,{force=false,now=Date.now()}={}){
  })();
  try{return await loading;}finally{loading=null;}
 }
+/* Full-catalogue priority selector. A snapshot identifies ITEMS TO REQUOTE,
+ * not measured volume or actionable buy opportunities. Deliberately reserve
+ * capacity for affordable exotic Pearl weapons and stat-prefix exotic armour.
+ * Diverse group/price-band rotation prevents expensive one-off spreads from
+ * monopolising the subsequent live-quote scan. */
+function equipmentSeeds({limit=1500,maxBid=100000}={}){
+ if(!loaded||loaded.source!=='golden-peanut-github-public'||!(loaded.byId instanceof Map))return [];
+ const buckets=new Map();
+ const band=p=>p<10000?'sub1g':p<30000?'1to3g':p<60000?'3to6g':'6to10g';
+ for(const item of loaded.byId.values()){
+  if(item.rarity!=='Exotic'||!['Armor','Weapon'].includes(item.type))continue;
+  const pearl=item.type==='Weapon'&&/\bPearl\b/i.test(item.name);
+  if(item.type==='Weapon'&&!pearl)continue;
+  const bid=Number(item.buy)+1,ask=Number(item.sell);
+  if(!Number.isSafeInteger(bid)||bid<100||bid>maxBid||!Number.isSafeInteger(ask)||ask<=bid)continue;
+  if(!Number.isSafeInteger(item.buyQty)||item.buyQty<3||
+     !Number.isSafeInteger(item.sellQty)||item.sellQty<2)continue;
+  const exit=Math.floor(ask*.97),net=Math.floor(exit*.85)-bid,roi=net/bid;
+  // Reject obvious transient 500% spreads; these are NOT execution evidence.
+  if(net<300||roi<.055||roi>1.5)continue;
+  const stat=String(item.name).split(/\s+/)[0].replace(/[^a-z]/ig,'').toLowerCase()||'other';
+  const family=pearl?'pearl':'armor',key=family+'|'+band(bid)+'|'+stat;
+  const list=buckets.get(key)||[];
+  // Spread is a screening signal; use capped potential margin and price penalty
+  // only to choose which quotes deserve CURRENT API verification.
+  const score=Math.min(net,18000)/Math.pow(1+bid/14000,.72)*Math.min(1.5,Math.log1p(Math.min(item.buyQty,item.sellQty))/3);
+  list.push({id:item.id,score,bid});buckets.set(key,list);
+ }
+ const sorted=[...buckets].map(([key,items])=>({key,items:items.sort((a,b)=>b.score-a.score||a.id-b.id),pos:0}));
+ // Small/medium price bands before expensive items; equitable quota per
+ // stat-family means Dire/Rabid/Cleric/Rampager/Magi are not hardcoded winners.
+ sorted.sort((a,b)=>{
+  const keys=['sub1g','1to3g','3to6g','6to10g'];
+  const ba=keys.indexOf(a.key.split('|')[1]),bb=keys.indexOf(b.key.split('|')[1]);
+  return ba-bb||a.key.localeCompare(b.key);
+ });
+ const ids=[],max=Math.max(0,Math.min(3000,Math.floor(limit)||0));
+ while(ids.length<max){
+  let progressed=false;
+  for(const x of sorted){const row=x.items[x.pos++];if(!row)continue;
+   ids.push(row.id);progressed=true;if(ids.length>=max)break;
+  }
+  if(!progressed)break;
+ }
+ return ids;
+}
 function parseHistory(body,now=Date.now()){
  if(body?.schema!=='golden-peanut-daily-v1'||!Number.isSafeInteger(body.generated_at)||
     !body.history||typeof body.history!=='object')throw Error('Invalid price history data');
@@ -100,6 +146,6 @@ function volatility(id){
 }
 function status(){return {source:loaded?.source||null,items:loaded?.byId.size||0,
   generatedAt:loaded?.generatedAt||null,historyMarkets:trendStore?.entries.size||0,lastError};}
-root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadHistory,volatility,status,parseOwn,parseFlipOut,parseHistory,parseFlipOutHistory};
+root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadHistory,equipmentSeeds,volatility,status,parseOwn,parseFlipOut,parseHistory,parseFlipOutHistory};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketFeed;
 })(typeof globalThis!=='undefined'?globalThis:this);

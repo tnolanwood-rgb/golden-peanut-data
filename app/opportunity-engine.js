@@ -162,7 +162,7 @@ function equipmentVariantSeeds(hist,metadata={},limit=120,offset=0){
  const amount=Math.min(Math.max(0,Math.floor(limit)),ordered.length),start=((Math.floor(offset)||0)*Math.max(1,amount))%ordered.length;
  return Array.from({length:amount},(_,i)=>ordered[(start+i)%ordered.length]);
 }
-function discoveryIds(hist,metadata={},openOrders=[],radar=[],max=495,craftSeeds=[],rotation=0){
+function discoveryIds(hist,metadata={},openOrders=[],radar=[],max=495,craftSeeds=[],rotation=0,affordableEquipmentIds=[]){
  const ids=[],seen=new Set(),reasons=new Map();
  const push=(id,reason)=>{id=Number(id);if(valid(id)&&!seen.has(id)&&ids.length<max){seen.add(id);ids.push(id);reasons.set(id,reason);}};
  const take=(entries,quota,reason)=>{let n=0;for(const x of entries){if(n>=quota||ids.length>=max)break;const id=typeof x==='number'?x:x?.id,prior=ids.length;push(id,reason);if(ids.length>prior)n++;}};
@@ -176,6 +176,9 @@ function discoveryIds(hist,metadata={},openOrders=[],radar=[],max=495,craftSeeds
  take(Array.from({length:quota},(_,i)=>catalogueIds[(start+i)%catalogueIds.length]),quota,'complete-catalogue-rotation');
  take([...byGold].sort((a,b)=>b[1]-a[1]).map(x=>x[0]),Math.floor(max*.25),'existing-position');
  take(profitable,Math.min(425,Math.ceil(max*.16)),'lifetime');
+ // Reserve a full price-verified quote lane for cheap exotic equipment, instead
+ // of relying on whichever expensive spreads won the global top-N competition.
+ take(affordableEquipmentIds,Math.min(1500,Math.ceil(max*.23)),'affordable-exotic-equipment');
  // Reserved coverage across every cached exotic stat/family, not Rabid/Dire
  // exceptions. Rotate on successive deep refreshes so no fixed top-N blind spot.
  take(equipmentVariantSeeds(hist,metadata,Math.min(2100,Math.max(160,Math.ceil(max*.34))),rotation),
@@ -1186,7 +1189,7 @@ function publicResearchCandidates({quotes=[],metadata={},hist=null,exposures=new
   const distinct=snapshots.map(x=>Date.parse(x.at)).sort((a,b)=>a-b);
   const observations=distinct.length>=2&&last(distinct)-distinct[0]>=90*60000?2:1;
   const observed=observedFillsByItem(orderEvidence,id,now),sold=observedFillsByItem(sellOrderEvidence,id,now);
-  out.push({...score,id,name:metadata[id].name,buyQty:q.buyQty||0,sellQty:q.sellQty||0,
+  out.push({...score,id,name:metadata[id].name,type:metadata[id].type||'',rarity:metadata[id].rarity||'',subtype:metadata[id]?.details?.type||'',buyQty:q.buyQty||0,sellQty:q.sellQty||0,
     observedOrderFills24h:observed.last24h,observedOrderFillsAll:observed.sinceTracking,observedOrderChecks:observed.observations,observedSellFills24h:sold.last24h,observedSellFillsAll:sold.sinceTracking,
     observations,at:q.at,openBuys:exposures.get(id)?.buyUnits||0,
     confidence:'Public quote only · completed trading volume unknown'});
@@ -1294,6 +1297,11 @@ async function refresh(state,{force=true,phase='quick'}={}){
   if(deep&&state.opportunityDeepController?.signal.aborted)throw Error('Extended discovery stopped');
   const craftSeeds=deep?await craftableEquipmentSeeds(state,recipeIndex.recipes||[],{limit:3600}):{ids:[],known:0,quoted:0};
   const publicSeeds=deep?await gatherPublicSeeds(state,hist,2100):{ids:[],seen:0,fresh:0,eligible:0};
+  // Full snapshot item metadata + quotes select diverse AFFORDABLE exotic
+  // equipment for a new LIVE quote check. Snapshot prices are never used as
+  // trade instructions or proof of completed overnight volume.
+  const affordableEquipmentIds=deep&&root.GPMarketFeed?.equipmentSeeds?
+   root.GPMarketFeed.equipmentSeeds({limit:1750,maxBid:100000}):[];
   // Catalogue names are prerequisite to evaluating exotics; otherwise the
   // quote scanner silently rejects valid items as metadata-unverified.
   const catalogue=deep?await extendTradableCatalogue(state,{priorityIds:[...craftSeeds.ids,...publicSeeds.ids],maxNew:4800,rotateQuota:1600,
@@ -1303,7 +1311,7 @@ async function refresh(state,{force=true,phase='quick'}={}){
 
   // Preserve all personally proven and existing positions; public discovery gets
   // substantial share, not the previous 95 candidate crumbs.
-  const discovery=discoveryIds(hist,state.meta,open,[...publicSeeds.ids.map(id=>({id})),...(state.marketRadar||[])],deep?6500:800,craftSeeds.ids,previousRotation);
+  const discovery=discoveryIds(hist,state.meta,open,[...publicSeeds.ids.map(id=>({id})),...(state.marketRadar||[])],deep?6500:800,craftSeeds.ids,previousRotation,affordableEquipmentIds);
   state.opportunityStatus='Refreshing current prices for '+discovery.ids.length+' candidate markets…';root.GPFocus?.render?.();
   const quotes=[],failures=[];
   // A just-completed public scan already supplies current price snapshots.
@@ -1405,7 +1413,7 @@ async function refresh(state,{force=true,phase='quick'}={}){
    quoted:quotes.length,research:plan.publicResearch.length,complete:!!universe.complete};
   plan.equipmentAudit=equipmentCoverageAudit({metadata:state.meta,discoveryIds:discovery.ids,quotes,plan});
   plan.equipmentAudit.source='Market-wide tradable quote scan with selective metadata hydration; not limited to locally known names';
-  plan.candidateRefresh={checked:discovery.ids.length,returned:quotes.length,publicSeedCount:publicSeeds.ids.length,
+  plan.candidateRefresh={checked:discovery.ids.length,returned:quotes.length,publicSeedCount:publicSeeds.ids.length,affordableExoticSeeds:affordableEquipmentIds.length,
    storedMarketsScreened:publicSeeds.seen,historyMarkets:hist.markets.size,metaFetched,sourceCounts:{},failures,
    phase:deep?'expanded':'quick',metadataWarning,catalogue};
   for(const id of discovery.ids)plan.candidateRefresh.sourceCounts[discovery.reasons.get(id)||'other']=(plan.candidateRefresh.sourceCounts[discovery.reasons.get(id)||'other']||0)+1;

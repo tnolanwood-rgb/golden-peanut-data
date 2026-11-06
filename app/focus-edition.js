@@ -276,7 +276,7 @@ function openBoardMarket(m){
  window.scrollTo({top:0,behavior:'instant'});
 }
 function renderConnectedMarkets(host,s,{query='',limit=7}={}){
- const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet});
+ const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
  if(!board?.ready)return {count:0,board:null};
  const q=query.toLowerCase().trim(),shown=new Set();
  const match=m=>!q||(itemName(m.id)+' '+m.id).toLowerCase().includes(q);
@@ -309,13 +309,25 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
   board.history,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
   m=>m.nightUnits?'Conditional overnight reference · not guaranteed':'Net IF one buy/resale round completes',
   m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover lot':'needs additional spendable gold'));
- count+=group('NEW MARKET DISCOVERY · UNVERIFIED',
-  'Independent markets outside your proven history. These are per-unit after-fee quoted margins, NOT 24-hour forecasts or bulk-buy instructions.',
-  board.newMarkets,m=>m.unitMargin,
-  ()=> 'Quoted net margin per ONE unit · no fill forecast',
-  m=>'Bid '+cash(m.buy)+' · ROI '+(m.roi*100).toFixed(1)+'% · '+(m.observations>=2?'multiple price checks':'requires another price check')+(m.craftableSupply?' · craftable':''));
+ count+=group('MORE PROVEN PEARL & EXOTIC EQUIPMENT',
+  'Older completed equipment trades checked at current prices; one completed trade does not establish how many more will fill tonight.',
+  board.historyEquipment,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>m.nightUnits?'Conditional observed-night reference':'Net IF the historical trial lot fills and resells',
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover':'requires more wallet gold'));
+ const unitSubtitle=m=>'Bid '+cash(m.buy)+' · ROI '+(m.roi*100).toFixed(1)+'% · '+(m.observations>=2?'multiple quote checks':'one quote check')+
+  ' · '+(m.affordability==='one-unit-affordable'?'ONE unit affordable':'not funded')+(m.craftableSupply?' · craftable':'');
+ const unitLabel=()=> 'Net margin per unit IF resold · no measured sale pace';
+ count+=group('CHEAPER PEARL WEAPONS · NEW MARKETS',
+  'Affordable, live-quoted exotic Pearl candidates across stat prefixes. No assumed bulk order or resale speed.',
+  board.pearlLeads,m=>m.unitMargin,unitLabel,unitSubtitle);
+ count+=group('CHEAPER EXOTIC ARMOUR · NEW MARKETS',
+  'Affordable exotic armour from multiple stat families. Public quotes show possible margins, not executed buy/sell volume.',
+  board.armorLeads,m=>m.unitMargin,unitLabel,unitSubtitle);
+ count+=group('OTHER AFFORDABLE NEW MARKETS',
+  'Markets outside your proven trades, restricted to modest one-unit wallet exposure. Rare collection unlocks and high-ticket windfalls are excluded.',
+  board.otherLeads,m=>m.unitMargin,unitLabel,unitSubtitle);
  if(!q&&board.counts.catalogue){
-  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+num(board.counts.scanned)+' currently evaluated quote candidates; '+num(board.counts.history)+' history-backed comparisons; '+num(board.counts.newMarkets)+' new unverified quoted leads. The full catalogue is searchable in Trades; it is not equivalent to 27,999 verified profitable opportunities.'));
+  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds checked for inclusion; '+num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+' total unverified markets, including ones not affordable or sufficiently liquid to promote here.'));
  }
  return {count,board};
 }
@@ -345,7 +357,7 @@ function renderOpportunityHome(){
   renderVerifiedRecentMarkets(host,s);
   return;
  }
- const rows=book?.rows||[],board=root.GPMarketBoard?.build?.(p,{wallet:userSnapshot()?.wallet});
+ const rows=book?.rows||[],board=root.GPMarketBoard?.build?.(p,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
  status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESEARCH · ':'')+
   num(rows.length)+' calibrated 24h orders · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
  if(!rows.length){

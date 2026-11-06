@@ -11,7 +11,36 @@ const net=(unit,qty)=>{let left=qty,total=0;while(left>0){const n=Math.min(250,l
 const when=x=>{const t=Date.parse(x);return Number.isFinite(t)?t:NaN;};
 const fresh=(x,now)=>finite(when(x))&&when(x)<=now+30000&&now-when(x)<=30*MINUTE;
 const souvenir=/\b(?:infusion|music box|miniature|mini |ticket|tonic|skin|recipe:|toy-|envelope)\b/i;
-function build(plan,{wallet=null,now=Date.now()}={}){
+function equipmentKind(name,type,rarity){
+ if(rarity!=='Exotic')return null;
+ if(type==='Armor')return 'armor';
+ if(type==='Weapon'&&/\bPearl\b/i.test(name))return 'pearl';
+ return null;
+}
+const studyScore=x=>x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
+ Math.pow(1+x.buy/10000,.85);
+function diverseEquipment(rows,max=150){
+ // Preserve cheap price bands and stat diversity instead of repeatedly
+ // showing the largest one-unit gross spread from a single stat family.
+ const groups=new Map();
+ for(const x of rows){
+  const b=x.buy<10000?'under1g':x.buy<30000?'1to3g':x.buy<60000?'3to6g':'6to10g';
+  const prefix=x.name.split(/\s+/)[0].toLowerCase();
+  const key=b+'|'+prefix,a=groups.get(key)||[];
+  a.push(x);groups.set(key,a);
+ }
+ const order=['under1g','1to3g','3to6g','6to10g'];
+ const buckets=[...groups].map(([key,arr])=>({key,arr:arr.sort((a,b)=>studyScore(b)-studyScore(a)||a.id-b.id),index:0}))
+  .sort((a,b)=>order.indexOf(a.key.split('|')[0])-order.indexOf(b.key.split('|')[0])||a.key.localeCompare(b.key));
+ const out=[];let progressed=true;
+ while(progressed&&out.length<max){
+  progressed=false;
+  for(const b of buckets){if(b.index>=b.arr.length)continue;
+   out.push(b.arr[b.index++]);progressed=true;if(out.length>=max)break;}
+ }
+ return out;
+}
+function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  const empty={ready:false,forecast:[],standing:[],history:[],newMarkets:[],counts:{forecast:0,standing:0,history:0,newMarkets:0,scanned:0,catalogue:0},disclaimer:'No verified market plan available'};
  if(!plan?.ok)return empty;
  const available=whole(wallet)?wallet:(whole(plan.budget)?plan.budget:0);
@@ -51,29 +80,42 @@ function build(plan,{wallet=null,now=Date.now()}={}){
  const historyIds=new Set(history.map(x=>x.id));
  const newMarkets=[];
  for(const c of plan.publicResearch||[]){
-  const id=c.id,name=String(c.name||'');
+  const id=c.id,name=String(c.name||''),meta=metadata?.[id]||{};
   if(!whole(id,1)||!name||activeIds.has(id)||historyIds.has(id)||forecastIds.has(id)||!fresh(c.at,now)||c.openBuys>0)continue;
+  const type=c.type||meta.type||'',rarity=c.rarity||meta.rarity||'',subtype=c.subtype||meta.details?.type||'';
+  // A collection unlock such as Jormag's Claw Fragment is NOT an
+  // overnight turnover market just because its lowest ask is far above bid.
+  if(type==='Consumable'&&/unlock/i.test(subtype))continue;
   if(!whole(c.buy,1)||!whole(c.exit,1)||c.buy>250000||c.exit<=c.buy||souvenir.test(name))continue;
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
   if(!finite(margin)||margin<50||roi<.055||roi>1.5||Number(c.sellQty||0)<2||Number(c.buyQty||0)<4)continue;
-  // No requested lot size or profit forecast on public quotes alone.
-  newMarkets.push({id,name,kind:'new',tier:'public-unverified',buy:c.buy,exit:c.exit,
-   unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
+  // No requested lot size or overnight profit forecast on a public quote.
+  newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
+   buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
    affordability:c.buy<=available?'one-unit-affordable':'not-wallet-funded',at:c.at,
    craftableSupply:c.craftableSupply||null,
-   evidence:'Current public bid/ask margin only. Outstanding quantities are not executed trades. No overnight fill forecast.'});
+   evidence:'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
  }
- newMarkets.sort((a,b)=>{
-  // Favor a meaningful but reasonably priced margin and visible counterparties,
-  // NOT an arbitrary 20-unit windfall on a rare single collectible.
-  const score=x=>x.unitMargin*Math.sqrt(Math.min(100,x.buyQty,x.sellQty)/10)/
-      Math.pow(1+x.buy/50000,.6);
-  return score(b)-score(a)||b.unitMargin-a.unitMargin||a.id-b.id;
+ const candidateRank=(a,b)=>
+   Number(b.buy<=available)-Number(a.buy<=available)||
+   studyScore(b)-studyScore(a)||b.unitMargin-a.unitMargin||a.id-b.id;
+ newMarkets.sort(candidateRank);
+ const cheapLimit=Math.min(100000,Math.max(10000,Math.floor(available)));
+ const pearlLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='pearl'&&x.buy<=cheapLimit));
+ const armorLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='armor'&&x.buy<=cheapLimit));
+ const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&x.buy<=cheapLimit&&
+   x.buy<=Math.max(1,available)*.65).sort(candidateRank);
+ const historyEquipment=history.filter(x=>{
+  const meta=metadata?.[x.id]||{};
+  return equipmentKind(x.name||meta.name||'',meta.type||'',meta.rarity||'');
  });
  const uniq=a=>{const seen=new Set();return a.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});};
- const categories={forecast:uniq(forecast),standing:uniq(standing),history:uniq(history),newMarkets:uniq(newMarkets)};
+ const categories={forecast:uniq(forecast),standing:uniq(standing),history:uniq(history),
+  historyEquipment:uniq(historyEquipment),pearlLeads:uniq(pearlLeads),armorLeads:uniq(armorLeads),
+  otherLeads:uniq(otherLeads),newMarkets:uniq(newMarkets)};
  const counts={...Object.fromEntries(Object.entries(categories).map(([k,v])=>[k,v.length])),
   scanned:plan.candidateRefresh?.checked||0,catalogue:plan.publicCatalogue?.items||0,
+  affordableExoticSeeds:plan.candidateRefresh?.affordableExoticSeeds||0,
   broadCandidates:plan.publicDiscovery?.broadMarginCandidates||0,
   rawPersonalResearch:plan.marketChoices?.length||0,rawPublicResearch:plan.publicResearch?.length||0,
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
