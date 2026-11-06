@@ -719,7 +719,7 @@ function renderAccountWatcher(host,state){
  const info=cloud.status(account);
  const last=Number(info.status?.lastSuccess)||0,elapsed=last>0?Date.now()-last:Infinity;
  const watcherState=!info.enabled?'off':info.lastError?'error':info.syncing?'checking':
-  Number.isFinite(elapsed)&&elapsed>=0&&elapsed<40*60000?'active':last?'stale':'pending';
+  Number.isFinite(elapsed)&&elapsed>=0&&elapsed<(info.status?.backend==='github-actions'?85:40)*60000?'active':last?'stale':'pending';
  const states={
   off:'OFF — background monitoring has not been enabled',
   checking:'CHECKING — confirming cloud account status',
@@ -740,6 +740,56 @@ function renderAccountWatcher(host,state){
  }
  const intro=h('p','focus-muted');
  if(!info.enabled){
+  if(info.serviceMode==='github-actions-fallback'){
+   intro.textContent='ArenaNet is rate-limiting Cloudflare’s shared outgoing IP. Golden Peanut can instead use your private GitHub Actions runner to check completed buys, sells and order changes every ~30 minutes, even with this phone closed.';
+   wrapper.append(intro);
+   const setup=h('div','focus-watcher-setup');
+   setup.append(
+    h('p','','1. Use the EXACT SAME GW2 API key already connected to Golden Peanut (account + tradingpost permissions), so the private collector can match your account securely. If you create a new key, update Golden Peanut to that same key as well.'),
+    h('p','','2. In GitHub Actions Secrets, select New repository secret. Name it GW2_PRIVATE_MONITOR_KEY, then paste the key there. Never paste it into this chat or into source files.'),
+    h('p','','3. Run the private account collector once, or let the next scheduled check run. Then tap Connect below.')
+   );
+   const links=h('div','focus-watcher-actions');
+   for(const [label,url]of [
+    ['GW2 API keys','https://account.arena.net/applications'],
+    ['Add GitHub secret','https://github.com/tnolanwood-rgb/golden-peanut-data/settings/secrets/actions'],
+    ['Run collector now','https://github.com/tnolanwood-rgb/golden-peanut-data/actions/workflows/private-account-collector.yml']
+   ]){
+    const a=h('a','focus-button focus-button-secondary',label);
+    a.href=url;a.target='_blank';a.rel='noopener noreferrer';links.append(a);
+   }
+   setup.append(links);
+   const copy=h('button','focus-button focus-button-secondary','Copy connected GW2 key');
+   copy.type='button';copy.title='Sensitive: copies the API key already stored locally in Golden Peanut.';
+   copy.addEventListener('click',async()=>{
+    try{
+     await navigator.clipboard.writeText(state.key);
+     copy.textContent='Copied — paste into GitHub Secret';
+    }catch{copy.textContent='Clipboard unavailable — obtain the key from ArenaNet';}
+   });
+   setup.append(copy,h('p','focus-muted',
+    'The key is only copied if you tap this button. After pasting it into GitHub Secrets, clear your phone clipboard for privacy. Nothing is sent to this chat.'));
+   wrapper.append(setup);
+   if(watcherFeedback?.account===account)wrapper.append(
+    h('p',watcherFeedback.ok?'focus-watcher-feedback':'focus-alert focus-watcher-feedback',watcherFeedback.message));
+   const connect=h('button','focus-button focus-button-secondary','Connect GitHub background monitor');
+   connect.type='button';connect.disabled=watcherEnrollmentBusy||info.syncing;
+   connect.addEventListener('click',async()=>{
+    if(watcherEnrollmentBusy)return;
+    watcherEnrollmentBusy=true;connect.disabled=true;connect.textContent='Checking account collector…';
+    try{
+     const result=await cloud.connectGithub(state);
+     watcherFeedback={account,ok:true,message:result?.lastSuccess?
+      'CONNECTED — the private GitHub collector has checked this account.':
+      'CONNECTED — awaiting a successful scheduled account check.'};
+    }catch(e){watcherFeedback={account,ok:false,message:
+     'Not connected: '+String(e?.message||e).slice(0,185)+
+     ' Ensure your GitHub Actions secret is set and the private collector has run.'};}
+    finally{watcherEnrollmentBusy=false;root.GPFocus?.render?.();}
+   });
+   wrapper.append(connect);host.append(wrapper);return;
+  }
+
   intro.textContent=info.serviceReady?
    'Local trade history checks work while this app is open. To record buy and sell order changes while closed, you can explicitly enable the encrypted Cloudflare monitor.':
    'Account trade history is checked while this app is open. The private cloud monitor is currently unreachable, so no background enrollment or key transfer is available.';
@@ -793,7 +843,9 @@ function renderAccountWatcher(host,state){
    const feedback=h('p','focus-watcher-feedback',watcherFeedback.message);feedback.setAttribute('role','status');wrapper.append(feedback);
   }
   const status=info.status,last=Number(status?.lastSuccess);
-  intro.textContent='Background monitor enabled · server-side account checks every ~10 minutes. '+
+  intro.textContent='Background monitor enabled · '+(status?.backend==='github-actions'?
+    'a private GitHub Actions runner checks every ~30 minutes. ':
+    'Cloudflare checks about every 10 minutes. ')+
    (last?'Last success '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+'. ':'First collection pending. ')+
    (status?'Completed transaction records '+num(status.savedCompletedTrades||0)+
     ' · active buys '+num(status.currentBuys||0)+' · active sells '+num(status.currentSells||0)+

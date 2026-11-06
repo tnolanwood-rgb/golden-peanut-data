@@ -15,8 +15,8 @@ test('monitor /health confirms ACTUAL D1 and AES readiness rather than accepting
  const {default:worker}=await moduleTask;
  const r=await worker.fetch(req('/health'),readyEnv(),{});assert.equal(r.status,200);
  const result=await r.json();
- assert.equal(result.ok,true);assert.equal(result.intervalMinutes,10);
- assert.equal(result.mode,'opt-in');assert.equal(result.privateDatabaseReady,true);
+ assert.equal(result.ok,true);assert.equal(result.intervalMinutes,30);
+ assert.equal(result.mode,'github-actions-fallback');assert.equal(result.privateDatabaseReady,true);
  assert.equal(result.encryptedCredentialStorageReady,true);
  assert.ok(!JSON.stringify(result).includes('0123456789abcdef'));
 });

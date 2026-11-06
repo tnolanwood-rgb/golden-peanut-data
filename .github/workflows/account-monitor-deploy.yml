@@ -127,7 +127,7 @@ jobs:
                       cors=response.headers.get('Access-Control-Allow-Origin')
                   if cors!='https://thegoldenpeanut.pages.dev':
                       raise ValueError('Worker did not permit the actual Golden Peanut application origin')
-                  if data.get('ok') and data.get('mode')=='opt-in' and data.get('intervalMinutes')==10:
+                  if data.get('ok') and data.get('mode') in ('opt-in','github-actions-fallback') and data.get('intervalMinutes') in (10,30):
                       # Reproduce the installed app's actual authenticated POST
                       # preflight without ever sending a personal GW2 API key.
                       req=urllib.request.Request(url.replace('/health','/enroll'),method='OPTIONS',headers={
@@ -162,32 +162,36 @@ jobs:
                       if not diag.get('keyReady') or not diag.get('dbReady'):
                           raise ValueError('Encrypted private account-monitor storage not ready')
                       if not diag.get('guildWars2ApiReachable'):
-                          if diag.get('gw2Status')=='HTTP_429':
-                              raise SystemExit('ArenaNet 429 from this Worker egress. Respect shared-IP quota; no further retries this run.')
-                          raise SystemExit('Cloudflare Worker cannot contact public ArenaNet API: '+str(diag.get('gw2Status')))
-                      # Test /enroll through all HTTP and remote GW2 request
-                      # layers with a known FAKE key. No account credentials.
-                      fakekey='11111111-2222-3333-4444-555555555555-aaaa-bbbb-cccc-dddddddddddd'
-                      enrollment=urllib.request.Request(url.replace('/health','/enroll'),method='POST',headers={
-                          'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
-                          'Accept':'application/json',
-                          'Origin':'https://thegoldenpeanut.pages.dev',
-                          'Authorization':'Bearer '+fakekey,
-                          'X-GP-Account':'Fixture.1234',
-                          'Content-Type':'application/json'
-                      },data=b'{"consent":true}')
-                      try:
-                          with urllib.request.urlopen(enrollment,timeout=20) as result:
-                              enrollmentStatus=result.status;enrollBody=json.load(result)
-                      except urllib.error.HTTPError as result:
-                          enrollmentStatus=result.code;enrollBody=json.load(result)
-                      stage=enrollBody.get('code','unknown')
-                      print('Fake-key enrollment probe:',{'status':enrollmentStatus,'stage':stage},flush=True)
-                      if enrollBody.get('ok') or enrollmentStatus==200:
-                          raise ValueError('Fake-key enrollment must never succeed')
-                      if not stage.startswith('ARENA_NET_'):
-                          raise ValueError('Private enrollment failed outside ArenaNet validation: '+stage)
-                      print('Private monitor health, DB/AES, public GW2 and real cross-origin account enrollment route verified')
+                          print('ArenaNet not directly reachable from Worker ('+str(diag.get('gw2Status'))+'). Private GitHub Actions collector provides the account API egress instead.',flush=True)
+                          if data.get('mode')!='github-actions-fallback':
+                              raise ValueError('Direct cloud monitor is not viable; deploy the GitHub fallback before enabling any user enrollment')
+                      # On a known rate-limited Worker egress, DO NOT make a
+                      # redundant fake-key request. Keep the upstream quota
+                      # intact for the GitHub-based private account collector.
+                      if diag.get('guildWars2ApiReachable'):
+                          # Test /enroll through all HTTP and remote GW2 request
+                          # layers with a known FAKE key. No account credentials.
+                          fakekey='11111111-2222-3333-4444-555555555555-aaaa-bbbb-cccc-dddddddddddd'
+                          enrollment=urllib.request.Request(url.replace('/health','/enroll'),method='POST',headers={
+                              'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+                              'Accept':'application/json',
+                              'Origin':'https://thegoldenpeanut.pages.dev',
+                              'Authorization':'Bearer '+fakekey,
+                              'X-GP-Account':'Fixture.1234',
+                              'Content-Type':'application/json'
+                          },data=b'{"consent":true}')
+                          try:
+                              with urllib.request.urlopen(enrollment,timeout=20) as result:
+                                  enrollmentStatus=result.status;enrollBody=json.load(result)
+                          except urllib.error.HTTPError as result:
+                              enrollmentStatus=result.code;enrollBody=json.load(result)
+                          stage=enrollBody.get('code','unknown')
+                          print('Fake-key enrollment probe:',{'status':enrollmentStatus,'stage':stage},flush=True)
+                          if enrollBody.get('ok') or enrollmentStatus==200:
+                              raise ValueError('Fake-key enrollment must never succeed')
+                          if not stage.startswith('ARENA_NET_'):
+                              raise ValueError('Private enrollment failed outside ArenaNet validation: '+stage)
+                      print('Private monitor health, encrypted D1 and cross-origin app access verified; GitHub runner is required when upstream is rate limited')
                       break
                   raise ValueError('Unexpected monitor health response')
               except Exception as exc:

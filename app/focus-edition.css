@@ -260,3 +260,13 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-watcher-consent span{font-size:13px;line-height:1.5}
 .focus-watcher-feedback{border-radius:8px;padding:10px 12px;border:1px solid #638775;background:#23382c;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .focus-watcher-feedback.focus-alert{border-color:#b66e5c;background:#39241d}
+
+
+/* Browser-visible alternative to the ArenaNet-rate-limited Cloudflare egress.
+ * No browser API key is copied into GitHub by this UI; the user installs the
+ * encrypted Actions Secret in their own repository. */
+.focus-watcher-setup{background:#202f25;border:1px solid #516d56;border-radius:10px;padding:10px 12px;margin:8px 0 12px}
+.focus-watcher-setup p{font-size:12px;line-height:1.5;margin:7px 0}
+.focus-watcher-setup .focus-watcher-actions{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 3px}
+.focus-watcher-setup .focus-watcher-actions a{display:inline-flex;align-items:center;text-decoration:none;min-height:40px;padding:6px 9px;font-size:11px}
+@media(max-width:425px){.focus-watcher-setup .focus-watcher-actions a{flex:1 1 100%;justify-content:center}}
