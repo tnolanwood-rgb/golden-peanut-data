@@ -11,3 +11,5 @@ Request new isolated Cloudflare Worker deployment with account-scoped Workers Ad
 If worker upload or secret fails, retain consent gate disabled. Never share API credentials in logs.
 
 Health verification diagnostic retry after successful Worker upload + encryption secret initialization; 2026-11-06 21:46 GMT.
+
+Public health endpoint 403 response diagnostics retry, 2026-11-06 (no personal credentials involved).
