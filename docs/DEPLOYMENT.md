@@ -85,3 +85,37 @@ do not disable/delete the existing background collector or D1 database.
 - Always-on private collection, learned censoring/queue/crafting-supply effects and
   a globally optimized multi-cycle capital allocator are not delivered in this stage.
   The simple model withholds recommendations where its data assumptions fail.
+
+## GitHub publication blocked in this session
+
+Both native `git push` and the connected GitHub branch-creation API returned HTTP 403
+(the latter: `Resource not accessible by integration`). Repository metadata reported
+user push/admin access, but the integration did not authorize the actual write.
+No remote development branch or PR was created. These are GitHub authorization
+failures, not an automatic safety-review rejection.
+
+After granting the integration repository Contents/Pull requests write and workflow
+update permission, the prepared local checkout can be published with:
+
+```sh
+git push -u origin development/7.16-evidence-engine
+gh pr create --repo tnolanwood-rgb/golden-peanut-data --base main \
+  --head development/7.16-evidence-engine \
+  --title '7.16: connect full-market discovery to evidence-gated 24h recommendations' \
+  --body-file docs/PULL_REQUEST.md
+```
+
+To move the work to another machine without this workspace, clone the repository,
+then import the supplied Git bundle (it requires base commit
+`7753da381c69e422e3fcfd700ae9b6c739622569`, already in repository history):
+
+```sh
+git clone https://github.com/tnolanwood-rgb/golden-peanut-data.git
+cd golden-peanut-data
+git fetch /path/to/GoldenPeanut_7_16_Review.bundle \
+  development/7.16-evidence-engine:development/7.16-evidence-engine
+git switch development/7.16-evidence-engine
+```
+
+Then run the push/PR commands above. The binary-capable review patch is an alternative
+for inspection/applying changes; the source ZIP contains the exact committed tree.

@@ -73,3 +73,11 @@ causality, always-on private collection, global portfolio optimality, multi-cycl
 recycling and calibrated forecast intervals remain future work. No complex model is
 automatically promoted without prospective comparisons. See the model document for
 assumptions and deployment document for exact operational steps.
+
+## Review delivery status
+
+Local development commits are complete. Publishing the branch was attempted via
+native Git and the connected GitHub API; both returned HTTP 403. Therefore a hosted
+PR could not be created. The branch is supplied as a prerequisite-based Git bundle,
+binary-capable review patch and source ZIP, with the prepared PR description at
+`docs/PULL_REQUEST.md`. Deployment ZIPs and SHA-256 manifest are generated separately.
