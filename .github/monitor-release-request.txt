@@ -19,3 +19,5 @@ Cloudflare 1010 non-browser health check corrected; retry browser-origin health 
 Approved fix release: c3464adeaf47c45ff69aacd2f4640113fcb69cfb on 2026-11-06. Deploy CORS-safe opt-in Worker, verify live browser-style OPTIONS /enroll with authorization, cache-control, content-type and x-gp-account. Keep existing encrypted credentials and public market collector intact. NO API keys included in GitHub.
 
 Approved runtime diagnostic and validation deploy (6 November 2026). PR #14 merged 0983628b36ce71e41ec3afe9f6f2ba8d3cbedb38. Verify encryption + D1 bound schemas and safe public ArenaNet API egress. Execute a fake invalid-key enrollment as security regression. Report only safe failure stage; no user key is in CI, no client user action required. Preserve currently encrypted monitor keys and public price collector.
+
+Approved supported placement check PR #15 at 262e3c141c8c131726bad99d504b64f41f681d16. Monitor ArenaNet upstream public 429 exactly once; respect quota and do not retry rapidly. No user account key or data changed.
