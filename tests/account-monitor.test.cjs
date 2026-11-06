@@ -47,6 +47,6 @@ test('private tokens must never appear literally in monitor source or a browser-
  assert.match(source,/MONITOR_ENCRYPTION_KEY/);
  assert.match(source,/kind='partial'/);
  assert.match(source,/disappeared_unknown/);
- assert.match(source,/history\/buys/);
+ assert.match(source,/commerce\/transactions\/history/);
  assert.ok(!source.includes('console.log(key)'));
 });
