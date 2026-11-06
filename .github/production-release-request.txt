@@ -1,7 +1,12 @@
-Approved production repair — 2026-11-06
-Target: existing thegoldenpeanut Cloudflare Pages production branch main
-Merged PR #6 8646051db9063506514c7871d228626f1cce722a
-Fix: shared Pearl/exotic market pace no longer repeated as item-specific predictions; 1/3/5/10/20/50/100/250 research lot selector on primary market list; conditional total net IF fully bought and resold.
-Navigation: user-activated history instead of startup synthetic pushes; visible in-app Back button; browser history and edge gesture fallback.
-Tests: PR #6 successful assembled desktop 1440px and Android-sized 390px browser run 42264713784.
-Do not clear or migrate private IndexedDB, user account, market collector or D1.
+Golden Peanut reviewed deployment release — 2026-11-06
+Existing Cloudflare Pages production target: thegoldenpeanut (main).
+Merged PR #7 at 62509988a7f8da48e2cb154dc6492660117b062e.
+Critical behavior:
+  - What-if capital input independent of wallet; compare free wallet to buy-side commitments.
+  - Realistic individually ranked active-week conditional portfolio opportunities, no manufactured P(fill).
+  - Prospective validated next-day forecasts remain unsupported until sufficient personal order exposure evidence.
+  - No double allocation to existing orders; experimental public markets have no forecast earnings.
+  - Real public 27k catalogue integration tests and 141,879-transaction/312-order/1,549-lead stress tests.
+  - 46 JS tests, desktop/mobile browser, Python collector and release checks passed in CI run 42282076651.
+  - Browser scripts and inline market engine integrity checked. Production deploy smoke checks all critical assets.
+Safety: no browser IndexedDB/schema reset, no account key export, no Trading Post orders, no D1 collector change, no changes to already queued market orders.
