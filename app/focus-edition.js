@@ -700,7 +700,7 @@ function renderDeploymentPlanner(host,state){
 }
 /* Secure, explicit opt-in for account monitoring independent of Android.
  * No account credential is transmitted unless Enable is pressed. */
-let watcherConsentPending=false,watcherFeedback=null;
+let watcherConsentPending=false,watcherConsentChecked=false,watcherConsentAccount=null,watcherEnrollmentBusy=false,watcherFeedback=null;
 function renderAccountWatcher(host,state){
  const cloud=root.GPCloudAccount,account=state?.account;
  const wrapper=h('section','focus-account-watcher');wrapper.id='focus-account-watcher';
@@ -715,6 +715,7 @@ function renderAccountWatcher(host,state){
   wrapper.append(h('p','focus-muted','Connect your GW2 Trading Post API key using ⚙ Account settings to activate background monitoring. Your existing stored trading history remains intact.'));
   host.append(wrapper);return;
  }
+ if(watcherConsentAccount!==account){watcherConsentAccount=account;watcherConsentPending=false;watcherConsentChecked=false;watcherEnrollmentBusy=false;watcherFeedback=null;}
  const info=cloud.status(account);
  const last=Number(info.status?.lastSuccess)||0,elapsed=last>0?Date.now()-last:Infinity;
  const watcherState=!info.enabled?'off':info.lastError?'error':info.syncing?'checking':
@@ -752,36 +753,37 @@ function renderAccountWatcher(host,state){
    wrapper.append(notice);
    const consent=h('label','focus-watcher-consent');
    const check=h('input');check.type='checkbox';check.setAttribute('aria-label','I agree to encrypted GW2 key storage for off-phone monitoring');
+   check.checked=watcherConsentChecked;
    consent.append(check,h('span','','I agree to encrypted storage of my GW2 API key for background trade monitoring.'));
    wrapper.append(consent);
    const actions=h('div','focus-watcher-actions');
    const activate=buttonNode(info.syncing?'Connecting…':'Start background monitoring');
-   activate.disabled=true;
-   check.addEventListener('change',()=>{activate.disabled=!check.checked||cloud.status(account).syncing;});
+   activate.disabled=!watcherConsentChecked||watcherEnrollmentBusy||info.syncing;
+   check.addEventListener('change',()=>{watcherConsentChecked=check.checked;activate.disabled=!watcherConsentChecked||watcherEnrollmentBusy||cloud.status(account).syncing;});
    activate.addEventListener('click',async()=>{
-    if(!check.checked||activate.disabled)return;
-    activate.disabled=true;activate.textContent='Connecting to Cloudflare…';
+    if(!watcherConsentChecked||watcherEnrollmentBusy||activate.disabled)return;
+    watcherEnrollmentBusy=true;activate.disabled=true;activate.textContent='Connecting to Cloudflare…';
     watcherFeedback={account,ok:true,message:'Verifying account enrollment…'};
     try{
      await cloud.enable(state);
-     watcherConsentPending=false;
+     watcherConsentPending=false;watcherConsentChecked=false;
      const result=await cloud.refresh(state,{force:true});
      watcherFeedback={account,ok:true,message:result?.lastSuccess?
       'Monitoring ACTIVE — the account has been checked successfully.':
       'Account enrolled. First successful background collection is pending.'};
     }catch(e){
      watcherFeedback={account,ok:false,message:'Enrollment unsuccessful: '+String(e?.message||e).slice(0,200)};
-    }
+    }finally{watcherEnrollmentBusy=false;}
     root.GPFocus?.render?.();
    });
    const cancel=buttonNode('Cancel');
-   cancel.addEventListener('click',()=>{watcherConsentPending=false;watcherFeedback=null;root.GPFocus?.render?.();});
+   cancel.addEventListener('click',()=>{watcherConsentPending=false;watcherConsentChecked=false;watcherFeedback=null;root.GPFocus?.render?.();});
    actions.append(activate,cancel);wrapper.append(actions);
   }else{
    const enable=buttonNode(info.serviceReady?'Enable background trade watching':'Background monitoring unavailable');
    enable.disabled=info.syncing||!info.serviceReady;
    enable.addEventListener('click',()=>{
-    watcherConsentPending=true;watcherFeedback=null;root.GPFocus?.render?.();
+    watcherConsentPending=true;watcherConsentChecked=false;watcherFeedback=null;root.GPFocus?.render?.();
     setTimeout(()=>document.querySelector('#focus-account-watcher .focus-watcher-consent')?.scrollIntoView({block:'center',behavior:'instant'}),60);
    });
    wrapper.append(enable);
