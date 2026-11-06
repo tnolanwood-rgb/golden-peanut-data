@@ -104,7 +104,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   }
   GPFocus.goto('today');GPFocus.render();
  });
- await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').first().click();
+ await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').filter({hasText:'Dire Pearl Reaver'}).click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/HOW MUCH COULD FILL & RESELL/);
  const qtyPicker=page.locator('#focus-trade-detail .focus-capacity-select');
  await qtyPicker.selectOption('50');
