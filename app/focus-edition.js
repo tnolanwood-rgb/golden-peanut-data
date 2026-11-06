@@ -649,20 +649,23 @@ function renderDeploymentPlanner(host,state){
   output.append(h('p','focus-muted',
    'Missing zero-fill periods, cancellations, unlisted stock and changing resale demand prevent calibrated profit promises. Unverified public quotes add no modeled income.'));
   if(result.rows.length){
-   const head=h('h4','','TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT');output.append(head);
-   for(const row of result.rows.slice(0,18)){
-    const button=h('button','focus-deployment-market');button.type='button';
-    button.dataset.researchId=String(row.id);
-    const identity=h('span','focus-deployment-market-name');
-    identity.append(h('strong','',row.name),
-     h('small','',num(row.quantity)+' units × '+cash(row.buy)+' · '+cash(row.cost)+' budget · '+(row.research?'personal completed-trade evidence':'UNVERIFIED one-unit public probe')));
-    const side=h('span','focus-deployment-market-value');
-    side.append(h('strong','',row.conditionalWeek===null?'No earnings estimate':cash(row.conditionalWeek)),
+   appendScrollableSection(output,{
+    id:'deployment-whatif',title:'TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT',
+    desc:'Scroll all '+num(result.rows.length)+' selected what-if markets. Existing orders are separate; no future fills are guaranteed.',
+    items:result.rows,initial:8,renderRow:row=>{
+     const button=h('button','focus-deployment-market');button.type='button';
+     button.dataset.researchId=String(row.id);
+     const identity=h('span','focus-deployment-market-name');
+     identity.append(h('strong','',row.name),
+      h('small','',num(row.quantity)+' units × '+cash(row.buy)+' · '+cash(row.cost)+' budget · '+(row.research?'personal completed-trade evidence':'UNVERIFIED one-unit public probe')));
+     const side=h('span','focus-deployment-market-value');
+     side.append(h('strong','',row.conditionalWeek===null?'No earnings estimate':cash(row.conditionalWeek)),
       h('small','',row.conditionalWeek===null?'Quote only · validation probe':'Conditional active-week net, NOT a forecast'));
-    button.append(identity,side);
-    button.addEventListener('click',()=>openBoardMarket({...row,kind:'history',scenarioProfit:row.conditionalRound,quantity:row.quantity,confidence:fmtResearch(row)}));
-    output.append(button);
-   }
+     button.append(identity,side);
+     button.addEventListener('click',()=>openBoardMarket({...row,kind:'history',scenarioProfit:row.conditionalRound,quantity:row.quantity,confidence:fmtResearch(row)}));
+     return button;
+    }
+   });
   }else output.append(h('p','focus-muted','No independently qualified research lots fit this budget. We will not manufacture volume to use the balance.'));
   if(result.unallocated>0)output.append(h('p','focus-muted',
    cash(result.unallocated)+' remains hypothetical and unallocated. That can reflect insufficient observed throughput or risk limits; allocating it blindly would fabricate opportunity.'));
@@ -695,7 +698,18 @@ function renderOpportunityHome(){
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
  host.replaceChildren();const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
- if(fresh)renderDeploymentPlanner(host,s);
+ if(fresh){
+  const observedBuy=(s?.orderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
+  const observedSell=(s?.sellOrderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
+  const buyTracked=Object.values(s?.orderEvidence?.tracked||{}).filter(x=>!x.closed).length;
+  const sellTracked=Object.values(s?.sellOrderEvidence?.tracked||{}).filter(x=>!x.closed).length;
+  const line=h('p','focus-fill-observation',
+   'ORDER LEARNING · '+num(buyTracked)+' active buy orders and '+num(sellTracked)+' active sell orders tracked · '+
+   num(observedBuy)+' observed buy-fill units · '+num(observedSell)+' observed sell-fill units since tracking. '+
+   'Updated when the app checks your account; it cannot monitor closed. Disappearing orders are not assumed filled.');
+  host.append(line);
+  renderDeploymentPlanner(host,s);
+ }
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
  if(!fresh){
   status.textContent=s?.opportunityBusy?'Checking your historical markets and current prices…':s?.opportunityStatus||'Checking markets…';
@@ -715,8 +729,11 @@ function renderOpportunityHome(){
  // A market already buying/selling with verified margin is part of the trading
  // operation. Display it *above* minor wallet-only orders when its evidenced
  // weekly profit scenario is higher.
- const strongest=rows.slice(0,9);
- for(const o of strongest){
+ const strongest=rows;
+ appendScrollableSection(host,{
+  id:'calibrated-orders',title:'CALIBRATED 24-HOUR OPPORTUNITIES',
+  desc:'Verified prospective observations only. Scroll within this section for every currently qualifying market.',
+  items:strongest,initial:9,renderRow:o=>{
   const row=h('button','focus-market-row focus-home-order');row.type='button';row.append(artwork(o.id));
   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(o.id)));
   let summary='',metric=o.expectedProfit,label='Expected 24h net · '+Number(o.expectedSold).toFixed(1)+' sold';
@@ -736,9 +753,10 @@ function renderOpportunityHome(){
    pushHistory(); // second entry is the item detail; Android Back returns to list
    if(o.kind==='standing')renderGrowthDetail();else renderTradeDetail();
    window.scrollTo({top:0,behavior:'instant'});
-  });host.append(row);
- }
- if(rows.length>strongest.length){const more=button('See '+num(rows.length-strongest.length)+' more calibrated markets',()=>{ui.tradeFilter='best';ui.tradeDetail=null;ui.growthDetail=null;ui.capitalMode='wallet';goto('trades');},'focus-button focus-button-secondary');host.append(more);}
+  });
+  return row;
+  }
+ });
  renderConnectedMarkets(host,s,{limit:6});
 }
 function renderPortfolioOutlook(){
