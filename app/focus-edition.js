@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null,sectionScrolls:{}},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -65,7 +65,7 @@ function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}c
 const UI_KEYS=['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode',
  'orderLane','orderSearch','orderAll','legendSection','marketResearchLot',
  'portfolioBudgetGold','tradeDetail','growthDetail','relatedDetail','orderDetail',
- 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections'];
+ 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections','sectionScrolls'];
 function viewMarketSnapshot(){
  const id=Number(ui.tradeDetail);
  if(!Number.isSafeInteger(id)||id<=0)return null;
@@ -120,6 +120,17 @@ function load(){
   for(const [key,val]of Object.entries(ui.capacitySelections).slice(0,300))
    if(/^\d{1,10}$/.test(key)&&[1,3,5,10,20,50,100,250].includes(Number(val)))valid[key]=Number(val);
   ui.capacitySelections=valid;
+ }
+ if(!ui.sectionScrolls||typeof ui.sectionScrolls!=='object'||Array.isArray(ui.sectionScrolls))ui.sectionScrolls={};
+ else{
+  const valid={};
+  for(const [key,entry]of Object.entries(ui.sectionScrolls).slice(-50)){
+   if(typeof key!=='string'||key.length>130||!entry||typeof entry!=='object')continue;
+   const loaded=Number(entry.loaded),top=Number(entry.top);
+   if(Number.isInteger(loaded)&&loaded>=0&&loaded<=2500&&Number.isFinite(top)&&top>=0&&top<10000000)
+    valid[key]={loaded,top:Math.floor(top)};
+  }
+  ui.sectionScrolls=valid;
  }
  // Restore only a bounded recently viewed PUBLIC research snapshot. Never
  // silently turn it into a current recommendation after a page recreation.
@@ -382,32 +393,84 @@ function copyOpportunityPlan(){
 /* Historical performance is not an overnight forecast. It must remain visible
  * when a newly introduced execution model lacks prospective cohorts. This uses
  * the saved FIFO-matched ledger, never standing-book quantities as trade volume. */
+/* Independent, touch-scrollable market sections. Keep only a handful of DOM
+ * rows at first, then reveal subsequent ranked rows while the user scrolls.
+ * Unlike slice(0,6), every qualified item stays reachable. State survives
+ * live UI repaint and Android WebView configuration recreation. */
+let sectionScrollSaveTimer=null;
+function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow}){
+ if(!Array.isArray(items)||!items.length)return 0;
+ const section=h('section','focus-scroll-section');section.dataset.sectionId=id;
+ section.append(h('div','focus-list-heading',title));
+ if(desc)section.append(h('p','focus-muted focus-section-description',desc));
+ const key=ui.tab+'::'+id+'::'+(ui.tab==='trades'?ui.tradeSearch.toLowerCase().trim().slice(0,60):'');
+ const stored=ui.sectionScrolls?.[key]||{loaded:0,top:0};
+ const view=h('div','focus-section-scroll');view.dataset.scrollId=id;
+ view.tabIndex=0;view.setAttribute('role','region');
+ view.setAttribute('aria-label',title+' — scroll this section for more markets');
+ const content=h('div','focus-section-items');view.append(content);
+ const controls=h('div','focus-section-controls'),
+  status=h('small','focus-section-count'),
+  more=button('Show more markets',()=>reveal(24),'focus-button focus-button-secondary focus-section-more');
+ controls.append(status,more);
+ let cursor=0;
+ const base=Math.max(1,Math.min(20,Number(initial)||6));
+ const update=()=>{
+  const remaining=items.length-cursor;
+  status.textContent=num(cursor)+' of '+num(items.length)+' markets'+(remaining?' · scroll inside this section for more':' · all shown');
+  more.hidden=!remaining;
+  if(remaining)more.textContent='Show next '+num(Math.min(24,remaining));
+ };
+ function remember(){
+  if(!ui.sectionScrolls)ui.sectionScrolls={};
+  ui.sectionScrolls[key]={loaded:cursor,top:Math.max(0,Math.floor(view.scrollTop))};
+ }
+ function reveal(size){
+  const target=Math.min(items.length,cursor+size);
+  for(;cursor<target;cursor++)content.append(renderRow(items[cursor]));
+  remember();update();
+  // When rows still do not fill the viewport, allow the user to see more
+  // without hunting for an invisible scroll gesture.
+  if(cursor<items.length&&view.isConnected&&view.scrollHeight<=view.clientHeight+1)
+   window.requestAnimationFrame(()=>{if(view.isConnected&&view.scrollHeight<=view.clientHeight+1)reveal(8);});
+ }
+ view.addEventListener('scroll',()=>{
+  remember();
+  if(sectionScrollSaveTimer)clearTimeout(sectionScrollSaveTimer);
+  sectionScrollSaveTimer=setTimeout(()=>{sectionScrollSaveTimer=null;save();},250);
+  if(cursor<items.length&&view.scrollTop+view.clientHeight>=view.scrollHeight-160)reveal(16);
+ },{passive:true});
+ section.append(view,controls);host.append(section);
+ reveal(Math.max(base,Math.min(2500,Number(stored.loaded)||0)));
+ if(stored.top>0)window.requestAnimationFrame(()=>{if(view.isConnected)view.scrollTop=Math.min(stored.top,Math.max(0,view.scrollHeight-view.clientHeight));});
+ return items.length;
+}
 function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
  const recent=root.GPGrowth?.weeklyByMarket?.(s?.ledger||[],Date.now())?.markets||[];
- const winners=recent.filter(m=>Number.isFinite(m.profit)&&m.profit>0&&m.matched7>0).slice(0,limit);
+ const winners=recent.filter(m=>Number.isFinite(m.profit)&&m.profit>0&&m.matched7>0);
  if(!winners.length)return 0;
- host.append(h('div','focus-list-heading','RECENT REAL EARNINGS · COMPLETED TRADES'));
- host.append(h('p','focus-muted','Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills still require independent verification.'));
  const buys=new Set((s?.snapshot?.buys||[]).map(o=>o.item));
- for(const m of winners){
-  const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
-  const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
-  const standing=buys.has(m.id)?' · buy order already standing':'';
-  middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
-  if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
-  row.append(middle);
-  const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));
-  side.append(value,h('small','','real net profit · last 7 days'));
-  row.append(side,h('span','focus-chevron','›'));
-  row.setAttribute('aria-label',itemName(m.id)+'; realised seven-day matched profit '+cash(m.profit)+'; open market history');
-  row.addEventListener('click',()=>{
-   ui.tradeDetail=null;ui.relatedDetail=null;ui.growthDetail=null;ui.tradeFilter='memory';
-   goto('trades');ui.growthDetail=m.id;pushHistory();renderGrowthDetail();
-   window.scrollTo({top:0,behavior:'instant'});
-  });
-  host.append(row);
- }
- return winners.length;
+ return appendScrollableSection(host,{
+  id:'recent-earnings',title:'RECENT REAL EARNINGS · COMPLETED TRADES',
+  desc:'Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills require independent verification.',
+  items:winners,initial:limit,renderRow:m=>{
+   const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
+   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
+   const standing=buys.has(m.id)?' · buy order already standing':'';
+   middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
+   if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
+   row.append(middle);
+   const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));
+   side.append(value,h('small','','real net profit · last 7 days'));row.append(side,h('span','focus-chevron','›'));
+   row.setAttribute('aria-label',itemName(m.id)+'; realised seven-day matched profit '+cash(m.profit)+'; open market history');
+   row.addEventListener('click',()=>{
+    ui.tradeDetail=null;ui.relatedDetail=null;ui.growthDetail=null;ui.tradeFilter='memory';
+    goto('trades');ui.growthDetail=m.id;pushHistory();renderGrowthDetail();
+    window.scrollTo({top:0,behavior:'instant'});
+   });
+   return row;
+  }
+ });
 }
 /* Visible market decisions must use ALL evaluated data lanes, not only
  * the execution model's eight-window promotion gate. Unverified public
@@ -432,16 +495,19 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
  const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
  if(!board?.ready)return {count:0,board:null};
  const q=query.toLowerCase().trim(),shown=new Set(),lot=Number(ui.marketResearchLot)||10;
- const match=m=>!q||(itemName(m.id)+' '+m.id).toLowerCase().includes(q);
- // The lot is a user-selected capital scenario, NOT a predicted buy quantity.
- // One shared selector controls every market on this list (and the item detail).
+ const name=m=>m.name||m.itemName||itemName(m.id);
+ const match=m=>!q||(name(m)+' '+m.id).toLowerCase().includes(q);
+ // One shared research size; scroll positions and page stay put on changes.
  const controls=h('div','focus-market-lot-controls');
  const lotLabel=h('label','focus-market-lot-label','Research order size (not an order)');
  const lotSelect=h('select','focus-capacity-select focus-market-lot-select');
  lotSelect.setAttribute('aria-label','Research lot size for market list');
- for(const qty of [1,3,5,10,20,50,100,250]){const option=h('option','',num(qty)+' units');option.value=String(qty);lotSelect.append(option);}
+ for(const qty of [1,3,5,10,20,50,100,250]){
+  const option=h('option','',num(qty)+' units');option.value=String(qty);lotSelect.append(option);
+ }
  lotSelect.value=String(lot);lotLabel.append(lotSelect);controls.append(lotLabel);
- controls.append(h('small','focus-muted','Choose any lot, even above wallet balance. Theoretical after-fee return is only earned if every proposed purchase and resale completes.'));
+ controls.append(h('small','focus-muted',
+  'Choose any research lot, even above wallet balance. Returns require ALL proposed purchases and resales to complete; they are not fill forecasts.'));
  host.append(controls);
  lotSelect.addEventListener('change',()=>{
   ui.marketResearchLot=Number(lotSelect.value);save();
@@ -450,66 +516,79 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
   window.requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}));
  });
  const hypotheticalNet=m=>root.GPCapacity?.feeNet?.(m.exit,lot)-m.buy*lot;
- const group=(title,desc,items,metric,label,subtitle)=>{
-  const rows=items.filter(m=>!shown.has(m.id)&&match(m)).slice(0,limit);
+ const group=(id,title,desc,items,metric,label,subtitle)=>{
+  const rows=items.filter(m=>!shown.has(m.id)&&match(m));
   if(!rows.length)return 0;
-  host.append(h('div','focus-list-heading',title));
-  host.append(h('p','focus-muted',desc));
-  for(const m of rows){shown.add(m.id);
-   const row=h('button','focus-market-row focus-connected-market');row.type='button';
-   row.dataset.marketTier=String(m.tier);
-   row.append(artwork(m.id));
-   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
-   middle.append(h('small','',subtitle(m)));
-   if(m.kind==='new'&&root.GPCapacity){
-    const v=root.GPCapacity.estimate({market:{...m,name:itemName(m.id)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
-    if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
-     const ref=v.scenarios.find(x=>x.days===3);
-     middle.append(h('small','focus-muted','YOUR item-specific evidence · 3 active days: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
-      (ref.resaleTypical===null?'resale time unknown':num(ref.resaleTypical)+'–'+num(ref.resaleHigh)+' resold')+' · conditional'));
-    }else if(v.status==='research'&&v.source==='comparable-markets'){
-     middle.append(h('small','focus-muted','This item: fills and sell-through UNKNOWN. Shared '+v.comparableMarkets+'-market benchmark in details, not an item forecast.'));
-    }else{
-     middle.append(h('small','focus-muted','This item: no measured acquisition or resale pace.'));
+  // Reserve ALL the items in this group, not just the first six visible
+  // ones. Lazy-loading another section must not duplicate an item.
+  for(const m of rows)shown.add(m.id);
+  return appendScrollableSection(host,{
+   id,title,desc,items:rows,initial:limit,renderRow:m=>{
+    const row=h('button','focus-market-row focus-connected-market');row.type='button';
+    row.dataset.marketTier=String(m.tier);row.dataset.marketId=String(m.id);
+    row.append(artwork(m.id));
+    const middle=h('span','focus-market-title');middle.append(h('strong','',name(m)));
+    middle.append(h('small','',subtitle(m)));
+    if(m.kind==='new'&&root.GPCapacity){
+     const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
+     if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
+      const ref=v.scenarios.find(x=>x.days===3);
+      middle.append(h('small','focus-muted','YOUR completed fills · 3 active days: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
+       (ref.resaleTypical===null?'resale time unknown':num(ref.resaleTypical)+'–'+num(ref.resaleHigh)+' resold')+' · conditional'));
+     }else if(v.status==='research'&&v.source==='comparable-markets'){
+      middle.append(h('small','focus-muted','Item-specific fill pace UNKNOWN. Comparable-market evidence in details, not a guaranteed fill.'));
+     }else middle.append(h('small','focus-muted','No measured acquisition or resale pace for this item.'));
     }
+    row.append(middle);
+    const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
+    side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
+    row.setAttribute('aria-label',name(m)+' · '+label(m)+' · inspect evidence');
+    row.addEventListener('click',()=>openBoardMarket(m));
+    return row;
    }
-   row.append(middle);
-   const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
-   side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
-   row.setAttribute('aria-label',itemName(m.id)+' · '+label(m)+' · inspect evidence');
-   row.addEventListener('click',()=>openBoardMarket(m));host.append(row);
-  }
-  return rows.length;
+  });
  };
  let count=0;
- count+=group('YOUR EXISTING ORDERS · CURRENT PRICE CHECKS',
-  'Already-committed capital is not new spending money. Figures are conditional historical-week outcomes, not tonight’s income.',
+ const equipmentIds=new Set((board.historyEquipment||[]).map(m=>m.id));
+ const generalHistory=board.history.filter(m=>!equipmentIds.has(m.id));
+ count+=group('standing-orders','YOUR EXISTING ORDERS · CURRENT PRICE CHECKS',
+  'Already-committed capital is not new spending money. Conditional historical-week outcomes, not tonight’s income.',
   board.standing,m=>m.conditionalWeek,()=> 'Conditional active-week profit',
-  m=>num(m.openUnits)+' already on buy orders · '+num(m.quantity)+' units at historical weekly pace');
- count+=group('HISTORY-BACKED MARKETS · CURRENT QUOTES',
-  'Your completed buys and resales, from beyond just the last seven days, combined with current bid/ask prices. Order sizes are bounded trials, not predicted fills.',
-  board.history,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>num(m.openUnits)+' on buy orders · '+num(m.quantity)+' units at historical weekly pace');
+ count+=group('history-markets','HISTORY-BACKED MARKETS · CURRENT QUOTES',
+  'Your completed trades beyond the last seven days, updated with current quotes. Trial quantities are not a predicted number of fills.',
+  generalHistory,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
   m=>m.nightUnits?'Conditional overnight reference · not guaranteed':'Net IF one buy/resale round completes',
-  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover lot':'needs additional spendable gold'));
- count+=group('MORE PROVEN PEARL & EXOTIC EQUIPMENT',
-  'Older completed equipment trades checked at current prices; one completed trade does not establish how many more will fill tonight.',
-  board.historyEquipment,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
-  m=>m.nightUnits?'Conditional observed-night reference':'Net IF the historical trial lot fills and resells',
-  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover':'requires more wallet gold'));
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+
+   ' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'needs spendable gold'));
+ count+=group('proven-equipment','PROVEN PEARL & EXOTIC EQUIPMENT',
+  'Your completed equipment trades checked at current quotes. A small successful order does not prove a larger order will sell.',
+  board.historyEquipment||[],m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>m.nightUnits?'Conditional observed-night reference':'Net IF historical trial lot buys and resells',
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'more gold needed'));
  const unitSubtitle=m=>'Research '+num(lot)+' × '+cash(m.buy)+' · capital '+cash(m.buy*lot)+
-  ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at current quotes'+(m.craftableSupply?' · craftable':'');
+  ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at quoted prices'+(m.craftableSupply?' · craftable':'');
  const unitLabel=()=> 'Net IF ALL '+num(lot)+' buy AND resell · not a forecast';
- count+=group('CHEAPER PEARL WEAPONS · NEW MARKETS',
-  'Live-quoted exotic Pearl candidates across stat prefixes. Change your research lot above; no measured item-specific bulk-fill rate is assumed.',
+ count+=group('pearl-weapons','CHEAPER PEARL WEAPONS · NEW MARKETS',
+  'Exotic Pearl candidates across stat prefixes. Scroll for the full list; there is no measured market-wide bulk-fill rate.',
   board.pearlLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
- count+=group('CHEAPER EXOTIC ARMOUR · NEW MARKETS',
-  'Affordable exotic armour from multiple stat families. Public quotes show possible margins, not executed buy/sell volume.',
+ count+=group('exotic-armour','CHEAPER EXOTIC ARMOUR · NEW MARKETS',
+  'Exotic armour across stat families. Public quotes show conditional margins, not completed turnover.',
   board.armorLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
- count+=group('OTHER AFFORDABLE NEW MARKETS',
-  'Markets outside your proven trades, restricted to modest one-unit wallet exposure. Rare collection unlocks and high-ticket windfalls are excluded.',
+ count+=group('other-affordable','OTHER AFFORDABLE NEW MARKETS',
+  'More affordable public-market ideas. Verify acquisition and resale before committing to large lots.',
   board.otherLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
+ count+=group('new-watchlist','MORE UNVERIFIED MARKET QUOTES',
+  'Remaining researched price spreads, including items above your current wallet. Scroll to browse; these are NOT proven liquid markets or recommended bulk buys.',
+  board.newMarkets,m=>hypotheticalNet(m),()=> 'Conditional quoted round only · turnover UNKNOWN',
+  m=>'Bid '+cash(m.buy)+' · '+(m.buy>Number(userSnapshot()?.wallet||0)?'not covered by current wallet':'single unit affordable')+
+   ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot));
  if(!q&&board.counts.catalogue){
-  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds checked for inclusion; '+num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+' total unverified markets, including ones not affordable or sufficiently liquid to promote here.'));
+  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+
+   num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds; '+
+   num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+
+   num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+
+   ' unverified markets, now accessible through section scrolling. Public standing orders are NOT evidence of completed sales.'));
  }
  return {count,board};
 }
@@ -570,20 +649,23 @@ function renderDeploymentPlanner(host,state){
   output.append(h('p','focus-muted',
    'Missing zero-fill periods, cancellations, unlisted stock and changing resale demand prevent calibrated profit promises. Unverified public quotes add no modeled income.'));
   if(result.rows.length){
-   const head=h('h4','','TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT');output.append(head);
-   for(const row of result.rows.slice(0,18)){
-    const button=h('button','focus-deployment-market');button.type='button';
-    button.dataset.researchId=String(row.id);
-    const identity=h('span','focus-deployment-market-name');
-    identity.append(h('strong','',row.name),
-     h('small','',num(row.quantity)+' units × '+cash(row.buy)+' · '+cash(row.cost)+' budget · '+(row.research?'personal completed-trade evidence':'UNVERIFIED one-unit public probe')));
-    const side=h('span','focus-deployment-market-value');
-    side.append(h('strong','',row.conditionalWeek===null?'No earnings estimate':cash(row.conditionalWeek)),
+   appendScrollableSection(output,{
+    id:'deployment-whatif',title:'TOP MARKETS BY CONDITIONAL ACTIVE-WEEK PROFIT',
+    desc:'Scroll all '+num(result.rows.length)+' selected what-if markets. Existing orders are separate; no future fills are guaranteed.',
+    items:result.rows,initial:8,renderRow:row=>{
+     const button=h('button','focus-deployment-market');button.type='button';
+     button.dataset.researchId=String(row.id);
+     const identity=h('span','focus-deployment-market-name');
+     identity.append(h('strong','',row.name),
+      h('small','',num(row.quantity)+' units × '+cash(row.buy)+' · '+cash(row.cost)+' budget · '+(row.research?'personal completed-trade evidence':'UNVERIFIED one-unit public probe')));
+     const side=h('span','focus-deployment-market-value');
+     side.append(h('strong','',row.conditionalWeek===null?'No earnings estimate':cash(row.conditionalWeek)),
       h('small','',row.conditionalWeek===null?'Quote only · validation probe':'Conditional active-week net, NOT a forecast'));
-    button.append(identity,side);
-    button.addEventListener('click',()=>openBoardMarket({...row,kind:'history',scenarioProfit:row.conditionalRound,quantity:row.quantity,confidence:fmtResearch(row)}));
-    output.append(button);
-   }
+     button.append(identity,side);
+     button.addEventListener('click',()=>openBoardMarket({...row,kind:'history',scenarioProfit:row.conditionalRound,quantity:row.quantity,confidence:fmtResearch(row)}));
+     return button;
+    }
+   });
   }else output.append(h('p','focus-muted','No independently qualified research lots fit this budget. We will not manufacture volume to use the balance.'));
   if(result.unallocated>0)output.append(h('p','focus-muted',
    cash(result.unallocated)+' remains hypothetical and unallocated. That can reflect insufficient observed throughput or risk limits; allocating it blindly would fabricate opportunity.'));
@@ -596,6 +678,55 @@ function renderDeploymentPlanner(host,state){
  });
  calculate();
  host.append(wrapper);
+}
+/* Secure, explicit opt-in for account monitoring independent of Android.
+ * No account credential is transmitted unless Enable is pressed. */
+function renderAccountWatcher(host,state){
+ const cloud=root.GPCloudAccount,account=state?.account;
+ if(!cloud||!account||!state?.key)return;
+ const info=cloud.status(account);
+ const wrapper=h('section','focus-account-watcher');
+ wrapper.append(h('strong','','ACCOUNT TRADE WATCHER'));
+ const intro=h('p','focus-muted');
+ if(!info.enabled){
+  intro.textContent='Local order checks work while this app is open. For completed buys, sales, partial fills and zero-fill periods when the phone is closed, enable the encrypted Cloudflare account monitor.';
+  wrapper.append(intro);
+  const enable=buttonNode('Enable background trade watching');
+  enable.disabled=info.syncing;
+  enable.addEventListener('click',async()=>{
+   if(!window.confirm('Enable background Trading Post monitoring? Your GW2 API key will be sent securely to your own Cloudflare Worker and kept encrypted. This service checks every ~10 minutes, cannot place orders, and cannot reconstruct intermediate changes between checks. You can stop it and erase cloud records later.'))return;
+   enable.disabled=true;enable.textContent='Connecting encrypted monitor…';
+   try{await cloud.enable(state);await cloud.refresh(state,{force:true});}
+   catch(e){window.alert('Background monitoring was not enabled: '+String(e?.message||e).slice(0,190));}
+   root.GPFocus?.render?.();
+  });
+  wrapper.append(enable);
+ }else{
+  const status=info.status,last=Number(status?.lastSuccess);
+  intro.textContent='Background monitor enabled · server-side account checks every ~10 minutes. '+
+   (last?'Last success '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+'. ':'First collection pending. ')+
+   (status?'Completed transaction records '+num(status.savedCompletedTrades||0)+
+    ' · active buys '+num(status.currentBuys||0)+' · active sells '+num(status.currentSells||0)+
+    ' · observed order nights '+num(status.verifiedOrderNights||0)+'. ':'')+
+   ' Cancellations are not counted as fills, and missing observations are never assumed successful.';
+  wrapper.append(intro);
+  const actions=h('div','focus-watcher-actions');
+  const check=buttonNode(info.syncing?'Checking cloud…':'Refresh cloud learning');
+  check.disabled=info.syncing;
+  check.addEventListener('click',async()=>{check.disabled=true;await cloud.refresh(state,{force:true});root.GPFocus?.render?.();});
+  actions.append(check);
+  const disable=buttonNode('Stop & erase cloud monitoring');
+  disable.addEventListener('click',async()=>{
+   if(!window.confirm('Stop cloud monitoring and delete its encrypted credential and cloud observations? Your local trading history stays intact.'))return;
+   disable.disabled=true;
+   try{await cloud.disable(state);}catch(e){window.alert('Could not disable monitor: '+String(e?.message||e));}
+   root.GPFocus?.render?.();
+  });
+  actions.append(disable);wrapper.append(actions);
+ }
+ if(info.lastError)wrapper.append(h('p','focus-alert','Cloud monitor: '+info.lastError));
+ host.append(wrapper);
+ function buttonNode(text){const b=h('button','focus-button focus-button-secondary',text);b.type='button';return b;}
 }
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
@@ -616,7 +747,19 @@ function renderOpportunityHome(){
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
  host.replaceChildren();const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
- if(fresh)renderDeploymentPlanner(host,s);
+ if(fresh){
+  const observedBuy=(s?.orderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
+  const observedSell=(s?.sellOrderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
+  const buyTracked=Object.values(s?.orderEvidence?.tracked||{}).filter(x=>!x.closed).length;
+  const sellTracked=Object.values(s?.sellOrderEvidence?.tracked||{}).filter(x=>!x.closed).length;
+  const line=h('p','focus-fill-observation',
+   'ORDER LEARNING · '+num(buyTracked)+' active buy orders and '+num(sellTracked)+' active sell orders tracked · '+
+   num(observedBuy)+' observed buy-fill units · '+num(observedSell)+' observed sell-fill units since tracking. '+
+   'Updated when the app checks your account; it cannot monitor closed. Disappearing orders are not assumed filled.');
+  host.append(line);
+  renderAccountWatcher(host,s);
+  renderDeploymentPlanner(host,s);
+ }
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
  if(!fresh){
   status.textContent=s?.opportunityBusy?'Checking your historical markets and current prices…':s?.opportunityStatus||'Checking markets…';
@@ -636,8 +779,11 @@ function renderOpportunityHome(){
  // A market already buying/selling with verified margin is part of the trading
  // operation. Display it *above* minor wallet-only orders when its evidenced
  // weekly profit scenario is higher.
- const strongest=rows.slice(0,9);
- for(const o of strongest){
+ const strongest=rows;
+ appendScrollableSection(host,{
+  id:'calibrated-orders',title:'CALIBRATED 24-HOUR OPPORTUNITIES',
+  desc:'Verified prospective observations only. Scroll within this section for every currently qualifying market.',
+  items:strongest,initial:9,renderRow:o=>{
   const row=h('button','focus-market-row focus-home-order');row.type='button';row.append(artwork(o.id));
   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(o.id)));
   let summary='',metric=o.expectedProfit,label='Expected 24h net · '+Number(o.expectedSold).toFixed(1)+' sold';
@@ -657,9 +803,10 @@ function renderOpportunityHome(){
    pushHistory(); // second entry is the item detail; Android Back returns to list
    if(o.kind==='standing')renderGrowthDetail();else renderTradeDetail();
    window.scrollTo({top:0,behavior:'instant'});
-  });host.append(row);
- }
- if(rows.length>strongest.length){const more=button('See '+num(rows.length-strongest.length)+' more calibrated markets',()=>{ui.tradeFilter='best';ui.tradeDetail=null;ui.growthDetail=null;ui.capitalMode='wallet';goto('trades');},'focus-button focus-button-secondary');host.append(more);}
+  });
+  return row;
+  }
+ });
  renderConnectedMarkets(host,s,{limit:6});
 }
 function renderPortfolioOutlook(){
@@ -985,6 +1132,12 @@ function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.
  * research model. Exact fills, active-day history and analogues stay distinct. */
 function renderCapacityExplorer(el,item){
  const state=State(),capacity=root.GPCapacity;
+ const cloud=root.GPCloudAccount;
+ if(cloud?.status?.(state?.account)?.enabled&&state?.key&&!cloud.peekNights?.(state.account,item.id)){
+  void cloud.fetchNights(state,item.id).then(()=>{
+   if(ui.tradeDetail===item.id)root.GPFocus?.render?.();
+  }).catch(()=>{});
+ }
  const buy=Number(item.buy||item.bid||0),exit=Number(item.exit||item.ask||0);
  if(!capacity||!state||!Number.isSafeInteger(buy)||!Number.isSafeInteger(exit)||buy<=0||exit<=buy)return;
  const section=h('section','focus-info-box focus-capacity-explorer');
@@ -1001,8 +1154,13 @@ function renderCapacityExplorer(el,item){
  const render=()=>{
   metrics.replaceChildren();
   const qty=Number(picker.value);
-  const buyEvidence=root.GPOpportunity?.nightlyExposure?.(state.orderEvidence,item.id,Date.now());
-  const sellEvidence=root.GPOpportunity?.nightlyExposure?.(state.sellOrderEvidence,item.id,Date.now());
+  const cloudNights=cloud?.peekNights?.(state.account,item.id);
+  const savedBuy=root.GPOpportunity?.nightlyExposure?.(state.orderEvidence,item.id,Date.now());
+  const savedSell=root.GPOpportunity?.nightlyExposure?.(state.sellOrderEvidence,item.id,Date.now());
+  const buyEvidence=cloudNights?.buys?.length>=5?
+   {supported:true,samples:cloudNights.buys.map(x=>({filled:x.filled})),source:'verified-cloud-nights'}:savedBuy;
+  const sellEvidence=cloudNights?.sells?.length>=5?
+   {supported:true,samples:cloudNights.sells.map(x=>({filled:x.filled})),source:'verified-cloud-nights'}:savedSell;
   let estimate;
   try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
    ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
@@ -1034,6 +1192,9 @@ function renderCapacityExplorer(el,item){
   }
   metrics.append(table);
   metrics.append(h('p','focus-capacity-evidence',estimate.readiness+(estimate.source==='comparable-markets'?' · SAME REFERENCE may apply to multiple items':'')));
+  if(cloudNights?.supported)metrics.append(h('p','focus-muted',
+   'Verified off-phone monitoring supplied '+num(cloudNights.buys.length)+' buy and '+num(cloudNights.sells.length)+
+   ' resale zero-inclusive overnight samples. Not market-wide turnover.'));
   metrics.append(h('p','focus-muted','Evidence: '+estimate.label+'. '+num(estimate.comparableMarkets)+' item(s), '+num(estimate.buyActiveDays)+' observed buying day(s), '+num(estimate.sellActiveDays)+' observed selling day(s).'));
   if(estimate.medianResaleLagDays!==null){
    metrics.append(h('p','focus-muted','Historical FIFO purchase-to-resale gap: median '+(estimate.medianResaleLagDays*24).toFixed(1)+' hours. This is NOT how long a newly submitted listing is guaranteed to wait.'));

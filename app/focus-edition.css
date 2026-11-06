@@ -216,3 +216,22 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-deployment-market-name strong{font-size:12px;}}
 @media(max-width:360px){.focus-deployment-metrics{grid-template-columns:1fr 1fr;}
 .focus-deployment-market-value{width:97px;}}
+
+
+/* Each ranked list has its own accessible scroll region on portrait phones.
+ * The document remains scrollable: no body scroll locking or landscape UI.
+ * Lazy items are appended in-place so refreshing and tapping a row do not jump. */
+.focus-scroll-section{background:#182a20;border:1px solid var(--focus-border);border-radius:12px;margin:10px 0;overflow:hidden}
+.focus-scroll-section .focus-list-heading{margin:0;border-bottom:1px solid var(--focus-border)}
+.focus-section-description{font-size:11px;line-height:1.48;padding:9px 12px 7px;margin:0}
+.focus-section-scroll{max-height:370px;min-height:90px;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#69856e #1c3023}
+.focus-section-scroll:focus-visible{outline:2px solid #e7c486;outline-offset:-3px}
+.focus-section-items>.focus-market-row{display:flex;width:100%;border-bottom:1px solid #365040;border-radius:0}
+.focus-section-items>.focus-market-row:last-child{border-bottom:0}
+.focus-section-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;padding:8px 12px;background:#1d3425;border-top:1px solid #35513f}
+.focus-section-count{font-size:11px;color:#bfd0b9}
+.focus-section-more{font-size:11px;padding:7px 10px;min-height:35px}
+.focus-fill-observation{padding:11px 12px;background:#1c3829;border:1px solid #55755e;border-radius:9px;color:#d8e8c7;font-size:11px;line-height:1.5;margin:10px 0}
+.focus-section-items>.focus-deployment-market{border-radius:0;border-left:0;border-right:0;margin:0}
+@media(max-width:430px){.focus-section-scroll{max-height:330px}.focus-section-description{font-size:11px}.focus-section-controls{padding:8px}}
+@media(prefers-reduced-motion:reduce){.focus-section-scroll{scroll-behavior:auto}}
