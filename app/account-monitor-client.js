@@ -174,7 +174,7 @@ function normalizeNightRows(rows,source){
  for(const e of rows||[]){
   const side=e.side,night=e.night,filled=Number(e.filled);
   if(!['buys','sells'].includes(side)||typeof night!=='string'||
-     !/^\\d{4}-\\d{2}-\\d{2}$/.test(night)||!Number.isSafeInteger(filled)||filled<0)continue;
+     !/^\d{4}-\d{2}-\d{2}$/.test(night)||!Number.isSafeInteger(filled)||filled<0)continue;
   const key=side+'|'+night,v=bySide.get(key)||{side,night,filled:0,observedOrders:0};
   v.filled+=filled;v.observedOrders+=Math.max(1,Number(e.observedOrders)||1);
   bySide.set(key,v);
