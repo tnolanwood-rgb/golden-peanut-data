@@ -157,3 +157,26 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-deep-progress.focus-deep-active{color:#f3d299;}
 .focus-deep-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.65rem;}
 .focus-deep-actions button{font-size:.86rem;padding:.5rem .8rem;min-height:2.6rem;}
+
+
+/* Trade-capacity research: compact phone-friendly, no false precision. */
+.focus-capacity-explorer{margin:18px 0;background:var(--focus-card);}
+.focus-capacity-explorer h4{font-size:14px;letter-spacing:.025em;margin:0 0 7px;color:#f5cb82;}
+.focus-capacity-controls{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0;}
+.focus-capacity-controls label{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:650;}
+.focus-capacity-select{background:#17291f;color:#f0dfbb;border:1px solid #75836a;border-radius:10px;padding:12px;min-height:44px;font:inherit;}
+.focus-capacity-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0;}
+.focus-capacity-overview>div{border:1px solid var(--focus-border);border-radius:9px;padding:10px;min-width:0;}
+.focus-capacity-overview span{font-size:11px;display:block;line-height:1.35}
+.focus-capacity-overview strong{display:block;margin-top:7px;font-size:14px;overflow-wrap:anywhere}
+.focus-capacity-scenarios{overflow-x:auto;max-width:100%;border:1px solid var(--focus-border);border-radius:10px}
+.focus-capacity-line{display:grid;grid-template-columns:75px minmax(65px,1fr) minmax(60px,1fr) minmax(130px,1.6fr);gap:5px;padding:12px 8px;border-bottom:1px solid var(--focus-border);align-items:center;font-size:11px;line-height:1.4;}
+.focus-capacity-line:last-child{border-bottom:0}
+.focus-capacity-heading{background:#253b2d;color:#f7ce87;}
+.focus-capacity-line span:last-child{overflow-wrap:anywhere}
+.focus-capacity-evidence{font-weight:650;color:#ebca8f;font-size:12px}
+.focus-capacity-limitation{font-size:12px;line-height:1.5;}
+@media(max-width:430px){
+ .focus-capacity-line{grid-template-columns:52px minmax(55px,1fr) minmax(53px,1fr) minmax(125px,1.75fr);gap:4px;padding:10px 5px;font-size:10px;}
+ .focus-capacity-overview strong{font-size:12px;}
+}

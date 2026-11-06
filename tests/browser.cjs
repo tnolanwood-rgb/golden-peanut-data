@@ -13,7 +13,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/account/wallet'))data=[{id:1,value:10000}];
   else if(u.pathname.endsWith('/commerce/delivery'))data={coins:0,items:[]};
   else if(u.pathname.endsWith('/commerce/prices'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,buys:{unit_price:99,quantity:100},sells:{unit_price:id===2?241:201,quantity:100}}));
-  else if(u.pathname.endsWith('/items'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,name:'Fixture opportunity '+id,type:'Weapon',rarity:'Exotic',level:80,flags:[],details:{type:'Sword'},icon:''}));
+  else if(u.pathname.endsWith('/items')){
+   const family={301:["Cleric's Pearl Sword",'Weapon'],302:['Dire Pearl Reaver','Weapon'],
+    303:["Berserker's Shattered Sword",'Weapon'],304:["Magi's Exalted Coat",'Armor'],
+    401:["Berserker's Pearl Peer 401",'Weapon'],402:["Berserker's Pearl Peer 402",'Weapon'],
+    403:["Berserker's Pearl Peer 403",'Weapon']};
+   data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({
+    id,name:family[id]?.[0]||'Fixture opportunity '+id,type:family[id]?.[1]||'Weapon',
+    rarity:'Exotic',level:80,flags:[],details:{type:'Sword'},icon:''
+   }));
+  }
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
@@ -91,6 +100,40 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),4);
  await page.locator('#focus-best-rows .focus-connected-market').last().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
+ // Capacity explorer must work beyond wallet funds, with source-aware peers.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,now=Date.now(),day=86400000;
+  for(const id of [401,402,403]){
+   s.meta[id]={id,name:"Berserker's Pearl Peer "+id,type:'Weapon',rarity:'Exotic'};
+   for(let i=0;i<4;i++){
+    const at=now-(80-i*3)*day,q=2+i%2;
+    s.ledger.push({key:'peer-buy-'+id+'-'+i,item:id,id:7000+id*100+i,side:'buy',q,price:4500,purchased:at,created:at-3600000});
+    s.ledger.push({key:'peer-sell-'+id+'-'+i,item:id,id:8000+id*100+i,side:'sell',q,price:8000,purchased:at+day,created:at+day-3600000});
+   }
+  }
+  GPFocus.goto('today');GPFocus.render();
+ });
+ await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').filter({hasText:'Dire Pearl Reaver'}).click();
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/HOW MUCH COULD FILL & RESELL/);
+ const qtyPicker=page.locator('#focus-trade-detail .focus-capacity-select');
+ await qtyPicker.selectOption('50');
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-overview').innerText(),/Gold required IF order placed/);
+ const capacityDiagnostic=await page.evaluate(()=>{
+  const st=GoldenPeanutClean.State;
+  const m=st.opportunityPlan?.publicResearch?.find(x=>x.id===302);
+  const e=GPCapacity.estimate({market:{...m,name:st.meta[302]?.name},ledger:st.ledger,metadata:st.meta,quantity:50});
+  return {ledgerLength:st.ledger.length,meta302:st.meta[302],meta401:st.meta[401],
+   market:m,capacity:e,shown:document.querySelector('#focus-trade-detail .focus-capacity-explorer')?.textContent?.slice(0,1200)};
+ });
+ if(!(await page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]').count()))
+  console.log('CAPACITY_BROWSER_DIAG '+JSON.stringify(capacityDiagnostic));
+ const forecastRows=page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]');
+ assert.equal(await forecastRows.count(),3);
+ assert.match(await forecastRows.nth(1).innerText(),/3 days/);
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-evidence').innerText(),/Similar items/);
+ assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
+ await page.evaluate(()=>GPFocus.render());
+ assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
   s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
   GPFocus.goto('today');GPFocus.render();

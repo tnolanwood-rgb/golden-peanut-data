@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview'},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{}},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -291,6 +291,14 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
    row.append(artwork(m.id));
    const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
    middle.append(h('small','',subtitle(m)));
+   if(m.kind==='new'&&root.GPCapacity){
+    const v=root.GPCapacity.estimate({market:{...m,name:itemName(m.id)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:10});
+    if(v.status==='research'){
+     const ref=v.scenarios.find(x=>x.days===3);
+     middle.append(h('small','focus-muted','For 10 units, 3-day comparable ACTIVE-pace: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
+      (ref.resaleTypical===null?'resale timing unknown':num(ref.resaleTypical)+'–'+num(ref.resaleHigh)+' resold')+' · not a fill forecast'));
+    }
+   }
    row.append(middle);
    const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
    side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
@@ -713,6 +721,66 @@ function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.
  }else if(newMode){side.append(h('strong','',o.confidence||'Research alternative'),h('small','',o.buy?cash(o.buy)+' bid reference':'Inspect quotes'));}else{const value=h('strong','');value.append(money(o.overnightProfit||o.nightProfit||0));side.append(value,h('small','',num(o.overnightUnits||o.nightUnits||0)+(o.overnightModel==='observed-lower-quartile-including-zero-nights'?' units · observed 24h lower quartile':' units / 24h conditional')+' · '+(o.kind==='potential'?'not funded':cash(o.cost)+' to commit')));}row.append(side);const expand=h('span','focus-chevron','›');expand.setAttribute('aria-hidden','true');row.append(expand);
  row.setAttribute('aria-label',itemName(o.id)+'. '+(newMode?'Research candidate':'Buy '+o.quantity+'; capital '+cash(o.cost)+'; potential profit '+cash(o.scenarioProfit))+'. View details');
  row.addEventListener('click',()=>{ui.tradeY=window.scrollY;ui.growthDetail=null;ui.tradeDetail=o.id;ui.selectedMarket=o;pushHistory();renderTradeDetail();window.scrollTo({top:0,behavior:'instant'});});return row;}
+/* Market potential is research, not permission to spend uncollected or
+ * already-committed coins. User chooses quantity; the wallet never caps the
+ * research model. Exact fills, active-day history and analogues stay distinct. */
+function renderCapacityExplorer(el,item){
+ const state=State(),capacity=root.GPCapacity;
+ const buy=Number(item.buy||item.bid||0),exit=Number(item.exit||item.ask||0);
+ if(!capacity||!state||!Number.isSafeInteger(buy)||!Number.isSafeInteger(exit)||buy<=0||exit<=buy)return;
+ const section=h('section','focus-info-box focus-capacity-explorer');
+ section.append(h('h4','','HOW MUCH COULD FILL & RESELL?'),
+  h('p','focus-muted','Choose your own test quantity, regardless of your wallet. The scenarios show historic trading pace on ACTIVE days or comparable markets, not guaranteed fills or market-wide sales.'));
+ const controls=h('div','focus-capacity-controls'),label=h('label','','Hypothetical buy order size');
+ const picker=h('select','focus-capacity-select');picker.setAttribute('aria-label','Hypothetical order size');
+ for(const q of [1,3,5,10,20,50,100,250]){const opt=h('option','',num(q)+' units');opt.value=String(q);picker.append(opt);}
+ const initial=Number(ui.capacitySelections?.[item.id]||item.quantity)||10;picker.value=String([1,3,5,10,20,50,100,250].includes(initial)?initial:10);
+ label.append(picker);controls.append(label);
+ section.append(controls);
+ const metrics=h('div','focus-capacity-grid');const note=h('p','focus-muted focus-capacity-limitation');
+ section.append(metrics,note);
+ const render=()=>{
+  metrics.replaceChildren();
+  const qty=Number(picker.value);
+  const buyEvidence=root.GPOpportunity?.nightlyExposure?.(state.orderEvidence,item.id,Date.now());
+  const sellEvidence=root.GPOpportunity?.nightlyExposure?.(state.sellOrderEvidence,item.id,Date.now());
+  let estimate;
+  try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
+   ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
+  catch(e){note.textContent='Research calculation unavailable: '+String(e?.message||e);return;}
+  const summary=h('div','focus-capacity-overview');
+  const reserve=h('div');reserve.append(h('span','focus-muted','Gold required IF order placed'),h('strong','',cash(buy*qty)));summary.append(reserve);
+  const ceiling=h('div');ceiling.append(h('span','focus-muted','NET result IF every unit buys and resells'),h('strong','',cash(estimate.oneRound||0)));summary.append(ceiling);
+  metrics.append(summary);
+  if(estimate.status==='insufficient'||estimate.status==='invalid'){
+   metrics.append(h('p','focus-alert',estimate.reason||'Not enough evidence to estimate this order.'));
+   note.textContent='You can still inspect the bid, ask and margin, but the model has no defensible quantity or resale-time reference for this market.';
+   return;
+  }
+  const table=h('div','focus-capacity-scenarios');
+  const head=h('div','focus-capacity-line focus-capacity-heading');
+  for(const x of ['Period','Acquired','Resold','Net IF resold'])head.append(h('strong','',x));table.append(head);
+  for(const sc of estimate.scenarios){
+   const row=h('div','focus-capacity-line');row.dataset.horizon=String(sc.days);
+   row.append(h('span','',sc.days===1?'24 hours':sc.days===3?'3 days':'7 days'),
+    h('span','',num(sc.acquiredTypical)+'–'+num(sc.acquiredHigh)),
+    h('span','',sc.resaleTypical===null?'Unknown':num(sc.resaleTypical)+'–'+num(sc.resaleHigh)),
+    h('span','',sc.profitTypical===null?'Unknown':cash(sc.profitTypical)+' – '+cash(sc.profitHigh)));
+   table.append(row);
+  }
+  metrics.append(table);
+  metrics.append(h('p','focus-capacity-evidence',estimate.readiness));
+  metrics.append(h('p','focus-muted','Evidence: '+estimate.label+'. '+num(estimate.comparableMarkets)+' item(s), '+num(estimate.buyActiveDays)+' observed buying day(s), '+num(estimate.sellActiveDays)+' observed selling day(s).'));
+  if(estimate.medianResaleLagDays!==null){
+   metrics.append(h('p','focus-muted','Historical FIFO purchase-to-resale gap: median '+(estimate.medianResaleLagDays*24).toFixed(1)+' hours. This is NOT how long a newly submitted listing is guaranteed to wait.'));
+  }
+  if(estimate.activeDaysToComplete!==null)
+   metrics.append(h('p','focus-muted','For the full lot: about '+num(estimate.activeDaysToComplete)+' COMPARABLE ACTIVE trading day(s) at historical median pace, not a calendar-time promise.'));
+  note.textContent='Ranges are conditional planning references. Zero fills is always possible. Upper figures are observed higher active-day paces, not a maximum or a forecast. Only placed orders and later verified transactions can calibrate this specific market.';
+ };
+ picker.addEventListener('change',()=>{ui.capacitySelections[item.id]=Number(picker.value);render();});
+ render();el.append(section);
+}
 function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selected=ui.selectedMarket?.id===ui.tradeDetail?ui.selectedMarket:null,
  item=selected||[...t.orders,...(t.p?.marketChoices||[]),...t.watch].find(x=>x.id===ui.tradeDetail);if(!item){ui.tradeDetail=null;renderTrades();return;}
  const funded=selected?selected.kind==='funded':t.orders.some(o=>o.id===item.id),newMode=!funded,el=$('focus-trade-detail');$('focus-trade-list-view').hidden=true;el.hidden=false;el.replaceChildren();el.append(button('← Back to opportunities',()=>backToList('trades'),'focus-back'));
@@ -755,6 +823,7 @@ function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selec
  }
 
  el.append(metrics);
+ if(item.kind!=='craft')renderCapacityExplorer(el,item);
  if(item.kind==='craft'){
   const ingredients=h('div','focus-info-box');ingredients.append(h('strong','','Recipe ingredients · one crafting batch'));
   for(const i of item.ingredients){ingredients.append(h('p','focus-muted',num(i.count)+' × '+itemName(i.id)+' @ '+cash(i.ask)+' best ask · '+num(i.available)+' currently listed across prices'));}
