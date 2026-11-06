@@ -120,3 +120,35 @@ test('empty/stale candidate set does not invent funded trades',()=>{
  assert.deepEqual(b.history,[]);assert.deepEqual(b.newMarkets,[]);assert.deepEqual(b.forecast,[]);
  assert.equal(Board.build(null).ready,false);
 });
+
+test('verified zero-fill nights demote stagnant high-margin markets and give evidence-weighted order ranking',()=>{
+ const dates=Array.from({length:6},(_,i)=>new Date(NOW-(i+1)*86400000).toISOString().slice(0,10));
+ const nights=(fills)=>({
+  supported:true,
+  buys:dates.map((night,i)=>({night,filled:fills[i]})),
+  sells:dates.map((night,i)=>({night,filled:fills[i]}))
+ });
+ const p={...source,privateNightEvidence:{
+  101:nights([0,0,0,0,0,0]),
+  102:nights([2,2,2,2,2,2])
+ }};
+ const b=Board.build(p,{wallet:40651,now:NOW});
+ const dormant=b.history.find(x=>x.id===101),liquid=b.history.find(x=>x.id===102);
+ assert.ok(dormant.measuredNights);
+ assert.equal(dormant.nightUnits,0);
+ assert.equal(dormant.nightProfit,0);
+ assert.equal(dormant.measuredNights.buy.zeros,6);
+ assert.equal(liquid.nightUnits,2);
+ assert.equal(liquid.tier,'cloud-observed-nights');
+ assert.equal(b.history[0].id,102);
+ assert.equal(b.history.every(x=>x.expectedProfit===undefined),true);
+});
+test('incomplete and stale night evidence cannot create fill predictions',()=>{
+ const dates=Array.from({length:5},(_,i)=>new Date(NOW-(i+20)*86400000).toISOString().slice(0,10));
+ const stale={supported:true,buys:dates.map(night=>({night,filled:5})),
+  sells:dates.map(night=>({night,filled:5}))};
+ const p={...source,privateNightEvidence:{101:stale}};
+ const b=Board.build(p,{wallet:40651,now:NOW});
+ assert.equal(b.history.find(x=>x.id===101).measuredNights,null);
+ assert.equal(b.history.find(x=>x.id===101).tier,'observed-night-conditional');
+});

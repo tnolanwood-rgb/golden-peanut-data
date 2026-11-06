@@ -341,6 +341,23 @@ async function handle(request,env,ctx){
   return response(request,200,{ok:true,events:rows,nextCursor:rows.at(-1)?.id||cursor,hasMore:rows.length===500});
  }
  if(pathname==='/nights'&&request.method==='GET'){
+  // Batch is strictly account-scoped, authenticated, bounded, and retains
+  // ZERO-fill days. A truncated response is never used as training evidence.
+  const batch=url.searchParams.get('items');
+  if(batch!==null){
+   const ids=batch.split(',').map(Number);
+   if(!ids.length||ids.length>40||new Set(ids).size!==ids.length||ids.some(id=>!int(id,1)))
+    return response(request,400,{ok:false,error:'Provide 1–40 distinct valid item IDs'});
+   const placeholders=ids.map(()=>'?').join(',');
+   const result=await env.DB.prepare(
+    'SELECT item_id,side,night,SUM(filled) AS filled,COUNT(*) AS observedOrders '+
+    'FROM gp_monitor_nights WHERE account_id=? AND item_id IN ('+placeholders+') '+
+    'AND window_end>=? GROUP BY item_id,side,night ORDER BY night DESC LIMIT 2401'
+   ).bind(credentials.account_id,...ids,Date.now()-45*86400000).all();
+   const rows=result.results||[],complete=rows.length<=2400;
+   return response(request,200,{ok:true,complete,nights:complete?rows:[],
+    sampleKind:'fully observed UTC 18:00–10:00 order exposure',notMarketWide:true});
+  }
   const item=Number(url.searchParams.get('item'));
   if(!int(item,1))return response(request,400,{ok:false,error:'A valid item ID is required'});
   const result=await env.DB.prepare('SELECT night,side,order_id,item_id,filled,observed_polls FROM gp_monitor_nights WHERE account_id=? AND item_id=? ORDER BY night DESC LIMIT 300')

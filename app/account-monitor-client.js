@@ -148,6 +148,14 @@ async function refresh(state=current(),{force=false}={}){
    state.ledger=saved.map(r=>r.value);
    state.summary=root.PeanutCore?.summarizeLedger?.(state.ledger)||state.summary;
    try{await root.GPExecution?.update?.(state,now());}catch{}
+   // Cloud transactions are not just displayed: refresh price-verified
+   // recommendations using the newly imported ledger when account data is
+   // fresh. Never use an old wallet or stale quotations for buy instructions.
+   const snapshotAt=Date.parse(state.snapshot?.at);
+   if(!state.opportunityBusy&&Number.isFinite(snapshotAt)&&now()-snapshotAt<25*60000&&
+      state.snapshot?.buysVerified&&state.snapshot?.sellsVerified){
+    void root.GPOpportunity?.refresh?.(state,{phase:'quick'}).catch(()=>{});
+   }
   }
   x.lastImportedEvents=eventsCaptured;x.lastObservedBuyUnits=partialBuys;x.lastObservedSellUnits=partialSells;
   await state.db.put('config',state.account,'cloud-monitor-status-v1',{...remote,checkedAt:x.checkedAt,eventsCaptured});
@@ -160,6 +168,46 @@ async function refresh(state=current(),{force=false}={}){
 function peekNights(account,item){
  return nights.get(account+'|'+item)?.data||null;
 }
+function normalizeNightRows(rows,source){
+ const grouped={buys:[],sells:[],supported:false,source};
+ const bySide=new Map();
+ for(const e of rows||[]){
+  const side=e.side,night=e.night,filled=Number(e.filled);
+  if(!['buys','sells'].includes(side)||typeof night!=='string'||
+     !/^\d{4}-\d{2}-\d{2}$/.test(night)||!Number.isSafeInteger(filled)||filled<0)continue;
+  const key=side+'|'+night,v=bySide.get(key)||{side,night,filled:0,observedOrders:0};
+  v.filled+=filled;v.observedOrders+=Math.max(1,Number(e.observedOrders)||1);
+  bySide.set(key,v);
+ }
+ for(const v of bySide.values())grouped[v.side].push(v);
+ for(const side of ['buys','sells'])grouped[side].sort((a,b)=>a.night.localeCompare(b.night));
+ grouped.supported=grouped.buys.length>=5&&grouped.sells.length>=5;
+ return grouped;
+}
+/* Bulk-fetch real fully observed nights only for currently quoted candidates.
+ * Missing/partial nightly coverage remains UNKNOWN, never a zero-fill sample.
+ */
+async function primeNights(state=current(),ids=[]){
+ if(!state?.account||!state?.key||!getEntry(state.account).enabled)return new Map();
+ const unique=[...new Set(ids.filter(valid))].slice(0,40),observed=new Map();
+ if(!unique.length)return observed;
+ const old=unique.filter(id=>{const cached=nights.get(state.account+'|'+id);
+  if(cached&&now()-cached.at<10*60000){observed.set(id,cached.data);return false;}
+  return true;
+ });
+ if(old.length){
+  const response=await request(state,'/nights?items='+old.join(','));
+  if(response.complete!==true)throw Error('Cloud night evidence was incomplete; no new samples accepted');
+  if(state.account!==response.account&&response.account)throw Error('Account changed during night lookup');
+  const byItem=new Map(old.map(id=>[id,[]]));
+  for(const e of response.nights||[])if(byItem.has(Number(e.item_id)))byItem.get(Number(e.item_id)).push(e);
+  for(const id of old){
+   const data=normalizeNightRows(byItem.get(id),response.sampleKind);
+   nights.set(state.account+'|'+id,{at:now(),data});observed.set(id,data);
+  }
+ }
+ return observed;
+}
 async function fetchNights(state=current(),item){
  if(!state?.key||!state?.account||!valid(item))return null;
  const id=state.account+'|'+item,cached=nights.get(id);
@@ -168,16 +216,7 @@ async function fetchNights(state=current(),item){
  if(now()-(nightFailures.get(id)||0)<10*60000)return null;
  const promise=(async()=>{
   const payload=await request(state,'/nights?item='+item);
-  const grouped={buys:[],sells:[],supported:false,source:payload.sampleKind};
-  const bySide=new Map();
-  for(const e of payload.nights||[]){
-   if(!['buys','sells'].includes(e.side)||!Number.isSafeInteger(Number(e.filled))||e.filled<0)continue;
-   const key=e.side+'|'+e.night,v=bySide.get(key)||{side:e.side,night:e.night,filled:0,observedOrders:0};
-   v.filled+=e.filled;v.observedOrders++;bySide.set(key,v);
-  }
-  for(const v of bySide.values())grouped[v.side].push(v);
-  for(const x of ['buys','sells'])grouped[x].sort((a,b)=>a.night.localeCompare(b.night));
-  grouped.supported=grouped.buys.length>=5&&grouped.sells.length>=5;
+  const grouped=normalizeNightRows(payload.nights,payload.sampleKind);
   nights.set(id,{at:now(),data:grouped});
   return grouped;
  })().catch(e=>{nightFailures.set(id,now());throw e;}).finally(()=>nightPending.delete(id));
@@ -207,6 +246,6 @@ function start(){
  setTimeout(()=>{void connect();},1500);
  setInterval(()=>{if(!document.hidden)void connect();},5*60000);
 }
-root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,disable,loadPreferences,probeHealth,connectGithub};
+root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,primeNights,disable,loadPreferences,probeHealth,connectGithub};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(typeof globalThis!=='undefined'?globalThis:this);

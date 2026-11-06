@@ -17,6 +17,30 @@ function equipmentKind(name,type,rarity){
  if(type==='Weapon'&&/\bPearl\b/i.test(name))return 'pearl';
  return null;
 }
+// Conservative realised order throughput, NOT a joint buy→resale forecast.
+// Both sides must have five complete, separate, zero-inclusive nights and
+// recent observations; missing nights never mean zero demand.
+function measuredNightCapacity(data,quantity,now){
+ if(!data?.supported||!Array.isArray(data.buys)||!Array.isArray(data.sells))return null;
+ const stats=rows=>{
+  const unique=new Map();
+  for(const row of rows){
+   const at=Date.parse(String(row.night)+'T00:00:00Z');
+   if(!Number.isFinite(at)||at>now||now-at>45*86400000||
+      !whole(row.filled))continue;
+   unique.set(row.night,Number(row.filled));
+  }
+  const recent=[...unique.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  if(recent.length<5||now-Date.parse(recent.at(-1)[0]+'T00:00:00Z')>14*86400000)return null;
+  const fills=recent.map(x=>x[1]).sort((a,b)=>a-b);
+  return {days:recent.length,zeros:fills.filter(x=>x===0).length,
+   p25:fills[Math.floor((fills.length-1)*.25)]};
+ };
+ const buy=stats(data.buys),sell=stats(data.sells);
+ if(!buy||!sell)return null;
+ return {buy,sell,units:Math.max(0,Math.min(quantity,buy.p25,sell.p25)),
+  label:'Personal fully observed overnight orders (including zero fills); buy and sale separately observed'};
+}
 const studyScore=x=>x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
  Math.pow(1+x.buy/10000,.85);
 function diverseEquipment(rows,max=150){
@@ -62,21 +86,29 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   if(o.openBuys>0)continue; // already committed; never present as a NEW spend
   const profit=net(o.exit,quantity)-o.buy*quantity;
   if(!finite(profit)||profit<=0)continue;
-  const nightUnits=whole(o.nightUnits)?Math.min(quantity,o.nightUnits):0;
+  const measured=measuredNightCapacity(plan.privateNightEvidence?.[id],quantity,now);
+  // Never confuse old active-day executions with continuously observed
+  // nights. If the measured lower quartile is zero, do not show a positive
+  // overnight volume or earn a high confidence ranking.
+  const nightUnits=measured?measured.units:
+   whole(o.nightUnits)?Math.min(quantity,o.nightUnits):0;
   const nightProfit=nightUnits?Math.max(0,net(o.exit,nightUnits)-o.buy*nightUnits):0;
   const cost=quantity*o.buy;
-  history.push({id,name:o.itemName||'',kind:'history',tier:nightUnits?'observed-night-conditional':'historical-conditional',
+  const rankScore=measured?nightProfit:
+   nightUnits>0?nightProfit*.7:profit*.18;
+  history.push({id,name:o.itemName||'',kind:'history',
+   tier:measured?'cloud-observed-nights':nightUnits?'observed-night-conditional':'historical-conditional',
    buy:o.buy,exit:o.exit,quantity,cost,capitalStatus:cost<=available?'wallet-covers-lot':'needs-capital',
-   scenarioProfit:profit,nightUnits,nightProfit,buyWeeks:o.buyWeeks||0,sellWeeks:o.sellWeeks||0,
+   scenarioProfit:profit,nightUnits,nightProfit,rankScore,measuredNights:measured,
+   buyWeeks:o.buyWeeks||0,sellWeeks:o.sellWeeks||0,
    observed24Reference:o.observed24Reference||0,observedNightBuys:o.observedNightBuys||0,
    sampleCount:o.sampleCount||0,ageDays:o.ageDays,at:o.asOf||o.at,
-   repeatEvidence:true,evidence:'Your completed purchases and sales; current quoted margin. Quantity is a historical trial bound, not a predicted fill.'});
+   repeatEvidence:true,evidence:measured?measured.label:
+    'Personally completed purchases and sales on active days; no verified zero-fill nights yet. Conditional one-round profit only.'});
  }
- // Evidence-backed overnight reference > historical conditional single round.
- // Within either group, rank by actual conditional net gold, not percentage ROI.
- history.sort((a,b)=>Number(b.nightUnits>0)-Number(a.nightUnits>0)||
-   (a.nightUnits>0?b.nightProfit-a.nightProfit:b.scenarioProfit-a.scenarioProfit)||
-   b.scenarioProfit-a.scenarioProfit||a.id-b.id);
+ // Rank by evidence-discounted *absolute copper*, never ROI or huge asks.
+ // Scores are selection heuristics, not predicted incomes or probabilities.
+ history.sort((a,b)=>b.rankScore-a.rankScore||b.scenarioProfit-a.scenarioProfit||a.id-b.id);
  const historyIds=new Set(history.map(x=>x.id));
  const newMarkets=[];
  for(const c of plan.publicResearch||[]){

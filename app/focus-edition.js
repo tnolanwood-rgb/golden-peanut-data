@@ -874,6 +874,46 @@ function renderAccountWatcher(host,state){
  host.append(wrapper);
  function buttonNode(text){const b=h('button','focus-button focus-button-secondary',text);b.type='button';return b;}
 }
+/* Show immediately useful candidates ABOVE the monitor. The old eight-cohort
+ * forecasting gate must not hide historical buying/resale research for weeks.
+ * This section distinguishes hypothetical full-round profit from measured
+ * night throughput and does not claim the whole lot will actually turn over.
+ */
+function renderTopResearch(host,state){
+ const board=root.GPMarketBoard?.build?.(state?.opportunityPlan,{
+  wallet:userSnapshot()?.wallet,metadata:state?.meta||{}
+ });
+ if(!board?.ready||!board.history?.length)return;
+ const rows=board.history.slice(0,8);
+ const section=h('section','focus-top-research');
+ section.append(h('h3','','TOP BUY RESEARCH · MOST PROMISING FIRST'));
+ section.append(h('p','focus-muted',
+  'Ranked by evidence-weighted gold opportunity, not percentage ROI. These are manually considered buys, NOT calibrated profit forecasts. Already-open orders are separate.'));
+ for(const m of rows){
+  const button=h('button','focus-market-row focus-top-research-row');
+  button.type='button';button.dataset.marketId=String(m.id);
+  button.dataset.marketTier=m.tier;
+  button.append(artwork(m.id));
+  const middle=h('span','focus-market-title');
+  middle.append(h('strong','',m.name||itemName(m.id)));
+  middle.append(h('small','','BUY '+num(m.quantity)+' × '+cash(m.buy)+' · sell reference '+cash(m.exit)+
+   ' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'requires additional wallet gold')));
+  if(m.measuredNights){
+   const x=m.measuredNights;
+   middle.append(h('small','focus-muted',
+    'VERIFIED NIGHTS: '+num(x.buy.days)+' buy / '+num(x.sell.days)+' sell · zeros '+num(x.buy.zeros)+' / '+num(x.sell.zeros)+
+    ' · cautious separate-side capacity '+num(x.units)+' units (not a round-trip forecast)'));
+  }else middle.append(h('small','focus-muted','Active-day trade history only · zero-fill nights not yet established'));
+  button.append(middle);
+  const side=h('span','focus-market-values'),val=h('strong','');
+  val.append(money(m.scenarioProfit));
+  side.append(val,h('small','','Net IF ALL '+num(m.quantity)+' buy and resell · NOT a forecast'));
+  button.append(side,h('span','focus-chevron','›'));
+  button.addEventListener('click',()=>openBoardMarket(m));
+  section.append(button);
+ }
+ host.append(section);
+}
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -893,8 +933,9 @@ function renderOpportunityHome(){
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
  host.replaceChildren();
- renderAccountWatcher(host,s);
  const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ if(fresh)renderTopResearch(host,s);
+ renderAccountWatcher(host,s);
  if(fresh){
   const observedBuy=(s?.orderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
   const observedSell=(s?.sellOrderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);

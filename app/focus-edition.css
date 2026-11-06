@@ -270,3 +270,10 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-watcher-setup .focus-watcher-actions{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 3px}
 .focus-watcher-setup .focus-watcher-actions a{display:inline-flex;align-items:center;text-decoration:none;min-height:40px;padding:6px 9px;font-size:11px}
 @media(max-width:425px){.focus-watcher-setup .focus-watcher-actions a{flex:1 1 100%;justify-content:center}}
+
+/* Top buy research is visible before account diagnostics on portrait Android. */
+.focus-top-research{margin:10px 0 18px;padding:13px 11px;background:#1b3125;border:1px solid #5c765c;border-radius:15px;overflow:hidden}
+.focus-top-research h3{font-size:14px;letter-spacing:.035em;color:#f2d397;margin:0 0 8px}
+.focus-top-research>p{font-size:12px;line-height:1.4;margin:0 0 9px}
+.focus-top-research .focus-market-values small{white-space:normal;line-height:1.3}
+.focus-top-research .focus-top-research-row{padding:11px 4px}

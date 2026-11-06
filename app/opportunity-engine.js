@@ -1386,6 +1386,23 @@ async function refresh(state,{force=true,phase='quick'}={}){
    const cloud=await root.PeanutCloud.load(ids,prices,undefined,Date.now());
    if(cloud?.signals instanceof Map){signals=cloud.signals;state.cloudSignals=signals;}
   }}catch{ /* Do not fail a verified personal-data evaluation if cloud is unavailable. */ }
+  // Fetch account-scoped, zero-inclusive cloud fill evidence for the
+  // highest-priority QUOTED markets. Only complete 18:00–10:00 UTC nights
+  // qualify. Legacy active-day trades remain useful, but distinct from this
+  // new evidence. A failed background lookup never invents a fill rate.
+  const privateNights=new Map(),cloudMonitor=root.GPCloudAccount;
+  if(cloudMonitor?.primeNights&&cloudMonitor.status?.(state.account)?.enabled){
+   const quoted=new Set(quotes.map(q=>q.id));
+   const ids=[...new Set([
+    ...hist.ranked.slice(0,35).map(x=>x.id),
+    ...(snap.buys||[]).slice(0,30).map(x=>x.item),
+    ...(snap.sells||[]).slice(0,20).map(x=>x.item)
+   ])].filter(id=>quoted.has(id)).slice(0,40);
+   try{
+    const result=await cloudMonitor.primeNights(state,ids);
+    for(const [id,data]of result)privateNights.set(id,data);
+   }catch(e){state.privateNightStatus='Cloud night lookup incomplete; saved market history retained';}
+  }
   const plan=evaluate({learning:state.executionLearning||{},ledger:state.ledger,quotes:relevant.filter(Boolean),metadata:state.meta,snapshot:snap,now:Date.now(),budget:snap.wallet,
    avoid:[...(state.avoidMarkets||[])],cloudSignals:signals,style:document?.getElementById('allocation-style')?.value||'balanced'});
   if(!plan.ok)throw Error(plan.reason);
@@ -1399,6 +1416,10 @@ async function refresh(state,{force=true,phase='quick'}={}){
   plan.publicResearch=publicResearchCandidates({quotes:freshRecords,metadata:state.meta,hist,
    exposures:position(snap),orderEvidence:state.orderEvidence,sellOrderEvidence:state.sellOrderEvidence,now:Date.now()});
   plan.buyOrderEvidence=state.orderEvidence;plan.sellOrderEvidence=state.sellOrderEvidence;
+  // The market board consumes measured cloud nights and adjusts its cautious
+  // buy/resale capacity research. These do NOT become fabricated 24h cohorts.
+  plan.privateNightEvidence=Object.fromEntries([...privateNights].map(([id,v])=>[id,v]));
+  plan.privateNightMarkets=[...privateNights.values()].filter(v=>v.supported).length;
   // Craftability is a supply hypothesis, not a verified overnight fill rate.
   const makerMap=new Map(plan.craftResearch.rows.map(x=>[x.id,x]));
   const markSupply=(c)=>{const recipes=recipesByOutput.get(c?.id);if(!recipes?.length)return;

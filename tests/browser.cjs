@@ -91,6 +91,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.goto('today');GPFocus.render();
  });
  const enriched=await page.locator('#focus-best-rows').innerText();
+ assert.match(enriched,/TOP BUY RESEARCH · MOST PROMISING FIRST/);
+ assert.equal(await page.locator('#focus-best-rows .focus-top-research-row').count(),2);
+ assert.match(await page.locator('#focus-best-rows .focus-top-research-row').first().innerText(),/BUY 3 ×|BUY 2 ×/);
+ assert.match(await page.locator('#focus-best-rows .focus-top-research-row').first().innerText(),/NOT a forecast/);
  assert.match(enriched,/HISTORY-BACKED MARKETS/);
  assert.match(enriched,/Cleric's Pearl Sword/);
  assert.match(enriched,/Berserker's Shattered Sword/);
