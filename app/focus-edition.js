@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview'},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{}},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -734,7 +734,7 @@ function renderCapacityExplorer(el,item){
  const controls=h('div','focus-capacity-controls'),label=h('label','','Hypothetical buy order size');
  const picker=h('select','focus-capacity-select');picker.setAttribute('aria-label','Hypothetical order size');
  for(const q of [1,3,5,10,20,50,100,250]){const opt=h('option','',num(q)+' units');opt.value=String(q);picker.append(opt);}
- const initial=Number(item.quantity)||10;picker.value=String([1,3,5,10,20,50,100,250].includes(initial)?initial:10);
+ const initial=Number(ui.capacitySelections?.[item.id]||item.quantity)||10;picker.value=String([1,3,5,10,20,50,100,250].includes(initial)?initial:10);
  label.append(picker);controls.append(label);
  section.append(controls);
  const metrics=h('div','focus-capacity-grid');const note=h('p','focus-muted focus-capacity-limitation');
@@ -778,7 +778,7 @@ function renderCapacityExplorer(el,item){
    metrics.append(h('p','focus-muted','For the full lot: about '+num(estimate.activeDaysToComplete)+' COMPARABLE ACTIVE trading day(s) at historical median pace, not a calendar-time promise.'));
   note.textContent='Ranges are conditional planning references. Zero fills is always possible. Upper figures are observed higher active-day paces, not a maximum or a forecast. Only placed orders and later verified transactions can calibrate this specific market.';
  };
- picker.addEventListener('change',render);
+ picker.addEventListener('change',()=>{ui.capacitySelections[item.id]=Number(picker.value);render();});
  render();el.append(section);
 }
 function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selected=ui.selectedMarket?.id===ui.tradeDetail?ui.selectedMarket:null,
