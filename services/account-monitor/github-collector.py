@@ -164,9 +164,24 @@ def validate_trade(x):
     return trade_id, item, qty, price, created, purchased
 
 
+def validate_current(x):
+    # ArenaNet's current/* endpoints have created, but NO purchased timestamp.
+    # Recording a guessed purchased time would corrupt historical fill learning.
+    if not isinstance(x, dict):
+        raise MonitorProblem('Malformed GW2 active order')
+    try:
+        order_id, item, qty, price = [coins(x[k]) for k in ('id', 'item_id', 'quantity', 'price')]
+        created = timestamp(x['created'])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        raise MonitorProblem('Malformed GW2 active order fields') from None
+    if min(order_id, item, qty, price) <= 0:
+        raise MonitorProblem('ArenaNet active order contains invalid fields')
+    return order_id, item, qty, price, created
+
+
 def poll(account):
     account_id = account['id']
-    previous = db('''SELECT side,order_id,item_id,price,remaining FROM gp_monitor_orders
+    previous = db('''SELECT side,order_id,item_id,price,remaining,first_seen_at FROM gp_monitor_orders
                     WHERE account_id=? AND closed_at IS NULL''', [account_id])
     open_map = {(x['side'], int(x['order_id'])): x for x in previous}
     # Fetch both books fully BEFORE considering a missing order closed.
@@ -193,7 +208,7 @@ def poll(account):
             counts['newTrades'] += 1
         observed = set()
         for entry in current[side]:
-            order_id, item, qty, price, created, purchased = validate_trade(entry)
+            order_id, item, qty, price, created = validate_current(entry)
             observed.add((side, order_id))
             old = open_map.get((side, order_id))
             if old:
