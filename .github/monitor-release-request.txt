@@ -9,3 +9,5 @@ Retry: use existing CF_API_TOKEN for isolated scheduled Workers deployment, afte
 Permission-update retry confirmed by user, 2026-11-06 21:40 Europe/London.
 Request new isolated Cloudflare Worker deployment with account-scoped Workers Admin and D1 Edit.
 If worker upload or secret fails, retain consent gate disabled. Never share API credentials in logs.
+
+Health verification diagnostic retry after successful Worker upload + encryption secret initialization; 2026-11-06 21:46 GMT.
