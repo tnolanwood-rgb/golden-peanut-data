@@ -59,9 +59,79 @@ async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();i
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
  try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
-function save(){try{const persist={tab:ui.tab,tradeFilter:ui.tradeFilter,bulkLot:ui.bulkLot,tradeSearch:ui.tradeSearch,tradeAll:ui.tradeAll,capitalMode:ui.capitalMode,orderLane:ui.orderLane,orderSearch:ui.orderSearch,orderAll:ui.orderAll,legendSection:ui.legendSection,marketResearchLot:ui.marketResearchLot,portfolioBudgetGold:ui.portfolioBudgetGold};localStorage.setItem(STORE,JSON.stringify(persist));}catch{}}
-function load(){const old=safeGet();if(!old||typeof old!=='object')return;for(const key of ['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode','orderLane','orderSearch','orderAll','legendSection','marketResearchLot','portfolioBudgetGold'])if(Object.hasOwn(old,key))ui[key]=old[key];if(!NAMES[ui.tab])ui.tab='today';if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);if(![1,3,5,10,20,50,100,250].includes(Number(ui.marketResearchLot)))ui.marketResearchLot=10;else ui.marketResearchLot=Number(ui.marketResearchLot);if(ui.portfolioBudgetGold!==null&&(!Number.isFinite(Number(ui.portfolioBudgetGold))||Number(ui.portfolioBudgetGold)<0||Number(ui.portfolioBudgetGold)>50000))ui.portfolioBudgetGold=null;
-if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';}
+/* Persist navigation and visible research during Android WebView Activity
+ * recreation (including a rotation-induced page reload). No account key,
+ * completed transactions, or other personal trading data is stored here. */
+const UI_KEYS=['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode',
+ 'orderLane','orderSearch','orderAll','legendSection','marketResearchLot',
+ 'portfolioBudgetGold','tradeDetail','growthDetail','relatedDetail','orderDetail',
+ 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections'];
+function viewMarketSnapshot(){
+ const id=Number(ui.tradeDetail);
+ if(!Number.isSafeInteger(id)||id<=0)return null;
+ const state=State(),p=state?.opportunityPlan;
+ const item=(ui.selectedMarket?.id===id?ui.selectedMarket:null)||
+  [...(p?.orders||[]),...(p?.marketChoices||[]),...(p?.watch||[]),
+   ...(p?.publicResearch||[])].find(x=>x.id===id);
+ if(!item)return null;
+ // Only save nonsensitive, bounded *display* fields. This is an old quote
+ // reference, not a live executable order or independently verified price.
+ const old=item.asOf||item.at;
+ const snap={id,kind:'research',name:String(item.name||item.itemName||itemName(id)).slice(0,180),
+  buy:Number(item.buy||item.bid||0),exit:Number(item.exit||item.ask||0),
+  quantity:Number(item.quantity||0),at:typeof old==='string'?old:null,restoredView:true};
+ return Number.isSafeInteger(snap.buy)&&snap.buy>0&&Number.isSafeInteger(snap.exit)&&snap.exit>snap.buy?snap:null;
+}
+function save(){
+ try{
+  const persist={version:2};
+  for(const key of UI_KEYS)persist[key]=ui[key];
+  persist.selectedMarket=viewMarketSnapshot();
+  persist.savedAt=Date.now();
+  localStorage.setItem(STORE,JSON.stringify(persist));
+ }catch{/* Browsing and memory must never depend on localStorage access. */}
+}
+function load(){
+ const old=safeGet();
+ if(!old||typeof old!=='object')return;
+ for(const key of UI_KEYS)if(Object.hasOwn(old,key))ui[key]=old[key];
+ if(!NAMES[ui.tab])ui.tab='today';
+ if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';
+ if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);
+ if(![1,3,5,10,20,50,100,250].includes(Number(ui.marketResearchLot)))ui.marketResearchLot=10;else ui.marketResearchLot=Number(ui.marketResearchLot);
+ if(ui.portfolioBudgetGold!==null&&(!Number.isFinite(Number(ui.portfolioBudgetGold))||Number(ui.portfolioBudgetGold)<0||Number(ui.portfolioBudgetGold)>50000))ui.portfolioBudgetGold=null;
+ if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';
+ if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';
+ if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';
+ for(const k of ['tradeDetail','growthDetail','relatedDetail']){
+  const id=Number(ui[k]);ui[k]=Number.isSafeInteger(id)&&id>0?id:null;
+ }
+ if(typeof ui.orderDetail!=='string'&&typeof ui.orderDetail!=='number')ui.orderDetail=null;
+ for(const k of ['tradeY','orderY','scrollY']){
+  const n=Number(ui[k]);ui[k]=Number.isFinite(n)&&n>=0&&n<1e7?Math.floor(n):0;
+ }
+ if(!Number.isSafeInteger(ui.memoryLimit)||ui.memoryLimit<14||ui.memoryLimit>1000)ui.memoryLimit=14;
+ if(!Number.isSafeInteger(ui.catalogueLimit)||ui.catalogueLimit<24||ui.catalogueLimit>1000)ui.catalogueLimit=24;
+ if(typeof ui.tradeSearch!=='string')ui.tradeSearch='';else ui.tradeSearch=ui.tradeSearch.slice(0,180);
+ if(typeof ui.orderSearch!=='string')ui.orderSearch='';else ui.orderSearch=ui.orderSearch.slice(0,180);
+ if(!ui.capacitySelections||typeof ui.capacitySelections!=='object'||Array.isArray(ui.capacitySelections))ui.capacitySelections={};
+ else{
+  const valid={};
+  for(const [key,val]of Object.entries(ui.capacitySelections).slice(0,300))
+   if(/^\d{1,10}$/.test(key)&&[1,3,5,10,20,50,100,250].includes(Number(val)))valid[key]=Number(val);
+  ui.capacitySelections=valid;
+ }
+ // Restore only a bounded recently viewed PUBLIC research snapshot. Never
+ // silently turn it into a current recommendation after a page recreation.
+ const m=old.selectedMarket,ms=Number(old.savedAt);
+ if(ui.tradeDetail&&ui.tab==='trades'&&Number.isFinite(ms)&&Date.now()-ms>=0&&Date.now()-ms<7*86400000&&
+  Number(m?.id)===ui.tradeDetail&&Number.isSafeInteger(m.buy)&&m.buy>0&&
+  Number.isSafeInteger(m.exit)&&m.exit>m.buy){
+  ui.selectedMarket={id:ui.tradeDetail,kind:'research',name:String(m.name||'').slice(0,180),
+   buy:m.buy,exit:m.exit,quantity:Number.isSafeInteger(m.quantity)?Math.max(0,m.quantity):0,
+   asOf:typeof m.at==='string'?m.at:null,restoredView:true};
+ }
+}
 // Chromium can skip same-document history entries inserted without user activation.
 // Never seed a synthetic pushState on startup. Push real intra-app destinations
 // from user-initiated clicks, and keep a visible Back control as a PWA fallback.
@@ -161,7 +231,7 @@ function goto(tab,{scroll=true}={}){if(!NAMES[tab])return;const previousTab=ui.t
  for(const el of document.querySelectorAll('[data-focus-nav]')){const active=el.dataset.focusNav===tab;el.classList.toggle('is-active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');}
  labelText('focus-title',NAMES[tab]);labelText('focus-subtitle',tab==='today'?'Highest-value markets first':tab==='trades'?'History-backed opportunities and new full-market research':tab==='orders'?'Your active buying and selling positions':'Your legendary projects');
  if(tab==='orders')scheduleReviews();if(tab==='legendaries')updateLegendView();if(scroll){window.scrollTo({top:0,behavior:'instant'});}if(previousTab!==tab)pushHistory();updateBackAffordance();schedule();}
-function install(){if(started)return;started=true;load();ui.tab='today';document.body.classList.add('focus-edition');document.title='The Golden Peanut — Focus Edition';
+function install(){if(started)return;started=true;load();document.body.classList.add('focus-edition');document.title='The Golden Peanut — Focus Edition';
  const app=document.querySelector('.app'),main=app?.querySelector('main'),desk=$('view-desk');if(!app||!main||!desk)return;
  const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><button type="button" id="focus-back-main" class="focus-icon-button focus-main-back" aria-label="Back within Golden Peanut" hidden>←</button><div><p class="focus-kicker"THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
  main.before(toolbar);$('focus-back-main').addEventListener('click',navigateBack);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
@@ -172,7 +242,39 @@ function install(){if(started)return;started=true;load();ui.tab='today';document
  initToday();initTrades();initOrders();initLegend();
  // Observe only the legacy output containers; mutations to the new workspaces won't loop.
  for(const id of ['gp57-wallet','gp57-week','gp57-collect','gp57-actions','allocation-plan','commander53-results','lp-materials','lp-direct','lp-tasks','lp-target-name']){const x=$(id);if(x)new MutationObserver(()=>{if(id.startsWith('lp-'))decorateLegendArtwork();schedule();}).observe(x,{childList:true,subtree:id!=='allocation-plan'});}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});goto(ui.tab,{scroll:false});window.setTimeout(schedule,350);
+ // Android may destroy/recreate the WebView on a configuration change.
+ // Capture actual state *before* the old document disappears, and also after
+ // user actions (some Android wrappers never emit pagehide).
+ let scrollSaveTimer=0;
+ document.addEventListener('click',()=>window.setTimeout(save,0),{passive:true});
+ document.addEventListener('change',()=>window.setTimeout(save,0),{passive:true});
+ window.addEventListener('scroll',()=>{
+  ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));
+  if(scrollSaveTimer)clearTimeout(scrollSaveTimer);
+  scrollSaveTimer=setTimeout(()=>{scrollSaveTimer=0;save();},180);
+ },{passive:true});
+ const capture=()=>{ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
+ window.addEventListener('pagehide',capture);
+ window.addEventListener('orientationchange',capture,{passive:true});
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)capture();
+  else schedule();
+ });
+ const restoredScroll=ui.scrollY,restoredTab=ui.tab;
+ goto(restoredTab,{scroll:false});
+ // Content arrives from IndexedDB asynchronously. Restore position after it
+ // renders instead of snapping to the beginning or forcing a fresh account sync.
+ if(restoredScroll>0){
+  let attempts=0;
+  const restoreScroll=()=>{
+   if(ui.tab!==restoredTab||window.scrollY>=restoredScroll-8)return;
+   if(document.documentElement.scrollHeight>restoredScroll+window.innerHeight/2)
+    window.scrollTo({top:restoredScroll,behavior:'instant'});
+   if(++attempts<14&&window.scrollY<restoredScroll-8)setTimeout(restoreScroll,220);
+  };
+  setTimeout(restoreScroll,250);
+ }
+ window.setTimeout(schedule,350);
  root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>{renderToday();renderTrades();renderOrders();updateLegendView();},cash};
  try{
   // Preserve the real initial history entry. Chromium skips startup-generated
@@ -946,8 +1048,9 @@ function renderCapacityExplorer(el,item){
 function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selected=ui.selectedMarket?.id===ui.tradeDetail?ui.selectedMarket:null,
  item=selected||[...t.orders,...(t.p?.marketChoices||[]),...t.watch].find(x=>x.id===ui.tradeDetail);if(!item){ui.tradeDetail=null;renderTrades();return;}
  const funded=selected?selected.kind==='funded':t.orders.some(o=>o.id===item.id),newMode=!funded,el=$('focus-trade-detail');$('focus-trade-list-view').hidden=true;el.hidden=false;el.replaceChildren();el.append(button('← Back to opportunities',()=>backToList('trades'),'focus-back'));
- const head=h('div','focus-detail-title');head.append(artwork(item.id,true));const title=h('div');title.append(h('h3','',itemName(item.id)),h('p','focus-muted',newMode?'Market research · not a funded buy order':'Suggested manual buy order · not placed'));head.append(title);el.append(head);
+ const head=h('div','focus-detail-title');head.append(artwork(item.id,true));const title=h('div');title.append(h('h3','',selected?.restoredView&&selected.name?selected.name:itemName(item.id)),h('p','focus-muted',newMode?'Market research · not a funded buy order':'Suggested manual buy order · not placed'));head.append(title);el.append(head);
  if(!t.valid)el.append(h('p','focus-alert','These quotes have expired. Refresh before trading.'));
+ if(selected?.restoredView)el.append(h('p','focus-alert','Restored this market after the phone reloaded. The saved bid and resale reference may be outdated — refresh current prices before making a trading decision.'));
  const metrics=h('div','focus-detail-grid');const addMetric=(label,v)=>{const x=h('div','focus-detail-metric');x.append(h('span','focus-muted',label),h('strong','',v));metrics.append(x);};
  if(newMode){if(item.kind!=='craft')addMetric('Bid reference',cash(item.buy||0));addMetric('Plausible resale reference',cash(item.exit||item.ask||0));
   if(item.quantity)addMetric('Illustrative order quantity',num(item.quantity));
