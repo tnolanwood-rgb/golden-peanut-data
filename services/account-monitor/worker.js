@@ -93,12 +93,17 @@ async function monitorAccount(env,row){
    current[side]=got.rows;
   }
   for(const side of sideNames){
-   const got=await paginated(key,'/commerce/transactions/history/'+side,{maxPages:MAX_HISTORY_PAGES,
+   const seenBefore=await env.DB.prepare('SELECT 1 FROM gp_monitor_trades WHERE account_id=? AND side=? LIMIT 1').bind(account,side).first();
+   // On first enrollment preserve the most recent 400 rows/side without
+   // flooding a free Worker with a 90-day backlog of 141k transactions.
+   // Subsequent checks get a 60-page safety ceiling for active heavy traders.
+   const pages=seenBefore?MAX_HISTORY_PAGES:2;
+   const got=await paginated(key,'/commerce/transactions/history/'+side,{maxPages:pages,
     stopAtExisting:true,db:env.DB,account,side});
    history[side]=got.rows;
    // More than 60 pages before reaching history means the poll cannot claim
    // exhaustive coverage. Persist the observed pages and report gap risk.
-   if(!got.complete)history[side+'_incomplete']=true; // Continue tracking current orders and the newest completed trades safely.
+   if(!got.complete)history[side+'_incomplete']=true; // Old backlog partial; continue sampling NEW trades.
   }
   const recorded=await env.DB.prepare('SELECT account_id,side,order_id,item_id,price,remaining,first_seen_at,closed_at FROM gp_monitor_orders WHERE account_id=? AND closed_at IS NULL').bind(account).all();
   const prior=new Map((recorded.results||[]).map(x=>[x.side+':'+x.order_id,x]));
