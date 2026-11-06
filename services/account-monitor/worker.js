@@ -39,10 +39,36 @@ async function unseal(env,row){
  const bytes=await crypto.subtle.decrypt(algorithm,await aesKey(env),unbase64(row.encrypted));
  return new TextDecoder().decode(bytes);
 }
+/* Safe, bounded GW2 errors: no token or account identifiers in responses. */
+class MonitorFault extends Error{
+ constructor(code,message,status=503){super(message);this.code=code;this.status=status;this.name='MonitorFault';}
+}
 async function gw2(key,path){
- const r=await fetch(API+path,{headers:{Authorization:'Bearer '+key,Accept:'application/json','User-Agent':'GoldenPeanutMonitor/1.0'},redirect:'error'});
- if(!r.ok)throw new Error('GW2 endpoint '+path.split('?')[0]+' status '+r.status);
- return r.json();
+ let r;
+ try{
+  r=await fetch(API+path,{headers:{Authorization:'Bearer '+key,Accept:'application/json'},redirect:'error'});
+ }catch{throw new MonitorFault('ARENA_NET_UNREACHABLE','Cloudflare cannot currently contact the Guild Wars 2 API.',502);}
+ if(!r.ok){
+  const code=r.status===401||r.status===403?'ARENA_NET_KEY_REJECTED':
+   r.status===429?'ARENA_NET_RATE_LIMIT':'ARENA_NET_HTTP_'+r.status;
+  const message=r.status===401||r.status===403?
+   'ArenaNet did not authorize this API key. Check its account and tradingpost permissions.':
+   r.status===429?'ArenaNet temporarily rate-limited the account monitor.':'ArenaNet returned HTTP '+r.status+' during account verification.';
+  throw new MonitorFault(code,message,r.status===401||r.status===403?403:502);
+ }
+ try{return await r.json();}catch{throw new MonitorFault('ARENA_NET_RESPONSE','ArenaNet returned invalid account data.',502);}
+}
+async function validatedMonitorHealth(env){
+ let keyReady=false,dbReady=false;
+ try{await aesKey(env);keyReady=true;}catch{}
+ try{
+  if(!env.DB?.prepare)throw Error('missing D1 binding');
+  await env.DB.prepare('SELECT account_id FROM gp_monitor_credentials LIMIT 1').all();
+  await env.DB.prepare('SELECT account_id FROM gp_monitor_orders LIMIT 1').all();
+  await env.DB.prepare('SELECT account_id FROM gp_monitor_trades LIMIT 1').all();
+  dbReady=true;
+ }catch{}
+ return {keyReady,dbReady};
 }
 async function paginated(key,path,{maxPages,stopAtExisting=null,db=null,account=null,side=null}={}){
  const all=[];let complete=false,highWaterPage=-1;
@@ -207,24 +233,64 @@ async function handle(request,env,ctx){
  }
  if(request.headers.get('Origin')&&request.headers.get('Origin')!==PUBLIC_ORIGIN)
   return response(request,403,{ok:false,error:'Unrecognised app origin'});
- if(pathname==='/health'&&request.method==='GET')return response(request,200,{ok:true,service:'Golden Peanut private-account monitor',mode:'opt-in',intervalMinutes:10});
+ if(pathname==='/health'&&request.method==='GET'){
+  const health=await validatedMonitorHealth(env);
+  return response(request,health.keyReady&&health.dbReady?200:503,{
+   ok:health.keyReady&&health.dbReady,service:'Golden Peanut private-account monitor',
+   mode:'opt-in',intervalMinutes:10,encryptedCredentialStorageReady:health.keyReady,
+   privateDatabaseReady:health.dbReady
+  });
+ }
+ if(pathname==='/diagnostics'&&request.method==='GET'){
+  // This endpoint verifies only PUBLIC ArenaNet API connectivity. No key,
+  // account name, D1 records or query inputs are handled or returned.
+  const health=await validatedMonitorHealth(env);
+  let gw2Ready=false,gw2Status='unreachable';
+  try{
+   const r=await fetch(API+'/build',{headers:{Accept:'application/json'}});
+   gw2Ready=r.ok;gw2Status=r.ok?'accessible':'HTTP_'+r.status;
+  }catch{}
+  return response(request,200,{ok:true,dbReady:health.dbReady,keyReady:health.keyReady,
+   guildWars2ApiReachable:gw2Ready,gw2Status});
+ }
  if(!['/enroll','/status','/events','/nights','/disable'].includes(pathname))return response(request,404,{ok:false});
  const key=accessKey(request);if(!key)return response(request,401,{ok:false,error:'A connected tradingpost API key is required'});
  if(pathname==='/enroll'&&request.method==='POST'){
   const requestBody=await request.json().catch(()=>null);
   if(requestBody?.consent!==true)return response(request,400,{ok:false,error:'Explicit background-monitoring consent is required'});
-  const details=await gw2(key,'/tokeninfo'),permissions=details?.permissions||[];
+  let details;
+  try{details=await gw2(key,'/tokeninfo');}catch(e){
+   if(e instanceof MonitorFault)return response(request,e.status,{ok:false,code:e.code,error:e.message});
+   return response(request,503,{ok:false,code:'TOKEN_INFO_UNAVAILABLE',error:'Could not verify GW2 API key details.'});
+  }
+  const permissions=Array.isArray(details?.permissions)?details.permissions:[];
   if(!permissions.includes('account')||!permissions.includes('tradingpost'))
-   return response(request,403,{ok:false,error:'The API key needs account and tradingpost permissions'});
-  const account=await gw2(key,'/account');
-  if(!/^[a-zA-Z0-9-]{15,80}$/.test(account?.id||''))throw Error('Could not verify ArenaNet account ID');
+   return response(request,403,{ok:false,code:'GW2_PERMISSION_MISSING',error:'Your GW2 key must include account and tradingpost permissions.'});
+  let account;
+  try{account=await gw2(key,'/account');}catch(e){
+   if(e instanceof MonitorFault)return response(request,e.status,{ok:false,code:e.code,error:e.message});
+   return response(request,503,{ok:false,code:'ACCOUNT_ID_UNAVAILABLE',error:'Could not retrieve GW2 account identity.'});
+  }
+  if(!/^[a-zA-Z0-9-]{15,80}$/.test(account?.id||''))
+   return response(request,503,{ok:false,code:'ACCOUNT_ID_INVALID',error:'ArenaNet returned an unrecognised account identifier.'});
   const expected=request.headers.get('X-GP-Account');
-  if(expected&&expected!==account.name)return response(request,409,{ok:false,error:'Account does not match your selected Golden Peanut account'});
-  const tokenDigest=await digest(key),encrypted=await seal(env,key,account.id);
-  await env.DB.prepare('INSERT INTO gp_monitor_credentials(account_id,account_name,token_digest,iv,encrypted,enabled,created_at,last_polled_at) VALUES(?,?,?,?,?,1,?,NULL) ON CONFLICT(account_id) DO UPDATE SET account_name=excluded.account_name,token_digest=excluded.token_digest,iv=excluded.iv,encrypted=excluded.encrypted,enabled=1,last_error=NULL')
-   .bind(account.id,account.name,tokenDigest,encrypted.iv,encrypted.encrypted,now()).run();
-  // Do not wait for the next cron to take the first snapshot.
-  ctx.waitUntil(monitorAccount(env,{account_id:account.id,iv:encrypted.iv,encrypted:encrypted.encrypted}));
+  if(expected&&expected!==account.name)return response(request,409,{ok:false,code:'ACCOUNT_MISMATCH',error:'Account does not match your selected Golden Peanut account'});
+  let tokenDigest,encrypted;
+  try{tokenDigest=await digest(key);encrypted=await seal(env,key,account.id);}
+  catch{
+   return response(request,503,{ok:false,code:'ENCRYPTION_NOT_READY',error:'Private account-monitor encryption is not ready. No API key has been saved.'});
+  }
+  try{
+   await env.DB.prepare('INSERT INTO gp_monitor_credentials(account_id,account_name,token_digest,iv,encrypted,enabled,created_at,last_polled_at) VALUES(?,?,?,?,?,1,?,NULL) ON CONFLICT(account_id) DO UPDATE SET account_name=excluded.account_name,token_digest=excluded.token_digest,iv=excluded.iv,encrypted=excluded.encrypted,enabled=1,last_error=NULL')
+    .bind(account.id,account.name,tokenDigest,encrypted.iv,encrypted.encrypted,now()).run();
+  }catch{
+   return response(request,503,{ok:false,code:'PRIVATE_DATABASE_UNAVAILABLE',error:'Private monitor database could not save the encrypted connection. Nothing was enrolled.'});
+  }
+  // An initial account snapshot starts asynchronously, never blocking the
+  // consent response or falsely claiming a successfully completed poll.
+  try{
+   ctx.waitUntil(monitorAccount(env,{account_id:account.id,iv:encrypted.iv,encrypted:encrypted.encrypted}));
+  }catch{/* Cron still monitors the enrolled account every ten minutes. */}
   return response(request,200,{ok:true,account:account.name,mode:'background',intervalMinutes:10,
    privacy:'Credential encrypted in private Cloudflare D1; revoke through app or GW2 account security'});
  }
@@ -280,7 +346,7 @@ export default {
   try{return await handle(request,env,ctx);}
   catch(e){
    // Only safe generic details. Never echo request headers or API credentials.
-   return response(request,503,{ok:false,error:'Monitor temporarily unavailable; retry later'});
+   return response(request,503,{ok:false,code:'MONITOR_INTERNAL_ERROR',error:'Private account monitor encountered a server error. No successful enrolment was confirmed.'});
   }
  },
  async scheduled(event,env,ctx){

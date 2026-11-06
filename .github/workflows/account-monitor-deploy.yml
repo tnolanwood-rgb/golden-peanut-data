@@ -109,7 +109,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import time,json,urllib.request
+          import time,json,urllib.request,urllib.error
           url='https://golden-peanut-account-monitor.tnolanwood.workers.dev/health'
           for attempt in range(8):
               try:
@@ -140,7 +140,48 @@ jobs:
                           for needed in ('authorization','cache-control','content-type','x-gp-account'):
                               if needed not in [x.strip() for x in allowed]:
                                   raise ValueError('Browser consent preflight would reject '+needed)
-                      print('Private monitor health and browser cross-origin enrollment preflight verified')
+                      # Test actual bound encryption, D1 and ArenaNet egress,
+                      # not just a static Worker /health response.
+                      diagnose=urllib.request.Request(url.replace('/health','/diagnostics'),headers={
+                          'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+                          'Accept':'application/json',
+                          'Origin':'https://thegoldenpeanut.pages.dev'
+                      })
+                      with urllib.request.urlopen(diagnose,timeout=20) as checked:
+                          diag=json.load(checked)
+                      print('Account monitor service diagnostics:',{
+                          'encryptionReady':diag.get('keyReady'),
+                          'databaseReady':diag.get('dbReady'),
+                          'guildWars2ApiReachable':diag.get('guildWars2ApiReachable'),
+                          'gw2Status':diag.get('gw2Status')
+                      },flush=True)
+                      if not diag.get('keyReady') or not diag.get('dbReady'):
+                          raise ValueError('Encrypted private account-monitor storage not ready')
+                      if not diag.get('guildWars2ApiReachable'):
+                          raise ValueError('Cloudflare Worker cannot contact public ArenaNet API')
+                      # Test /enroll through all HTTP and remote GW2 request
+                      # layers with a known FAKE key. No account credentials.
+                      fakekey='11111111-2222-3333-4444-555555555555-aaaa-bbbb-cccc-dddddddddddd'
+                      enrollment=urllib.request.Request(url.replace('/health','/enroll'),method='POST',headers={
+                          'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+                          'Accept':'application/json',
+                          'Origin':'https://thegoldenpeanut.pages.dev',
+                          'Authorization':'Bearer '+fakekey,
+                          'X-GP-Account':'Fixture.1234',
+                          'Content-Type':'application/json'
+                      },data=b'{"consent":true}')
+                      try:
+                          with urllib.request.urlopen(enrollment,timeout=20) as result:
+                              enrollmentStatus=result.status;enrollBody=json.load(result)
+                      except urllib.error.HTTPError as result:
+                          enrollmentStatus=result.code;enrollBody=json.load(result)
+                      stage=enrollBody.get('code','unknown')
+                      print('Fake-key enrollment probe:',{'status':enrollmentStatus,'stage':stage},flush=True)
+                      if enrollBody.get('ok') or enrollmentStatus==200:
+                          raise ValueError('Fake-key enrollment must never succeed')
+                      if not stage.startswith('ARENA_NET_'):
+                          raise ValueError('Private enrollment failed outside ArenaNet validation: '+stage)
+                      print('Private monitor health, DB/AES, public GW2 and real cross-origin account enrollment route verified')
                       break
                   raise ValueError('Unexpected monitor health response')
               except Exception as exc:
