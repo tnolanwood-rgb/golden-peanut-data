@@ -48,8 +48,32 @@ def request_json(url, *, headers=None, payload=None, max_retries=2):
                     seconds = 5 * (attempt + 1)
                 time.sleep(seconds)
                 continue
-            # Never print the URL query, authorization header, API key or error body.
-            raise MonitorProblem('HTTP %d contacting %s' % (error.code, urllib.parse.urlsplit(url).hostname)) from None
+            # Cloudflare returns a structured error body. Extract ONLY a
+            # numeric code and allowlisted category; never print raw errors,
+            # SQL, query params, token digest, credentials or response body.
+            host = urllib.parse.urlsplit(url).hostname
+            if host == 'api.cloudflare.com':
+                kind, code = 'unknown', 'none'
+                try:
+                    info = json.loads(error.read(10000).decode())
+                    entries = info.get('errors', []) if isinstance(info, dict) else []
+                    first = entries[0] if entries and isinstance(entries[0], dict) else {}
+                    numeric = first.get('code')
+                    if isinstance(numeric, int) and 0 < numeric < 10000000:
+                        code = str(numeric)
+                    message = str(first.get('message', '')).lower()
+                    if 'no such table' in message: kind = 'missing_table'
+                    elif 'permission' in message or 'not authorized' in message: kind = 'permission'
+                    elif 'database' in message and ('not found' in message or 'does not exist' in message): kind = 'database_not_found'
+                    elif 'bind' in message or 'parameter' in message: kind = 'parameter'
+                    elif 'syntax error' in message or 'sqlit' in message: kind = 'sqlite'
+                    elif 'invalid' in message: kind = 'invalid_request'
+                except (ValueError, UnicodeError, TypeError, AttributeError):
+                    pass
+                raise MonitorProblem('Cloudflare D1 HTTP %d (error code %s, category %s)' %
+                                     (error.code, code, kind)) from None
+            # Never print the URL query, authorization header, key or body.
+            raise MonitorProblem('HTTP %d contacting %s' % (error.code, host)) from None
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
             if attempt < max_retries:
                 time.sleep(2 * (attempt + 1))
