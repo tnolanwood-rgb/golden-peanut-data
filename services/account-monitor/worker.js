@@ -211,6 +211,8 @@ async function handle(request,env,ctx){
  if(!['/enroll','/status','/events','/nights','/disable'].includes(pathname))return response(request,404,{ok:false});
  const key=accessKey(request);if(!key)return response(request,401,{ok:false,error:'A connected tradingpost API key is required'});
  if(pathname==='/enroll'&&request.method==='POST'){
+  const requestBody=await request.json().catch(()=>null);
+  if(requestBody?.consent!==true)return response(request,400,{ok:false,error:'Explicit background-monitoring consent is required'});
   const details=await gw2(key,'/tokeninfo'),permissions=details?.permissions||[];
   if(!permissions.includes('account')||!permissions.includes('tradingpost'))
    return response(request,403,{ok:false,error:'The API key needs account and tradingpost permissions'});
