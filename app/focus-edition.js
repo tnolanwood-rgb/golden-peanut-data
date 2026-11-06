@@ -890,7 +890,7 @@ function renderTopResearch(host,state){
  section.append(h('p','focus-muted',
   'Ranked by evidence-weighted gold opportunity, not percentage ROI. These are manually considered buys, NOT calibrated profit forecasts. Already-open orders are separate.'));
  for(const m of rows){
-  const button=h('button','focus-market-row focus-connected-market focus-top-research-row');
+  const button=h('button','focus-market-row focus-top-research-row');
   button.type='button';button.dataset.marketId=String(m.id);
   button.dataset.marketTier=m.tier;
   button.append(artwork(m.id));
