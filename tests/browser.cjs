@@ -276,6 +276,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('#focus-title').innerText(),'Compare markets');
  // After the Android wrapper loses its native backstack, in-app Back still works.
  await page.getByRole('button',{name:'Back within Golden Peanut'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-list-view')&&!document.querySelector('#focus-trade-list-view').hidden,{timeout:7500});
  assert.equal(await page.locator('#focus-trade-list-view').isVisible(),true);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
