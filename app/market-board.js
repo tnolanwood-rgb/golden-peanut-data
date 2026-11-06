@@ -97,7 +97,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   const rankScore=measured?nightProfit:
    nightUnits>0?nightProfit*.7:profit*.18;
   history.push({id,name:o.itemName||'',kind:'history',
-   tier:measured?'cloud-observed-nights':nightUnits?'historical-active-night':'historical-conditional',
+   tier:measured?'cloud-observed-nights':nightUnits?'observed-night-conditional':'historical-conditional',
    buy:o.buy,exit:o.exit,quantity,cost,capitalStatus:cost<=available?'wallet-covers-lot':'needs-capital',
    scenarioProfit:profit,nightUnits,nightProfit,rankScore,measuredNights:measured,
    buyWeeks:o.buyWeeks||0,sellWeeks:o.sellWeeks||0,
