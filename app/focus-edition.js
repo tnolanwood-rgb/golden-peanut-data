@@ -495,16 +495,19 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
  const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
  if(!board?.ready)return {count:0,board:null};
  const q=query.toLowerCase().trim(),shown=new Set(),lot=Number(ui.marketResearchLot)||10;
- const match=m=>!q||(itemName(m.id)+' '+m.id).toLowerCase().includes(q);
- // The lot is a user-selected capital scenario, NOT a predicted buy quantity.
- // One shared selector controls every market on this list (and the item detail).
+ const name=m=>m.name||m.itemName||itemName(m.id);
+ const match=m=>!q||(name(m)+' '+m.id).toLowerCase().includes(q);
+ // One shared research size; scroll positions and page stay put on changes.
  const controls=h('div','focus-market-lot-controls');
  const lotLabel=h('label','focus-market-lot-label','Research order size (not an order)');
  const lotSelect=h('select','focus-capacity-select focus-market-lot-select');
  lotSelect.setAttribute('aria-label','Research lot size for market list');
- for(const qty of [1,3,5,10,20,50,100,250]){const option=h('option','',num(qty)+' units');option.value=String(qty);lotSelect.append(option);}
+ for(const qty of [1,3,5,10,20,50,100,250]){
+  const option=h('option','',num(qty)+' units');option.value=String(qty);lotSelect.append(option);
+ }
  lotSelect.value=String(lot);lotLabel.append(lotSelect);controls.append(lotLabel);
- controls.append(h('small','focus-muted','Choose any lot, even above wallet balance. Theoretical after-fee return is only earned if every proposed purchase and resale completes.'));
+ controls.append(h('small','focus-muted',
+  'Choose any research lot, even above wallet balance. Returns require ALL proposed purchases and resales to complete; they are not fill forecasts.'));
  host.append(controls);
  lotSelect.addEventListener('change',()=>{
   ui.marketResearchLot=Number(lotSelect.value);save();
@@ -513,66 +516,79 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
   window.requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}));
  });
  const hypotheticalNet=m=>root.GPCapacity?.feeNet?.(m.exit,lot)-m.buy*lot;
- const group=(title,desc,items,metric,label,subtitle)=>{
-  const rows=items.filter(m=>!shown.has(m.id)&&match(m)).slice(0,limit);
+ const group=(id,title,desc,items,metric,label,subtitle)=>{
+  const rows=items.filter(m=>!shown.has(m.id)&&match(m));
   if(!rows.length)return 0;
-  host.append(h('div','focus-list-heading',title));
-  host.append(h('p','focus-muted',desc));
-  for(const m of rows){shown.add(m.id);
-   const row=h('button','focus-market-row focus-connected-market');row.type='button';
-   row.dataset.marketTier=String(m.tier);
-   row.append(artwork(m.id));
-   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
-   middle.append(h('small','',subtitle(m)));
-   if(m.kind==='new'&&root.GPCapacity){
-    const v=root.GPCapacity.estimate({market:{...m,name:itemName(m.id)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
-    if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
-     const ref=v.scenarios.find(x=>x.days===3);
-     middle.append(h('small','focus-muted','YOUR item-specific evidence · 3 active days: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
-      (ref.resaleTypical===null?'resale time unknown':num(ref.resaleTypical)+'–'+num(ref.resaleHigh)+' resold')+' · conditional'));
-    }else if(v.status==='research'&&v.source==='comparable-markets'){
-     middle.append(h('small','focus-muted','This item: fills and sell-through UNKNOWN. Shared '+v.comparableMarkets+'-market benchmark in details, not an item forecast.'));
-    }else{
-     middle.append(h('small','focus-muted','This item: no measured acquisition or resale pace.'));
+  // Reserve ALL the items in this group, not just the first six visible
+  // ones. Lazy-loading another section must not duplicate an item.
+  for(const m of rows)shown.add(m.id);
+  return appendScrollableSection(host,{
+   id,title,desc,items:rows,initial:limit,renderRow:m=>{
+    const row=h('button','focus-market-row focus-connected-market');row.type='button';
+    row.dataset.marketTier=String(m.tier);row.dataset.marketId=String(m.id);
+    row.append(artwork(m.id));
+    const middle=h('span','focus-market-title');middle.append(h('strong','',name(m)));
+    middle.append(h('small','',subtitle(m)));
+    if(m.kind==='new'&&root.GPCapacity){
+     const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
+     if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
+      const ref=v.scenarios.find(x=>x.days===3);
+      middle.append(h('small','focus-muted','YOUR completed fills · 3 active days: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
+       (ref.resaleTypical===null?'resale time unknown':num(ref.resaleTypical)+'–'+num(ref.resaleHigh)+' resold')+' · conditional'));
+     }else if(v.status==='research'&&v.source==='comparable-markets'){
+      middle.append(h('small','focus-muted','Item-specific fill pace UNKNOWN. Comparable-market evidence in details, not a guaranteed fill.'));
+     }else middle.append(h('small','focus-muted','No measured acquisition or resale pace for this item.'));
     }
+    row.append(middle);
+    const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
+    side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
+    row.setAttribute('aria-label',name(m)+' · '+label(m)+' · inspect evidence');
+    row.addEventListener('click',()=>openBoardMarket(m));
+    return row;
    }
-   row.append(middle);
-   const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
-   side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
-   row.setAttribute('aria-label',itemName(m.id)+' · '+label(m)+' · inspect evidence');
-   row.addEventListener('click',()=>openBoardMarket(m));host.append(row);
-  }
-  return rows.length;
+  });
  };
  let count=0;
- count+=group('YOUR EXISTING ORDERS · CURRENT PRICE CHECKS',
-  'Already-committed capital is not new spending money. Figures are conditional historical-week outcomes, not tonight’s income.',
+ const equipmentIds=new Set((board.historyEquipment||[]).map(m=>m.id));
+ const generalHistory=board.history.filter(m=>!equipmentIds.has(m.id));
+ count+=group('standing-orders','YOUR EXISTING ORDERS · CURRENT PRICE CHECKS',
+  'Already-committed capital is not new spending money. Conditional historical-week outcomes, not tonight’s income.',
   board.standing,m=>m.conditionalWeek,()=> 'Conditional active-week profit',
-  m=>num(m.openUnits)+' already on buy orders · '+num(m.quantity)+' units at historical weekly pace');
- count+=group('HISTORY-BACKED MARKETS · CURRENT QUOTES',
-  'Your completed buys and resales, from beyond just the last seven days, combined with current bid/ask prices. Order sizes are bounded trials, not predicted fills.',
-  board.history,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>num(m.openUnits)+' on buy orders · '+num(m.quantity)+' units at historical weekly pace');
+ count+=group('history-markets','HISTORY-BACKED MARKETS · CURRENT QUOTES',
+  'Your completed trades beyond the last seven days, updated with current quotes. Trial quantities are not a predicted number of fills.',
+  generalHistory,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
   m=>m.nightUnits?'Conditional overnight reference · not guaranteed':'Net IF one buy/resale round completes',
-  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover lot':'needs additional spendable gold'));
- count+=group('MORE PROVEN PEARL & EXOTIC EQUIPMENT',
-  'Older completed equipment trades checked at current prices; one completed trade does not establish how many more will fill tonight.',
-  board.historyEquipment,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
-  m=>m.nightUnits?'Conditional observed-night reference':'Net IF the historical trial lot fills and resells',
-  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover':'requires more wallet gold'));
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+
+   ' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'needs spendable gold'));
+ count+=group('proven-equipment','PROVEN PEARL & EXOTIC EQUIPMENT',
+  'Your completed equipment trades checked at current quotes. A small successful order does not prove a larger order will sell.',
+  board.historyEquipment||[],m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>m.nightUnits?'Conditional observed-night reference':'Net IF historical trial lot buys and resells',
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'more gold needed'));
  const unitSubtitle=m=>'Research '+num(lot)+' × '+cash(m.buy)+' · capital '+cash(m.buy*lot)+
-  ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at current quotes'+(m.craftableSupply?' · craftable':'');
+  ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at quoted prices'+(m.craftableSupply?' · craftable':'');
  const unitLabel=()=> 'Net IF ALL '+num(lot)+' buy AND resell · not a forecast';
- count+=group('CHEAPER PEARL WEAPONS · NEW MARKETS',
-  'Live-quoted exotic Pearl candidates across stat prefixes. Change your research lot above; no measured item-specific bulk-fill rate is assumed.',
+ count+=group('pearl-weapons','CHEAPER PEARL WEAPONS · NEW MARKETS',
+  'Exotic Pearl candidates across stat prefixes. Scroll for the full list; there is no measured market-wide bulk-fill rate.',
   board.pearlLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
- count+=group('CHEAPER EXOTIC ARMOUR · NEW MARKETS',
-  'Affordable exotic armour from multiple stat families. Public quotes show possible margins, not executed buy/sell volume.',
+ count+=group('exotic-armour','CHEAPER EXOTIC ARMOUR · NEW MARKETS',
+  'Exotic armour across stat families. Public quotes show conditional margins, not completed turnover.',
   board.armorLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
- count+=group('OTHER AFFORDABLE NEW MARKETS',
-  'Markets outside your proven trades, restricted to modest one-unit wallet exposure. Rare collection unlocks and high-ticket windfalls are excluded.',
+ count+=group('other-affordable','OTHER AFFORDABLE NEW MARKETS',
+  'More affordable public-market ideas. Verify acquisition and resale before committing to large lots.',
   board.otherLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
+ count+=group('new-watchlist','MORE UNVERIFIED MARKET QUOTES',
+  'Remaining researched price spreads, including items above your current wallet. Scroll to browse; these are NOT proven liquid markets or recommended bulk buys.',
+  board.newMarkets,m=>hypotheticalNet(m),()=> 'Conditional quoted round only · turnover UNKNOWN',
+  m=>'Bid '+cash(m.buy)+' · '+(m.buy>Number(userSnapshot()?.wallet||0)?'not covered by current wallet':'single unit affordable')+
+   ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot));
  if(!q&&board.counts.catalogue){
-  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds checked for inclusion; '+num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+' total unverified markets, including ones not affordable or sufficiently liquid to promote here.'));
+  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+
+   num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds; '+
+   num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+
+   num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+
+   ' unverified markets, now accessible through section scrolling. Public standing orders are NOT evidence of completed sales.'));
  }
  return {count,board};
 }
