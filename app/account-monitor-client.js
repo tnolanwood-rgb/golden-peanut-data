@@ -8,7 +8,7 @@
 const BASE='https://golden-peanut-account-monitor.tnolanwood.workers.dev';
 const STATUS_MINUTES=5;
 const active=new Map(),nights=new Map(),nightPending=new Map(),nightFailures=new Map();
-const availability={ready:false,at:0,checking:false,flight:null};
+const availability={ready:false,mode:null,at:0,checking:false,flight:null};
 async function probeHealth({force=false}={}){
  if(availability.flight)return availability.flight;
  if(!force&&availability.at&&Date.now()-availability.at<5*60000)return availability.ready;
@@ -20,7 +20,8 @@ async function probeHealth({force=false}={}){
     cache:'no-store',headers:{Accept:'application/json'}});
    if(!r.ok)throw Error('Monitor not deployed');
    const v=await r.json();
-   availability.ready=!!(v?.ok&&v?.mode==='opt-in'&&Number(v?.intervalMinutes)>0);
+   availability.mode=v?.mode||null;
+   availability.ready=!!(v?.ok&&['opt-in','github-actions-fallback'].includes(v?.mode)&&Number(v?.intervalMinutes)>0);
   }catch{availability.ready=false;}
   finally{clearTimeout(timer);availability.at=Date.now();availability.checking=false;}
   root.GPFocus?.render?.();
@@ -50,7 +51,7 @@ const getEntry=account=>{
  if(!x){x={enabled:false,checkedAt:0,status:null,lastError:null,syncing:false,consent:false};active.set(account,x);}
  return x;
 };
-function status(account){return {...getEntry(account||current()?.account||''),serviceReady:availability.ready,serviceChecked:!!availability.at,serviceChecking:availability.checking};}
+function status(account){return {...getEntry(account||current()?.account||''),serviceReady:availability.ready,serviceMode:availability.mode,serviceChecked:!!availability.at,serviceChecking:availability.checking};}
 function wake(){root.GPFocus?.render?.();}
 async function loadPreferences(state){
  if(!state?.db||!state.account)return;
@@ -75,6 +76,27 @@ async function enable(state=current()){
   return {enabled:true,account:state.account};
  }catch(e){x.lastError=String(e.message||e).slice(0,180);throw e;}
  finally{x.syncing=false;wake();}
+}
+/* Opt in to a GitHub Actions-secret-backed collector AFTER its first
+ * successful run. The user must put their key into GitHub Actions Secrets
+ * themselves; this function never sends or writes a GitHub secret. */
+async function connectGithub(state=current()){
+ if(!state?.key||!state?.account||!state.db)
+  throw Error('Connect your Golden Peanut trading account first.');
+ const x=getEntry(state.account);
+ if(x.syncing)throw Error('A monitor check is already running.');
+ x.lastError=null;x.syncing=true;wake();
+ try{
+  const result=await request(state,'/status');
+  if(result.backend!=='github-actions'||!result.enabled)
+   throw Error('No active GitHub monitor for this account yet. Add the GitHub Actions secret and allow its first collection to finish.');
+  await state.db.put('config',state.account,'cloud-account-monitor-v1',{
+   enabled:true,mode:'github-actions',confirmedAt:now(),intervalMinutes:30
+  });
+  x.enabled=true;x.consent=true;x.checkedAt=0;x.status=result;
+ }catch(e){x.lastError=String(e.message||e).slice(0,200);throw e;}
+ finally{x.syncing=false;wake();}
+ return refresh(state,{force:true});
 }
 async function refresh(state=current(),{force=false}={}){
  if(!state?.account||!state?.key||!state?.db)return null;
@@ -185,6 +207,6 @@ function start(){
  setTimeout(()=>{void connect();},1500);
  setInterval(()=>{if(!document.hidden)void connect();},5*60000);
 }
-root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,disable,loadPreferences,probeHealth};
+root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,disable,loadPreferences,probeHealth,connectGithub};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(typeof globalThis!=='undefined'?globalThis:this);
