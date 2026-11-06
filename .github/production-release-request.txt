@@ -1,6 +1,8 @@
-Golden Peanut approved private monitor enrollment repair — 2026-11-06.
-PR #13 merged c3464adeaf47c45ff69aacd2f4640113fcb69cfb.
-REAL private Cloudflare Worker validation #42306406004 succeeded: live /health AND browser origin OPTIONS /enroll with authorization, cache-control, content-type, x-gp-account allowed; encryption secret unchanged.
-Release UI/client fix: remove browser preflight cache-control request header; replace WebView-native confirm with a visible checkbox and explicit Start background monitoring button. Persist consent state through asynchronous focus rerenders. Show inline success/failure without claim of account enrollment prior to affirmative user action.
-Android and desktop regression run #42306211481 passed.
-Do not clear account IndexedDB, collector D1, encrypted Worker keys or actual buy/sell orders. No personal GW2 credentials in build. Golden Peanut Cloudflare Pages existing project only.
+Approved private GitHub trade-monitor fallback UI — 2026-11-06
+Existing Cloudflare Pages production project: thegoldenpeanut, branch main.
+Merged PR #16: cbdb99a55bb12238a458c12a954cbeb287a5f506.
+The Cloudflare Worker cannot access ArenaNet from its shared egress due to persistent HTTP 429. Private monitor Worker successfully deployed in GitHub fallback relay mode; separate private account collector is scheduled in GitHub Actions at 11,41 minutes each hour.
+The user must place matching GW2 API key as GitHub Actions secret named GW2_PRIVATE_MONITOR_KEY. Not enrolled until secret exists AND first collector run completes. App shows explicit instructions and does not automatically send key to restricted Worker.
+All key material remains out of GitHub code and logs. Existing app key, local history, D1 public prices, queued Trading Post orders unchanged.
+Regression PR #16 CI run 42310716947 success. Monitor backend deployment run 42310905279 success.
+Android cache-bust to 7.20 alternative UI, not local IndexedDB deletion.
