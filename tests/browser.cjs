@@ -49,8 +49,42 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(backup.bytes>0&&backup.configs>0);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders[0].expectedProfit=Infinity;GPFocus.goto('today');GPFocus.render();});
  assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
- await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;GPFocus.render();});
- assert.match(await page.locator('#focus-best-rows').innerText(),/No execution-calibrated 24-hour forecast yet/);
+ await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];s.opportunityPlan.activeBook={entries:[]};GPFocus.render();});
+ assert.match(await page.locator('#focus-best-rows').innerText(),/No quote-supported markets surfaced in this scan/);
+ // Integrated regression: old profitable equipment and unfamiliar public markets
+ // MUST survive the strict no-cohort forecast, with no invented daily volume.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,stamp=new Date().toISOString();
+  s.meta[301]={id:301,name:"Cleric's Pearl Sword"};
+  s.meta[302]={id:302,name:"Dire Pearl Reaver"};
+  s.meta[303]={id:303,name:"Berserker's Shattered Sword"};
+  s.opportunityPlan.marketChoices=[
+   {id:301,itemName:"Cleric's Pearl Sword",buy:10000,exit:20000,quantity:3,cap:3,conservativeOrderCap:3,
+    asOf:stamp,repeatEvidence:true,buyWeeks:4,sellWeeks:4,nightUnits:2,observedNightBuys:3,openBuys:0},
+   {id:303,itemName:"Berserker's Shattered Sword",buy:8000,exit:16000,quantity:2,cap:2,conservativeOrderCap:2,
+    asOf:stamp,repeatEvidence:true,buyWeeks:3,sellWeeks:3,nightUnits:0,openBuys:0}
+  ];
+  s.opportunityPlan.publicResearch=[{id:302,name:"Dire Pearl Reaver",buy:4500,exit:8500,
+   buyQty:70,sellQty:60,observations:1,openBuys:0,at:stamp}];
+  s.opportunityPlan.publicCatalogue={items:27999};
+  s.opportunityPlan.candidateRefresh={checked:6500,phase:'expanded'};
+  GPFocus.goto('today');GPFocus.render();
+ });
+ const enriched=await page.locator('#focus-best-rows').innerText();
+ assert.match(enriched,/HISTORY-BACKED MARKETS/);
+ assert.match(enriched,/Cleric's Pearl Sword/);
+ assert.match(enriched,/Berserker's Shattered Sword/);
+ assert.match(enriched,/NEW MARKET DISCOVERY/);
+ assert.match(enriched,/Dire Pearl Reaver/);
+ assert.match(enriched,/per ONE unit/);
+ assert.doesNotMatch(enriched,/20 units.*Dire Pearl Reaver/);
+ assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),3);
+ await page.locator('#focus-best-rows .focus-connected-market').last().click();
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
+ await page.evaluate(()=>{const s=GoldenPeanutClean.State;
+  s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
+  GPFocus.goto('today');GPFocus.render();
+ });
  // Regression: the prospective-only model MUST NOT make real recent winners vanish.
  // Retain a useful read-only ranked market list when no exact-size cohorts qualify.
  await page.evaluate(()=>{
