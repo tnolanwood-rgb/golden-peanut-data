@@ -16,7 +16,7 @@ const headers=(request)=>{
  const origin=request.headers.get('Origin');
  return {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
   'Content-Security-Policy':"default-src 'none'",
-  'Vary':'Origin',...(origin===PUBLIC_ORIGIN?{'Access-Control-Allow-Origin':PUBLIC_ORIGIN,'Access-Control-Allow-Headers':'authorization,content-type','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
+  'Vary':'Origin',...(origin===PUBLIC_ORIGIN?{'Access-Control-Allow-Origin':PUBLIC_ORIGIN,'Access-Control-Allow-Headers':'authorization,content-type,x-gp-account','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
 };
 function response(request,status,body){return new Response(JSON.stringify(body),{status,headers:{...headers(request),'Content-Type':'application/json;charset=utf-8'}});}
 function accessKey(request){
