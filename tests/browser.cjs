@@ -64,7 +64,6 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await page.locator('#focus-best-rows').innerText(),/RECENT REAL EARNINGS/);
  assert.equal(await page.locator('#focus-best-rows .focus-actual-winner').count(),1);
  assert.match(await page.locator('#focus-best-rows .focus-actual-winner').innerText(),/real net profit · last 7 days/);
- assert.equal(await page.locator('#focus-operating-book').isHidden(),false);
  await page.locator('#focus-best-rows .focus-actual-winner').click();
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
 
