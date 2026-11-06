@@ -278,6 +278,41 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Back within Golden Peanut'}).click();
  await page.waitForFunction(()=>document.querySelector('#focus-trade-list-view')&&!document.querySelector('#focus-trade-list-view').hidden,{timeout:7500});
  assert.equal(await page.locator('#focus-trade-list-view').isVisible(),true);
+ // Real portrait UX: all 72 candidates reachable within ONE section,
+ // without mounting 72 cards on the main screen at once.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,stamp=new Date().toISOString();
+  s.account='Fixture.1234';s.key='fixture-key-not-a-real-key';
+  s.snapshot={...(s.snapshot||{}),account:s.account,at:stamp,wallet:125000,buys:[],sells:[],
+   buysVerified:true,sellsVerified:true,delivery:{items:[],coins:0}};
+  const items=Array.from({length:72},(_,i)=>({
+   id:6000+i,name:"Magi's Exalted Test Coat "+i,type:'Armor',rarity:'Exotic',
+   buy:1200+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
+  }));
+  for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:'Armor',rarity:'Exotic'};
+  s.opportunityPlan={...s.opportunityPlan,ok:true,asOf:stamp,publicResearch:items,
+   marketChoices:[],orders:[],activeBook:{entries:[]}};
+  GPFocus.goto('today');GPFocus.render();
+ });
+ const armorSection=page.locator('#focus-best-rows [data-section-id="exotic-armour"]');
+ assert.equal(await armorSection.count(),1);
+ assert.match(await armorSection.innerText(),/of 72 markets/);
+ const armorScroll=armorSection.locator('.focus-section-scroll');
+ const earlyRows=await armorSection.locator('.focus-connected-market').count();
+ assert.ok(earlyRows>=6&&earlyRows<72,'first render should not truncate candidates or mount 72 cards at once');
+ await armorSection.locator('.focus-section-more').click();
+ const extended=await armorSection.locator('.focus-connected-market').count();
+ assert.ok(extended>earlyRows,'Show more should reveal more equipment');
+ await armorScroll.evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll',{bubbles:true}));});
+ await page.waitForTimeout(350);
+ assert.ok((await armorSection.locator('.focus-connected-market').count())>extended,
+  'scrolling the exotic section should reveal further equipment');
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');
+ const scrollSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null')?.sectionScrolls);
+ assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
+ const watch=page.locator('#focus-best-rows .focus-account-watcher');
+ assert.equal(await watch.count(),1);
+ assert.match(await watch.innerText(),/Enable background trade watching/);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
