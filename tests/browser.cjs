@@ -13,7 +13,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/account/wallet'))data=[{id:1,value:10000}];
   else if(u.pathname.endsWith('/commerce/delivery'))data={coins:0,items:[]};
   else if(u.pathname.endsWith('/commerce/prices'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,buys:{unit_price:99,quantity:100},sells:{unit_price:id===2?241:201,quantity:100}}));
-  else if(u.pathname.endsWith('/items'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,name:'Fixture opportunity '+id,type:'Weapon',rarity:'Exotic',level:80,flags:[],details:{type:'Sword'},icon:''}));
+  else if(u.pathname.endsWith('/items')){
+   const family={301:["Cleric's Pearl Sword",'Weapon'],302:['Dire Pearl Reaver','Weapon'],
+    303:["Berserker's Shattered Sword",'Weapon'],304:["Magi's Exalted Coat",'Armor'],
+    401:["Berserker's Pearl Peer 401",'Weapon'],402:["Berserker's Pearl Peer 402",'Weapon'],
+    403:["Berserker's Pearl Peer 403",'Weapon']};
+   data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({
+    id,name:family[id]?.[0]||'Fixture opportunity '+id,type:family[id]?.[1]||'Weapon',
+    rarity:'Exotic',level:80,flags:[],details:{type:'Sword'},icon:''
+   }));
+  }
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
