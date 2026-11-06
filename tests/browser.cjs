@@ -257,7 +257,17 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
  await page.reload(); // Worst-case native Activity teardown/recreation.
- await page.waitForFunction(()=>window.GPFocus&&document.querySelector('#focus-trade-detail'));
+ await page.waitForFunction(()=>window.GPFocus&&document.querySelector('#focus-trade-detail')&&!document.querySelector('#focus-trade-detail').hidden,
+  {timeout:7500}).catch(async error=>{
+  const state=await page.evaluate(()=>({saved:JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null'),
+   headline:document.querySelector('#focus-title')?.textContent,
+   selectedHidden:document.querySelector('#focus-trade-detail')?.hidden,
+   selectedText:document.querySelector('#focus-trade-detail')?.textContent?.slice(0,450),
+   selectedTab:[...document.querySelectorAll('[data-focus-page]')].filter(x=>!x.hidden).map(x=>x.dataset.focusPage),
+   errorText:document.querySelector('#focus-sync-state')?.textContent}));
+  console.log('ORIENTATION_RECOVERY_DIAG '+JSON.stringify(state));
+  throw error;
+ });
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true,
   'page recreation must not redirect to Best Trades or erase the selected market');
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Dire Pearl Reaver/);
