@@ -1,0 +1,13 @@
+{
+  "name": "golden-peanut",
+  "version": "7.16.0",
+  "private": true,
+  "scripts": {
+    "test": "node tests/execution.test.cjs",
+    "test:browser": "node tests/browser.cjs",
+    "check": "python scripts/check_release.py"
+  },
+  "devDependencies": {
+    "playwright-core": "1.58.2"
+  }
+}
