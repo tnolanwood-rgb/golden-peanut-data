@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{}},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -59,39 +59,80 @@ async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();i
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
  try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
-function save(){try{const persist={tab:ui.tab,tradeFilter:ui.tradeFilter,bulkLot:ui.bulkLot,tradeSearch:ui.tradeSearch,tradeAll:ui.tradeAll,capitalMode:ui.capitalMode,orderLane:ui.orderLane,orderSearch:ui.orderSearch,orderAll:ui.orderAll,legendSection:ui.legendSection};localStorage.setItem(STORE,JSON.stringify(persist));}catch{}}
-function load(){const old=safeGet();if(!old||typeof old!=='object')return;for(const key of ['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode','orderLane','orderSearch','orderAll','legendSection'])if(Object.hasOwn(old,key))ui[key]=old[key];if(!NAMES[ui.tab])ui.tab='today';if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';}
-// Android Back gesture follows the in-app history rather than abruptly closing
-// a page when a trade or legendary research view is open.
+function save(){try{const persist={tab:ui.tab,tradeFilter:ui.tradeFilter,bulkLot:ui.bulkLot,tradeSearch:ui.tradeSearch,tradeAll:ui.tradeAll,capitalMode:ui.capitalMode,orderLane:ui.orderLane,orderSearch:ui.orderSearch,orderAll:ui.orderAll,legendSection:ui.legendSection,marketResearchLot:ui.marketResearchLot};localStorage.setItem(STORE,JSON.stringify(persist));}catch{}}
+function load(){const old=safeGet();if(!old||typeof old!=='object')return;for(const key of ['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode','orderLane','orderSearch','orderAll','legendSection','marketResearchLot'])if(Object.hasOwn(old,key))ui[key]=old[key];if(!NAMES[ui.tab])ui.tab='today';if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);if(![1,3,5,10,20,50,100,250].includes(Number(ui.marketResearchLot)))ui.marketResearchLot=10;else ui.marketResearchLot=Number(ui.marketResearchLot);if(!['wallet','selective','all'].includes(ui.capitalMode))ui.capitalMode='wallet';if(!['review','buy','sell'].includes(ui.orderLane))ui.orderLane='review';if(!['overview','shopping','crafting','collections'].includes(ui.legendSection))ui.legendSection='overview';}
+// Chromium can skip same-document history entries inserted without user activation.
+// Never seed a synthetic pushState on startup. Push real intra-app destinations
+// from user-initiated clicks, and keep a visible Back control as a PWA fallback.
 function viewHistory(){return {goldenPeanutFocus:true,tab:ui.tab,tradeDetail:ui.tradeDetail,
  growthDetail:ui.growthDetail,relatedDetail:ui.relatedDetail,orderDetail:ui.orderDetail,
  tradeY:ui.tradeY,orderY:ui.orderY,research:!!$('focus-research')&&!$('focus-research').hidden};}
-function pushHistory(){if(!navReady||restoringNav)return;try{history.pushState(viewHistory(),'');}catch{}}
-function backToList(kind='trades'){
- if(window.history.state?.goldenPeanutFocus&&window.history.length>1){window.history.back();return;}
- if(kind==='orders'){ui.orderDetail=null;renderOrders();window.scrollTo({top:ui.orderY,behavior:'instant'});}
- else {ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;renderTrades();window.scrollTo({top:ui.tradeY,behavior:'instant'});}
+function routeDepth(){const n=Number(history.state?.gpIndex);return history.state?.goldenPeanutFocus&&Number.isSafeInteger(n)&&n>0?n:0;}
+function updateBackAffordance(){
+ const b=$('focus-back-main');if(!b)return;
+ const detail=!!(ui.tradeDetail||ui.growthDetail||ui.relatedDetail||ui.orderDetail);
+ b.hidden=!(routeDepth()>0||detail||ui.tab!=='today');
 }
-function restoreView(ev){const v=ev.state;
- if(v?.goldenPeanutRoot){
-  // The first Android Back gesture from the root returns to Best Trades, not
-  // straight out of the installed app. OS Home is still available normally.
-  restoringNav=true;
-  try{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.orderDetail=null;
-   if($('focus-research')&&!$('focus-research').hidden)closeResearch();goto('today',{scroll:false});window.scrollTo({top:0,behavior:'instant'});
-  }finally{restoringNav=false;}
-  try{history.pushState(viewHistory(),'');}catch{}
-  return;
- }
- if(!v?.goldenPeanutFocus)return;
+function pushHistory(){
+ if(!navReady||restoringNav)return;
+ try{history.pushState({...viewHistory(),gpIndex:routeDepth()+1},'');}catch{}
+ updateBackAffordance();
+}
+function showMainRoot(){
  restoringNav=true;
- try{ui.tradeDetail=v.tradeDetail||null;ui.growthDetail=v.growthDetail||null;ui.relatedDetail=v.relatedDetail||null;
+ try{
+  ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.orderDetail=null;ui.selectedMarket=null;
+  if($('focus-research')&&!$('focus-research').hidden)closeResearch();
+  goto('today',{scroll:false});window.scrollTo({top:0,behavior:'instant'});
+ }finally{restoringNav=false;updateBackAffordance();}
+}
+function navigateBack(){
+ if($('focus-research')&&!$('focus-research').hidden){
+  if(routeDepth()>0&&history.state?.research){history.back();return;}
+  closeResearch();updateBackAffordance();return;
+ }
+ if(routeDepth()>0){history.back();return;}
+ // If a native wrapper has discarded the page's navigation stack, its
+ // original URL may be unavailable. Always make the visible Back work in-app.
+ if(ui.tradeDetail||ui.growthDetail||ui.relatedDetail){ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;goto('trades',{scroll:false});window.scrollTo({top:ui.tradeY||0,behavior:'instant'});}
+ else if(ui.orderDetail){ui.orderDetail=null;goto('orders',{scroll:false});window.scrollTo({top:ui.orderY||0,behavior:'instant'});}
+ else if(ui.tab!=='today')showMainRoot();
+ updateBackAffordance();
+}
+function backToList(kind='trades'){
+ if(routeDepth()>0){navigateBack();return;}
+ if(kind==='orders'){ui.orderDetail=null;renderOrders();window.scrollTo({top:ui.orderY||0,behavior:'instant'});}
+ else {ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;renderTrades();window.scrollTo({top:ui.tradeY||0,behavior:'instant'});}
+ updateBackAffordance();
+}
+function restoreView(ev){
+ const v=ev.state;
+ if(!v?.goldenPeanutFocus){showMainRoot();return;}
+ if(v.gpIndex===0||v.goldenPeanutRoot){showMainRoot();return;}
+ restoringNav=true;
+ try{
+  ui.tradeDetail=v.tradeDetail||null;ui.growthDetail=v.growthDetail||null;ui.relatedDetail=v.relatedDetail||null;
   ui.orderDetail=v.orderDetail||null;ui.tradeY=v.tradeY||0;ui.orderY=v.orderY||0;
   if(!v.research&&$('focus-research')&&!$('focus-research').hidden)closeResearch();
   goto(NAMES[v.tab]?v.tab:'today',{scroll:false});
   if(v.research&&$('focus-research')?.hidden)showResearch();
   window.scrollTo({top:ui.tradeDetail||ui.growthDetail||ui.relatedDetail||ui.orderDetail?0:ui.tradeY||0,behavior:'instant'});
- }finally{restoringNav=false;}}
+ }finally{restoringNav=false;updateBackAffordance();}
+}
+function installEdgeSwipeBack(){
+ // Fallback for edge swipes reaching the DOM; Android system gestures can
+ // bypass the page entirely and must be tested on the actual installed PWA.
+ let touch=null;
+ document.addEventListener('touchstart',ev=>{
+  const t=ev.touches?.[0];touch=t&&t.clientX<32?{x:t.clientX,y:t.clientY}:null;
+ },{passive:true});
+ document.addEventListener('touchend',ev=>{
+  if(!touch)return;
+  const t=ev.changedTouches?.[0],delta=t?{x:t.clientX-touch.x,y:t.clientY-touch.y}:null;touch=null;
+  if(delta&&delta.x>100&&Math.abs(delta.y)<75)navigateBack();
+ },{passive:true});
+ document.addEventListener('touchcancel',()=>{touch=null;},{passive:true});
+}
 function labelText(id,value){const x=$(id);if(x)x.textContent=value;}
 function button(text,fn,cls='focus-button'){const b=h('button',cls,text);b.type='button';b.addEventListener('click',fn);return b;}
 function syncNow(){const b=$('gp57-refresh');if(b&&!b.disabled){b.click();labelText('focus-sync-state','Checking account and opportunities…');}else labelText('focus-sync-state',"Account isn't ready to refresh yet.");}
@@ -103,17 +144,17 @@ function pushHistoryForResearch(){
  if(!navReady||restoringNav)return;
  try{history.pushState({...viewHistory(),research:true},'');}catch{}
 }
-function dismissResearch(){if(window.history.state?.goldenPeanutFocus&&window.history.state.research&&window.history.length>1){history.back();return;}closeResearch();}
+function dismissResearch(){if(routeDepth()>0&&history.state?.research){history.back();return;}closeResearch();updateBackAffordance();}
 function closeResearch(){const box=$('focus-research');if(box)box.hidden=true;const engine=$('focus-engine');if(engine)engine.hidden=true;document.body.classList.remove('focus-modal-open');for(const x of [document.querySelector('main'),$('focus-top'),document.querySelector('.focus-primary-nav')])if(x)x.inert=false;lastResearchFocus?.focus?.();}
 function goto(tab,{scroll=true}={}){if(!NAMES[tab])return;const previousTab=ui.tab;ui.tab=tab;save();const isLegend=tab==='legendaries';if(isLegend){$('nav-legend').click();}else{$('nav-desk').click();}
  for(const el of document.querySelectorAll('[data-focus-page]'))el.hidden=el.dataset.focusPage!==tab;
  for(const el of document.querySelectorAll('[data-focus-nav]')){const active=el.dataset.focusNav===tab;el.classList.toggle('is-active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');}
  labelText('focus-title',NAMES[tab]);labelText('focus-subtitle',tab==='today'?'Highest-value markets first':tab==='trades'?'History-backed opportunities and new full-market research':tab==='orders'?'Your active buying and selling positions':'Your legendary projects');
- if(tab==='orders')scheduleReviews();if(tab==='legendaries')updateLegendView();if(scroll){window.scrollTo({top:0,behavior:'instant'});}if(previousTab!==tab)pushHistory();schedule();}
+ if(tab==='orders')scheduleReviews();if(tab==='legendaries')updateLegendView();if(scroll){window.scrollTo({top:0,behavior:'instant'});}if(previousTab!==tab)pushHistory();updateBackAffordance();schedule();}
 function install(){if(started)return;started=true;load();ui.tab='today';document.body.classList.add('focus-edition');document.title='The Golden Peanut — Focus Edition';
  const app=document.querySelector('.app'),main=app?.querySelector('main'),desk=$('view-desk');if(!app||!main||!desk)return;
- const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><div><p class="focus-kicker">THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
- main.before(toolbar);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
+ const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><button type="button" id="focus-back-main" class="focus-icon-button focus-main-back" aria-label="Back within Golden Peanut" hidden>←</button><div><p class="focus-kicker"THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
+ main.before(toolbar);$('focus-back-main').addEventListener('click',navigateBack);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
  const nav=h('nav','focus-primary-nav');nav.setAttribute('aria-label','Primary navigation');for(const key of ['today','trades','orders','legendaries']){const b=h('button','focus-nav-button');b.type='button';b.dataset.focusNav=key;b.setAttribute('aria-label',NAMES[key]);const glyph=h('span','focus-nav-glyph',ICO[key]);glyph.setAttribute('aria-hidden','true');b.append(glyph,h('span','focus-nav-text',key==='trades'?'Trades':key==='orders'?'Orders':NAMES[key]));b.addEventListener('click',()=>goto(key));nav.append(b);}app.append(nav);
  const rootPage=h('div','focus-workspaces');rootPage.id='focus-workspaces';for(const key of ['today','trades','orders']){const page=h('section','focus-page');page.dataset.focusPage=key;page.id='focus-'+key;page.hidden=true;rootPage.append(page);}desk.prepend(rootPage);
  const overlay=h('div','focus-research');overlay.id='focus-research';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Detailed research and account settings');overlay.innerHTML='<div class="focus-research-bar"><strong>Research & settings</strong><button class="focus-icon-button" id="focus-research-close" aria-label="Close research">✕</button></div>';
@@ -124,11 +165,11 @@ function install(){if(started)return;started=true;load();ui.tab='today';document
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});goto(ui.tab,{scroll:false});window.setTimeout(schedule,350);
  root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>{renderToday();renderTrades();renderOrders();updateLegendView();},cash};
  try{
-  // A synthetic in-app root entry keeps Android predictive Back in our stack.
-  // Before 7.4, replaceState only produced one entry, so Back could close the PWA.
-  history.replaceState({goldenPeanutRoot:true},'');
-  history.pushState(viewHistory(),'');
+  // Preserve the real initial history entry. Chromium skips startup-generated
+  // pushState entries without user activation on Android physical Back.
+  history.replaceState({...viewHistory(),gpIndex:0,goldenPeanutRoot:true},'');
   navReady=true;rootGuardReady=true;window.addEventListener('popstate',restoreView);
+  installEdgeSwipeBack();updateBackAffordance();
  }catch{}
 }
 function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
