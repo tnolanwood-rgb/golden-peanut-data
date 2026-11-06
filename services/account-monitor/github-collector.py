@@ -327,10 +327,10 @@ def run():
         metrics, buys, sells = poll(account)
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
-    except MonitorProblem as e:
-        # The operator sees a SAFE error. No private account data, token,
-        # URLs with credentials, or API response bodies are ever logged.
-        safe = str(e)[:180]
+    except Exception as e:
+        # No API keys, account names, API response bodies, raw SQL parameters
+        # or Python tracebacks enter GitHub Actions logs.
+        safe = str(e)[:180] if isinstance(e,MonitorProblem) else 'unexpected collector processing error'
         print('Monitor check inconclusive:', safe)
         try:
             db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1
