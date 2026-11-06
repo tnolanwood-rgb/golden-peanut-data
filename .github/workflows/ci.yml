@@ -2,7 +2,13 @@ name: Golden Peanut regression checks
 on:
   pull_request:
   push:
-    branches: [main, 'development/**']
+    branches: [main]
+    paths-ignore:
+      - 'data/**'
+  workflow_dispatch:
+concurrency:
+  group: golden-peanut-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
