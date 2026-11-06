@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   deploy-production:
-    name: Validate 7.16 and deploy existing Pages production
+    name: Validate and deploy existing Pages production
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -71,7 +71,7 @@ jobs:
           npm test
           test -x /usr/bin/chromium
           npm run test:browser
-      - name: Deploy 7.16 into EXISTING production Pages origin
+      - name: Deploy approved app into EXISTING production Pages origin
         shell: bash
         run: |
           npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch main
@@ -94,6 +94,39 @@ jobs:
                   print('Production verification retry '+str(attempt+1)+': '+type(e).__name__)
               if attempt==7: raise SystemExit('Deployment returned success but production version not verified')
               time.sleep(5)
+          PY
+
+
+      - name: Verify every critical production JavaScript module is served
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import time, urllib.request
+          origin='https://thegoldenpeanut.pages.dev/'
+          required={
+              'index.html':['portfolio-intelligence.js?v=718-deployment','capacity-intelligence.js','focus-edition.js'],
+              'portfolio-intelligence.js':['GPPortfolio','conditionalWeek','reservedInExistingBuys'],
+              'capacity-intelligence.js':['GPCapacity','scenarios'],
+              'market-board.js':['GPMarketBoard','newMarkets'],
+              'opportunity-engine.js':['GPOpportunity','evaluateResearch'],
+              'focus-edition.js':['renderDeploymentPlanner','renderCapacityExplorer']
+          }
+          for file,markers in required.items():
+              url=origin if file=='index.html' else origin+file
+              for attempt in range(6):
+                  try:
+                      req=urllib.request.Request(url,headers={
+                          'Cache-Control':'no-cache','User-Agent':'GoldenPeanutAssetSmoke/1.0'})
+                      with urllib.request.urlopen(req,timeout=30) as response:
+                          content=response.read(800000).decode('utf-8','replace')
+                          if response.status!=200: raise ValueError('Not HTTP 200')
+                      if not all(marker in content for marker in markers):
+                          raise ValueError('Missing essential module signature')
+                      print('Production asset verified:',file)
+                      break
+                  except Exception as e:
+                      if attempt==5: raise SystemExit(f'{file} smoke check FAILED: {type(e).__name__}: {e}')
+                      time.sleep(5)
           PY
 
 # This workflow does not clear, migrate, or delete browser IndexedDB or D1 data.
