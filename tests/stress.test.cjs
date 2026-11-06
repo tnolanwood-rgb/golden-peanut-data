@@ -25,7 +25,7 @@ test('141,879 completed transactions and 1,549 unfamiliar leads remain bounded a
  assert.equal(e.quantity,50);
  const publicResearch=Array.from({length:1549},(_,i)=>({
   id:10000+i,name:'Dire Exalted Coat '+i,type:'Armor',rarity:'Exotic',
-  buy:2500+i,exit:7500+i,buyQty:50,sellQty:40,observations:2,
+  buy:3500+i,exit:7500+i,buyQty:50,sellQty:40,observations:2,
   at:new Date(NOW).toISOString(),openBuys:0}));
  const positions=Array.from({length:312},(_,i)=>({id:20000+i,units:1,scenarioUnits:1,capital:30000,conditionalWeek:1000}));
  const p=Portfolio.build({ok:true,marketChoices:historical,publicResearch,
