@@ -246,6 +246,18 @@ function install(){if(started)return;started=true;load();document.body.classList
  const app=document.querySelector('.app'),main=app?.querySelector('main'),desk=$('view-desk');if(!app||!main||!desk)return;
  const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><button type="button" id="focus-back-main" class="focus-icon-button focus-main-back" aria-label="Back within Golden Peanut" hidden>←</button><div><p class="focus-kicker"THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
  main.before(toolbar);$('focus-back-main').addEventListener('click',navigateBack);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
+ const watcherShortcut=h('button','focus-icon-button focus-watcher-shortcut','Watch');
+ watcherShortcut.type='button';watcherShortcut.id='focus-watcher-jump';
+ watcherShortcut.setAttribute('aria-label','Account Trade Watcher');
+ watcherShortcut.title='Background trade monitoring';
+ const openWatcher=()=>{
+  if(!navReady) return;
+  if(!document.getElementById('focus-research')?.hidden)dismissResearch();
+  goto('today',{scroll:false});
+  setTimeout(()=>document.getElementById('focus-account-watcher')?.scrollIntoView({block:'start',behavior:'smooth'}),120);
+ };
+ watcherShortcut.addEventListener('click',openWatcher);
+ $('focus-top').querySelector('.focus-top-buttons').prepend(watcherShortcut);
  const nav=h('nav','focus-primary-nav');nav.setAttribute('aria-label','Primary navigation');for(const key of ['today','trades','orders','legendaries']){const b=h('button','focus-nav-button');b.type='button';b.dataset.focusNav=key;b.setAttribute('aria-label',NAMES[key]);const glyph=h('span','focus-nav-glyph',ICO[key]);glyph.setAttribute('aria-hidden','true');b.append(glyph,h('span','focus-nav-text',key==='trades'?'Trades':key==='orders'?'Orders':NAMES[key]));b.addEventListener('click',()=>goto(key));nav.append(b);}app.append(nav);
  const rootPage=h('div','focus-workspaces');rootPage.id='focus-workspaces';for(const key of ['today','trades','orders']){const page=h('section','focus-page');page.dataset.focusPage=key;page.id='focus-'+key;page.hidden=true;rootPage.append(page);}desk.prepend(rootPage);
  const overlay=h('div','focus-research');overlay.id='focus-research';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Detailed research and account settings');overlay.innerHTML='<div class="focus-research-bar"><strong>Research & settings</strong><button class="focus-icon-button" id="focus-research-close" aria-label="Close research">✕</button></div>';
@@ -683,10 +695,19 @@ function renderDeploymentPlanner(host,state){
  * No account credential is transmitted unless Enable is pressed. */
 function renderAccountWatcher(host,state){
  const cloud=root.GPCloudAccount,account=state?.account;
- if(!cloud||!account||!state?.key)return;
- const info=cloud.status(account);
- const wrapper=h('section','focus-account-watcher');
+ const wrapper=h('section','focus-account-watcher');wrapper.id='focus-account-watcher';
  wrapper.append(h('strong','','ACCOUNT TRADE WATCHER'));
+ // Monitoring is a connection/security control, not a market forecast:
+ // always display it, even while quotes are old or the account sync is busy.
+ if(!cloud){
+  wrapper.append(h('p','focus-muted','Trade monitor component is unavailable in this build. Refresh the app without clearing stored trading history.'));
+  host.append(wrapper);return;
+ }
+ if(!account||!state?.key){
+  wrapper.append(h('p','focus-muted','Connect your GW2 Trading Post API key using ⚙ Account settings to activate background monitoring. Your existing stored trading history remains intact.'));
+  host.append(wrapper);return;
+ }
+ const info=cloud.status(account);
  const intro=h('p','focus-muted');
  if(!info.enabled){
   intro.textContent=info.serviceReady?
@@ -748,7 +769,9 @@ function renderOpportunityHome(){
   if(stop)stop.hidden=!scanning;
   if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
  }
- host.replaceChildren();const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ host.replaceChildren();
+ renderAccountWatcher(host,s);
+ const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
  if(fresh){
   const observedBuy=(s?.orderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
   const observedSell=(s?.sellOrderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
@@ -759,7 +782,6 @@ function renderOpportunityHome(){
    num(observedBuy)+' observed buy-fill units · '+num(observedSell)+' observed sell-fill units since tracking. '+
    'Updated when the app checks your account; it cannot monitor closed. Disappearing orders are not assumed filled.');
   host.append(line);
-  renderAccountWatcher(host,s);
   renderDeploymentPlanner(host,s);
  }
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
