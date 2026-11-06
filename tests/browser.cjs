@@ -28,6 +28,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
+ // Never rely on an activation-less startup pushState: Android skips it.
+ assert.equal(await page.evaluate(()=>history.state?.gpIndex),0);
+
  const setup=await page.evaluate(async()=>{
   const s=GoldenPeanutClean.State;s.account='Fixture.1234';
   s.snapshot=await s.api.snapshot('fixture-key-not-a-credential',s.account);s.ledger=[];
@@ -95,10 +98,41 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(enriched,/CHEAPER EXOTIC ARMOUR/);
  assert.match(enriched,/Dire Pearl Reaver/);
  assert.match(enriched,/Magi's Exalted Coat/);
- assert.match(enriched,/Net margin per unit IF resold/);
+ assert.match(enriched,/Net IF ALL 10 buy AND resell/);
  assert.doesNotMatch(enriched,/Jormag's Claw Fragment|20 units.*Dire Pearl Reaver/);
  assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),4);
+ // The quantity control MUST live on the market LIST, not only item details.
+ const marketLot=page.locator('#focus-best-rows .focus-market-lot-select');
+ assert.equal(await marketLot.inputValue(),'10');
+ await marketLot.selectOption('50');
+ const resized=await page.locator('#focus-best-rows').innerText();
+ assert.match(resized,/Research 50 ×/);
+ assert.match(resized,/Net IF ALL 50 buy AND resell/);
+ assert.doesNotMatch(resized,/3-day comparable ACTIVE-pace: 6–10/);
  await page.locator('#focus-best-rows .focus-connected-market').last().click();
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
+ assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
+ // History was pushed by the actual item tap; the Android-equivalent browser
+ // Back must return to the in-app list, not navigate out of our app.
+ assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
+ await page.goBack();
+ await page.waitForFunction(()=>!document.querySelector('#focus-trade-list-view').hidden);
+ assert.equal(new URL(page.url()).origin,origin);
+ const topBack=page.getByRole('button',{name:'Back within Golden Peanut'});
+ assert.equal(await topBack.isVisible(),true);
+ const detailReturnDepth=await page.evaluate(()=>history.state?.gpIndex);
+ await topBack.click();
+ await page.waitForFunction(()=>!document.querySelector('#focus-today').hidden);
+ assert.equal(new URL(page.url()).origin,origin);
+ assert.equal(await page.evaluate(()=>history.state?.gpIndex),detailReturnDepth-1);
+ // A second genuine tab tap creates a working Back path as well.
+ await page.locator('[data-focus-nav="trades"]').click();
+ assert.equal(await topBack.isVisible(),true);
+ await page.goBack();
+ await page.waitForFunction(()=>!document.querySelector('#focus-today').hidden);
+ assert.equal(new URL(page.url()).origin,origin);
+ // Re-enter the Pearl detail for the execution benchmark regression.
+ await page.locator('#focus-best-rows .focus-connected-market').filter({hasText:'Dire Pearl Reaver'}).click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  // Capacity explorer must work beyond wallet funds, with source-aware peers.
  await page.evaluate(()=>{
@@ -131,6 +165,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await forecastRows.count(),3);
  assert.match(await forecastRows.nth(1).innerText(),/3 days/);
  assert.match(await page.locator('#focus-trade-detail .focus-capacity-evidence').innerText(),/Similar items/);
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-peer-warning').innerText(),/NOT an estimate of how many of this particular item will fill/);
  assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
  await page.evaluate(()=>GPFocus.render());
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
