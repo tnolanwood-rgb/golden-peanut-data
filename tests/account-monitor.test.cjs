@@ -132,3 +132,28 @@ test('private tokens must never appear literally in monitor source or a browser-
  assert.match(source,/commerce\/transactions\/history/);
  assert.ok(!source.includes('console.log(key)'));
 });
+
+test('bulk order-night query is authenticated, bounded, and fails closed on incomplete samples',async()=>{
+ const {default:worker}=await moduleTask;
+ const seen=[];
+ const env={DB:{prepare(sql){
+  return {bind(...params){this.params=params;return this;},
+   async first(){return {account_id:'private-uuid',account_name:'Fixture.1234',enabled:1,encrypted:null};},
+   async all(){seen.push({sql,params:this.params});
+    return {results:[{item_id:101,side:'buys',night:'2026-11-05',filled:0,observedOrders:1}]};}
+  };
+ }}};
+ const headers={Origin:origin,Authorization:'Bearer '+key};
+ const yes=await worker.fetch(req('/nights?items=101,102','GET',headers),env,{});
+ assert.equal(yes.status,200);
+ const body=await yes.json();
+ assert.equal(body.complete,true);
+ assert.equal(body.nights[0].filled,0,'zero-fill night cannot be discarded');
+ assert.equal(seen.length,1);
+ assert.equal(seen[0].params.length,4);
+ assert.ok(seen[0].sql.includes('GROUP BY item_id,side,night'));
+ assert.ok(seen[0].sql.includes('account_id=?'));
+ assert.equal((await worker.fetch(req('/nights?items=101,101','GET',headers),env,{})).status,400);
+ assert.equal((await worker.fetch(req('/nights?items='+Array.from({length:41},(_,i)=>i+1).join(','),'GET',headers),env,{})).status,400);
+ assert.equal((await worker.fetch(req('/nights?items=101,102'),env,{})).status,401);
+});
