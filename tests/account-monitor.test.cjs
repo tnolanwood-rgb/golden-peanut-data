@@ -36,7 +36,7 @@ test('private monitor diagnostics probes only public GW2 API without credentials
   const json=await result.json();
   assert.equal(json.guildWars2ApiReachable,true);
   assert.equal(json.keyReady,true);assert.equal(json.dbReady,true);
-  assert.equal(calls.length,1);assert.match(calls[0][0],/api.guildwars2.com\\/v2\\/build/);
+  assert.equal(calls.length,1);assert.match(calls[0][0],/api\.guildwars2\.com\/v2\/build/);
   assert.ok(!calls[0][1]?.headers?.Authorization);
  }finally{global.fetch=old;}
 });
