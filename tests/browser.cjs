@@ -323,6 +323,17 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await watch.count(),1);
  assert.match(await watch.innerText(),/Off-phone monitoring is NOT ACTIVE/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
+ // This is an account setting, not a trading forecast: it must remain
+ // visible when price/forecast research goes stale.
+ await page.evaluate(()=>{GoldenPeanutClean.State.opportunityPlan.at=0;GPFocus.render();});
+ await page.waitForFunction(()=>document.querySelector('#focus-account-watcher'));
+ assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/ACCOUNT TRADE WATCHER/);
+ await page.evaluate(()=>GPFocus.goto('trades'));
+ await page.getByRole('button',{name:'Account Trade Watcher'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-account-watcher')?.getBoundingClientRect().top<innerHeight);
+ assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/Off-phone monitoring is NOT ACTIVE/);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
