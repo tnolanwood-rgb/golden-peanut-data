@@ -91,6 +91,29 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),4);
  await page.locator('#focus-best-rows .focus-connected-market').last().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
+ // Capacity explorer must work beyond wallet funds, with source-aware peers.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,now=Date.now(),day=86400000;
+  for(const id of [401,402,403]){
+   s.meta[id]={id,name:"Berserker's Pearl Peer "+id,type:'Weapon',rarity:'Exotic'};
+   for(let i=0;i<4;i++){
+    const at=now-(80-i*3)*day,q=2+i%2;
+    s.ledger.push({key:'peer-buy-'+id+'-'+i,item:id,id:7000+id*100+i,side:'buy',q,price:4500,purchased:at,created:at-3600000});
+    s.ledger.push({key:'peer-sell-'+id+'-'+i,item:id,id:8000+id*100+i,side:'sell',q,price:8000,purchased:at+day,created:at+day-3600000});
+   }
+  }
+  GPFocus.goto('today');GPFocus.render();
+ });
+ await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').first().click();
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/HOW MUCH COULD FILL & RESELL/);
+ const qtyPicker=page.locator('#focus-trade-detail .focus-capacity-select');
+ await qtyPicker.selectOption('50');
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-overview').innerText(),/Gold required IF order placed/);
+ const forecastRows=page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]');
+ assert.equal(await forecastRows.count(),3);
+ assert.match(await forecastRows.nth(1).innerText(),/3 days/);
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-evidence').innerText(),/Similar items/);
+ assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
   s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
   GPFocus.goto('today');GPFocus.render();
