@@ -131,7 +131,7 @@ function install(){if(started)return;started=true;load();ui.tab='today';document
   navReady=true;rootGuardReady=true;window.addEventListener('popstate',restoreView);
  }catch{}
 }
-function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST EXPECTED 24-HOUR PROFIT</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
+function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
  $('focus-deep-stop').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.stopExpanded?.(st);schedule();});
  $('focus-deep-retry').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.resumeExpanded?.(st);schedule();});
  // Put the actual funded opportunities above the old explanatory prompts.
@@ -256,6 +256,69 @@ function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
  }
  return winners.length;
 }
+/* Visible market decisions must use ALL evaluated data lanes, not only
+ * the execution model's eight-window promotion gate. Unverified public
+ * leads never receive a 24h profit, batch size or funded badge. */
+function openBoardMarket(m){
+ ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;
+ const wasTrade=ui.tab==='trades';
+ if(!wasTrade)goto('trades');
+ if(m.kind==='standing'){ui.growthDetail=m.id;}
+ else{
+  ui.tradeDetail=m.id;
+  ui.selectedMarket={...m,kind:m.kind==='new'?'lead':'research',
+   quantity:m.kind==='new'?0:m.quantity,cost:m.kind==='new'?0:m.cost,
+   scenarioProfit:m.kind==='new'?0:m.scenarioProfit,
+   observations:m.observations||0,confidence:m.evidence};
+ }
+ pushHistory();
+ if(m.kind==='standing')renderGrowthDetail();else renderTradeDetail();
+ window.scrollTo({top:0,behavior:'instant'});
+}
+function renderConnectedMarkets(host,s,{query='',limit=7}={}){
+ const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet});
+ if(!board?.ready)return {count:0,board:null};
+ const q=query.toLowerCase().trim(),shown=new Set();
+ const match=m=>!q||(itemName(m.id)+' '+m.id).toLowerCase().includes(q);
+ const group=(title,desc,items,metric,label,subtitle)=>{
+  const rows=items.filter(m=>!shown.has(m.id)&&match(m)).slice(0,limit);
+  if(!rows.length)return 0;
+  host.append(h('div','focus-list-heading',title));
+  host.append(h('p','focus-muted',desc));
+  for(const m of rows){shown.add(m.id);
+   const row=h('button','focus-market-row focus-connected-market');row.type='button';
+   row.dataset.marketTier=String(m.tier);
+   row.append(artwork(m.id));
+   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
+   middle.append(h('small','',subtitle(m)));
+   row.append(middle);
+   const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
+   side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
+   row.setAttribute('aria-label',itemName(m.id)+' · '+label(m)+' · inspect evidence');
+   row.addEventListener('click',()=>openBoardMarket(m));host.append(row);
+  }
+  return rows.length;
+ };
+ let count=0;
+ count+=group('YOUR EXISTING ORDERS · CURRENT PRICE CHECKS',
+  'Already-committed capital is not new spending money. Figures are conditional historical-week outcomes, not tonight’s income.',
+  board.standing,m=>m.conditionalWeek,()=> 'Conditional active-week profit',
+  m=>num(m.openUnits)+' already on buy orders · '+num(m.quantity)+' units at historical weekly pace');
+ count+=group('HISTORY-BACKED MARKETS · CURRENT QUOTES',
+  'Your completed buys and resales, from beyond just the last seven days, combined with current bid/ask prices. Order sizes are bounded trials, not predicted fills.',
+  board.history,m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
+  m=>m.nightUnits?'Conditional overnight reference · not guaranteed':'Net IF one buy/resale round completes',
+  m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.nightUnits?'night evidence '+num(m.nightUnits)+' units':'no measured overnight fill rate')+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet could cover lot':'needs additional spendable gold'));
+ count+=group('NEW MARKET DISCOVERY · UNVERIFIED',
+  'Independent markets outside your proven history. These are per-unit after-fee quoted margins, NOT 24-hour forecasts or bulk-buy instructions.',
+  board.newMarkets,m=>m.unitMargin,
+  ()=> 'Quoted net margin per ONE unit · no fill forecast',
+  m=>'Bid '+cash(m.buy)+' · ROI '+(m.roi*100).toFixed(1)+'% · '+(m.observations>=2?'multiple price checks':'requires another price check')+(m.craftableSupply?' · craftable':''));
+ if(!q&&board.counts.catalogue){
+  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+num(board.counts.scanned)+' currently evaluated quote candidates; '+num(board.counts.history)+' history-backed comparisons; '+num(board.counts.newMarkets)+' new unverified quoted leads. The full catalogue is searchable in Trades; it is not equivalent to 27,999 verified profitable opportunities.'));
+ }
+ return {count,board};
+}
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -282,9 +345,15 @@ function renderOpportunityHome(){
   renderVerifiedRecentMarkets(host,s);
   return;
  }
- const rows=book?.rows||[];status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESULTS · ':'')+
-  num(rows.length)+' funded markets · expected net 24h profit, descending · estimates are uncertain';
- if(!rows.length){host.append(h('p','focus-empty','No execution-calibrated 24-hour forecast yet. Eight comparable complete buy-to-resale windows per exact lot are required by the current experimental model. This does NOT erase your successful historical trading markets.'));renderVerifiedRecentMarkets(host,s);return;}
+ const rows=book?.rows||[],board=root.GPMarketBoard?.build?.(p,{wallet:userSnapshot()?.wallet});
+ status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESEARCH · ':'')+
+  num(rows.length)+' calibrated 24h orders · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
+ if(!rows.length){
+  const connected=renderConnectedMarkets(host,s,{limit:6});
+  if(!connected.count)host.append(h('p','focus-empty','No quote-supported markets surfaced in this scan. Full-market discovery is separate from execution calibration; check Trades for the complete catalogue and refresh market checks.'));
+  renderVerifiedRecentMarkets(host,s,{limit:5});
+  return;
+ }
  // A market already buying/selling with verified margin is part of the trading
  // operation. Display it *above* minor wallet-only orders when its evidenced
  // weekly profit scenario is higher.
@@ -311,8 +380,8 @@ function renderOpportunityHome(){
    window.scrollTo({top:0,behavior:'instant'});
   });host.append(row);
  }
- if(rows.length>strongest.length){const more=button('See '+num(rows.length-strongest.length)+' more ranked markets',()=>{ui.tradeFilter='best';ui.tradeDetail=null;ui.growthDetail=null;ui.capitalMode='wallet';goto('trades');},'focus-button focus-button-secondary');host.append(more);}
-
+ if(rows.length>strongest.length){const more=button('See '+num(rows.length-strongest.length)+' more calibrated markets',()=>{ui.tradeFilter='best';ui.tradeDetail=null;ui.growthDetail=null;ui.capitalMode='wallet';goto('trades');},'focus-button focus-button-secondary');host.append(more);}
+ renderConnectedMarkets(host,s,{limit:6});
 }
 function renderPortfolioOutlook(){
  const host=$('focus-earnings-pace'),s=State(),t=tradeData('wallet');if(!host)return;
@@ -521,10 +590,12 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
  if(ui.tradeFilter==='best'){
   const book=root.GPOpportunity?.rankedMarkets?.(t.p),unfiltered=t.valid?(book?.rows||[]):[];
   const ranked=q?unfiltered.filter(x=>(itemName(x.id)+' '+x.id).toLowerCase().includes(q)):unfiltered;
-  labelText('focus-trade-state',t.valid?num(ranked.length)+' funded markets sorted by expected net 24h profit · uncertain estimates':
+  labelText('focus-trade-state',t.valid?num(ranked.length)+' calibrated orders, plus history-backed current markets and public discovery below':
    (s.opportunityBusy?'Analysing saved markets and prices…':s.opportunityStatus||'Current market quotes need checking.'));
   if(!t.valid){host.append(h('p','focus-empty','Fresh account data is needed for funded recommendations. Catalogue search remains available.'));appendCatalogueMatches(host,q);return;}
-  if(!ranked.length){host.append(h('p','focus-empty','No verified 24-hour forecasts match this filter; the markets below are your actual completed-trade winners, not new buy instructions.'));if(!q)renderVerifiedRecentMarkets(host,s,{limit:30});appendCatalogueMatches(host,q);return;}
+  if(!ranked.length){host.append(h('p','focus-muted','No calibrated exact-lot 24-hour forecasts yet. The active market research below remains available; conditional margins are not expected income.'));}
+  const connected=renderConnectedMarkets(host,s,{query:q,limit:ui.tradeAll?70:12});
+  if(!ranked.length&&connected.count===0&&!q)renderVerifiedRecentMarkets(host,s,{limit:12});
   for(const o of (ui.tradeAll?ranked.slice(0,80):ranked.slice(0,12))){
    const row=h('button','focus-market-row');row.type='button';row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(h('strong','',itemName(o.id)));
    const desc=o.kind==='standing'?'ALREADY ON ORDER · '+num(o.openUnits)+' open · '+num(o.quantity)+' scenario units':
@@ -540,7 +611,7 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
    });host.append(row);
   }
   appendCatalogueMatches(host,q,new Set(ranked.map(x=>x.id)));
-  more.hidden=ranked.length<=12;more.textContent=ui.tradeAll?'Show top 12':'Show all '+num(Math.min(80,ranked.length))+' ranked markets';return;
+  more.hidden=ranked.length<=12&&connected.board?.counts?.history<=12&&connected.board?.counts?.newMarkets<=12;more.textContent=ui.tradeAll?'Show fewer markets':'Show more current markets';return;
  }
  if(ui.tradeFilter==='memory'){
   const archive=root.GPGrowth?.allHistory(s.ledger||[],Date.now()),all=archive?.markets||[];
