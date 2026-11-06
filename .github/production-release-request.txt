@@ -1,9 +1,9 @@
-Approved Golden Peanut production release — 2026-11-06
+Approved Golden Peanut capacity explorer production release — 2026-11-06
 Target: existing Cloudflare Pages project thegoldenpeanut, production branch main
-Merged PR #4: affordable exotic equipment discovery and liquidity caution
-Full-market catalogue reserves live quote sampling for Pearl exotic weapons and stat-family exotic armour.
-Market display promotes wallet-affordable Pearls and exotic armour in explicit unverified research sections.
-Rare collection unlocks (e.g. Jormag's Claw Fragment) are excluded from top-ranked overnight proposals.
-No assumption of public completed turnover, bulk-buy capacity or 24h resale odds.
-PR #4 automated assembled mobile/desktop regression run 42253181435 SUCCESS.
-User requested the current app repair; no deletion/migration of user browser IndexedDB or Cloudflare D1.
+Merged pull request #5 commit 75ad91e0c23f72b90d073c16245842027d620359
+Evidence-labelled 1-250 unit quantity control; compares 24h, 3 day, 7 day conditional buy and resale capacity.
+Full-market discovery and account-scoped completed trade history preserved.
+Research quantities are user-defined independently of immediately spendable wallet gold; no automatic orders.
+No claimed market-wide realised turnover; no fictional expected fills.
+PR #5 successful regression test GitHub Actions run 42261766410 including mobile 390px and desktop 1440px.
+Do not clear user browser IndexedDB, D1, market collector, API settings or deployment history.
