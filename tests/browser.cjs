@@ -125,12 +125,15 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {ledgerLength:st.ledger.length,meta302:st.meta[302],meta401:st.meta[401],
    market:m,capacity:e,shown:document.querySelector('#focus-trade-detail .focus-capacity-explorer')?.textContent?.slice(0,1200)};
  });
- console.log('CAPACITY_BROWSER_DIAG '+JSON.stringify(capacityDiagnostic));
+ if(!(await page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]').count()))
+  console.log('CAPACITY_BROWSER_DIAG '+JSON.stringify(capacityDiagnostic));
  const forecastRows=page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]');
  assert.equal(await forecastRows.count(),3);
  assert.match(await forecastRows.nth(1).innerText(),/3 days/);
  assert.match(await page.locator('#focus-trade-detail .focus-capacity-evidence').innerText(),/Similar items/);
  assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
+ await page.evaluate(()=>GPFocus.render());
+ assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
   s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
   GPFocus.goto('today');GPFocus.render();
