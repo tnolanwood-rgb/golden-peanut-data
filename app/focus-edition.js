@@ -750,7 +750,7 @@ function renderCapacityExplorer(el,item){
   catch(e){note.textContent='Research calculation unavailable: '+String(e?.message||e);return;}
   const summary=h('div','focus-capacity-overview');
   const reserve=h('div');reserve.append(h('span','focus-muted','Gold required IF order placed'),h('strong','',cash(buy*qty)));summary.append(reserve);
-  const ceiling=h('div');ceiling.append(h('span','focus-muted','Profit IF every unit buys and resells'),h('strong','',cash(estimate.oneRound||0)));summary.append(ceiling);
+  const ceiling=h('div');ceiling.append(h('span','focus-muted','NET result IF every unit buys and resells'),h('strong','',cash(estimate.oneRound||0)));summary.append(ceiling);
   metrics.append(summary);
   if(estimate.status==='insufficient'||estimate.status==='invalid'){
    metrics.append(h('p','focus-alert',estimate.reason||'Not enough evidence to estimate this order.'));
