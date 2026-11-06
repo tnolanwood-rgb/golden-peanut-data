@@ -253,3 +253,10 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-watcher-state[data-monitor-state=checking],.focus-watcher-state[data-monitor-state=pending]{color:#f5dcaa;border-color:#9d8259}
 .focus-watcher-state[data-monitor-state=off],.focus-watcher-state[data-monitor-state=stale],.focus-watcher-state[data-monitor-state=error]{color:#f4c6ad;border-color:#b77e68;background:#3b2721}
 .focus-watcher-selected{outline:2px solid #e3be76;outline-offset:3px}
+
+/* Browser-embedded consent, instead of unreliable native confirm dialogs. */
+.focus-watcher-consent{display:flex;align-items:flex-start;gap:12px;padding:13px 12px;border:1px solid #618b70;border-radius:9px;background:#1a3225;margin:8px 0 14px;cursor:pointer}
+.focus-watcher-consent input{width:22px;height:22px;flex:0 0 22px;margin:0;accent-color:#a7d3a4}
+.focus-watcher-consent span{font-size:13px;line-height:1.5}
+.focus-watcher-feedback{border-radius:8px;padding:10px 12px;border:1px solid #638775;background:#23382c;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.focus-watcher-feedback.focus-alert{border-color:#b66e5c;background:#39241d}
