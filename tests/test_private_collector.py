@@ -85,13 +85,24 @@ class PrivateMonitorTests(unittest.TestCase):
         queries = []
         def query(sql, params=()):
             queries.append((sql, params))
-            self.assertLessEqual(len(params), 999)
+            self.assertLessEqual(len(params), 100)
             return []
         records = [(i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8) for i in range(1300)]
         with mock.patch.object(m, "db", side_effect=query):
             m.put_many("INSERT INTO fake_table VALUES ", records, 9, "ON CONFLICT DO NOTHING")
-        self.assertEqual(len(queries), 44)
+        self.assertEqual(len(queries), 119)  # ceil(1300 / floor(100/9))
         self.assertEqual(sum(len(params) for _, params in queries), 1300*9)
+
+    def test_d1_event_chunks_never_exceed_100_bindings(self):
+        batches = []
+        def fake_db(sql, params=()):
+            batches.append(len(params))
+            self.assertLessEqual(len(params), 100)
+            return []
+        rows = [(i,)*11 for i in range(48)]
+        with mock.patch.object(m, "db", side_effect=fake_db):
+            m.put_many("INSERT INTO fake VALUES ", rows, 11)
+        self.assertEqual(batches, [99, 99, 99, 99, 99, 33])
 
     def test_incomplete_active_order_pagination_must_not_count_disappearances(self):
         # Exactly 20 maximum pages all full: fail safely, rather than
