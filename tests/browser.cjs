@@ -321,7 +321,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
  const watch=page.locator('#focus-best-rows .focus-account-watcher');
  assert.equal(await watch.count(),1);
- assert.match(await watch.innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.match(await watch.innerText(),/The private cloud monitor is currently unreachable/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
  // This is an account setting, not a trading forecast: it must remain
  // visible when price/forecast research goes stale.
@@ -333,7 +333,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account Trade Watcher'}).click();
  await page.waitForFunction(()=>document.querySelector('#focus-account-watcher')?.getBoundingClientRect().top<innerHeight);
  assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
- assert.match(await page.locator('#focus-account-watcher').innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/The private cloud monitor is currently unreachable/);
  assert.match(await page.locator('#focus-account-watcher [data-monitor-state=off]').innerText(),/OFF — background monitoring/);
  // WebViews may suppress native confirm()/alert(). Enrollment must use
  // explicit in-page consent and must NEVER send a key just from Watch click.
