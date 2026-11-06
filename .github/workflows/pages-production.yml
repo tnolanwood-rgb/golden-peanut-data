@@ -1,0 +1,99 @@
+name: Golden Peanut — Deploy Approved Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/production-release-request.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-peanut-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Validate 7.16 and deploy existing Pages production
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      GP_PROJECT_NAME: thegoldenpeanut
+      GP_EXPECTED_VERSION: 7.16.0-evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm exact production target and credentials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys, urllib.error, urllib.request
+          token=os.environ.get('CLOUDFLARE_API_TOKEN','')
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          target=os.environ.get('GP_PROJECT_NAME','')
+          if not token or not re.fullmatch('[a-fA-F0-9]{32}',account):
+              sys.exit('Cloudflare token or existing account variable is missing')
+          req=urllib.request.Request(
+              f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects',
+              headers={'Accept':'application/json','Authorization':'Bearer '+token})
+          try:
+              with urllib.request.urlopen(req,timeout=30) as response: body=json.load(response)
+          except urllib.error.HTTPError as e:
+              sys.exit(f'Cloudflare project validation returned HTTP {e.code}; no deployment')
+          if not body.get('success'): sys.exit('Cloudflare project validation failed; no deployment')
+          matches=[p for p in body.get('result',[]) if p.get('name')==target]
+          if len(matches)!=1 or matches[0].get('production_branch')!='main':
+              sys.exit('Existing Pages target or production branch mismatch; no deployment')
+          print('Target verified: existing project thegoldenpeanut, production branch main')
+          PY
+      - name: Validate source and regression tests
+        shell: bash
+        run: |
+          test -f app/index.html
+          grep -Fq "$GP_EXPECTED_VERSION" app/index.html
+          python3 -m pip install --disable-pip-version-check PyYAML==6.0.3
+          python3 scripts/check_release.py
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          npm ci --ignore-scripts
+          npm test
+          npx playwright-core install --with-deps chromium
+          npm run test:browser
+      - name: Deploy 7.16 into EXISTING production Pages origin
+        shell: bash
+        run: |
+          npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch main
+      - name: Verify live production HTML version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, time, urllib.request
+          url='https://thegoldenpeanut.pages.dev/'
+          expected=os.environ['GP_EXPECTED_VERSION']
+          for attempt in range(8):
+              try:
+                  req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'GoldenPeanutReleaseCheck/1.0'})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      html=r.read(1000000).decode('utf-8','replace')
+                  if expected in html:
+                      print('Production version verified: '+expected+' at '+url)
+                      break
+              except Exception as e:
+                  print('Production verification retry '+str(attempt+1)+': '+type(e).__name__)
+              if attempt==7: raise SystemExit('Deployment returned success but production version not verified')
+              time.sleep(5)
+          PY
+
+# This workflow does not clear, migrate, or delete browser IndexedDB or D1 data.
