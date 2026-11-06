@@ -64,3 +64,10 @@ test('no analogues means no fake quantity or resale estimate',()=>{
  assert.equal(p.status,'insufficient');assert.deepEqual(p.scenarios,[]);
  assert.equal(p.reason.startsWith('No measured'),true);
 });
+
+test('a loss after TP fees is shown as a loss, never silently clamped to zero',()=>{
+ const p=Capacity.estimate({market:{...pearl,buy:9900,exit:10000},ledger,metadata,quantity:10,now:NOW});
+ assert.ok(p.oneRound<0);
+ assert.equal(p.status,'research');
+ assert.ok(p.scenarios.find(x=>x.days===3).profitTypical<0);
+});
