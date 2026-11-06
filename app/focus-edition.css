@@ -1,0 +1,159 @@
+/* Golden Peanut — stable Focus Edition design system, 5 Nov 2026 */
+:root{--focus-bg:#101b16;--focus-card:#1d3126;--focus-card2:#243a2d;--focus-border:#365240;--focus-text:#f7f4e8;--focus-dim:#b6c2b5;--focus-accent:#e5bb75;--focus-good:#a5dec0;--focus-danger:#f0afa3}
+html{scroll-behavior:auto}
+body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5}
+.focus-edition .app{max-width:1020px;padding:0 18px 110px;margin:0 auto}
+.focus-edition .hero{padding:15px 0 10px;min-height:69px;border-bottom:1px solid var(--focus-border)}
+.focus-edition .hero .identity{gap:9px}.focus-edition .hero .emblem{height:40px;width:40px;border-radius:12px;box-shadow:none}.focus-edition .hero .emblem img{max-width:34px;max-height:34px}.focus-edition .hero h1{font-size:19px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-weight:780;letter-spacing:-.03em;margin:0}.focus-edition .hero .eyebrow{display:none}.focus-edition .hero .account{font-size:11px}.focus-edition .hero .nav{display:none!important}
+.focus-edition .foot{margin-top:32px;font-size:10px;color:#849a8b}.focus-top{padding:17px 0 11px}.focus-top-head{display:flex;align-items:center;justify-content:space-between;gap:14px}.focus-top h2{font-size:27px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:-.035em;font-weight:780;margin:0 0 2px}.focus-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--focus-accent);margin:0 0 3px}.focus-top-buttons{display:flex;gap:8px;align-items:center}.focus-icon-button{width:44px;height:44px;display:grid;place-items:center;font-size:22px;font-weight:600;border:1px solid var(--focus-border);background:var(--focus-card);border-radius:12px;color:var(--focus-text);flex-shrink:0}.focus-icon-button:hover{background:var(--focus-card2)}.focus-small{font-size:12px;color:var(--focus-dim)}#focus-sync-state:empty{display:none}#focus-sync-state{padding-top:6px}.focus-muted{color:var(--focus-dim);font-size:13px;margin:3px 0}.focus-small-label{font-size:11px;font-weight:800;letter-spacing:.1em;color:#b8c6b8;margin:0 0 10px}
+.focus-edition .focus-primary-nav{position:fixed;z-index:40;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:76px;padding:5px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom));background:#182a20;border-top:1px solid var(--focus-border);box-shadow:0 -12px 40px #0005}
+.focus-nav-button{background:transparent;color:var(--focus-dim);border:none;border-radius:10px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;min-width:0;min-height:56px;font-size:11px;font-weight:700}.focus-nav-button.is-active{color:#ffe1a4;background:#39503b}.focus-nav-glyph{font-size:23px;line-height:1.05}.focus-nav-text{white-space:nowrap}
+.focus-workspaces{margin-top:8px}.focus-page{min-height:60vh}.focus-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.focus-summary{background:var(--focus-card);border:1px solid var(--focus-border);padding:16px 14px;border-radius:17px;min-width:0}.focus-summary>span{display:block;color:var(--focus-dim);font-size:12px;font-weight:620;margin-bottom:11px}.focus-big-money{font-size:clamp(15px,3.6vw,23px);font-weight:800;letter-spacing:-.045em;white-space:nowrap;overflow:hidden}.focus-money{display:inline-flex;white-space:nowrap;align-items:center;gap:3px;line-height:1.35;font-variant-numeric:tabular-nums;max-width:100%}.focus-money-part{display:inline-flex;white-space:nowrap;align-items:center;gap:1px}.focus-money img{height:14px;width:14px;object-fit:contain;flex-shrink:0}.focus-money-big img{height:16px;width:16px}.focus-negative{color:var(--focus-danger)}.focus-coin-letter{font-size:.7em;color:var(--focus-accent)}.focus-meta-line{color:var(--focus-dim);font-size:12px;padding:11px 2px;line-height:1.35}
+.focus-single-task{margin-top:22px;padding:17px;border:1px solid var(--focus-border);background:linear-gradient(145deg,#243729,#1c2c21);border-radius:17px}.focus-action-body{display:flex;align-items:center;gap:13px}.focus-action-symbol{display:grid;place-items:center;width:45px;height:45px;background:#374b36;border-radius:13px;color:var(--focus-accent);font-size:25px;flex-shrink:0}.focus-action-copy{flex:1;min-width:0}.focus-action-copy strong{font-size:16px;font-weight:730}.focus-action-copy p{margin:5px 0}.focus-button{display:inline-flex;min-height:43px;align-items:center;justify-content:center;padding:9px 15px;border-radius:10px;font-weight:730;line-height:1.35;border:1px solid var(--focus-border);max-width:100%}.focus-button-primary{background:#e9c27e;color:#1b2a1e;border-color:#f5d9a0}.focus-button-secondary{background:var(--focus-card);color:var(--focus-text)}.focus-button:disabled{opacity:.5}.focus-single-task>.focus-button{width:100%;margin-top:14px}.focus-section-gap{margin-top:25px}.focus-destination-row{width:100%;min-height:75px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border:1px solid var(--focus-border);background:var(--focus-card);border-radius:14px;color:var(--focus-text);text-align:left}.focus-destination-row strong{font-size:15px}.focus-destination-row small{display:block;font-size:12px;color:var(--focus-dim);padding-top:3px}.focus-destination-row>span:last-child{font-size:25px;color:var(--focus-accent)}
+.focus-page-intro{display:flex;flex-direction:column;gap:3px;margin:8px 0 16px}.focus-page-intro strong{font-size:16px}.focus-segments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;gap:3px;border-radius:12px;border:1px solid var(--focus-border);background:#162820;margin-bottom:13px}.focus-segments>button{border:0;background:transparent;color:var(--focus-dim);font-size:13px;font-weight:700;border-radius:9px;padding:11px 6px;min-height:43px}.focus-segments>button.is-active{background:#3a513c;color:#ffe0a0;box-shadow:0 1px 3px #0003}.focus-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.focus-search-label{display:block;min-width:0}.focus-search-label input{width:100%;min-height:44px;background:#12241b;border:1px solid var(--focus-border);color:var(--focus-text);border-radius:10px;padding:10px 13px;font-size:14px}.focus-search-full{margin:12px 0 0}.focus-visually-hidden{position:absolute!important;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}.focus-filter-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0 2px;color:var(--focus-dim);font-size:12px}.focus-filter-foot select{background:#21372a;border:1px solid var(--focus-border);border-radius:8px;color:var(--focus-text);padding:8px 10px;font-size:13px;max-width:58%}.focus-status{margin:12px 0;font-size:12px;min-height:17px}.focus-trade-rows{border:1px solid var(--focus-border);border-radius:14px;background:#182a20;overflow:hidden}.focus-market-row{display:flex;align-items:center;width:100%;border:0;border-bottom:1px solid #365040;background:transparent;gap:11px;min-height:80px;color:var(--focus-text);text-align:left;padding:11px 12px}.focus-market-row:last-child{border-bottom:0}.focus-market-row:hover,.focus-market-row:focus-visible{background:#28402f}.focus-item-art{width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;background:#263a2d;border-radius:9px;overflow:hidden;border:1px solid #3d5341}.focus-item-art-lg{width:58px;height:58px;flex-basis:58px}.focus-item-art img{width:100%;height:100%;object-fit:contain}.focus-item-fallback{color:#d2be8d;font-size:26px}.focus-market-title{min-width:0;flex:1;display:block}.focus-market-title strong{font-size:14px;line-height:1.3;display:block;overflow-wrap:anywhere;font-weight:700}.focus-market-title small{font-size:11px;color:var(--focus-dim);display:block;margin-top:5px}.focus-market-values{display:flex;min-width:0;max-width:160px;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}.focus-market-values strong{color:var(--focus-good);font-size:13px;white-space:nowrap;font-weight:760}.focus-market-values .focus-money{gap:1px}.focus-market-values .focus-money img{height:12px;width:12px}.focus-market-values small{color:var(--focus-dim);font-size:11px;white-space:nowrap}.focus-chevron{font-size:23px;color:#8caa93;line-height:1;margin-left:1px}.focus-trade-rows+.focus-button{width:100%;margin:12px 0}.focus-empty{padding:22px 17px;color:var(--focus-dim);font-size:14px;text-align:center;margin:0}
+.focus-back{background:transparent;color:#eaca91;font-weight:730;border:0;min-height:44px;padding:6px 0;margin-bottom:10px}.focus-detail-title{display:flex;align-items:center;gap:14px;padding:6px 0 18px}.focus-detail-title h3,.focus-detail-h3{margin:0 0 6px;font-size:22px;font-family:system-ui,sans-serif}.focus-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:4px 0 20px}.focus-detail-metric{border:1px solid var(--focus-border);background:var(--focus-card);border-radius:12px;padding:13px;min-width:0;overflow:hidden}.focus-detail-metric span{display:block;font-size:12px}.focus-detail-metric strong{display:block;font-size:15px;margin-top:7px;font-weight:750;overflow-wrap:anywhere}.focus-info-box,.focus-review-detail{padding:15px;background:var(--focus-card);border:1px solid var(--focus-border);border-radius:12px;margin:14px 0}.focus-info-box p{margin-top:5px}.focus-detail-panel>.focus-button{width:100%;margin-top:9px}.focus-legal{margin:20px 0;font-size:12px}.focus-alert{background:#47312b;border-left:3px solid #e5aa9b;padding:10px 14px;border-radius:6px;font-size:13px}
+.focus-review-detail-head{display:flex;gap:10px;align-items:center;margin-bottom:9px}.focus-review-detail-head .focus-item-art{width:32px;height:32px;flex-basis:32px}.focus-review-detail>.focus-button{margin-top:10px}.focus-review-detail>p{margin:7px 0}.focus-why{border:1px solid var(--focus-border);background:#172a20;border-radius:11px;margin:12px 0}.focus-why summary{padding:11px 14px;font-size:13px;cursor:pointer}.focus-why>p{padding:0 14px 10px}.focus-order-detail-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--focus-border)}.focus-order-detail-copy{flex:1;min-width:0}.focus-order-detail-copy strong{display:block;font-size:14px}.focus-order-detail-copy small{display:block;color:var(--focus-dim);font-size:12px}.focus-order-price{text-align:right}.focus-order-price strong,.focus-order-price small{display:block;white-space:nowrap}.focus-order-price strong{font-size:13px}.focus-order-price small{font-size:10px;color:var(--focus-dim)}
+.focus-research[hidden]{display:none!important}.focus-research{position:fixed;inset:0;z-index:90;background:var(--focus-bg);overflow:auto;overscroll-behavior:contain;padding:0 14px 60px}.focus-research-bar{position:sticky;top:0;background:#1d3025;display:flex;justify-content:space-between;align-items:center;gap:15px;padding:10px 12px;border-bottom:1px solid var(--focus-border);z-index:2;margin:0 -14px 12px}.focus-research .focus-engine{max-width:1040px;margin:auto}.focus-research #view-desk>.section-heading{display:none}.focus-modal-open{overflow:hidden}.focus-engine[hidden]{display:none!important}
+/* Native legendary engine preserved; redistribute existing content into focused subviews. */
+.focus-edition #view-legend{margin-top:8px}.focus-legend-workspace{min-height:50vh}.focus-legend-old-head,.focus-legend-original-refresh,.focus-edition #view-legend .lp-grid:empty{display:none!important}.focus-legend-hero{border:1px solid var(--focus-border);border-radius:16px;background:var(--focus-card);padding:17px;margin-bottom:14px}.focus-legend-hero strong{font-size:20px}.focus-legend-hero p{margin:9px 0 0}.focus-legend-progress{font-size:12px!important}.focus-legend-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.focus-legend-toolbar .focus-button{font-size:13px;padding:9px 10px}.focus-legend-segments{grid-template-columns:repeat(4,minmax(0,1fr))}.focus-legend-segments button{font-size:12px;padding:11px 4px}.focus-legend-view{margin-top:14px}.focus-legend-view h3{margin:10px 0 12px}.focus-edition #view-legend .panel{background:var(--focus-card);border:1px solid var(--focus-border);box-shadow:none}.focus-edition #view-legend .lp-panel{padding:16px;margin:0 0 12px;border-radius:14px}.focus-edition #view-legend #lp-detail{padding:16px}.focus-edition #view-legend #lp-detail .lp-top-gap:has(+ #lp-direct){display:none}.focus-edition #view-legend #lp-detail h3.lp-top-gap{display:none}.focus-edition #view-legend .lp-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.focus-edition #view-legend .lp-metrics>div{min-width:0}.focus-edition #view-legend .lp-metrics strong{overflow-wrap:anywhere}.focus-edition #view-legend .lp-direct-row,.focus-edition #view-legend .lp-material-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0}.focus-edition #view-legend .lp-material-row .lp-material-title{flex:1;min-width:0}.focus-edition #view-legend .lp-material-row>small{flex-basis:100%;margin-left:42px}.focus-legend-item-art{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:7px;background:#314034;color:#cab98c}.focus-legend-item-art img{width:32px;height:32px;object-fit:contain}.focus-edition #focus-legend-picker:not([hidden]){margin:0 0 16px}.focus-edition #focus-legend-picker .lp-panel{margin:0}.focus-edition #view-legend #lp-known-spend{margin-bottom:16px}.focus-edition #view-legend .lp-more{margin:10px 0;border-radius:12px}.focus-edition #view-legend .lp-more summary{padding:11px;font-size:13px}.focus-edition #view-legend .lp-target-head{gap:11px}.focus-edition #view-legend #lp-copy{width:100%;margin-top:12px}
+.focus-edition button:focus-visible,.focus-edition input:focus-visible,.focus-edition select:focus-visible,.focus-edition summary:focus-visible{outline:3px solid var(--focus-accent);outline-offset:3px}.focus-edition button{touch-action:manipulation}.focus-edition .focus-page[hidden],.focus-legend-view[hidden]{display:none!important}
+@media(min-width:850px){.focus-edition .app{max-width:1120px;padding-left:148px;padding-right:25px}.focus-edition .focus-primary-nav{top:100px;bottom:auto;left:max(8px,calc(50% - 565px));right:auto;display:flex;flex-direction:column;width:112px;height:auto;padding:9px;border:1px solid var(--focus-border);border-radius:15px;box-shadow:none;gap:3px}.focus-edition .focus-nav-button{width:100%;min-height:65px}.focus-edition .focus-workspaces,.focus-edition #view-legend{max-width:820px}.focus-edition .focus-summary-grid{gap:16px}.focus-edition .focus-market-row{padding:12px 17px}.focus-edition .focus-market-values{max-width:200px}}
+@media(max-width:460px){.focus-edition .app{padding:0 13px 114px}.focus-top h2{font-size:24px}.focus-edition .hero{flex-direction:row;align-items:center}.focus-edition .hero .identity{width:100%}.focus-edition .focus-summary{padding:13px 10px}.focus-big-money{font-size:clamp(13px,3.55vw,16px)}.focus-money{gap:1px}.focus-money img{height:12px;width:12px}.focus-money-big img{height:13px;width:13px}.focus-market-row{gap:7px;padding:11px 8px}.focus-item-art{width:37px;height:37px;flex-basis:37px}.focus-market-title strong{font-size:13px}.focus-market-values{max-width:133px}.focus-market-values strong{font-size:11px}.focus-market-values small{font-size:10px}.focus-market-values .focus-money img{width:11px;height:11px}.focus-chevron{font-size:17px}.focus-toolbar .focus-button{font-size:12px;padding:8px}.focus-nav-button{font-size:10px}.focus-nav-glyph{font-size:21px}.focus-order-price{max-width:100px}}
+@media(max-width:340px){.focus-edition .app{padding-inline:9px}.focus-summary-grid{gap:6px}.focus-summary{padding:11px 6px}.focus-big-money{font-size:12px}.focus-money img{height:10px;width:10px}.focus-market-row .focus-market-values small{white-space:normal}.focus-legend-toolbar .focus-button{font-size:11px}.focus-legend-segments button{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.focus-edition *, .focus-edition *::before,.focus-edition *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Final focus containment: no legacy diagnostics on primary screens. */
+.focus-edition .focus-kicker,.focus-edition .foot{display:none!important}
+.focus-edition #view-legend > .lp-grid,.focus-edition #view-legend > .panel:has(#lp-refresh){display:none!important}
+.focus-edition #view-legend > .lp-head{display:none!important}
+.focus-edition .focus-money{gap:3px}.focus-edition .focus-market-values .focus-money{gap:2px}
+/* Stage 6.1 — growth intelligence in the existing Focus layout. */
+.focus-growth-goal{padding:13px 3px 5px;margin-top:6px}
+.focus-growth-goal-label,.focus-growth-summary-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px}
+.focus-growth-goal-label>span{color:var(--focus-dim)}.focus-growth-goal-label>strong{font-weight:760;white-space:nowrap}
+.focus-growth-track{height:7px;border-radius:99px;background:#334638;overflow:hidden;margin:10px 0 7px}
+.focus-growth-fill{height:100%;background:#b2d398;min-width:0;transition:none;border-radius:inherit}
+.focus-growth-goal p{font-size:11px;margin:4px 0 0}
+.focus-growth-context{margin:0 0 14px}
+.focus-growth-summary{padding:12px 15px;background:var(--focus-card);border:1px solid var(--focus-border);border-radius:13px}
+.focus-growth-summary-top strong{font-size:13px}
+.focus-growth-summary-top .focus-money{font-weight:800;color:var(--focus-good);font-size:14px}
+.focus-growth-summary p{margin:5px 0 0;font-size:11px}
+.focus-growth-capital{font-size:11px;padding:4px 2px 0;line-height:1.45;margin:5px 0}
+.focus-list-heading{padding:10px 12px 8px;background:#203527;border-bottom:1px solid var(--focus-border);font-size:12px;font-weight:780;letter-spacing:.005em;color:#f2d29b}
+.focus-list-heading:not(:first-child){border-top:1px solid var(--focus-border)}
+.focus-list-note{padding:12px 13px;font-size:12px;color:var(--focus-dim);border-top:1px solid var(--focus-border)}
+.focus-growth-market .focus-market-values strong{color:var(--focus-good)}
+.focus-growth-market .focus-market-values small{font-size:10px}
+@media(max-width:400px){.focus-growth-goal-label{font-size:11px}.focus-growth-goal-label>strong{font-size:11px}.focus-growth-summary-top .focus-money{font-size:12px}.focus-growth-market .focus-market-title small{font-size:10px}}
+
+/* Market Memory uses four low-cognitive-load filters, not a dense scrolling dashboard. */
+.focus-trade-segments{grid-template-columns:repeat(4,minmax(0,1fr));}
+.focus-memory-overview{margin:10px 1px 12px;font-size:12px;line-height:1.55;color:var(--focus-dim);}
+.focus-memory-related{min-height:64px;opacity:.85;}
+@media(max-width:520px){.focus-trade-segments{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:5px;}.focus-trade-segments>button{min-height:40px;}}
+
+/* 7.0: The verified wallet-funded list is the primary product. */
+.focus-edition #focus-growth-goal{display:none!important}
+.focus-today-best{margin:20px 0 8px;border:1px solid var(--focus-border);border-radius:16px;overflow:hidden;background:var(--focus-card)}
+.focus-today-best-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 14px 9px}
+.focus-today-best-header strong{font-size:13px;letter-spacing:.035em;color:var(--focus-accent)}
+.focus-today-best-header .focus-muted{text-align:right;font-size:11px;max-width:55%}
+.focus-today-best #focus-copy-all{margin:13px;width:calc(100% - 26px)}
+.focus-plan-summary{padding:14px;background:#263b2c;border:1px solid var(--focus-border);border-radius:12px;margin:8px 0 14px}
+.focus-plan-summary strong{font-size:15px;line-height:1.6}
+.focus-plan-summary p{font-size:11px}
+.focus-today-best .focus-market-row{border-radius:0;border-left:none;border-right:none;margin:0}
+.focus-today-best .focus-market-title small{line-height:1.5}
+.focus-today-best .focus-market-values small{color:var(--focus-dim)}
+@media(max-width:400px){.focus-today-best-header{display:block}.focus-today-best-header .focus-muted{text-align:left;max-width:none;display:block;margin:5px 0 0}.focus-today-best .focus-market-title small{font-size:10px}}
+
+/* Keep the funded shortlist ahead of navigation prompts on a phone. */
+.focus-edition .focus-single-task[hidden],.focus-edition .focus-section-gap[hidden]{display:none!important}
+
+/* 7.1: Separate funding assumptions from acquisition capacity without introducing a new screen. */
+.focus-capital-compare{background:var(--focus-card);border:1px solid var(--focus-border);border-radius:14px;padding:13px 14px;margin:15px 0 6px;display:grid;gap:9px}
+.focus-capital-compare[hidden]{display:none!important}.focus-capital-compare>strong{font-size:14px}.focus-capital-compare p{margin:0;font-size:12px;line-height:1.45}
+.focus-capital-compare>small{font-size:11px;line-height:1.4}.focus-capital-compare button{width:100%}
+.focus-capital-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:12px 0 8px}
+.focus-capital-modes>button{min-width:0;white-space:normal;min-height:48px;border-radius:10px;border:1px solid var(--focus-border);color:var(--focus-muted);background:var(--focus-card);padding:8px 5px;font-size:11px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.focus-capital-modes>button.is-active{background:var(--focus-active);color:var(--focus-accent);border-color:var(--focus-accent)}
+.focus-mode-caution{font-size:11px;line-height:1.5;padding:0 2px 5px;margin:0}
+.focus-cancel-reviews{background:var(--focus-card);border:1px solid var(--focus-border);border-radius:12px;padding:11px 12px;margin:8px 0 14px}
+.focus-cancel-reviews[hidden]{display:none!important}.focus-cancel-reviews>strong{display:block;font-size:13px;margin-bottom:7px}
+.focus-cancel-review{padding:9px 0;border-bottom:1px solid var(--focus-border)}.focus-cancel-review:last-child{border-bottom:0}
+.focus-cancel-review strong,.focus-cancel-review small{display:block}.focus-cancel-review strong{font-size:12px}.focus-cancel-review small{font-size:11px;color:var(--focus-dim);line-height:1.45;margin-top:3px}
+
+/* Earnings scenarios never share visual styling with actual realised P&L. */
+.focus-earnings-pace{margin:14px 0;padding:13px 14px;background:var(--focus-card);border:1px solid var(--focus-border);border-radius:14px;display:grid;gap:8px}
+.focus-earnings-pace[hidden]{display:none!important}.focus-earnings-pace>strong{font-size:14px}.focus-earnings-pace p{margin:0;font-size:12px;line-height:1.5}
+.focus-pace-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.focus-pace-cell{min-width:0;background:rgba(160,160,160,.06);padding:10px;border-radius:9px;display:grid;gap:3px}
+.focus-pace-cell small{font-size:11px;color:var(--focus-dim)}.focus-pace-cell strong{font-size:16px;overflow-wrap:anywhere}.focus-earnings-pace details{font-size:12px}
+
+.focus-benchmark-warning{font-size:12px;line-height:1.45;color:var(--focus-text);font-weight:600;margin:3px 0;border-top:1px solid var(--focus-border);padding-top:9px}
+
+/* 7.3: Separate the active trading operation from a temporarily tiny cash wallet. */
+#focus-operating-book{background:#203628;border-color:#4e6b50;margin-top:16px;margin-bottom:12px}
+#focus-operating-book>strong{display:block;font-size:14px;line-height:1.45}
+.focus-book-row{padding:9px 0;border-bottom:1px solid var(--focus-border);display:grid;gap:3px}
+.focus-book-row strong{font-size:12px;line-height:1.4}.focus-book-row small{font-size:11px;line-height:1.35}
+#focus-operating-book .focus-button{margin-top:3px}
+
+/* Purpose-first view: a ranked trading list and a separate Legendary Planner. */
+.focus-primary-nav{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.focus-edition .focus-growth-goal,.focus-edition .focus-section-gap{display:none!important}
+.focus-clickable-summary{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.focus-clickable-summary:focus-visible{outline:2px solid #e1bb74;border-radius:4px}
+
+/* 7.3 first-glance simplicity: decisions, not a forecasting report. */
+.focus-edition #focus-capital-compare{display:none!important}
+#focus-operating-book{padding:13px 14px!important}
+#focus-operating-book>p{font-size:12px!important;margin:4px 0 8px!important}
+#focus-operating-book .focus-book-row{padding:7px 0}
+#focus-operating-book .focus-book-row strong{font-size:13px}
+#focus-operating-book .focus-book-row small{font-size:11px}
+
+/* 7.4: one consistent market shortlist and honest portfolio outlook. */
+.focus-edition #focus-operating-book{display:none!important}
+.focus-edition #focus-earnings-pace{display:grid!important;gap:8px;margin:12px 0 20px}
+.focus-outlook-title{font-size:14px;color:var(--focus-accent)}
+.focus-market-note{margin:8px 13px 14px;font-size:12px;line-height:1.45;color:var(--focus-dim)}
+.focus-today-best .focus-market-title small{overflow-wrap:anywhere}
+.focus-edition .focus-pace-cell strong{font-size:clamp(13px,3.9vw,17px);font-variant-numeric:tabular-nums}
+@media(max-width:420px){.focus-edition .focus-market-values{max-width:122px}}
+
+/* 7.6: independent, touch-friendly minimum-lot controls. */
+.focus-lot-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:14px 0 2px;color:var(--focus-dim);font-size:12px}
+.focus-lot-controls[hidden]{display:none!important}
+.focus-lot-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;min-width:min(100%,244px)}
+.focus-lot-buttons>button{min-width:0;border:1px solid var(--focus-border);border-radius:9px;background:#20382b;color:var(--focus-text);font-size:14px;font-weight:750;min-height:43px;padding:7px 10px;touch-action:manipulation}
+.focus-lot-buttons>button.is-active{background:#495b40;color:#ffe0a0;border-color:#ecc47d}
+.focus-lot-buttons>button:focus-visible{outline:2px solid #ecc47d;outline-offset:2px}
+@media(max-width:460px){.focus-lot-controls{align-items:stretch}.focus-lot-buttons{width:100%;min-width:0}}
+
+/* 7.7: first-class, mode-sensitive profit scenarios and real discovery audit */
+.focus-trade-forecasts{border:1px solid var(--focus-border);border-radius:15px;padding:14px 13px;margin:15px 0;background:rgba(43,76,56,.20);display:grid;gap:10px}
+.focus-trade-forecasts[hidden]{display:none!important}
+.focus-forecast-title{display:grid;gap:4px;font-size:14px}.focus-forecast-title .focus-muted{font-size:11px}
+.focus-forecast-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.focus-forecast-metric{display:flex;flex-direction:column;gap:4px;min-width:0;padding:10px;background:rgba(255,255,255,.04);border:1px solid var(--focus-border);border-radius:10px}
+.focus-forecast-metric small{font-size:11px;line-height:1.35;color:var(--focus-dim)}
+.focus-forecast-metric strong{font-size:clamp(13px,4vw,18px);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.focus-forecast-metric>span{font-size:10px;line-height:1.35}
+.focus-trade-forecasts p{margin:0;font-size:11px;line-height:1.5}
+.focus-forecast-book{display:grid;gap:3px;border-top:1px solid var(--focus-border);padding-top:9px}
+.focus-family-diagnostics{margin:12px 0;padding:10px 12px;border:1px solid var(--focus-border);border-radius:10px;font-size:12px}
+.focus-family-diagnostics summary{cursor:pointer;font-weight:650}.focus-family-diagnostics-content{display:grid;gap:10px}
+.focus-family-status{display:grid;gap:3px;padding:9px 0;border-bottom:1px solid var(--focus-border)}
+.focus-family-status small{font-size:10px}
+@media(max-width:380px){.focus-forecast-grid{grid-template-columns:1fr}}
+/* 7.9: keep craft and bulk research text legible on narrow Android screens. */
+.focus-market-title small{overflow-wrap:anywhere;white-space:normal}
+.focus-market-values small{white-space:normal;overflow-wrap:anywhere;line-height:1.25;max-width:145px}
+@media(max-width:430px){.focus-market-row{gap:8px;padding:10px 9px}.focus-market-values{max-width:125px;flex:0 0 125px}.focus-market-title{min-width:0}.focus-market-row .focus-chevron{font-size:18px}}
+
+/* v7.10: long research must never mask or replace the immediately usable shortlist */
+.focus-deep-progress{font-size:.85rem;color:var(--focus-muted,#a8b5ae);padding:.55rem .2rem;line-height:1.45;overflow-wrap:anywhere;}
+.focus-deep-progress.focus-deep-active{color:#f3d299;}
+.focus-deep-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.65rem;}
+.focus-deep-actions button{font-size:.86rem;padding:.5rem .8rem;min-height:2.6rem;}
