@@ -334,6 +334,28 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForFunction(()=>document.querySelector('#focus-account-watcher')?.getBoundingClientRect().top<innerHeight);
  assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
  assert.match(await page.locator('#focus-account-watcher').innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.match(await page.locator('#focus-account-watcher [data-monitor-state=off]').innerText(),/OFF — background monitoring/);
+ // Confirm state distinguishes enrollment from a mere Worker health response.
+ await page.evaluate(()=>{
+  window.__originalWatchStatus=GPCloudAccount.status;
+  GPCloudAccount.status=()=>({enabled:true,syncing:false,serviceReady:true,lastError:null,
+   status:{lastSuccess:Date.now(),savedCompletedTrades:24,currentBuys:17,currentSells:6,verifiedOrderNights:12}});
+  GPFocus.render();
+ });
+ await page.waitForFunction(()=>document.querySelector('#focus-account-watcher [data-monitor-state=active]'));
+ assert.match(await page.locator('#focus-account-watcher [data-monitor-state=active]').innerText(),/ACTIVE — last successful cloud check/);
+ assert.match(await page.locator('#focus-watcher-jump').innerText(),/Watch ✓/);
+ await page.evaluate(()=>{
+  GPCloudAccount.status=()=>({enabled:true,syncing:false,serviceReady:true,lastError:null,
+   status:{lastSuccess:Date.now()-3*3600000,currentBuys:17}});
+  GPFocus.render();
+ });
+ await page.waitForFunction(()=>document.querySelector('#focus-account-watcher [data-monitor-state=stale]'));
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/CHECKS OVERDUE/);
+ await page.evaluate(()=>{
+  GPCloudAccount.status=window.__originalWatchStatus;
+  GPFocus.render();
+ });
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
