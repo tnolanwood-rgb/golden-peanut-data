@@ -1,8 +1,9 @@
-Golden Peanut approved production update — 2026-11-06
-Target existing Pages project: thegoldenpeanut, main
-Merged PR #3: unified evidence-labelled Best Trades board
-Restore lifetime history backed current markets, existing positions and new public-market leads.
-No fabricated public turnover, order quantity, or 24-hour income claim.
-Automated tests: PR #3 GitHub Actions run 42250172343 succeeded.
-User approved continued repair of broken 7.16, existing stored history remains intact.
-Do not clear D1, local IndexedDB, order evidence, or collector.
+Approved Golden Peanut production release — 2026-11-06
+Target: existing Cloudflare Pages project thegoldenpeanut, production branch main
+Merged PR #4: affordable exotic equipment discovery and liquidity caution
+Full-market catalogue reserves live quote sampling for Pearl exotic weapons and stat-family exotic armour.
+Market display promotes wallet-affordable Pearls and exotic armour in explicit unverified research sections.
+Rare collection unlocks (e.g. Jormag's Claw Fragment) are excluded from top-ranked overnight proposals.
+No assumption of public completed turnover, bulk-buy capacity or 24h resale odds.
+PR #4 automated assembled mobile/desktop regression run 42253181435 SUCCESS.
+User requested the current app repair; no deletion/migration of user browser IndexedDB or Cloudflare D1.
