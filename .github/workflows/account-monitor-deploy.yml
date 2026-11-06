@@ -113,8 +113,16 @@ jobs:
           url='https://golden-peanut-account-monitor.tnolanwood.workers.dev/health'
           for attempt in range(8):
               try:
-                  with urllib.request.urlopen(url,timeout=20) as response:
+                  request=urllib.request.Request(url,headers={
+                      'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+                      'Accept':'application/json',
+                      'Origin':'https://thegoldenpeanut.pages.dev'
+                  })
+                  with urllib.request.urlopen(request,timeout=20) as response:
                       data=json.load(response)
+                      cors=response.headers.get('Access-Control-Allow-Origin')
+                  if cors!='https://thegoldenpeanut.pages.dev':
+                      raise ValueError('Worker did not permit the actual Golden Peanut application origin')
                   if data.get('ok') and data.get('mode')=='opt-in' and data.get('intervalMinutes')==10:
                       print('Private account monitor is live: opt-in gate enabled')
                       break
