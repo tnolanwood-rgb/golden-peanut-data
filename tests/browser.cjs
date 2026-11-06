@@ -49,7 +49,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(backup.bytes>0&&backup.configs>0);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders[0].expectedProfit=Infinity;GPFocus.goto('today');GPFocus.render();});
  assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
- await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;GPFocus.render();});
+ await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];s.opportunityPlan.activeBook={entries:[]};GPFocus.render();});
  assert.match(await page.locator('#focus-best-rows').innerText(),/No quote-supported markets surfaced in this scan/);
  // Integrated regression: old profitable equipment and unfamiliar public markets
  // MUST survive the strict no-cohort forecast, with no invented daily volume.
