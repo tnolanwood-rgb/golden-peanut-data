@@ -1,8 +1,8 @@
 name: Golden Peanut regression checks
-# Regression checks are manual-only to prevent unsolicited
-# failed-workflow notifications during active app development.
-# Production deploy still runs its own tests before any release.
+# Test pull requests and manual checks, not every development push.
+# GitHub Actions email notifications are controlled in each user's settings.
 on:
+  pull_request:
   workflow_dispatch:
 concurrency:
   group: golden-peanut-ci-${{ github.event.pull_request.number || github.ref }}
