@@ -54,6 +54,33 @@ class PrivateMonitorTests(unittest.TestCase):
                         m.run()
                     self.assertIn("disabled", out.getvalue())
 
+    def test_cloudflare_rest_query_binds_only_strings(self):
+        # Cloudflare's REST API rejects JSON number params with HTTP 400.
+        with mock.patch.dict(os.environ, {"CF_API_TOKEN": "fake",
+                                          "CF_ACCOUNT_ID": "fake-account",
+                                          "CF_DATABASE_ID": "fake-database"}):
+            def fake_http(url, *, headers, payload, max_retries):
+                self.assertIn("/query", url)
+                self.assertEqual(payload["params"], ["123", "456"])
+                self.assertTrue(all(isinstance(x, str) for x in payload["params"]))
+                return {"success": True, "result": [{"success": True, "results": []}]}, {}
+            with mock.patch.object(m, "request_json", side_effect=fake_http):
+                self.assertEqual(m.db("SELECT ? AS one, ? AS two", [123, 456]), [])
+
+    def test_null_fields_use_sql_literal_not_rejected_rest_param(self):
+        calls = []
+        def fake_db(sql, params=()):
+            calls.append((sql, params))
+            return []
+        with mock.patch.object(m, "db", side_effect=fake_db):
+            m.put_many("INSERT INTO fake (a,b,c) VALUES ",
+                       [("one", 10, None), ("two", None, 20)], 3)
+        self.assertEqual(len(calls), 1)
+        sql, values = calls[0]
+        self.assertIn("(?,?,NULL),(?,NULL,?)", sql)
+        self.assertEqual(values, ["one", 10, "two", 20])
+        self.assertEqual(sql.count("?"), len(values))
+
     def test_large_1300_order_batches_fit_d1_parameter_limits(self):
         queries = []
         def query(sql, params=()):
