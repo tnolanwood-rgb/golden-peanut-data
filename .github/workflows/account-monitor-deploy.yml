@@ -121,6 +121,10 @@ jobs:
                   raise ValueError('Unexpected monitor health response')
               except Exception as exc:
                   print('Health attempt',attempt+1,'failed:',type(exc).__name__,str(exc)[:220],flush=True)
+                  if attempt==0 and hasattr(exc,'read'):
+                      response=exc.read(1000).decode('utf-8','replace')
+                      print('Public /health rejection body:',response[:600],flush=True)
+                      print('HTTP challenge:',getattr(exc,'headers',{}).get('cf-ray','not set'),flush=True)
                   if attempt==7: raise SystemExit('Monitor deployment health verification failed; see reported endpoint error')
                   time.sleep(6)
           PY
