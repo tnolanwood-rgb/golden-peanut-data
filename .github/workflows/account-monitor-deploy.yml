@@ -119,7 +119,8 @@ jobs:
                       print('Private account monitor is live: opt-in gate enabled')
                       break
                   raise ValueError('Unexpected monitor health response')
-              except Exception:
-                  if attempt==7: raise SystemExit('Monitor deployment health verification failed')
+              except Exception as exc:
+                  print('Health attempt',attempt+1,'failed:',type(exc).__name__,str(exc)[:220],flush=True)
+                  if attempt==7: raise SystemExit('Monitor deployment health verification failed; see reported endpoint error')
                   time.sleep(6)
           PY
