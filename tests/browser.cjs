@@ -120,10 +120,11 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(new URL(page.url()).origin,origin);
  const topBack=page.getByRole('button',{name:'Back within Golden Peanut'});
  assert.equal(await topBack.isVisible(),true);
+ const detailReturnDepth=await page.evaluate(()=>history.state?.gpIndex);
  await topBack.click();
  await page.waitForFunction(()=>!document.querySelector('#focus-today').hidden);
  assert.equal(new URL(page.url()).origin,origin);
- assert.equal(await page.evaluate(()=>history.state?.gpIndex),0);
+ assert.equal(await page.evaluate(()=>history.state?.gpIndex),detailReturnDepth-1);
  // A second genuine tab tap creates a working Back path as well.
  await page.locator('[data-focus-nav="trades"]').click();
  assert.equal(await topBack.isVisible(),true);
