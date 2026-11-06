@@ -124,7 +124,23 @@ jobs:
                   if cors!='https://thegoldenpeanut.pages.dev':
                       raise ValueError('Worker did not permit the actual Golden Peanut application origin')
                   if data.get('ok') and data.get('mode')=='opt-in' and data.get('intervalMinutes')==10:
-                      print('Private account monitor is live: opt-in gate enabled')
+                      # Reproduce the installed app's actual authenticated POST
+                      # preflight without ever sending a personal GW2 API key.
+                      req=urllib.request.Request(url.replace('/health','/enroll'),method='OPTIONS',headers={
+                          'User-Agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+                          'Origin':'https://thegoldenpeanut.pages.dev',
+                          'Access-Control-Request-Method':'POST',
+                          'Access-Control-Request-Headers':'authorization,cache-control,content-type,x-gp-account'
+                      })
+                      with urllib.request.urlopen(req,timeout=20) as preflight:
+                          if preflight.status!=204: raise ValueError('Private monitor CORS preflight not HTTP 204')
+                          if preflight.headers.get('Access-Control-Allow-Origin')!='https://thegoldenpeanut.pages.dev':
+                              raise ValueError('Preflight did not permit app origin')
+                          allowed=(preflight.headers.get('Access-Control-Allow-Headers') or '').lower().split(',')
+                          for needed in ('authorization','cache-control','content-type','x-gp-account'):
+                              if needed not in [x.strip() for x in allowed]:
+                                  raise ValueError('Browser consent preflight would reject '+needed)
+                      print('Private monitor health and browser cross-origin enrollment preflight verified')
                       break
                   raise ValueError('Unexpected monitor health response')
               except Exception as exc:
