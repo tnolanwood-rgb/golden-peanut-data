@@ -3,7 +3,7 @@
   "version": "7.16.0",
   "private": true,
   "scripts": {
-    "test": "node tests/execution.test.cjs",
+    "test": "node --test tests/execution.test.cjs tests/market-board.test.cjs",
     "test:browser": "node tests/browser.cjs",
     "check": "python scripts/check_release.py"
   },
