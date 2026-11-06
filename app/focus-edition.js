@@ -758,7 +758,18 @@ function renderAccountWatcher(host,state){
     const a=h('a','focus-button focus-button-secondary',label);
     a.href=url;a.target='_blank';a.rel='noopener noreferrer';links.append(a);
    }
-   setup.append(links);wrapper.append(setup);
+   setup.append(links);
+   const copy=h('button','focus-button focus-button-secondary','Copy connected GW2 key');
+   copy.type='button';copy.title='Sensitive: copies the API key already stored locally in Golden Peanut.';
+   copy.addEventListener('click',async()=>{
+    try{
+     await navigator.clipboard.writeText(state.key);
+     copy.textContent='Copied — paste into GitHub Secret';
+    }catch{copy.textContent='Clipboard unavailable — obtain the key from ArenaNet';}
+   });
+   setup.append(copy,h('p','focus-muted',
+    'The key is only copied if you tap this button. After pasting it into GitHub Secrets, clear your phone clipboard for privacy. Nothing is sent to this chat.'));
+   wrapper.append(setup);
    if(watcherFeedback?.account===account)wrapper.append(
     h('p',watcherFeedback.ok?'focus-watcher-feedback':'focus-alert focus-watcher-feedback',watcherFeedback.message));
    const connect=h('button','focus-button focus-button-secondary','Connect GitHub background monitor');
