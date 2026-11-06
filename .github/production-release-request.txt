@@ -6,3 +6,7 @@ The user must place matching GW2 API key as GitHub Actions secret named GW2_PRIV
 All key material remains out of GitHub code and logs. Existing app key, local history, D1 public prices, queued Trading Post orders unchanged.
 Regression PR #16 CI run 42310716947 success. Monitor backend deployment run 42310905279 success.
 Android cache-bust to 7.20 alternative UI, not local IndexedDB deletion.
+
+Approved Golden Peanut 7.21 UI release — 2026-11-06.
+Merged PR #17 / 7bc951c8c3e2df0c06ae1a1df8f02a6db63f1d2f. Regression run 42315052088 passed including browser tests.
+Ship top eight best research buys before cloud watcher, and verified personal overnight fill observations into evidence-weighted ranking; imported cloud transactions trigger fresh market research only when account/quote data is current. 24h forecast remains uncalibrated, hypotheses clearly labelled. Refresh app JS/CSS URLs; preserve existing origin and IndexedDB data and never place orders automatically.
