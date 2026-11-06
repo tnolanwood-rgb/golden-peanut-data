@@ -21,3 +21,5 @@ Approved fix release: c3464adeaf47c45ff69aacd2f4640113fcb69cfb on 2026-11-06. De
 Approved runtime diagnostic and validation deploy (6 November 2026). PR #14 merged 0983628b36ce71e41ec3afe9f6f2ba8d3cbedb38. Verify encryption + D1 bound schemas and safe public ArenaNet API egress. Execute a fake invalid-key enrollment as security regression. Report only safe failure stage; no user key is in CI, no client user action required. Preserve currently encrypted monitor keys and public price collector.
 
 Approved supported placement check PR #15 at 262e3c141c8c131726bad99d504b64f41f681d16. Monitor ArenaNet upstream public 429 exactly once; respect quota and do not retry rapidly. No user account key or data changed.
+
+Approved fallback monitor deploy: 2026-11-06. PR #16 merged cbdb99a55bb12238a458c12a954cbeb287a5f506. Public Worker health advertises github-actions-fallback (30-minute scheduled account collector), authenticates private /status and /events, and maintains AES/D1 readiness. Avoid ArenaNet HTTP429 retries from Cloudflare. No API key provided or enrolled yet. Existing public market collector unaffected.
