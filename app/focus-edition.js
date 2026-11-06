@@ -700,6 +700,7 @@ function renderDeploymentPlanner(host,state){
 }
 /* Secure, explicit opt-in for account monitoring independent of Android.
  * No account credential is transmitted unless Enable is pressed. */
+let watcherConsentPending=false,watcherConsentChecked=false,watcherConsentAccount=null,watcherEnrollmentBusy=false,watcherFeedback=null;
 function renderAccountWatcher(host,state){
  const cloud=root.GPCloudAccount,account=state?.account;
  const wrapper=h('section','focus-account-watcher');wrapper.id='focus-account-watcher';
@@ -714,6 +715,7 @@ function renderAccountWatcher(host,state){
   wrapper.append(h('p','focus-muted','Connect your GW2 Trading Post API key using ⚙ Account settings to activate background monitoring. Your existing stored trading history remains intact.'));
   host.append(wrapper);return;
  }
+ if(watcherConsentAccount!==account){watcherConsentAccount=account;watcherConsentPending=false;watcherConsentChecked=false;watcherEnrollmentBusy=false;watcherFeedback=null;}
  const info=cloud.status(account);
  const last=Number(info.status?.lastSuccess)||0,elapsed=last>0?Date.now()-last:Infinity;
  const watcherState=!info.enabled?'off':info.lastError?'error':info.syncing?'checking':
@@ -739,27 +741,57 @@ function renderAccountWatcher(host,state){
  const intro=h('p','focus-muted');
  if(!info.enabled){
   intro.textContent=info.serviceReady?
-   'Local order checks work while this app is open. For completed buys, sales, partial fills and zero-fill periods when the phone is closed, you can enable the encrypted Cloudflare account monitor.':
-   'Account orders and completed trades are checked while this app is open. Off-phone monitoring is NOT ACTIVE: the private server is not yet accessible. The app will not transmit your GW2 key to an unavailable service.';
+   'Local trade history checks work while this app is open. To record buy and sell order changes while closed, you can explicitly enable the encrypted Cloudflare monitor.':
+   'Account trade history is checked while this app is open. The private cloud monitor is currently unreachable, so no background enrollment or key transfer is available.';
   wrapper.append(intro);
-  const enable=buttonNode(info.serviceReady?'Enable background trade watching':'Background monitoring unavailable');
-  enable.disabled=info.syncing||!info.serviceReady;
-  enable.addEventListener('click',async()=>{
-   if(!window.confirm('Enable background Trading Post monitoring? Your GW2 API key will be sent securely to your own Cloudflare Worker and kept encrypted. This service checks every ~10 minutes, cannot place orders, and cannot reconstruct intermediate changes between checks. You can stop it and erase cloud records later.'))return;
-   enable.disabled=true;enable.textContent='Connecting encrypted monitor…';
-   try{
-    await cloud.enable(state);
-    const cloudCheck=await cloud.refresh(state,{force:true});
-    if(cloudCheck?.lastSuccess)
-     window.alert('Your account is enrolled, and Cloudflare has confirmed a successful check. Tap Watch anytime to see the last collection time.');
-    else window.alert('Cloudflare accepted your account enrollment. Monitoring is set up, but the first successful scheduled check is still pending. The Watch card will show when it is confirmed.');
-   }catch(e){
-    window.alert('Background monitoring was NOT enabled: '+String(e?.message||e).slice(0,190));
-   }
-   root.GPFocus?.render?.();
-  });
-  wrapper.append(enable);
+  if(watcherFeedback?.account===account&&!watcherFeedback.ok){
+   const msg=h('p','focus-alert focus-watcher-feedback',watcherFeedback.message);msg.setAttribute('role','alert');wrapper.append(msg);
+  }
+  if(watcherConsentPending&&info.serviceReady){
+   const notice=h('p','focus-muted',
+    'Your existing Guild Wars 2 API key will be sent securely to your own Cloudflare Worker, encrypted for storage, and used to check Trading Post orders and completed transactions about every 10 minutes, even while your phone is closed. This cannot place or cancel orders. Intermediate fills between checks may not be observable. You can disable monitoring and erase its cloud records.');
+   wrapper.append(notice);
+   const consent=h('label','focus-watcher-consent');
+   const check=h('input');check.type='checkbox';check.setAttribute('aria-label','I agree to encrypted GW2 key storage for off-phone monitoring');
+   check.checked=watcherConsentChecked;
+   consent.append(check,h('span','','I agree to encrypted storage of my GW2 API key for background trade monitoring.'));
+   wrapper.append(consent);
+   const actions=h('div','focus-watcher-actions');
+   const activate=buttonNode(info.syncing?'Connecting…':'Start background monitoring');
+   activate.disabled=!watcherConsentChecked||watcherEnrollmentBusy||info.syncing;
+   check.addEventListener('change',()=>{watcherConsentChecked=check.checked;activate.disabled=!watcherConsentChecked||watcherEnrollmentBusy||cloud.status(account).syncing;});
+   activate.addEventListener('click',async()=>{
+    if(!watcherConsentChecked||watcherEnrollmentBusy||activate.disabled)return;
+    watcherEnrollmentBusy=true;activate.disabled=true;activate.textContent='Connecting to Cloudflare…';
+    watcherFeedback={account,ok:true,message:'Verifying account enrollment…'};
+    try{
+     await cloud.enable(state);
+     watcherConsentPending=false;watcherConsentChecked=false;
+     const result=await cloud.refresh(state,{force:true});
+     watcherFeedback={account,ok:true,message:result?.lastSuccess?
+      'Monitoring ACTIVE — the account has been checked successfully.':
+      'Account enrolled. First successful background collection is pending.'};
+    }catch(e){
+     watcherFeedback={account,ok:false,message:'Enrollment unsuccessful: '+String(e?.message||e).slice(0,200)};
+    }finally{watcherEnrollmentBusy=false;}
+    root.GPFocus?.render?.();
+   });
+   const cancel=buttonNode('Cancel');
+   cancel.addEventListener('click',()=>{watcherConsentPending=false;watcherConsentChecked=false;watcherFeedback=null;root.GPFocus?.render?.();});
+   actions.append(activate,cancel);wrapper.append(actions);
+  }else{
+   const enable=buttonNode(info.serviceReady?'Enable background trade watching':'Background monitoring unavailable');
+   enable.disabled=info.syncing||!info.serviceReady;
+   enable.addEventListener('click',()=>{
+    watcherConsentPending=true;watcherConsentChecked=false;watcherFeedback=null;root.GPFocus?.render?.();
+    setTimeout(()=>document.querySelector('#focus-account-watcher .focus-watcher-consent')?.scrollIntoView({block:'center',behavior:'instant'}),60);
+   });
+   wrapper.append(enable);
+  }
  }else{
+  if(watcherFeedback?.account===account&&watcherFeedback.ok){
+   const feedback=h('p','focus-watcher-feedback',watcherFeedback.message);feedback.setAttribute('role','status');wrapper.append(feedback);
+  }
   const status=info.status,last=Number(status?.lastSuccess);
   intro.textContent='Background monitor enabled · server-side account checks every ~10 minutes. '+
    (last?'Last success '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+'. ':'First collection pending. ')+

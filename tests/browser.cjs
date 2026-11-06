@@ -321,7 +321,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
  const watch=page.locator('#focus-best-rows .focus-account-watcher');
  assert.equal(await watch.count(),1);
- assert.match(await watch.innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.match(await watch.innerText(),/The private cloud monitor is currently unreachable/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
  // This is an account setting, not a trading forecast: it must remain
  // visible when price/forecast research goes stale.
@@ -333,8 +333,36 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account Trade Watcher'}).click();
  await page.waitForFunction(()=>document.querySelector('#focus-account-watcher')?.getBoundingClientRect().top<innerHeight);
  assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
- assert.match(await page.locator('#focus-account-watcher').innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/The private cloud monitor is currently unreachable/);
  assert.match(await page.locator('#focus-account-watcher [data-monitor-state=off]').innerText(),/OFF — background monitoring/);
+ // WebViews may suppress native confirm()/alert(). Enrollment must use
+ // explicit in-page consent and must NEVER send a key just from Watch click.
+ await page.evaluate(()=>{
+  window.__watchConsentOriginal={
+   status:GPCloudAccount.status,enable:GPCloudAccount.enable,refresh:GPCloudAccount.refresh
+  };
+  window.__enrollmentCalls=0;window.__mockEnrolled=false;
+  GPCloudAccount.status=()=>({enabled:window.__mockEnrolled,syncing:false,serviceReady:true,
+   lastError:null,status:window.__mockEnrolled?{lastSuccess:Date.now(),currentBuys:4}:null});
+  GPCloudAccount.enable=async()=>{window.__enrollmentCalls++;window.__mockEnrolled=true;return {enabled:true};};
+  GPCloudAccount.refresh=async()=>({ok:true,lastSuccess:Date.now(),currentBuys:4});
+  GPFocus.render();
+ });
+ await page.getByRole('button',{name:'Enable background trade watching'}).click();
+ assert.equal(await page.evaluate(()=>window.__enrollmentCalls),0,'first click must not upload any key');
+ assert.equal(await page.getByRole('button',{name:'Start background monitoring'}).isDisabled(),true);
+ await page.getByRole('checkbox',{name:'I agree to encrypted GW2 key storage for off-phone monitoring'}).check();
+ assert.equal(await page.getByRole('button',{name:'Start background monitoring'}).isEnabled(),true);
+ await page.getByRole('button',{name:'Start background monitoring'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-account-watcher [data-monitor-state=active]'));
+ assert.equal(await page.evaluate(()=>window.__enrollmentCalls),1,'only explicit consent submits enrollment');
+ assert.match(await page.locator('#focus-account-watcher').innerText(),/Monitoring ACTIVE/);
+ await page.evaluate(()=>{
+  GPCloudAccount.status=window.__watchConsentOriginal.status;
+  GPCloudAccount.enable=window.__watchConsentOriginal.enable;
+  GPCloudAccount.refresh=window.__watchConsentOriginal.refresh;
+  GPFocus.render();
+ });
  // Confirm state distinguishes enrollment from a mere Worker health response.
  await page.evaluate(()=>{
   window.__originalWatchStatus=GPCloudAccount.status;

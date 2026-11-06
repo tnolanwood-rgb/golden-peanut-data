@@ -16,7 +16,7 @@ const headers=(request)=>{
  const origin=request.headers.get('Origin');
  return {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
   'Content-Security-Policy':"default-src 'none'",
-  'Vary':'Origin',...(origin===PUBLIC_ORIGIN?{'Access-Control-Allow-Origin':PUBLIC_ORIGIN,'Access-Control-Allow-Headers':'authorization,content-type,x-gp-account','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
+  'Vary':'Origin',...(origin===PUBLIC_ORIGIN?{'Access-Control-Allow-Origin':PUBLIC_ORIGIN,'Access-Control-Allow-Headers':'authorization,cache-control,content-type,x-gp-account','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
 };
 function response(request,status,body){return new Response(JSON.stringify(body),{status,headers:{...headers(request),'Content-Type':'application/json;charset=utf-8'}});}
 function accessKey(request){
@@ -211,6 +211,8 @@ async function handle(request,env,ctx){
  if(!['/enroll','/status','/events','/nights','/disable'].includes(pathname))return response(request,404,{ok:false});
  const key=accessKey(request);if(!key)return response(request,401,{ok:false,error:'A connected tradingpost API key is required'});
  if(pathname==='/enroll'&&request.method==='POST'){
+  const requestBody=await request.json().catch(()=>null);
+  if(requestBody?.consent!==true)return response(request,400,{ok:false,error:'Explicit background-monitoring consent is required'});
   const details=await gw2(key,'/tokeninfo'),permissions=details?.permissions||[];
   if(!permissions.includes('account')||!permissions.includes('tradingpost'))
    return response(request,403,{ok:false,error:'The API key needs account and tradingpost permissions'});

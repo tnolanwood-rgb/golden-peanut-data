@@ -28,11 +28,25 @@ test('origin and preflight allow only the original Golden Peanut Pages origin',a
  const good=await worker.fetch(req('/status','OPTIONS',{Origin:origin}),{},{});
  assert.equal(good.status,204);
  assert.equal(good.headers.get('access-control-allow-origin'),origin);
- assert.match(good.headers.get('access-control-allow-headers'),/authorization/);
+ const permitted=(good.headers.get('access-control-allow-headers')||'').split(',').map(x=>x.trim().toLowerCase());
+ for(const requested of ['authorization','cache-control','content-type','x-gp-account'])
+  assert.ok(permitted.includes(requested),'Browser preflight must permit '+requested);
  const bad=await worker.fetch(req('/status','OPTIONS',{Origin:'https://unauthorized.example'}),{},{});
  assert.equal(bad.status,403);
  const spoof=await worker.fetch(req('/status','GET',{Origin:'https://unauthorized.example',Authorization:'Bearer '+key}),{},{});
  assert.equal(spoof.status,403);
+});
+test('enrollment requires positive opt-in even with a syntactically valid API token',async()=>{
+ const {default:worker}=await moduleTask;
+ const r=await worker.fetch(req('/enroll','POST',{Origin:origin,Authorization:'Bearer '+key}),{},{});
+ assert.equal(r.status,400);
+ const v=await r.json();assert.match(v.error,/consent/i);
+ assert.equal(r.headers.get('Access-Control-Allow-Origin'),origin);
+});
+test('browser client does not send disallowed cache-control as an authorization request header',()=>{
+ const client=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
+ assert.ok(!client.includes("headers={Authorization:'Bearer '+state.key,'Cache-Control':'no-store'}"));
+ assert.ok(client.includes("const headers={Authorization:'Bearer '+state.key};"));
 });
 test('cron with no opted-in accounts cannot fetch a personal account',async()=>{
  const {default:worker}=await moduleTask;

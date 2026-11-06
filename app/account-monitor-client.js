@@ -35,7 +35,7 @@ async function request(state,path,opts={}){
  if(!state?.key||!state?.account)throw Error('Connect the GW2 trading account first');
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{
-  const headers={Authorization:'Bearer '+state.key,'Cache-Control':'no-store'};
+  const headers={Authorization:'Bearer '+state.key};
   if(opts.body!==undefined){headers['Content-Type']='application/json';headers['X-GP-Account']=state.account;}
   const response=await fetch(BASE+path,{method:opts.method||'GET',
    headers,body:opts.body!==undefined?JSON.stringify(opts.body):undefined,signal:controller.signal,cache:'no-store'});
