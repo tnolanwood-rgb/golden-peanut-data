@@ -81,6 +81,36 @@ test('GW2 token rejection produces an actionable error instead of hiding behind 
   assert.ok(!JSON.stringify(json).includes(key));
  }finally{global.fetch=old;}
 });
+test('full consent workflow encrypts a verified account key before enrolling and begins nonblocking snapshots',async()=>{
+ const {default:worker}=await moduleTask,orig=global.fetch;
+ const queries=[],polls=[];
+ const env={MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),
+  DB:{prepare(sql){
+    queries.push(sql);
+    return {bind(){return this;},async run(){return {success:true};},
+     async first(){return null;},async all(){return {results:[]}}};
+   }}
+ };
+ global.fetch=async url=>{
+  const u=String(url);
+  if(u.endsWith('/tokeninfo'))return Response.json({permissions:['account','tradingpost']});
+  if(u.endsWith('/account'))return Response.json({id:'4a182def-fdc4-4de3-9ab5-067987aaaaab',name:'Fixture.1234'});
+  if(u.includes('/commerce/transactions/'))return Response.json([]);
+  throw Error('Unexpected ArenaNet mock fetch: '+u.replace(/Bearer\s+\S+/gi,'[secret]'));
+ };
+ try{
+  const input=new Request(site+'/enroll',{method:'POST',headers:{
+    Origin:origin,Authorization:'Bearer '+key,'X-GP-Account':'Fixture.1234','Content-Type':'application/json'
+   },body:JSON.stringify({consent:true})});
+  const r=await worker.fetch(input,env,{waitUntil(p){polls.push(p);}});
+  assert.equal(r.status,200);const data=await r.json();
+  assert.equal(data.ok,true);assert.equal(data.account,'Fixture.1234');
+  assert.equal(polls.length,1);
+  await Promise.all(polls);
+  assert.ok(queries.some(sql=>sql.includes('INSERT INTO gp_monitor_credentials')));
+  assert.ok(!JSON.stringify(data).includes(key));
+ }finally{global.fetch=orig;}
+});
 test('browser client does not send disallowed cache-control as an authorization request header',()=>{
  const client=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
  assert.ok(!client.includes("headers={Authorization:'Bearer '+state.key,'Cache-Control':'no-store'}"));
