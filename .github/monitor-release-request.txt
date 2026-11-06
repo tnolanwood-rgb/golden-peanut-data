@@ -1,0 +1,5 @@
+Golden Peanut private monitor approved release, 2026-11-06.
+Deploy isolated golden-peanut-account-monitor Worker, encrypted key storage, 10-minute cron and private D1 monitor tables.
+Manual confirmation is mandatory before any personal key is sent from the app.
+Protect public market collector and all existing ledger records; deploy no Trading Post orders.
+Source main commit 9b5392840863887d63621e780375430ba679e241.
