@@ -238,9 +238,19 @@ async function handle(request,env,ctx){
    currentBuys:buys?.n||0,currentSells:sells?.n||0,savedCompletedTrades:trades?.n||0,verifiedOrderNights:nights?.n||0});
  }
  if(pathname==='/disable'&&request.method==='POST'){
-  await env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL WHERE token_digest=?')
-   .bind(tokenDigest).run();
-  return response(request,200,{ok:true,enabled:false,credentialDeleted:true});
+  // Explicit user's erasure request: remove credential AND all private cloud
+  // observations, without touching browser IndexedDB or public market tables.
+  const account=credentials.account_id;
+  await env.DB.batch([
+   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_events WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_nights WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=?').bind(account),
+   env.DB.prepare('DELETE FROM gp_monitor_credentials WHERE account_id=?').bind(account)
+  ]);
+  return response(request,200,{ok:true,enabled:false,credentialDeleted:true,cloudRecordsErased:true});
  }
  if(pathname==='/events'&&request.method==='GET'){
   const cursor=Math.max(0,Math.min(1e12,Number(url.searchParams.get('after')||0)))||0;
