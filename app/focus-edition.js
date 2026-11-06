@@ -8,7 +8,7 @@ const State=()=>root.GoldenPeanutClean?.State;
 const STORE='gp-focus-ui-v1';const EXPECTED_MARKET_BUILD='7.16.0-evidence';
 const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',legendaries:'Legendaries'};
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
-let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null},started=false,renderTimer=0,viewUpdating=false;
+let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null,sectionScrolls:{}},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
@@ -65,7 +65,7 @@ function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}c
 const UI_KEYS=['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode',
  'orderLane','orderSearch','orderAll','legendSection','marketResearchLot',
  'portfolioBudgetGold','tradeDetail','growthDetail','relatedDetail','orderDetail',
- 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections'];
+ 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections','sectionScrolls'];
 function viewMarketSnapshot(){
  const id=Number(ui.tradeDetail);
  if(!Number.isSafeInteger(id)||id<=0)return null;
@@ -120,6 +120,17 @@ function load(){
   for(const [key,val]of Object.entries(ui.capacitySelections).slice(0,300))
    if(/^\d{1,10}$/.test(key)&&[1,3,5,10,20,50,100,250].includes(Number(val)))valid[key]=Number(val);
   ui.capacitySelections=valid;
+ }
+ if(!ui.sectionScrolls||typeof ui.sectionScrolls!=='object'||Array.isArray(ui.sectionScrolls))ui.sectionScrolls={};
+ else{
+  const valid={};
+  for(const [key,entry]of Object.entries(ui.sectionScrolls).slice(-50)){
+   if(typeof key!=='string'||key.length>130||!entry||typeof entry!=='object')continue;
+   const loaded=Number(entry.loaded),top=Number(entry.top);
+   if(Number.isInteger(loaded)&&loaded>=0&&loaded<=2500&&Number.isFinite(top)&&top>=0&&top<10000000)
+    valid[key]={loaded,top:Math.floor(top)};
+  }
+  ui.sectionScrolls=valid;
  }
  // Restore only a bounded recently viewed PUBLIC research snapshot. Never
  // silently turn it into a current recommendation after a page recreation.
@@ -382,32 +393,84 @@ function copyOpportunityPlan(){
 /* Historical performance is not an overnight forecast. It must remain visible
  * when a newly introduced execution model lacks prospective cohorts. This uses
  * the saved FIFO-matched ledger, never standing-book quantities as trade volume. */
+/* Independent, touch-scrollable market sections. Keep only a handful of DOM
+ * rows at first, then reveal subsequent ranked rows while the user scrolls.
+ * Unlike slice(0,6), every qualified item stays reachable. State survives
+ * live UI repaint and Android WebView configuration recreation. */
+let sectionScrollSaveTimer=null;
+function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow}){
+ if(!Array.isArray(items)||!items.length)return 0;
+ const section=h('section','focus-scroll-section');section.dataset.sectionId=id;
+ section.append(h('div','focus-list-heading',title));
+ if(desc)section.append(h('p','focus-muted focus-section-description',desc));
+ const key=ui.tab+'::'+id+'::'+(ui.tab==='trades'?ui.tradeSearch.toLowerCase().trim().slice(0,60):'');
+ const stored=ui.sectionScrolls?.[key]||{loaded:0,top:0};
+ const view=h('div','focus-section-scroll');view.dataset.scrollId=id;
+ view.tabIndex=0;view.setAttribute('role','region');
+ view.setAttribute('aria-label',title+' — scroll this section for more markets');
+ const content=h('div','focus-section-items');view.append(content);
+ const controls=h('div','focus-section-controls'),
+  status=h('small','focus-section-count'),
+  more=button('Show more markets',()=>reveal(24),'focus-button focus-button-secondary focus-section-more');
+ controls.append(status,more);
+ let cursor=0;
+ const base=Math.max(1,Math.min(20,Number(initial)||6));
+ const update=()=>{
+  const remaining=items.length-cursor;
+  status.textContent=num(cursor)+' of '+num(items.length)+' markets'+(remaining?' · scroll inside this section for more':' · all shown');
+  more.hidden=!remaining;
+  if(remaining)more.textContent='Show next '+num(Math.min(24,remaining));
+ };
+ function remember(){
+  if(!ui.sectionScrolls)ui.sectionScrolls={};
+  ui.sectionScrolls[key]={loaded:cursor,top:Math.max(0,Math.floor(view.scrollTop))};
+ }
+ function reveal(size){
+  const target=Math.min(items.length,cursor+size);
+  for(;cursor<target;cursor++)content.append(renderRow(items[cursor]));
+  remember();update();
+  // When rows still do not fill the viewport, allow the user to see more
+  // without hunting for an invisible scroll gesture.
+  if(cursor<items.length&&view.isConnected&&view.scrollHeight<=view.clientHeight+1)
+   window.requestAnimationFrame(()=>{if(view.isConnected&&view.scrollHeight<=view.clientHeight+1)reveal(8);});
+ }
+ view.addEventListener('scroll',()=>{
+  remember();
+  if(sectionScrollSaveTimer)clearTimeout(sectionScrollSaveTimer);
+  sectionScrollSaveTimer=setTimeout(()=>{sectionScrollSaveTimer=null;save();},250);
+  if(cursor<items.length&&view.scrollTop+view.clientHeight>=view.scrollHeight-160)reveal(16);
+ },{passive:true});
+ section.append(view,controls);host.append(section);
+ reveal(Math.max(base,Math.min(2500,Number(stored.loaded)||0)));
+ if(stored.top>0)window.requestAnimationFrame(()=>{if(view.isConnected)view.scrollTop=Math.min(stored.top,Math.max(0,view.scrollHeight-view.clientHeight));});
+ return items.length;
+}
 function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
  const recent=root.GPGrowth?.weeklyByMarket?.(s?.ledger||[],Date.now())?.markets||[];
- const winners=recent.filter(m=>Number.isFinite(m.profit)&&m.profit>0&&m.matched7>0).slice(0,limit);
+ const winners=recent.filter(m=>Number.isFinite(m.profit)&&m.profit>0&&m.matched7>0);
  if(!winners.length)return 0;
- host.append(h('div','focus-list-heading','RECENT REAL EARNINGS · COMPLETED TRADES'));
- host.append(h('p','focus-muted','Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills still require independent verification.'));
  const buys=new Set((s?.snapshot?.buys||[]).map(o=>o.item));
- for(const m of winners){
-  const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
-  const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
-  const standing=buys.has(m.id)?' · buy order already standing':'';
-  middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
-  if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
-  row.append(middle);
-  const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));
-  side.append(value,h('small','','real net profit · last 7 days'));
-  row.append(side,h('span','focus-chevron','›'));
-  row.setAttribute('aria-label',itemName(m.id)+'; realised seven-day matched profit '+cash(m.profit)+'; open market history');
-  row.addEventListener('click',()=>{
-   ui.tradeDetail=null;ui.relatedDetail=null;ui.growthDetail=null;ui.tradeFilter='memory';
-   goto('trades');ui.growthDetail=m.id;pushHistory();renderGrowthDetail();
-   window.scrollTo({top:0,behavior:'instant'});
-  });
-  host.append(row);
- }
- return winners.length;
+ return appendScrollableSection(host,{
+  id:'recent-earnings',title:'RECENT REAL EARNINGS · COMPLETED TRADES',
+  desc:'Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills require independent verification.',
+  items:winners,initial:limit,renderRow:m=>{
+   const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
+   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
+   const standing=buys.has(m.id)?' · buy order already standing':'';
+   middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
+   if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
+   row.append(middle);
+   const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));
+   side.append(value,h('small','','real net profit · last 7 days'));row.append(side,h('span','focus-chevron','›'));
+   row.setAttribute('aria-label',itemName(m.id)+'; realised seven-day matched profit '+cash(m.profit)+'; open market history');
+   row.addEventListener('click',()=>{
+    ui.tradeDetail=null;ui.relatedDetail=null;ui.growthDetail=null;ui.tradeFilter='memory';
+    goto('trades');ui.growthDetail=m.id;pushHistory();renderGrowthDetail();
+    window.scrollTo({top:0,behavior:'instant'});
+   });
+   return row;
+  }
+ });
 }
 /* Visible market decisions must use ALL evaluated data lanes, not only
  * the execution model's eight-window promotion gate. Unverified public
