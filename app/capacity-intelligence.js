@@ -96,7 +96,7 @@ function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNi
  const id=market?.id,buy=market?.buy,exit=market?.exit;
  if(!whole(id,1)||!whole(buy,1)||!whole(exit,1)||exit<=buy)
   return {status:'invalid',reason:'No valid current bid and resale reference'};
- const margin=feeNet(exit,1)-buy,oneRound=Math.max(0,feeNet(exit,quantity)-buy*quantity);
+ const margin=feeNet(exit,1)-buy,oneRound=feeNet(exit,quantity)-buy*quantity;
  const data=index(ledger,metadata,now),name=String(market?.name||metadata?.[id]?.name||'');
  const baseline=analogous(data,id,name,metadata,buy,now);
  let stats=baseline.stats,source=baseline.source,label=baseline.label;
@@ -133,8 +133,8 @@ function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNi
   // offered only as a capacity reference; joint resale cannot be estimated.
   result.scenarios.push({days,acquiredTypical:buyTypical,acquiredHigh:buyHigh,
    resaleTypical:sellTypical,resaleHigh:sellHigh,
-   profitTypical:sellTypical===null?null:Math.max(0,feeNet(exit,sellTypical)-buy*sellTypical),
-   profitHigh:sellHigh===null?null:Math.max(0,feeNet(exit,sellHigh)-buy*sellHigh),
+   profitTypical:sellTypical===null?null:feeNet(exit,sellTypical)-buy*sellTypical,
+   profitHigh:sellHigh===null?null:feeNet(exit,sellHigh)-buy*sellHigh,
    conditional:true});
  }
  const throughput=Math.min(stats.buyTypical||0,stats.sellTypical||0);
