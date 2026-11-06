@@ -63,10 +63,18 @@ def request_json(url, *, headers=None, payload=None, max_retries=2):
                         code = str(numeric)
                     message = str(first.get('message', '')).lower()
                     if 'no such table' in message: kind = 'missing_table'
+                    elif 'no such column' in message: kind = 'missing_column'
+                    elif 'incomplete input' in message: kind = 'incomplete_sql'
+                    elif 'too many sql variables' in message: kind = 'parameter_limit'
+                    elif 'unique constraint failed' in message: kind = 'unique_constraint'
+                    elif 'constraint failed' in message: kind = 'constraint'
+                    elif 'datatype mismatch' in message: kind = 'datatype_mismatch'
+                    elif 'no such function' in message: kind = 'missing_function'
                     elif 'permission' in message or 'not authorized' in message: kind = 'permission'
                     elif 'database' in message and ('not found' in message or 'does not exist' in message): kind = 'database_not_found'
                     elif 'bind' in message or 'parameter' in message: kind = 'parameter'
-                    elif 'syntax error' in message or 'sqlit' in message: kind = 'sqlite'
+                    elif 'syntax error' in message: kind = 'syntax_error'
+                    elif 'sqlit' in message: kind = 'sqlite_other'
                     elif 'invalid' in message: kind = 'invalid_request'
                 except (ValueError, UnicodeError, TypeError, AttributeError):
                     pass
@@ -97,10 +105,24 @@ def db(sql, params=()):
     if any(x is None for x in params):
         raise MonitorProblem('NULL must be emitted as a SQL literal for D1 REST')
     bound = [str(x) for x in params]
-    data, _ = request_json(url, headers={
-        'Authorization': 'Bearer ' + os.environ['CF_API_TOKEN'],
-        'Content-Type': 'application/json'
-    }, payload={'sql': sql, 'params': bound}, max_retries=1)
+    # Restrict diagnostics to a fixed stage label. SQL and values never log.
+    statement = sql.lstrip().upper()
+    stage = ('preflight' if statement.startswith('SELECT ENABLED FROM GP_MONITOR_CREDENTIALS')
+             else 'account_bootstrap' if 'INTO GP_MONITOR_CREDENTIALS' in statement
+             else 'open_orders' if 'FROM GP_MONITOR_ORDERS' in statement
+             else 'completed_trades' if 'GP_MONITOR_TRADES' in statement
+             else 'events' if 'GP_MONITOR_EVENTS' in statement
+             else 'night_learning' if 'GP_MONITOR_NIGHTS' in statement
+             else 'poll_record' if 'GP_MONITOR_POLLS' in statement
+             else 'monitor_status' if 'GP_MONITOR_CREDENTIALS' in statement
+             else 'other')
+    try:
+        data, _ = request_json(url, headers={
+            'Authorization': 'Bearer ' + os.environ['CF_API_TOKEN'],
+            'Content-Type': 'application/json'
+        }, payload={'sql': sql, 'params': bound}, max_retries=1)
+    except MonitorProblem as exc:
+        raise MonitorProblem('D1 stage %s: %s' % (stage, exc)) from None
     if not data.get('success') or any(not x.get('success', False) for x in data.get('result', [])):
         raise MonitorProblem('Cloudflare private D1 query rejected')
     groups = data.get('result') or []
