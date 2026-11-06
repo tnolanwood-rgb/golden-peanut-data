@@ -1,0 +1,5 @@
+Approved production release request: Golden Peanut 7.16.0-evidence
+Target: existing Cloudflare Pages project thegoldenpeanut, branch main
+Source: merged PR #1, reviewed and preview tested
+Requested by repository owner in ChatGPT on 2026-11-06
+No deletion of local browser data, Cloudflare D1, or existing market collector
