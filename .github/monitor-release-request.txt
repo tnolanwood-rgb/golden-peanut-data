@@ -5,3 +5,7 @@ Protect public market collector and all existing ledger records; deploy no Tradi
 Source main commit 9b5392840863887d63621e780375430ba679e241.
 
 Retry: use existing CF_API_TOKEN for isolated scheduled Workers deployment, after Pages-only token scope denial.
+
+Permission-update retry confirmed by user, 2026-11-06 21:40 Europe/London.
+Request new isolated Cloudflare Worker deployment with account-scoped Workers Admin and D1 Edit.
+If worker upload or secret fails, retain consent gate disabled. Never share API credentials in logs.
