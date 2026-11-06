@@ -745,7 +745,7 @@ function renderAccountWatcher(host,state){
    wrapper.append(intro);
    const setup=h('div','focus-watcher-setup');
    setup.append(
-    h('p','','1. Create or use a GW2 API key with account + tradingpost permissions.'),
+    h('p','','1. Use the EXACT SAME GW2 API key already connected to Golden Peanut (account + tradingpost permissions), so the private collector can match your account securely. If you create a new key, update Golden Peanut to that same key as well.'),
     h('p','','2. In GitHub Actions Secrets, select New repository secret. Name it GW2_PRIVATE_MONITOR_KEY, then paste the key there. Never paste it into this chat or into source files.'),
     h('p','','3. Run the private account collector once, or let the next scheduled check run. Then tap Connect below.')
    );
