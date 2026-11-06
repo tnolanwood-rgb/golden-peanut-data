@@ -51,14 +51,23 @@ jobs:
           if choice not in ('inspect', 'preview'):
               sys.exit('Unsupported operation')
           req = urllib.request.Request(
-              f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects?per_page=100',
+              f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects',
               headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'},
           )
           try:
               with urllib.request.urlopen(req, timeout=30) as response:
                   body = json.load(response)
           except urllib.error.HTTPError as error:
-              sys.exit(f'Cloudflare Pages project lookup failed (HTTP {error.code}); check token Pages Edit access')
+              # Report only public error codes; never print token, headers or raw response.
+              code_list = []
+              try:
+                  err_body = json.loads(error.read(4096).decode('utf-8'))
+                  code_list = [str(int(e['code'])) for e in (err_body.get('errors') or [])
+                               if isinstance(e, dict) and isinstance(e.get('code'), int)]
+              except Exception:
+                  pass
+              safe_codes = ','.join(code_list[:3]) or 'not supplied'
+              sys.exit(f'Cloudflare Pages lookup: HTTP {error.code}, Cloudflare error code(s): {safe_codes}. Verify Pages Read/Edit permission and token account scope.')
           except Exception as error:
               sys.exit(f'Cloudflare Pages project lookup failed: {type(error).__name__}')
           if not body.get('success') or not isinstance(body.get('result'), list):
