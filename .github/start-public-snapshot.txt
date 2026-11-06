@@ -1,0 +1,4 @@
+Start initial Golden Peanut 7.16 full-market public snapshot.
+Date: 2026-11-06
+Data: public GW2 quotations, item metadata, recipes, standing depth and dated observations.
+No account credentials or personal trade histories.
