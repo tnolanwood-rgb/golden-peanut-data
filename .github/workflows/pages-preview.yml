@@ -1,0 +1,105 @@
+name: Golden Peanut — Inspect Cloudflare and Deploy Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Inspect projects first; preview requires an exact existing project name'
+        required: true
+        type: choice
+        default: inspect
+        options:
+          - inspect
+          - preview
+      project_name:
+        description: 'Exact existing Cloudflare Pages project name (preview mode only)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gp-pages-manual-preview
+  cancel-in-progress: false
+
+jobs:
+  inspect-or-preview:
+    name: Inspect Cloudflare / validated preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      GP_PROJECT_NAME: ${{ inputs.project_name }}
+      GP_OPERATION: ${{ inputs.operation }}
+      GP_PREVIEW_BRANCH: golden-peanut-7-16-review
+    steps:
+      - name: Verify credentials and inspect existing Pages projects
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys, urllib.error, urllib.request
+          token = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+          account = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+          choice = os.environ.get('GP_OPERATION', 'inspect')
+          project = os.environ.get('GP_PROJECT_NAME', '').strip()
+          preview = os.environ['GP_PREVIEW_BRANCH']
+          if not token or not re.fullmatch(r'[0-9a-fA-F]{32}', account):
+              sys.exit('Missing CLOUDFLARE_API_TOKEN secret or valid CF_ACCOUNT_ID variable')
+          if choice not in ('inspect', 'preview'):
+              sys.exit('Unsupported operation')
+          req = urllib.request.Request(
+              f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects?per_page=100',
+              headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  body = json.load(response)
+          except urllib.error.HTTPError as error:
+              sys.exit(f'Cloudflare Pages project lookup failed (HTTP {error.code}); check token Pages Edit access')
+          except Exception as error:
+              sys.exit(f'Cloudflare Pages project lookup failed: {type(error).__name__}')
+          if not body.get('success') or not isinstance(body.get('result'), list):
+              sys.exit('Cloudflare returned an unsuccessful Pages projects response')
+          projects = body['result']
+          if choice == 'inspect':
+              print('Existing Cloudflare Pages projects (names only; no secrets):')
+              for row in projects:
+                  print(' - ' + str(row.get('name', '?')) + ' [production branch: ' + str(row.get('production_branch') or 'unknown') + ']')
+              print('No deployment attempted. Confirm the matching project before running preview.')
+              sys.exit(0)
+          if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', project):
+              sys.exit('For preview, enter the exact existing Pages project name')
+          match = next((row for row in projects if row.get('name') == project), None)
+          if not match:
+              sys.exit('Requested project name was not found among the existing Pages projects')
+          if preview == match.get('production_branch'):
+              sys.exit('Unsafe: preview branch equals the Pages production branch')
+          print('Validated existing Pages project for PREVIEW only: ' + project)
+          PY
+      - name: Checkout reviewed Golden Peanut development source
+        if: inputs.operation == 'preview'
+        uses: actions/checkout@v4
+        with:
+          ref: development/7.16-evidence-engine
+          persist-credentials: false
+      - name: Validate application before preview
+        if: inputs.operation == 'preview'
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check PyYAML==6.0.3
+          python3 scripts/check_release.py
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          npm ci --ignore-scripts
+          npm test
+          test -f app/index.html
+          test -f app/opportunity-engine.js
+      - name: Deploy PREVIEW only to verified existing Pages project
+        if: inputs.operation == 'preview'
+        shell: bash
+        run: |
+          npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch "$GP_PREVIEW_BRANCH"
+
+# This workflow is manual-only. Production deployment is deliberately unavailable.
