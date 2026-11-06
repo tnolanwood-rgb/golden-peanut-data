@@ -283,7 +283,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.evaluate(()=>{
   const s=GoldenPeanutClean.State,stamp=new Date().toISOString();
   s.account='Fixture.1234';s.key='fixture-key-not-a-real-key';
-  s.snapshot={...(s.snapshot||{}),account:s.account,at:stamp,wallet:125000,buys:[],sells:[],
+  s.snapshot={...(s.snapshot||{}),account:s.account,at:stamp,walletAt:stamp,wallet:125000,buys:[],sells:[],
    buysVerified:true,sellsVerified:true,delivery:{items:[],coins:0}};
   const items=Array.from({length:72},(_,i)=>({
    id:6000+i,name:"Magi's Exalted Test Coat "+i,type:'Armor',rarity:'Exotic',
@@ -295,6 +295,14 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.goto('today');GPFocus.render();
  });
  const armorSection=page.locator('#focus-best-rows [data-section-id="exotic-armour"]');
+ await page.waitForFunction(()=>document.querySelector('#focus-best-rows [data-section-id="exotic-armour"]'),{timeout:9000}).catch(async e=>{
+  const diag=await page.evaluate(()=>({text:document.querySelector('#focus-best-rows')?.textContent?.slice(0,900),
+   source:GoldenPeanutClean.State.opportunityPlan?.source,
+   at:GoldenPeanutClean.State.opportunityPlan?.at,
+   walletAt:GoldenPeanutClean.State.snapshot?.walletAt,
+   researchCount:GoldenPeanutClean.State.opportunityPlan?.publicResearch?.length}));
+  console.log('SCROLL_DIAG '+JSON.stringify(diag));throw e;
+ });
  assert.equal(await armorSection.count(),1);
  assert.match(await armorSection.innerText(),/of 72 markets/);
  const armorScroll=armorSection.locator('.focus-section-scroll');
