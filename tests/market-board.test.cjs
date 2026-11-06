@@ -150,5 +150,5 @@ test('incomplete and stale night evidence cannot create fill predictions',()=>{
  const p={...source,privateNightEvidence:{101:stale}};
  const b=Board.build(p,{wallet:40651,now:NOW});
  assert.equal(b.history.find(x=>x.id===101).measuredNights,null);
- assert.equal(b.history.find(x=>x.id===101).tier,'historical-active-night');
+ assert.equal(b.history.find(x=>x.id===101).tier,'observed-night-conditional');
 });
