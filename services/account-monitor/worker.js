@@ -59,8 +59,10 @@ async function paginated(key,path,{maxPages,stopAtExisting=null,db=null,account=
    // imported transactions we still inspect the whole current page, then
    // continue one overlap page to avoid ignoring out-of-order transactions.
    let seen=false;
-   for(const row of rows)if(int(row.id,1)){
-    const exists=await db.prepare('SELECT 1 FROM gp_monitor_trades WHERE account_id=? AND side=? AND trade_id=? LIMIT 1').bind(account,side,row.id).first();
+   for(const row of [rows[0],rows.at(-1)]){
+    if(!int(row?.id,1))continue;
+    const exists=await db.prepare('SELECT 1 FROM gp_monitor_trades WHERE account_id=? AND side=? AND trade_id=? LIMIT 1')
+     .bind(account,side,row.id).first();
     if(exists){seen=true;break;}
    }
    if(seen&&page>=1){all.push(...rows);complete=true;break;}
@@ -96,7 +98,7 @@ async function monitorAccount(env,row){
    history[side]=got.rows;
    // More than 60 pages before reaching history means the poll cannot claim
    // exhaustive coverage. Persist the observed pages and report gap risk.
-   if(!got.complete)throw Error('History '+side+' requires further pagination; monitoring incomplete');
+   if(!got.complete)history[side+'_incomplete']=true; // Continue tracking current orders and the newest completed trades safely.
   }
   const recorded=await env.DB.prepare('SELECT account_id,side,order_id,item_id,price,remaining,first_seen_at,closed_at FROM gp_monitor_orders WHERE account_id=? AND closed_at IS NULL').bind(account).all();
   const prior=new Map((recorded.results||[]).map(x=>[x.side+':'+x.order_id,x]));
@@ -150,10 +152,13 @@ async function monitorAccount(env,row){
   }
   await env.DB.prepare('INSERT OR IGNORE INTO gp_monitor_polls(account_id,polled_at,buy_count,sell_count) VALUES(?,?,?,?)')
    .bind(account,stamp,current.buys.length,current.sells.length).run();
-  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=NULL,consecutive_failures=0 WHERE account_id=?')
-   .bind(stamp,stamp,account).run();
+  const historyWarning=sideNames.some(x=>history[x+'_incomplete'])?
+   'Recent completed trades saved; historical 90-day backfill exceeds per-run page budget':null;
+  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0 WHERE account_id=?')
+   .bind(stamp,stamp,historyWarning,account).run();
   await finalizeNights(env,account,stamp);
-  return {ok:true,account,orders:current.buys.length+current.sells.length,trades:tradeChanges,partials:partiallyFilled,newOrders,closedUnknown};
+  return {ok:true,account,orders:current.buys.length+current.sells.length,trades:tradeChanges,partials:partiallyFilled,newOrders,closedUnknown,
+   historyComplete:!historyWarning};
  }catch(e){
   const code=String(e.message||'Unknown monitor failure').slice(0,140);
   await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1 WHERE account_id=?')
@@ -180,6 +185,9 @@ async function finalizeNights(env,account,stamp){
  for(const x of orders.results||[]){
   const exists=await env.DB.prepare('SELECT 1 FROM gp_monitor_nights WHERE account_id=? AND side=? AND order_id=? AND night=?').bind(account,x.side,x.order_id,label).first();
   if(exists)continue;
+  const changedUnknown=await env.DB.prepare("SELECT 1 FROM gp_monitor_events WHERE account_id=? AND kind='changed_unknown' AND side=? AND order_id=? AND observed_at>=? AND observed_at<=? LIMIT 1")
+   .bind(account,x.side,x.order_id,start,end).first();
+  if(changedUnknown)continue; // Changed order size/price invalidates continuous exposure.
   const changes=await env.DB.prepare("SELECT SUM(quantity) AS filled FROM gp_monitor_events WHERE account_id=? AND kind='partial' AND side=? AND order_id=? AND observed_at>=? AND observed_at<=?")
    .bind(account,x.side,x.order_id,start,end).first();
   await env.DB.prepare('INSERT OR IGNORE INTO gp_monitor_nights(account_id,night,side,order_id,item_id,filled,observed_polls,window_start,window_end) VALUES(?,?,?,?,?,?,?,?,?)')
@@ -236,7 +244,7 @@ async function handle(request,env,ctx){
  }
  if(pathname==='/events'&&request.method==='GET'){
   const cursor=Math.max(0,Math.min(1e12,Number(url.searchParams.get('after')||0)))||0;
-  const result=await env.DB.prepare('SELECT id,kind,side,order_id,item_id,price,quantity,observed_at,previous_remaining,new_remaining FROM gp_monitor_events WHERE account_id=? AND id>? ORDER BY id LIMIT 500')
+  const result=await env.DB.prepare("SELECT e.id,e.kind,e.side,e.order_id,e.item_id,e.price,e.quantity,e.observed_at,e.previous_remaining,e.new_remaining,t.quantity AS completed_qty,t.created_at,t.purchased_at FROM gp_monitor_events e LEFT JOIN gp_monitor_trades t ON e.kind='trade' AND t.account_id=e.account_id AND t.side=e.side AND t.trade_id=e.order_id WHERE e.account_id=? AND e.id>? ORDER BY e.id LIMIT 500")
    .bind(credentials.account_id,cursor).all();
   const rows=result.results||[];
   return response(request,200,{ok:true,events:rows,nextCursor:rows.at(-1)?.id||cursor,hasMore:rows.length===500});
