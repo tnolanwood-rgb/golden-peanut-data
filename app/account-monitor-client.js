@@ -7,7 +7,7 @@
 (function(root){'use strict';
 const BASE='https://golden-peanut-account-monitor.tnolanwood.workers.dev';
 const STATUS_MINUTES=5;
-const active=new Map(),inFlight=new Map(),nights=new Map(),nightPending=new Map();
+const active=new Map(),nights=new Map(),nightPending=new Map(),nightFailures=new Map();
 const now=()=>Date.now();
 const valid=x=>Number.isSafeInteger(x)&&x>0;
 const current=()=>root.GoldenPeanutClean?.State||null;
@@ -122,6 +122,7 @@ async function fetchNights(state=current(),item){
  const id=state.account+'|'+item,cached=nights.get(id);
  if(cached&&now()-cached.at<10*60000)return cached.data;
  if(nightPending.has(id))return nightPending.get(id);
+ if(now()-(nightFailures.get(id)||0)<10*60000)return null;
  const promise=(async()=>{
   const payload=await request(state,'/nights?item='+item);
   const grouped={buys:[],sells:[],supported:false,source:payload.sampleKind};
@@ -136,7 +137,7 @@ async function fetchNights(state=current(),item){
   grouped.supported=grouped.buys.length>=5&&grouped.sells.length>=5;
   nights.set(id,{at:now(),data:grouped});
   return grouped;
- })().finally(()=>nightPending.delete(id));
+ })().catch(e=>{nightFailures.set(id,now());throw e;}).finally(()=>nightPending.delete(id));
  nightPending.set(id,promise);
  return promise;
 }
