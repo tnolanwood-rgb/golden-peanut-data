@@ -32,7 +32,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.evaluate(()=>history.state?.gpIndex),0);
 
  const setup=await page.evaluate(async()=>{
-  const s=GoldenPeanutClean.State;s.account='Fixture.1234';
+  const s=GoldenPeanutClean.State;s.account='Fixture.1234';s.opportunityDeepPaused=true; // isolate synthetic fixtures from a racing auto-discovery refresh
   s.snapshot=await s.api.snapshot('fixture-key-not-a-credential',s.account);s.ledger=[];
   await GPMarketFeed.load(s,{force:true});await GPMarketFeed.loadHistory({force:true});
   const now=Date.now(),DAY=86400000;
