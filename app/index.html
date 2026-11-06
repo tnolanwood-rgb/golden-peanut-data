@@ -3468,6 +3468,7 @@ async function selectAccount(account){
  const past=(await State.db.get('config',account,'history-sync'))?.value;
  State.historyProgress=past?{phase:past.phase==='complete'?'complete':'partial',pages:past.pages||0,detail:past.detail||'previous download was interrupted'}:null;
  render();await loadOutcomes56();await refreshIntelligence();
+ window.dispatchEvent(new Event('gp-account-changed'));
 }
 async function ensureConnectionReady(){
  if(startupPromise)await startupPromise;
@@ -3588,6 +3589,8 @@ async function sync(){if(State.busy)return;try{await ensureConnectionReady();}ca
    catch(e){warning([State.error,'Could not resolve all item icons: '+safeError(e)].filter(Boolean).join(' '));}}
   await checkPriorityMarkets(true);
   State.lastSuccess=new Date().toISOString();render();if($('outcome56-panel')?.open)renderOutcomes56();if(State.error)warning(State.error);
+  // Retrieve encrypted background monitor observations without blocking wallet refresh.
+  if(root.GPCloudAccount)void root.GPCloudAccount.refresh(State).catch(()=>{});
   // Refresh best-trade recommendations automatically whenever a verified account
   // check succeeds. Do not block wallet refresh or erase previous evidence on failure.
   if(root.GPOpportunity?.refresh&&!State.opportunityBusy){
@@ -3798,7 +3801,27 @@ async function init(){
   else{status('No account connected. Connect or recover existing history.');}
  }catch(e){startupFailure=e;warning('Database startup failed: '+safeError(e)+'. No history has been erased.');status('Browser storage unavailable at this address. Try opening the Cloudflare HTTPS site in regular Chrome (not an HTML file or private tab). Do not clear data or delete backups.');}
  finally{if(State.db?.db&&root.GPMarketFeed)void root.GPMarketFeed.load(State).then(()=>root.GPFocus?.render?.()).catch(()=>{});
-  const ready=!!State.db?.db&&!startupFailure;$('connect-form').querySelector('button[type=submit]').disabled=!ready;$('import-personal-key').disabled=!ready;$('sync-btn').disabled=!ready;}
+  const ready=!!State.db?.db&&!startupFailure;$('connect-form').querySelector('button[type=submit]').disabled=!ready;$('import-personal-key').disabled=!ready;$('sync-btn').disabled=!ready;
+  if(ready)startLocalTradeWatch();}
+}
+/* Local five-minute account heartbeat while the app is visibly open.
+ * Browser timers are suspended by Android when closed; the separate encrypted
+ * Cloudflare monitor (only after explicit opt-in) covers that gap. */
+let localWatchTimer=null,lastAutoAttempt=0;
+function startLocalTradeWatch(){
+ if(localWatchTimer)return;
+ async function pulse(){
+  if(document.hidden||!State.key||!State.account||!State.db||State.busy||State.historyBusy)return;
+  const previous=Date.parse(State.lastSuccess||State.snapshot?.at||'');
+  if(Number.isFinite(previous)&&Date.now()-previous<5*60000)return;
+  if(Date.now()-lastAutoAttempt<5*60000)return;
+  lastAutoAttempt=Date.now();
+  await sync();
+ }
+ localWatchTimer=setInterval(()=>{void pulse();},60000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void pulse();});
+ window.addEventListener('online',()=>{if(!document.hidden)void pulse();});
+ setTimeout(()=>{void pulse();},1500);
 }
 root.GoldenPeanutClean={State,init,render,changeMode,coinNode,sync,refreshIntelligence,buildAllocation,renderAllocation};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GoldenPeanutClean;
@@ -3963,6 +3986,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="./execution-engine.js?v=7.16.0" defer></script>
 <script src="./opportunity-engine.js?v=716-evidence" defer></script>
 <script src="./capacity-intelligence.js?v=717-capacity-research" defer></script>
+<script src="./account-monitor-client.js?v=719-private-watcher" defer></script>
 <script src="./portfolio-intelligence.js?v=718-deployment" defer></script>
 <script src="./market-board.js?v=716-market-integration" defer></script>
 <script src="./focus-edition.js?v=716-market-integration" defer></script>
@@ -3971,7 +3995,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const stamp='7.16.0-evidence',engine=window.GPOpportunity,front=window.GPFocus;
  const el=document.createElement('div');el.id='gp-build-integrity';
  el.style.cssText='padding:6px 16px;background:#0e2018;color:#d8cfaa;font:12px system-ui,sans-serif;';
- if(window.GP_HTML_BUILD===stamp&&engine?.buildId===stamp&&front?.buildId===stamp&&window.GPExecution?.buildId===stamp&&window.GPMarketFeed?.buildId===stamp&&window.GPMarketBoard?.buildId===stamp&&window.GPCapacity?.buildId===stamp&&window.GPPortfolio?.buildId===stamp){el.textContent='Market engine '+stamp+' · components verified · forecast accuracy not yet established';}
+ if(window.GP_HTML_BUILD===stamp&&engine?.buildId===stamp&&front?.buildId===stamp&&window.GPExecution?.buildId===stamp&&window.GPMarketFeed?.buildId===stamp&&window.GPMarketBoard?.buildId===stamp&&window.GPCapacity?.buildId===stamp&&window.GPPortfolio?.buildId===stamp&&window.GPCloudAccount?.buildId===stamp){el.textContent='Market engine '+stamp+' · components verified · forecast accuracy not yet established';}
  else {
   el.textContent='MARKET SUGGESTIONS DISABLED: MIXED/OUTDATED BUILD. Reload the latest production deployment.';
   el.style.cssText+='background:#702527;color:white;font-weight:700;';
