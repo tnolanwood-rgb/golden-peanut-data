@@ -1,7 +1,8 @@
-Production hotfix request — 2026-11-06
-Previous live version: Golden Peanut 7.16.0-evidence
-Target: existing Pages production thegoldenpeanut (main)
-Merged review: PR #2 (historical recent-winner fallback and active-book rendering)
-No account-specific data exported or modified; no DB schema or D1 changes
-Public full-market data 27,999 quoted IDs already published on main
-Approval: user explicitly requested repair of broken live 7.16 after approving deployment
+Golden Peanut approved production update — 2026-11-06
+Target existing Pages project: thegoldenpeanut, main
+Merged PR #3: unified evidence-labelled Best Trades board
+Restore lifetime history backed current markets, existing positions and new public-market leads.
+No fabricated public turnover, order quantity, or 24-hour income claim.
+Automated tests: PR #3 GitHub Actions run 42250172343 succeeded.
+User approved continued repair of broken 7.16, existing stored history remains intact.
+Do not clear D1, local IndexedDB, order evidence, or collector.
