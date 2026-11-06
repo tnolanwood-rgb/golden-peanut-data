@@ -109,6 +109,14 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const qtyPicker=page.locator('#focus-trade-detail .focus-capacity-select');
  await qtyPicker.selectOption('50');
  assert.match(await page.locator('#focus-trade-detail .focus-capacity-overview').innerText(),/Gold required IF order placed/);
+ const capacityDiagnostic=await page.evaluate(()=>{
+  const st=GoldenPeanutClean.State;
+  const m=st.opportunityPlan?.publicResearch?.find(x=>x.id===302);
+  const e=GPCapacity.estimate({market:{...m,name:st.meta[302]?.name},ledger:st.ledger,metadata:st.meta,quantity:50});
+  return {ledgerLength:st.ledger.length,meta302:st.meta[302],meta401:st.meta[401],
+   market:m,capacity:e,shown:document.querySelector('#focus-trade-detail .focus-capacity-explorer')?.textContent?.slice(0,1200)};
+ });
+ console.log('CAPACITY_BROWSER_DIAG '+JSON.stringify(capacityDiagnostic));
  const forecastRows=page.locator('#focus-trade-detail .focus-capacity-line[data-horizon]');
  assert.equal(await forecastRows.count(),3);
  assert.match(await forecastRows.nth(1).innerText(),/3 days/);
