@@ -246,3 +246,10 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-account-watcher .focus-watcher-actions{display:flex;flex-wrap:wrap;gap:8px;}
 .focus-account-watcher .focus-alert{margin:8px 0 0;}
 @media(max-width:420px){.focus-watcher-shortcut{min-width:42px;padding:0 6px;font-size:11px;}}
+
+/* Account monitor connection feedback. Health alone is not account enrollment. */
+.focus-watcher-state{font-size:12px;font-weight:750;line-height:1.5;margin:12px 0 9px;color:#e5c995;padding:9px 11px;border-radius:8px;border:1px solid #826f4e;background:#302c20;}
+.focus-watcher-state[data-monitor-state=active]{color:#b3ebc6;border-color:#4c9971;background:#153c2a}
+.focus-watcher-state[data-monitor-state=checking],.focus-watcher-state[data-monitor-state=pending]{color:#f5dcaa;border-color:#9d8259}
+.focus-watcher-state[data-monitor-state=off],.focus-watcher-state[data-monitor-state=stale],.focus-watcher-state[data-monitor-state=error]{color:#f4c6ad;border-color:#b77e68;background:#3b2721}
+.focus-watcher-selected{outline:2px solid #e3be76;outline-offset:3px}
