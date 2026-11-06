@@ -1,8 +1,7 @@
-Approved Golden Peanut production update — 6 Nov 2026
-Cloudflare Pages production only: thegoldenpeanut (existing project; main).
-PR #9: independently scrollable full market sections, remembered positions, 5-minute foreground GW2 account checks.
-PR #10: opt-in private watcher gated by proven service health. The private Cloudflare Worker is NOT deployed because token permission "No access to specified resource" blocked separate Worker deployment. Do not claim 24/7 monitoring works yet.
-User's GW2 API credential NEVER transmitted to a non-deployed private monitor; opt-in remains disabled until service health succeeds.
-Preserve prior account IndexedDB trade records, stored key, D1 public quote collector, all existing buy/sell orders, and application origin.
-Regression run #42296055352 verified desktop, Android viewport, market-scrolling, disabled unavailable monitor, and safe historical learning.
-Release deliberately does not modify Cloudflare Worker permissions or attempt an unapproved private Worker deploy.
+Golden Peanut approved UI fix — 6 November 2026
+Production target: existing Cloudflare Pages thegoldenpeanut on main.
+PR #11 merged commit 96ed7692af7c0541175696061bd51f11c745a76e.
+Fix Account Trade Watcher discoverability: show it at top of Best Trades even with stale market quotes; place direct Watch shortcut next to the account refresh / settings buttons.
+Inform the user when a GW2 account is not connected. No keys transmitted unless explicit opt-in.
+Keep current background Cloudflare Worker and secret intact, account ledger and IndexedDB preserved.
+CI browser and unit checks: 42301380372 success, Android and desktop. No Trading Post orders placed or cancelled.
