@@ -290,12 +290,13 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    buy:2100+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
   }));
   for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:'Armor',rarity:'Exotic'};
-  s.opportunityPlan={...s.opportunityPlan,ok:true,asOf:stamp,publicResearch:items,
+  s.opportunityPlan={...s.opportunityPlan,ok:true,at:Date.now(),source:'wallet',budget:s.snapshot.wallet,
+   spent:0,unallocated:s.snapshot.wallet,asOf:stamp,publicResearch:items,
    marketChoices:[],orders:[],activeBook:{entries:[]}};
   GPFocus.goto('today');GPFocus.render();
  });
  const armorSection=page.locator('#focus-best-rows [data-section-id="exotic-armour"]');
- await page.waitForFunction(()=>document.querySelector('#focus-best-rows [data-section-id="exotic-armour"]'),{timeout:9000}).catch(async e=>{
+ await page.waitForFunction(()=>document.querySelector('#focus-best-rows [data-section-id="exotic-armour"]'),null,{timeout:9000}).catch(async e=>{
   const diag=await page.evaluate(()=>({text:document.querySelector('#focus-best-rows')?.textContent?.slice(0,900),
    source:GoldenPeanutClean.State.opportunityPlan?.source,
    at:GoldenPeanutClean.State.opportunityPlan?.at,
