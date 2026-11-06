@@ -87,6 +87,7 @@ def arena(path):
 
 
 def db(sql, params=()):
+    # Private verification run: classify D1 errors without logging queries.
     url = 'https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query' % (
         os.environ['CF_ACCOUNT_ID'], os.environ['CF_DATABASE_ID'])
     # Cloudflare's REST /query API accepts bound parameters as STRINGS.
