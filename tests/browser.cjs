@@ -1,0 +1,60 @@
+// Assembled browser regression test. All account/market outcomes here are SYNTHETIC.
+const {chromium}=require('playwright-core');const http=require('node:http');const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
+const root=path.resolve('app');
+const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req.url.split('?')[0]==='/'?'/index.html':req.url.split('?')[0]));if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html');res.end(fs.readFileSync(file));}catch{res.writeHead(404).end();}});
+(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),headless:true,args:['--no-sandbox']});
+try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+ const context=await browser.newContext({viewport});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin)return route.continue();
+  const now=Math.floor(Date.now()/1000),day=Math.floor(now/86400);let data=[];
+  if(u.pathname.endsWith('market_public.json'))data={schema:'golden-peanut-public-v1',generated_at:now,count:1100,items:Array.from({length:1100},(_,i)=>[i+1,i<2?'Fixture opportunity '+(i+1):'Catalogue family '+(i+1),'Weapon','Exotic',99,201,100,100])};
+  else if(u.pathname.endsWith('market_history.json'))data={schema:'golden-peanut-daily-v1',generated_at:now,history:Object.fromEntries([1,2].map(id=>[id,Array.from({length:8},(_,i)=>[day-7+i,99,id===2?241:201,100,100])]))};
+  else if(u.pathname.endsWith('/account/wallet'))data=[{id:1,value:10000}];
+  else if(u.pathname.endsWith('/commerce/delivery'))data={coins:0,items:[]};
+  else if(u.pathname.endsWith('/commerce/prices'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,buys:{unit_price:99,quantity:100},sells:{unit_price:id===2?241:201,quantity:100}}));
+  else if(u.pathname.endsWith('/items'))data=(u.searchParams.get('ids')||'1,2').split(',').map(Number).map(id=>({id,name:'Fixture opportunity '+id,type:'Weapon',rarity:'Exotic',level:80,flags:[],details:{type:'Sword'},icon:''}));
+  else if(u.pathname.endsWith('/commerce/listings'))data=[];
+  await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
+ });
+ await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
+ assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
+ const setup=await page.evaluate(async()=>{
+  const s=GoldenPeanutClean.State;s.account='Fixture.1234';
+  s.snapshot=await s.api.snapshot('fixture-key-not-a-credential',s.account);s.ledger=[];
+  await GPMarketFeed.load(s,{force:true});await GPMarketFeed.loadHistory({force:true});
+  const now=Date.now(),DAY=86400000;
+  s.executionLearning={version:1,cohorts:[],samples:[1,2].flatMap(item=>Array.from({length:10},(_,i)=>{
+   const start=now-(12-i)*DAY;return {status:'complete',source:'verified-personal-window',order:item*100+i,item,offered:5,acquired:i%3?5:0,sold:i%3?4:0,listed:i%3?5:0,buy:100,exit:item===2?240:200,start,end:start+DAY,knownAt:start+DAY+1000,profit:270,category:'Weapon'};}))};
+  await s.db.put('config',s.account,'execution-learning-v1',s.executionLearning);
+  await s.db.put('snapshots',s.account,'last',s.snapshot);
+  const p=await GPOpportunity.refresh(s,{phase:'quick'});GPFocus.render();
+  return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
+ });
+ assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
+ await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
+ assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
+ await page.locator('#focus-best-rows .focus-home-order').first().click();
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Expected net profit · 24h/);
+ assert.doesNotMatch(await page.locator('#focus-trade-detail').innerText(),/NaN|undefined/);
+ await page.evaluate(()=>{GPFocus.goto('trades');});
+ await page.getByRole('button',{name:'← Back to opportunities',exact:true}).click();
+ await page.locator('#focus-trade-search').fill('Catalogue family');
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Show more catalogue matches'));
+ const before=await page.locator('#focus-trade-rows .focus-memory-related').count();
+ await page.getByRole('button',{name:/Show more catalogue matches/}).click();
+ assert.ok(await page.locator('#focus-trade-rows .focus-memory-related').count()>before);
+ await page.evaluate(()=>GPFocus.goto('legendaries'));assert.equal(await page.locator('#lp-search').isVisible(),true);
+ const backup=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;const b=await PeanutBackupV2.build(s.db,s.account,'');const v=await PeanutBackupV2.verify(b.blob);return {bytes:b.blob.size,configs:v.counts['config:'+s.account]};});
+ assert.ok(backup.bytes>0&&backup.configs>0);
+ await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders[0].expectedProfit=Infinity;GPFocus.goto('today');GPFocus.render();});
+ assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
+ await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;GPFocus.render();});
+ assert.match(await page.locator('#focus-best-rows').innerText(),/Research — insufficient execution evidence/);
+ fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
+ const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config',s.account,'execution-learning-v1')).value.samples.length;});assert.equal(persisted,20);
+ assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
+ await context.close();
+}}finally{await browser.close();server.close();}
+})().catch(e=>{console.error(e);server.close();process.exitCode=1;});

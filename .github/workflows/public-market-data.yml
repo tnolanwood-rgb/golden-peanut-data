@@ -1,0 +1,41 @@
+name: Golden Peanut — Full Public Market Snapshot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: golden-peanut-public-snapshot-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/public-market
+          key: public-market-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: public-market-v2-
+      - name: Complete public catalogue, recipes, rotating depth and 21-day quotes
+        run: python scripts/public_market_snapshot.py
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache/public-market
+          key: public-market-v2-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Publish only public data after complete collection
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/market_public.json data/market_history.json data/market_depth.json data/market_recipes.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: complete public market generation'
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
