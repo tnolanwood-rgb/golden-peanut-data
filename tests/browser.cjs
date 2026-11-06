@@ -281,7 +281,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
- const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config',s.account,'execution-learning-v1')).value.samples.length;});assert.equal(persisted,20);
+ const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config','Fixture.1234','execution-learning-v1'))?.value?.samples?.length||0;});assert.equal(persisted,20,'WebView reload must preserve account-scoped IndexedDB learning');
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
  await context.close();
 }}finally{await browser.close();server.close();}
