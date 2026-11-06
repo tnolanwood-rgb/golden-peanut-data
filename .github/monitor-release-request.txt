@@ -3,3 +3,5 @@ Deploy isolated golden-peanut-account-monitor Worker, encrypted key storage, 10-
 Manual confirmation is mandatory before any personal key is sent from the app.
 Protect public market collector and all existing ledger records; deploy no Trading Post orders.
 Source main commit 9b5392840863887d63621e780375430ba679e241.
+
+Retry: use existing CF_API_TOKEN for isolated scheduled Workers deployment, after Pages-only token scope denial.
