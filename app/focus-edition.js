@@ -254,7 +254,14 @@ function install(){if(started)return;started=true;load();document.body.classList
   if(!navReady) return;
   if(!document.getElementById('focus-research')?.hidden)dismissResearch();
   goto('today',{scroll:false});
-  setTimeout(()=>document.getElementById('focus-account-watcher')?.scrollIntoView({block:'start',behavior:'smooth'}),120);
+  setTimeout(()=>{
+   const card=document.getElementById('focus-account-watcher');
+   if(!card)return;
+   card.scrollIntoView({block:'start',behavior:'instant'});
+   card.tabIndex=-1;card.focus({preventScroll:true});
+   card.classList.add('focus-watcher-selected');
+   setTimeout(()=>card.classList.remove('focus-watcher-selected'),1600);
+  },160);
  };
  watcherShortcut.addEventListener('click',openWatcher);
  $('focus-top').querySelector('.focus-top-buttons').prepend(watcherShortcut);
@@ -708,6 +715,27 @@ function renderAccountWatcher(host,state){
   host.append(wrapper);return;
  }
  const info=cloud.status(account);
+ const last=Number(info.status?.lastSuccess)||0,elapsed=last>0?Date.now()-last:Infinity;
+ const watcherState=!info.enabled?'off':info.lastError?'error':info.syncing?'checking':
+  Number.isFinite(elapsed)&&elapsed>=0&&elapsed<40*60000?'active':last?'stale':'pending';
+ const states={
+  off:'OFF — background monitoring has not been enabled',
+  checking:'CHECKING — confirming cloud account status',
+  active:'ACTIVE — last successful cloud check '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+' (UK)',
+  stale:'CHECKS OVERDUE — last confirmed cloud check '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+' (UK)',
+  pending:'ENROLLED — awaiting the first successful cloud account check',
+  error:'CHECK FAILED — cloud monitoring has not been verified'
+ };
+ const live=h('p','focus-watcher-state',states[watcherState]);
+ live.dataset.monitorState=watcherState;live.setAttribute('role','status');live.setAttribute('aria-live','polite');
+ wrapper.append(live);
+ const shortcut=$('focus-watcher-jump');
+ if(shortcut){
+  shortcut.textContent=watcherState==='active'?'Watch ✓':
+   watcherState==='error'||watcherState==='stale'?'Watch !':
+   watcherState==='pending'?'Watch …':'Watch';
+  shortcut.title='Account Trade Watcher — '+states[watcherState];
+ }
  const intro=h('p','focus-muted');
  if(!info.enabled){
   intro.textContent=info.serviceReady?
@@ -719,8 +747,15 @@ function renderAccountWatcher(host,state){
   enable.addEventListener('click',async()=>{
    if(!window.confirm('Enable background Trading Post monitoring? Your GW2 API key will be sent securely to your own Cloudflare Worker and kept encrypted. This service checks every ~10 minutes, cannot place orders, and cannot reconstruct intermediate changes between checks. You can stop it and erase cloud records later.'))return;
    enable.disabled=true;enable.textContent='Connecting encrypted monitor…';
-   try{await cloud.enable(state);await cloud.refresh(state,{force:true});}
-   catch(e){window.alert('Background monitoring was not enabled: '+String(e?.message||e).slice(0,190));}
+   try{
+    await cloud.enable(state);
+    const cloudCheck=await cloud.refresh(state,{force:true});
+    if(cloudCheck?.lastSuccess)
+     window.alert('Your account is enrolled, and Cloudflare has confirmed a successful check. Tap Watch anytime to see the last collection time.');
+    else window.alert('Cloudflare accepted your account enrollment. Monitoring is set up, but the first successful scheduled check is still pending. The Watch card will show when it is confirmed.');
+   }catch(e){
+    window.alert('Background monitoring was NOT enabled: '+String(e?.message||e).slice(0,190));
+   }
    root.GPFocus?.render?.();
   });
   wrapper.append(enable);
@@ -736,7 +771,11 @@ function renderAccountWatcher(host,state){
   const actions=h('div','focus-watcher-actions');
   const check=buttonNode(info.syncing?'Checking cloud…':'Refresh cloud learning');
   check.disabled=info.syncing;
-  check.addEventListener('click',async()=>{check.disabled=true;await cloud.refresh(state,{force:true});root.GPFocus?.render?.();});
+  check.addEventListener('click',async()=>{
+   check.disabled=true;check.textContent='Checking Cloudflare…';
+   await cloud.refresh(state,{force:true});
+   root.GPFocus?.render?.();
+  });
   actions.append(check);
   const disable=buttonNode('Stop & erase cloud monitoring');
   disable.addEventListener('click',async()=>{
