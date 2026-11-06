@@ -75,6 +75,13 @@ function updateBackAffordance(){
 }
 function pushHistory(){
  if(!navReady||restoringNav)return;
+ // Chromium flags ALL same-document entries as skippable if even one is
+ // inserted without a user activation. Programmatic refreshes must replace,
+ // not push, so Android's real Back gesture can traverse user-created routes.
+ if(navigator.userActivation&&!navigator.userActivation.isActive){
+  try{history.replaceState({...viewHistory(),gpIndex:routeDepth()},'');}catch{}
+  updateBackAffordance();return;
+ }
  try{history.pushState({...viewHistory(),gpIndex:routeDepth()+1},'');}catch{}
  updateBackAffordance();
 }
@@ -142,7 +149,9 @@ function showResearch(section){if($('focus-research')?.hidden)pushHistoryForRese
 }
 function pushHistoryForResearch(){
  if(!navReady||restoringNav)return;
- try{history.pushState({...viewHistory(),research:true},'');}catch{}
+ if(navigator.userActivation&&!navigator.userActivation.isActive)return;
+ try{history.pushState({...viewHistory(),gpIndex:routeDepth()+1,research:true},'');}catch{}
+ updateBackAffordance();
 }
 function dismissResearch(){if(routeDepth()>0&&history.state?.research){history.back();return;}closeResearch();updateBackAffordance();}
 function closeResearch(){const box=$('focus-research');if(box)box.hidden=true;const engine=$('focus-engine');if(engine)engine.hidden=true;document.body.classList.remove('focus-modal-open');for(const x of [document.querySelector('main'),$('focus-top'),document.querySelector('.focus-primary-nav')])if(x)x.inert=false;lastResearchFocus?.focus?.();}
