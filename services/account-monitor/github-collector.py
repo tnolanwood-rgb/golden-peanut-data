@@ -250,7 +250,53 @@ def poll(account):
        [account_id,stamp,len(current['buys']),len(current['sells'])])
     db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=NULL,consecutive_failures=0
           WHERE account_id=? AND enabled=1''', [stamp,stamp,account_id])
+    counts['observedNights'] = finalize_nights(account_id,stamp)
     return counts, len(current['buys']),len(current['sells'])
+
+
+def finalize_nights(account_id, stamp):
+    """Zero-inclusive observations only for continuously observed order nights.
+
+    Sampling happens every ~30 minutes. If observations are missing or too far
+    apart, we censor that night instead of mistaking absence for a zero fill.
+    """
+    utc = datetime.datetime.fromtimestamp(stamp/1000, tz=datetime.timezone.utc)
+    today = utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = int((today + datetime.timedelta(hours=10)).timestamp() * 1000)
+    start = int((today - datetime.timedelta(hours=6)).timestamp() * 1000)
+    if stamp < end + 20*60000:
+        return 0
+    label = (today - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    polls = db('''SELECT polled_at FROM gp_monitor_polls WHERE account_id=?
+                  AND polled_at BETWEEN ? AND ? ORDER BY polled_at''',
+               [account_id,start,end])
+    times = [int(x['polled_at']) for x in polls]
+    if (len(times)<28 or times[0]>start+42*60000 or times[-1]<end-42*60000
+            or any(b-a>42*60000 for a,b in zip(times,times[1:]))):
+        return 0
+    orders = db('''SELECT side,order_id,item_id FROM gp_monitor_orders
+                   WHERE account_id=? AND first_seen_at<=?
+                   AND (closed_at IS NULL OR closed_at>=?)''',[account_id,start,end])
+    exposure = db('''SELECT side,order_id,
+                    SUM(CASE WHEN kind='partial' THEN quantity ELSE 0 END) AS filled,
+                    MAX(CASE WHEN kind IN ('changed_unknown','disappeared_unknown')
+                             THEN 1 ELSE 0 END) AS invalid
+                    FROM gp_monitor_events
+                    WHERE account_id=? AND observed_at BETWEEN ? AND ?
+                    GROUP BY side,order_id''',[account_id,start,end])
+    by_order = {(x['side'],int(x['order_id'])):x for x in exposure}
+    rows=[]
+    for order in orders:
+        details=by_order.get((order['side'],int(order['order_id'])),{})
+        if details.get('invalid'):
+            continue
+        rows.append((account_id,label,order['side'],int(order['order_id']),
+                     int(order['item_id']),int(details.get('filled') or 0),
+                     len(times),start,end))
+    put_many('''INSERT OR IGNORE INTO gp_monitor_nights
+       (account_id,night,side,order_id,item_id,filled,observed_polls,window_start,window_end) VALUES ''',
+       rows,9)
+    return len(rows)
 
 
 def run():
