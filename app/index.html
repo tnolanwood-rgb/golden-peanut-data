@@ -3971,7 +3971,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const stamp='7.16.0-evidence',engine=window.GPOpportunity,front=window.GPFocus;
  const el=document.createElement('div');el.id='gp-build-integrity';
  el.style.cssText='padding:6px 16px;background:#0e2018;color:#d8cfaa;font:12px system-ui,sans-serif;';
- if(window.GP_HTML_BUILD===stamp&&engine?.buildId===stamp&&front?.buildId===stamp&&window.GPExecution?.buildId===stamp&&window.GPMarketFeed?.buildId===stamp&&window.GPMarketBoard?.buildId===stamp&&window.GPCapacity?.buildId===stamp&&window.GPPortfolio?.buildId===stamp){el.textContent='Market engine '+stamp+' · components verified';}
+ if(window.GP_HTML_BUILD===stamp&&engine?.buildId===stamp&&front?.buildId===stamp&&window.GPExecution?.buildId===stamp&&window.GPMarketFeed?.buildId===stamp&&window.GPMarketBoard?.buildId===stamp&&window.GPCapacity?.buildId===stamp&&window.GPPortfolio?.buildId===stamp){el.textContent='Market engine '+stamp+' · components verified · forecast accuracy not yet established';}
  else {
   el.textContent='MARKET SUGGESTIONS DISABLED: MIXED/OUTDATED BUILD. Reload the latest production deployment.';
   el.style.cssText+='background:#702527;color:white;font-weight:700;';
