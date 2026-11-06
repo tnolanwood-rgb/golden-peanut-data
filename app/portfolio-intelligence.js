@@ -115,7 +115,21 @@ function build(plan,{budgetGold=0,now=Date.now(),wallet=0,committed=null,maxMark
  }
  selected.sort((a,b)=>b.score-a.score||b.conditionalRound-a.conditionalRound);
  const coverage=selected.filter(r=>r.research).length;
- return {ok:true,mode:'hypothetical-research',budget,spendLimit,spent,reserve:budget-spendLimit,
+ const current=plan.activeBook||{};
+ const existingBook={
+  committed:reserved,
+  coveredByCurrentQuotes:unit(current.covered)?current.covered:0,
+  conditionalActiveWeek:positive(current.conditionalWeek)?current.conditionalWeek:null,
+  eligible:current.eligible||0,
+  unverified:current.unverified||0,
+  activeItems:(current.entries||[]).length,
+  reviewFlags:(plan.capitalReview?.reviews||[]).filter(r=>r.review).length,
+  reviewFlaggedGold:plan.capitalReview?.releasedSelective||0
+ };
+ // These are deliberately TWO separate portfolios. Adding existing working
+ // positions to a hypothetical cancellation/redeployment forecast would
+ // double-count the same gold.
+ return {ok:true,mode:'hypothetical-research',existingBook,budget,spendLimit,spent,reserve:budget-spendLimit,
   unallocated:budget-spent,actualWallet,reservedInExistingBuys:reserved,
   hypotheticalExceedsWallet:budget>actualWallet,
   qualifiedMarkets:sources.filter(x=>x.research).length,
