@@ -1,5 +1,7 @@
-Approved production release request: Golden Peanut 7.16.0-evidence
-Target: existing Cloudflare Pages project thegoldenpeanut, branch main
-Source: merged PR #1, reviewed and preview tested
-Requested by repository owner in ChatGPT on 2026-11-06
-No deletion of local browser data, Cloudflare D1, or existing market collector
+Production hotfix request — 2026-11-06
+Previous live version: Golden Peanut 7.16.0-evidence
+Target: existing Pages production thegoldenpeanut (main)
+Merged review: PR #2 (historical recent-winner fallback and active-book rendering)
+No account-specific data exported or modified; no DB schema or D1 changes
+Public full-market data 27,999 quoted IDs already published on main
+Approval: user explicitly requested repair of broken live 7.16 after approving deployment
