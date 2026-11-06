@@ -321,7 +321,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
  const watch=page.locator('#focus-best-rows .focus-account-watcher');
  assert.equal(await watch.count(),1);
- assert.match(await watch.innerText(),/Enable background trade watching/);
+ assert.match(await watch.innerText(),/Off-phone monitoring is NOT ACTIVE/);
+ assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
  assert.deepEqual(errors,[]);
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');

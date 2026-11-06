@@ -8,6 +8,26 @@
 const BASE='https://golden-peanut-account-monitor.tnolanwood.workers.dev';
 const STATUS_MINUTES=5;
 const active=new Map(),nights=new Map(),nightPending=new Map(),nightFailures=new Map();
+const availability={ready:false,at:0,checking:false,flight:null};
+async function probeHealth({force=false}={}){
+ if(availability.flight)return availability.flight;
+ if(!force&&availability.at&&Date.now()-availability.at<5*60000)return availability.ready;
+ availability.checking=true;
+ availability.flight=(async()=>{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
+  try{
+   const r=await fetch(BASE+'/health',{method:'GET',signal:controller.signal,
+    cache:'no-store',headers:{Accept:'application/json'}});
+   if(!r.ok)throw Error('Monitor not deployed');
+   const v=await r.json();
+   availability.ready=!!(v?.ok&&v?.mode==='opt-in'&&Number(v?.intervalMinutes)>0);
+  }catch{availability.ready=false;}
+  finally{clearTimeout(timer);availability.at=Date.now();availability.checking=false;}
+  root.GPFocus?.render?.();
+  return availability.ready;
+ })().finally(()=>{availability.flight=null;});
+ return availability.flight;
+}
 const now=()=>Date.now();
 const valid=x=>Number.isSafeInteger(x)&&x>0;
 const current=()=>root.GoldenPeanutClean?.State||null;
@@ -30,7 +50,7 @@ const getEntry=account=>{
  if(!x){x={enabled:false,checkedAt:0,status:null,lastError:null,syncing:false,consent:false};active.set(account,x);}
  return x;
 };
-function status(account){return getEntry(account||current()?.account||'');}
+function status(account){return {...getEntry(account||current()?.account||''),serviceReady:availability.ready,serviceChecked:!!availability.at,serviceChecking:availability.checking};}
 function wake(){root.GPFocus?.render?.();}
 async function loadPreferences(state){
  if(!state?.db||!state.account)return;
@@ -41,6 +61,7 @@ async function loadPreferences(state){
 async function enable(state=current()){
  if(!state?.key||!state?.account)throw Error('Connect your GW2 trading account first');
  if(!state.db)throw Error('Open your saved account data before enabling');
+ if(!(await probeHealth({force:true})))throw Error('Background monitor is not deployed or reachable. Your API key was not sent.');
  const x=getEntry(state.account);
  if(x.syncing)throw Error('Monitor is already checking its connection');
  x.syncing=true;x.lastError=null;wake();
@@ -151,18 +172,19 @@ async function disable(state=current()){
 }
 function start(){
  const state=current();if(!state)return;
+ void probeHealth();
  // The phone never polls when hidden. The Worker does the background
  // sampling once the user explicitly enables encrypted monitoring.
  const connect=async()=>{
   const s=current();
   if(s?.db&&s.account&&s.key){await loadPreferences(s).catch(()=>{});await refresh(s).catch(()=>{});}
  };
- window.addEventListener('pageshow',()=>{void connect();});
+ window.addEventListener('pageshow',()=>{void probeHealth();void connect();});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void connect();});
  window.addEventListener('gp-account-changed',()=>{void connect();});
  setTimeout(()=>{void connect();},1500);
  setInterval(()=>{if(!document.hidden)void connect();},5*60000);
 }
-root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,disable,loadPreferences};
+root.GPCloudAccount={buildId:'7.16.0-evidence',enable,refresh,status,peekNights,fetchNights,disable,loadPreferences,probeHealth};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(typeof globalThis!=='undefined'?globalThis:this);
