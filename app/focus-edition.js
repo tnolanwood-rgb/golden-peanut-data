@@ -168,7 +168,7 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  if(shortcut)shortcut.hidden=hasFunded;
  if(!needsCollection&&snap?.buys?.length){const host=$('focus-capital-note');if(host){host.onclick=()=>goto('orders');host.classList.add('focus-clickable-summary');host.setAttribute('role','button');host.setAttribute('tabindex','0');host.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goto('orders');}};}}
  const main=h('div','focus-action-body');const msg=h('div','focus-action-copy');msg.append(h('strong','',title),h('p','focus-muted',description));main.append(h('span','focus-action-symbol','◉'),msg);target.append(main,button(action,fn,'focus-button focus-button-primary'));const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const count=mem?.markets.filter(x=>x.proven).length||0;labelText('focus-trade-count',count?num(count)+' historical winners screened for current profit':'Find trading opportunities in your saved history');
- renderOpportunityHome();renderPortfolioOutlook();
+ renderOperatingBook();renderOpportunityHome();renderPortfolioOutlook();
 }
 function renderOperatingBook(){
  const host=$('focus-operating-book'),s=State(),snap=userSnapshot(),p=s?.opportunityPlan;
@@ -226,6 +226,36 @@ function copyOpportunityPlan(){
   ' | '+o.confidence+' | '+Math.ceil(o.quantity/250)+' TP orders');
  navigator.clipboard?.writeText(lines.join('\n')).then(()=>{if(btn)btn.textContent='Trading plan copied';},()=>{if(btn)btn.textContent='Copy unavailable';});
 }
+/* Historical performance is not an overnight forecast. It must remain visible
+ * when a newly introduced execution model lacks prospective cohorts. This uses
+ * the saved FIFO-matched ledger, never standing-book quantities as trade volume. */
+function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
+ const recent=root.GPGrowth?.weeklyByMarket?.(s?.ledger||[],Date.now())?.markets||[];
+ const winners=recent.filter(m=>Number.isFinite(m.profit)&&m.profit>0&&m.matched7>0).slice(0,limit);
+ if(!winners.length)return 0;
+ host.append(h('div','focus-list-heading','RECENT REAL EARNINGS · COMPLETED TRADES'));
+ host.append(h('p','focus-muted','Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills still require independent verification.'));
+ const buys=new Set((s?.snapshot?.buys||[]).map(o=>o.item));
+ for(const m of winners){
+  const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
+  const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
+  const standing=buys.has(m.id)?' · buy order already standing':'';
+  middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
+  if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
+  row.append(middle);
+  const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));
+  side.append(value,h('small','','real net profit · last 7 days'));
+  row.append(side,h('span','focus-chevron','›'));
+  row.setAttribute('aria-label',itemName(m.id)+'; realised seven-day matched profit '+cash(m.profit)+'; open market history');
+  row.addEventListener('click',()=>{
+   ui.tradeDetail=null;ui.relatedDetail=null;ui.growthDetail=null;ui.tradeFilter='memory';
+   goto('trades');ui.growthDetail=m.id;pushHistory();renderGrowthDetail();
+   window.scrollTo({top:0,behavior:'instant'});
+  });
+  host.append(row);
+ }
+ return winners.length;
+}
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -249,11 +279,12 @@ function renderOpportunityHome(){
  if(!fresh){
   status.textContent=s?.opportunityBusy?'Checking your historical markets and current prices…':s?.opportunityStatus||'Checking markets…';
   host.append(h('p','focus-empty','Fresh, verified market quotations are needed before showing buy instructions. Your saved trades are intact.'));
+  renderVerifiedRecentMarkets(host,s);
   return;
  }
  const rows=book?.rows||[];status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESULTS · ':'')+
   num(rows.length)+' funded markets · expected net 24h profit, descending · estimates are uncertain';
- if(!rows.length){host.append(h('p','focus-empty','Research — insufficient execution evidence. No purchase is funded until comparable 24-hour observations support both acquisition and resale. Search the complete catalogue in Trades; existing orders stay visible in Orders.'));return;}
+ if(!rows.length){host.append(h('p','focus-empty','No execution-calibrated 24-hour forecast yet. Eight comparable complete buy-to-resale windows per exact lot are required by the current experimental model. This does NOT erase your successful historical trading markets.'));renderVerifiedRecentMarkets(host,s);return;}
  // A market already buying/selling with verified margin is part of the trading
  // operation. Display it *above* minor wallet-only orders when its evidenced
  // weekly profit scenario is higher.
@@ -493,7 +524,7 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
   labelText('focus-trade-state',t.valid?num(ranked.length)+' funded markets sorted by expected net 24h profit · uncertain estimates':
    (s.opportunityBusy?'Analysing saved markets and prices…':s.opportunityStatus||'Current market quotes need checking.'));
   if(!t.valid){host.append(h('p','focus-empty','Fresh account data is needed for funded recommendations. Catalogue search remains available.'));appendCatalogueMatches(host,q);return;}
-  if(!ranked.length){host.append(h('p','focus-empty','No current evidence-backed opportunities match this filter.'));appendCatalogueMatches(host,q);return;}
+  if(!ranked.length){host.append(h('p','focus-empty','No verified 24-hour forecasts match this filter; the markets below are your actual completed-trade winners, not new buy instructions.'));if(!q)renderVerifiedRecentMarkets(host,s,{limit:30});appendCatalogueMatches(host,q);return;}
   for(const o of (ui.tradeAll?ranked.slice(0,80):ranked.slice(0,12))){
    const row=h('button','focus-market-row');row.type='button';row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(h('strong','',itemName(o.id)));
    const desc=o.kind==='standing'?'ALREADY ON ORDER · '+num(o.openUnits)+' open · '+num(o.quantity)+' scenario units':

@@ -50,7 +50,23 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders[0].expectedProfit=Infinity;GPFocus.goto('today');GPFocus.render();});
  assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;GPFocus.render();});
- assert.match(await page.locator('#focus-best-rows').innerText(),/Research — insufficient execution evidence/);
+ assert.match(await page.locator('#focus-best-rows').innerText(),/No execution-calibrated 24-hour forecast yet/);
+ // Regression: the prospective-only model MUST NOT make real recent winners vanish.
+ // Retain a useful read-only ranked market list when no exact-size cohorts qualify.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,now=Date.now(),day=86400000;
+  s.ledger=[
+   {key:'recent-buy',item:1,id:9021,side:'buy',q:4,price:100,purchased:now-2*day,created:now-2*day-3600000},
+   {key:'recent-sell',item:1,id:9022,side:'sell',q:4,price:240,purchased:now-day,created:now-day-3600000}
+  ];
+  GPFocus.goto('today');GPFocus.render();
+ });
+ assert.match(await page.locator('#focus-best-rows').innerText(),/RECENT REAL EARNINGS/);
+ assert.equal(await page.locator('#focus-best-rows .focus-actual-winner').count(),1);
+ assert.match(await page.locator('#focus-best-rows .focus-actual-winner').innerText(),/real net profit · last 7 days/);
+ await page.locator('#focus-best-rows .focus-actual-winner').click();
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
+
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
  const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config',s.account,'execution-learning-v1')).value.samples.length;});assert.equal(persisted,20);
