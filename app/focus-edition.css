@@ -235,3 +235,14 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-section-items>.focus-deployment-market{border-radius:0;border-left:0;border-right:0;margin:0}
 @media(max-width:430px){.focus-section-scroll{max-height:330px}.focus-section-description{font-size:11px}.focus-section-controls{padding:8px}}
 @media(prefers-reduced-motion:reduce){.focus-section-scroll{scroll-behavior:auto}}
+
+
+/* Discoverable account-monitor control: independent of quote freshness. */
+.focus-watcher-shortcut{width:auto;min-width:47px;padding:0 8px;font-size:12px;font-weight:700;letter-spacing:-.01em;}
+.focus-account-watcher{padding:14px 13px;margin:12px 0;background:var(--focus-card2);border:1px solid #72926f;border-radius:12px;scroll-margin-top:80px;}
+.focus-account-watcher>strong{display:block;font-size:13px;letter-spacing:.045em;color:var(--focus-accent);}
+.focus-account-watcher .focus-muted{font-size:12px;line-height:1.55;margin:7px 0 11px;}
+.focus-account-watcher button{min-height:44px;font-weight:650;}
+.focus-account-watcher .focus-watcher-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.focus-account-watcher .focus-alert{margin:8px 0 0;}
+@media(max-width:420px){.focus-watcher-shortcut{min-width:42px;padding:0 6px;font-size:11px;}}
