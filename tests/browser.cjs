@@ -55,17 +55,25 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  // MUST survive the strict no-cohort forecast, with no invented daily volume.
  await page.evaluate(()=>{
   const s=GoldenPeanutClean.State,stamp=new Date().toISOString();
-  s.meta[301]={id:301,name:"Cleric's Pearl Sword"};
-  s.meta[302]={id:302,name:"Dire Pearl Reaver"};
-  s.meta[303]={id:303,name:"Berserker's Shattered Sword"};
+  s.meta[301]={id:301,name:"Cleric's Pearl Sword",type:'Weapon',rarity:'Exotic'};
+  s.meta[302]={id:302,name:"Dire Pearl Reaver",type:'Weapon',rarity:'Exotic'};
+  s.meta[303]={id:303,name:"Berserker's Shattered Sword",type:'Weapon',rarity:'Exotic'};
+  s.meta[304]={id:304,name:"Magi's Exalted Coat",type:'Armor',rarity:'Exotic'};
+  s.meta[67276]={id:67276,name:"Jormag's Claw Fragment",type:'Consumable',rarity:'Rare',details:{type:'Unlock'}};
   s.opportunityPlan.marketChoices=[
    {id:301,itemName:"Cleric's Pearl Sword",buy:10000,exit:20000,quantity:3,cap:3,conservativeOrderCap:3,
     asOf:stamp,repeatEvidence:true,buyWeeks:4,sellWeeks:4,nightUnits:2,observedNightBuys:3,openBuys:0},
    {id:303,itemName:"Berserker's Shattered Sword",buy:8000,exit:16000,quantity:2,cap:2,conservativeOrderCap:2,
     asOf:stamp,repeatEvidence:true,buyWeeks:3,sellWeeks:3,nightUnits:0,openBuys:0}
   ];
-  s.opportunityPlan.publicResearch=[{id:302,name:"Dire Pearl Reaver",buy:4500,exit:8500,
-   buyQty:70,sellQty:60,observations:1,openBuys:0,at:stamp}];
+  s.opportunityPlan.publicResearch=[
+   {id:302,name:"Dire Pearl Reaver",type:'Weapon',rarity:'Exotic',buy:4500,exit:8500,
+    buyQty:70,sellQty:60,observations:1,openBuys:0,at:stamp},
+   {id:304,name:"Magi's Exalted Coat",type:'Armor',rarity:'Exotic',buy:5000,exit:9700,
+    buyQty:50,sellQty:48,observations:2,openBuys:0,at:stamp},
+   {id:67276,name:"Jormag's Claw Fragment",type:'Consumable',subtype:'Unlock',rarity:'Rare',
+    buy:150026,exit:450000,buyQty:65,sellQty:86,observations:2,openBuys:0,at:stamp}
+  ];
   s.opportunityPlan.publicCatalogue={items:27999};
   s.opportunityPlan.candidateRefresh={checked:6500,phase:'expanded'};
   GPFocus.goto('today');GPFocus.render();
@@ -74,11 +82,13 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(enriched,/HISTORY-BACKED MARKETS/);
  assert.match(enriched,/Cleric's Pearl Sword/);
  assert.match(enriched,/Berserker's Shattered Sword/);
- assert.match(enriched,/NEW MARKET DISCOVERY/);
+ assert.match(enriched,/CHEAPER PEARL WEAPONS/);
+ assert.match(enriched,/CHEAPER EXOTIC ARMOUR/);
  assert.match(enriched,/Dire Pearl Reaver/);
- assert.match(enriched,/per ONE unit/);
- assert.doesNotMatch(enriched,/20 units.*Dire Pearl Reaver/);
- assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),3);
+ assert.match(enriched,/Magi's Exalted Coat/);
+ assert.match(enriched,/Net margin per unit IF resold/);
+ assert.doesNotMatch(enriched,/Jormag's Claw Fragment|20 units.*Dire Pearl Reaver/);
+ assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),4);
  await page.locator('#focus-best-rows .focus-connected-market').last().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
