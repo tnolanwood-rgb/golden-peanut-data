@@ -1,6 +1,12 @@
 name: Golden Peanut — Private Account Trade Collector
 on:
   workflow_dispatch:
+  # Temporary safe one-off repair verification: only collector source changes
+  # invoke a new private check. No API key is exposed or stored in logs.
+  push:
+    branches: [main]
+    paths:
+      - 'services/account-monitor/github-collector.py'
   schedule:
     - cron: "11,41 * * * *"
 
