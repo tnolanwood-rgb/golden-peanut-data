@@ -237,7 +237,7 @@ async function handle(request,env,ctx){
   const health=await validatedMonitorHealth(env);
   return response(request,health.keyReady&&health.dbReady?200:503,{
    ok:health.keyReady&&health.dbReady,service:'Golden Peanut private-account monitor',
-   mode:'opt-in',intervalMinutes:10,encryptedCredentialStorageReady:health.keyReady,
+   mode:'github-actions-fallback',intervalMinutes:30,encryptedCredentialStorageReady:health.keyReady,
    privateDatabaseReady:health.dbReady
   });
  }
