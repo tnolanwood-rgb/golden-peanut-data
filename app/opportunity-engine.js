@@ -168,23 +168,20 @@ function discoveryIds(hist,metadata={},openOrders=[],radar=[],max=495,craftSeeds
  const take=(entries,quota,reason)=>{let n=0;for(const x of entries){if(n>=quota||ids.length>=max)break;const id=typeof x==='number'?x:x?.id,prior=ids.length;push(id,reason);if(ids.length>prior)n++;}};
  const profitable=(hist?.ranked||[]).filter(x=>x.profitable);
  const byGold=new Map();for(const o of openOrders||[])if(valid(o?.item))byGold.set(o.item,(byGold.get(o.item)||0)+(o.q||0)*(o.price||0));
- // Preserve open positions and proven trades without letting either crowd out
- // the entire unseen exotic and general tradable-item universe.
+ // Reserve disjoint budget shares before filling spare slots. The former
+ // 25%+25%+16%+23%+34% prefix could consume everything before public/recipe
+ // discovery ran. Quotes/depth select research only, never execution capacity.
  const catalogueIds=Object.keys(metadata).map(Number).filter(valid).sort((a,b)=>a-b);
  const quota=Math.min(catalogueIds.length,Math.max(1,Math.floor(max*.25)));
  const start=(rotation*quota)%Math.max(1,catalogueIds.length);
  take(Array.from({length:quota},(_,i)=>catalogueIds[(start+i)%catalogueIds.length]),quota,'complete-catalogue-rotation');
- take([...byGold].sort((a,b)=>b[1]-a[1]).map(x=>x[0]),Math.floor(max*.25),'existing-position');
- take(profitable,Math.min(425,Math.ceil(max*.16)),'lifetime');
- // Reserve a full price-verified quote lane for cheap exotic equipment, instead
- // of relying on whichever expensive spreads won the global top-N competition.
- take(affordableEquipmentIds,Math.min(1500,Math.ceil(max*.23)),'affordable-exotic-equipment');
- // Reserved coverage across every cached exotic stat/family, not Rabid/Dire
- // exceptions. Rotate on successive deep refreshes so no fixed top-N blind spot.
- take(equipmentVariantSeeds(hist,metadata,Math.min(2100,Math.max(160,Math.ceil(max*.34))),rotation),
-   Math.min(2100,Math.max(160,Math.ceil(max*.34))),'complete-equipment-family-index');
- take(craftSeeds,Math.min(1700,Math.ceil(max*.27)),'recipe-backed-equipment');
- take(radar,Math.min(1700,Math.ceil(max*.27)),'full-market-public-discovery');
+ take([...byGold].sort((a,b)=>b[1]-a[1]).map(x=>x[0]),Math.floor(max*.20),'existing-position');
+ take(profitable,Math.min(425,Math.floor(max*.10)),'lifetime');
+ take(radar,Math.floor(max*.15),'full-market-public-discovery');
+ take(craftSeeds,Math.floor(max*.10),'recipe-backed-discovery');
+ take(affordableEquipmentIds,Math.floor(max*.10),'affordable-exotic-equipment');
+ const familyQuota=Math.floor(max*.10);
+ take(equipmentVariantSeeds(hist,metadata,familyQuota,rotation),familyQuota,'complete-equipment-family-index');
  const related=root.GPGrowth?.relatedMarkets(hist.archive,metadata,150)||[];
  take(related,150,'related-unverified');
  // Remaining slots go to ALL remembered winners, including older ones, and

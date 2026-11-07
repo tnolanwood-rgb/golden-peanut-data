@@ -50,3 +50,17 @@ test('market board preserves uncertainty and shares the actual spendable wallet'
  const reduced=Board.build(plan,{wallet:550,now:NOW});
  assert.ok(reduced.forecast.reduce((sum,x)=>sum+x.cost,0)<=550);
 });
+test('crowded equipment and personal lanes cannot starve public commodity or recipe discovery',()=>{
+ const c=context(),metadata=Object.fromEntries(Array.from({length:400},(_,i)=>[i+1,{name:'Equipment '+i,type:'Armor',rarity:'Exotic',details:{type:'Coat'}}]));
+ const hist={ranked:Array.from({length:400},(_,i)=>({id:801+i,profitable:true})),markets:new Map()};
+ const opens=Array.from({length:400},(_,i)=>({item:401+i,q:1,price:100}));
+ const equipment=Array.from({length:400},(_,i)=>1201+i);
+ const publicRows=Array.from({length:100},(_,i)=>({id:2001+i}));
+ const recipes=Array.from({length:100},(_,i)=>3001+i);
+ for(const budget of [20,800,6500]){
+  const d=c.GPOpportunity.discoveryIds(hist,metadata,opens,publicRows,budget,recipes,0,equipment);
+  assert.ok(d.ids.length<=budget);assert.equal(new Set(d.ids).size,d.ids.length);
+  assert.ok(d.ids.some(id=>id>=2001&&id<2101),'public lane lost at budget '+budget);
+  assert.ok(d.ids.some(id=>id>=3001&&id<3101),'recipe lane lost at budget '+budget);
+ }
+});
