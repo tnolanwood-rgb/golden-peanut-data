@@ -60,3 +60,37 @@ no redundant full suite is needed. A newly triggered run on the final documentat
 commit is not claimed as passed; next session should check it. P0-001 is VERIFIED;
 Phase 0 remains partial pending P0-002. No deployment or merge performed. Stop here
 at the user's request to conserve allowance, then resume P0-002 from GitHub.
+
+## P1-000 + P4-000: recommendation integrity and discovery budgets
+
+Resumed from bda60d9: PR #20 open; CI
+[42324339781](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42324339781)
+passed. Fetched main 7379ede (release-labelled 7.29), incorporated upstream work
+with merge 124f332 before repairs. No upstream work reverted or deployed.
+
+**P1-000:** `node tests/execution.test.cjs` before repair: 22 pass, 2 fail.
+Positive expected profit with expectedSold=0 was accepted; board asserted calibrated
+status for an explicitly uncalibrated model. Added shared-wallet shrink regression.
+`003c52b0bc7b46b89c32f3c292d5a5392f2c9552` then passed all 24 execution cases.
+The old ranking fixture expected 200 copper from 2.4 expected sales with 70 copper
+margin (maximum 168); corrected fixture to 165, still testing descending ranking.
+Actual browser test injects zero expected resales and verifies no funded row renders;
+valid cohorts retain descending ordering and now display estimated, not calibrated.
+
+**P4-000:** added crowded equipment/history/open-position lane regression;
+`node tests/execution.test.cjs` before repair: 24 pass, 1 fail (public lane lost).
+After repair: 25 pass. Exercises budgets 20/800/6500, bounded unique IDs, and
+nonzero recipe/public coverage despite oversized earlier lanes. Existing catalogue
+rotation test remains passing. Fixtures are synthetic, not live execution evidence.
+
+**Final assembled baseline:** `python scripts/audit_baseline.py` passed on clean
+implementation `baf7c16` (full SHA/commands/timings in
+[P4-000-baseline.json](P4-000-baseline.json)): source validation, 31 Python tests,
+8 JS test files including 141,879-row stress fixture, desktop 1440x1000 and mobile
+390x844 Chromium. `git diff --check` passed. Same suite also passed at 003c52b.
+Workflow files unchanged this session; prior actionlint evidence remains applicable.
+Latest PR CI for these new commits is pending, not claimed successful.
+
+No live accuracy improvement, complete category coverage or physical-device result
+is established. No performance optimisation claim. P4-001a must investigate the
+remaining low-unit-margin/equipment/name filters using catalogue-to-UI evidence.

@@ -2,15 +2,20 @@
 
 Statuses: TODO / IN PROGRESS / BLOCKED / VERIFIED / FAILED. VERIFIED requires the
 specified evidence, not merely implementation. Phases proceed in order except a
-critical trust/data-integrity defect may be repaired early (P0-001 collector fix).
+critical trust/data-integrity defect may be repaired early. User now prioritises
+market discovery, followed by calculation correctness and useful bids. Release
+identity remains TODO; next batch is P4-001a before the accounting oracle.
 
 | ID / subsystem | Objective | Depends on | Impact | Required evidence / acceptance | Status |
 |---|---|---|---|---|---|
 | P0-001 / harness, monitoring | Establish current baseline, durable checkpoints; make collection failures visible | none | Critical | Reproduce false zero exit; real-entry-point failure/success/skip/privacy tests; reproducible baseline, GitHub checkpoint/PR; CI 42324153790 passed | VERIFIED |
 | P0-002 / release | Reconcile stale version markers, exact deployed assets and CI browser prerequisites | P0-001 | High | Old/mixed release rejected; current source accepted; independently verify production assets or classify HTTP block | TODO |
+| P1-000 / bid integrity | Bound expected profit by completed resales; share wallet; preserve uncertainty | P0-001 | High | Impossible-profit and wallet regression plus assembled mobile/desktop UI rejection | VERIFIED |
+| P4-000 / discovery budget | Prevent early lanes starving public/recipe scanning | P0-001 | High | Crowded disjoint lanes at budgets 20/800/6500; bounded unique IDs; existing catalogue rotation and browser regressions | VERIFIED |
+| P4-001a / category gates | Trace catalogue to displayed research by category; repair exclusion at highest-impact gate | P4-000 | Critical/user priority | Reproducible counts/rejection reasons for commodities, consumables, equipment and upgrades; safe research beyond favourites | TODO |
 | P1-001 / accounting | Verify all money definitions: dedup/pagination/partial fills, FIFO, rounded fees, unknown initial costs, realised/unrealised, UK day/7-day/DST, wallet/escrow/delivery, isolation, integer bounds | P0 | Critical | Independent oracle fixtures + >140k records; each displayed metric has source/coverage; today's matched profit remains first and incomplete totals labelled | TODO |
 | P2-001 / private monitoring | Trace ArenaNet → Actions → D1 → authenticated Worker → local persistence → decisions; prove closed-phone continuity | P1; live access for end-to-end | Critical | Recent successful persisted poll, idempotent event import, missed/duplicate/partial/zero/cancel observations; restart/no-reconnect, pagination/retry/D1 limits/error handling; no false-green attempts | TODO |
-| P3-001 / lineage | Catalogue all important datasets (personal trades/orders/exposure/zeros, quotes/history, metadata/recipes/families, allocations/evaluations), owners/schema/coverage/freshness/consumers | P2 | High | Each useful dataset has a causal-insertion test changing intended decision; otherwise explicitly archival; fix F003 uncertainty labels | TODO |
+| P3-001 / lineage | Catalogue all important datasets (personal trades/orders/exposure/zeros, quotes/history, metadata/recipes/families, allocations/evaluations), owners/schema/coverage/freshness/consumers | P2 | High | Each useful dataset has a causal-insertion test changing intended decision; otherwise explicitly archival; F003 labels repaired in P1-000 | TODO |
 | P4-001 / discovery | Whole tradable economy including all-tier commodities, food/utilities/upgrades/containers/components, salvage/forge conversions and seasonal markets | P3 | High | Deterministic category/ID coverage and rotating exploration budget; unseen candidates; eligibility/freshness/fees; behavioural analogues not name-only proof; verify F005 | TODO |
 | P5-001 / execution | Separate acquisition/resale quantities at 24h/3d/7d when supported; small to commodity-scale lots, queue/exposure/cancellation/time uncertainty | P1,P3,P4 | Critical | Zero/censored outcomes retained; standing depth never execution volume; slower high margin vs faster lower margin counterexamples; no unsupported probability/calibration claims | TODO |
 | P6-001 / capital | Wallet, escrow, inventory, delivery and hypothetical large budgets; incremental capital, concentration, holding time, queue preservation and recycling | P5 | Critical | Conservation/duplicate exposure adversarial tests; funded vs hypothetical/exploratory separate; alternatives do not automatically cancel good orders | TODO |

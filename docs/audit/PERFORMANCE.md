@@ -20,3 +20,7 @@ cold/warm samples, medians/p95 and correctness counts before and after each chan
 Separate UI latency, algorithm time, IDB time, memory and network calls. Existing
 7.24 performance commit descriptions alone are not benchmark proof. Do not optimize
 by dropping markets/history or extending quote freshness.
+
+P1-000/P4-000: existing scale/browser regressions pass; timings saved in
+P4-000-baseline.json. No controlled performance comparison or improvement claim.
+Reserved scan shares retain the existing total request budget (800 quick / 6500 deep).

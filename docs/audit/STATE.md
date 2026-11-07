@@ -1,52 +1,43 @@
 # Golden Peanut — authoritative engineering state
 
-Updated: 2026-11-07 UTC. Start here, then RESUME.md. Historical 7.16 documents are
-release history, not the current architecture/access record.
+Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: **market discovery
+first**, then calculation correctness and useful bids; defer release cosmetics.
 
-- **Phase / batch:** Phase 0 (partial), P0-001 VERIFIED — trustworthy, resumable baseline and collector failure status.
-- **Branch:** `development/audit-p0-checkpoint`, based on `origin/main` at
-  `d7d2a243b490c382a3c2bf6f1be3fdad764302a7` (release-labelled 7.24).
-- **Latest implementation:** `e7e6e57e5af36c096362ae1846890b500eade67e`.
-  Checkpoint commit: resolve `git log -1 --format=%H -- docs/audit/STATE.md`.
-- **Prior work reconciled:** 7.16 branch tip `bf46c44` is already an ancestor of main;
-  PR #19 (7.24 UI/performance) is merged. Do not reopen the obsolete 7.16 PR proposal.
-- **Last independently verified production version:** UNVERIFIED this session.
-  Production deployment run [42320412771](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42320412771)
-  reports success for main `d7d2a24`. Direct Pages/public Worker HTTP probes returned
-  403/error 1010 with Python default User-Agent, then 200 with Mozilla/5.0.
-  Live HTML still advertises 7.16; exact deployed asset identity needs P0-002.
-- **Completed:** current repository/workflows inventoried; synthetic baseline run;
-  collector API/D1 failures now exit 1, intentional opt-out/no-key skips remain 0;
-  subprocess/privacy regressions; fail-closed baseline runner and CI integration;
-  durable seven-file audit system and root session instructions.
-- **In progress:** none; stopped at a clean batch boundary to conserve allowance.
-- **Review:** [PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20)
-  is open, unmerged and conflict-free as checked this session. Main remains d7d2a24.
-  [CI 42324153790](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42324153790)
-  passed at checkpoint `6776e3fc25ff00194badf904c7081eadff078d7b`, including the
-  assembled baseline and actionlint. Final checkpoint changes are documentation only;
-  any newly triggered CI must be checked next session.
-- **Failures/blockers:** F002 stale release identity/gates; F003 uncalibrated estimates
-  labelled calibrated; F004 actual private D1-to-app lineage unverified. No direct
-  Cloudflare credentials, account key or real Android device in this session.
-- **Exact next action:** P0-002: reproduce the release gate accepting old assets that
-  contain `7.16.0-evidence`; implement exact version/asset identity tests without
-  changing production release-request files. Then P1-001 accounting oracle/DST/coverage.
-- **Tests completed:** baseline d7d2a24: source check (31 JS programs), 20 Python tests,
-  8 JS test files including 141,879-row synthetic scale fixture, desktop/mobile
-  assembled browser. New collector targeted suite: 17 tests; harness: 4 tests.
-  Final baseline: 31 Python tests, 8 JS test files, source validation, desktop/mobile
-  Chromium and actionlint passed locally and in CI. See EVIDENCE.md.
-- **Still required:** real private persisted-row → authenticated API → app lineage;
-  correct production static assets; physical S23 Ultra; independent financial oracle;
-  real forecast calibration. None is implied by mocked green tests.
-- **Authority / release:** push/PR permitted. No merge or production deployment done
-  by this batch. Local and remote implementation checks passed; ready for PR review; production release is NOT approved
-  by this checkpoint. No migrations, schema changes, secret changes or game orders.
-- **Environment:** `/workspace/gp-audit` is the current worktree; `/workspace/repository`
-  retains old 7.16 checkout. Shell networking/local servers need network permission.
-  Node 24 locally versus Node 22 CI; Chromium available locally. Do not rely on /tmp
-  or either worktree surviving: committed checkpoints are authoritative.
+- **Phase / batches:** P0-001 VERIFIED. P1-000 recommendation integrity and P4-000
+  discovery budget repair implemented; final checks recorded in EVIDENCE.md.
+  Full phases 0/1/4 are not complete.
+- **Branch:** `development/audit-p0-checkpoint`; [PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20)
+  remains the review boundary. Main advanced to `7379ede` (release-labelled 7.29)
+  and was merged locally in `124f332`; upstream Delivery Box/history work preserved.
+- **Latest implementation:** baf7c16d292fc65f8f575f2cfef700c31b3b1823. Recommendation repair `003c52b`.
+  Resolve latest checkpoint SHA with `git log -1 --format=%H -- docs/audit/STATE.md`.
+- **Completed:** impossible resale/profit combinations and invalid sample counts
+  rejected; board suggestions share actual wallet; uncalibrated estimates no longer
+  labelled calibrated. Public and recipe scan lanes now receive reserved budget;
+  early equipment/history lanes cannot consume it all. Full catalogue rotation retained.
+- **Production:** NOT deployed or independently version-verified this session.
+  Prior live probe returned HTML labelled 7.16; main now advertises 7.29. Default
+  Python User-Agent returned Cloudflare 1010; `Mozilla/5.0` returned HTTP 200.
+  No direct credentials or independent private D1 readback available.
+- **Review/tests:** prior PR head bda60d9 passed CI 42324339781. New implementation
+  local verification and remote CI status are in EVIDENCE.md. No merge/deploy done.
+- **In progress:** next discovery audit not started; checkpoint/PR reconciliation only.
+- **Exact next action:** P4-001a: measure category coverage from `data/market_public.json`
+  through `researchQuoteScore`, `gatherPublicSeeds`, `publicResearchCandidates` and
+  `GPMarketBoard.build`. Reproduce low-unit-margin commodity/consumable exclusion
+  and equipment/name-only gates with fixtures before changing them. Track scanned,
+  rejected (with reason), surfaced and searchable counts by metadata category.
+- **Deferred:** P0-002 exact release identity, at user's request to prioritise discovery.
+  After discovery bottlenecks: P1-001 independent fee/FIFO/DST/partial-history oracle;
+  P3/P5 evidence-to-quantity learning. Do not infer standing depth is completed volume.
+- **Outstanding:** F002 stale release identity; F004 private data lineage unverified;
+  F005 equipment/name/price filters may still exclude useful research. No claim of
+  complete discovery or improved live profitability. Physical S23 Ultra untested.
+- **Release safety:** reviewable after required checks; no production release approval
+  requested. No new release markers, database migrations, account writes or orders.
+- **Recovery/environment:** current worktree `/workspace/gp-audit`; old 7.16 checkout
+  remains `/workspace/repository`. Committed GitHub checkpoints, not VM files, are
+  permanent memory. Network/local browser servers require network permission.
 
 ## Verified source inventory (not a claim of live health)
 

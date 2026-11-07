@@ -18,3 +18,10 @@
 - **D006:** one focused delegated collector review/repair, main agent responsible for
   baseline/checkpoint/PR. Avoid a parallel full-programme rewrite or repeated expensive
   audit. Finish one reviewable batch and retain exact next action for future sessions.
+
+- **D007:** user steering prioritises discovery over release identity and most other
+  work. Complete the bounded calculation repair, then P4-000/P4-001a. Keep remaining
+  phases on roadmap; no silent claim that release/accounting audit is complete.
+- **D008:** reuse existing shared-wallet allocator and deterministic scan lanes;
+  no new probabilistic model. A necessary expected-sales profit bound catches
+  impossible inputs without claiming calibration. Preserve conditional research.

@@ -1,32 +1,26 @@
 # Resume — read after STATE.md
 
-Repository: `tnolanwood-rgb/golden-peanut-data`. Audit branch:
-`development/audit-p0-checkpoint`; base main `d7d2a24` (release-labelled 7.24).
-Implementation `e7e6e57e5af36c096362ae1846890b500eade67e` repairs private collector
-false-success exits and adds `scripts/audit_baseline.py`. Root AGENTS.md governs work.
+Repository `tnolanwood-rgb/golden-peanut-data`, branch
+`development/audit-p0-checkpoint`, PR #20. Read root AGENTS.md.
 
-1. Fetch GitHub; inspect status and instructions. Read STATE, then relevant roadmap,
-   findings/evidence. Verify implementation SHA exists; inspect whether PR #20 merged.
-   CI 42324153790 passed at 6776e3f; subsequent checkpoint changes are docs only.
-   Confirm any newer CI before continuing. P0-001 is verified; no code is in progress.
-2. If unmerged, continue its branch or a dependent review branch; do not reset main
-   or overwrite other changes. Old 7.16 branch is already contained in current main.
-3. Next: **P0-002**, release identity. `package.json`, `check_release.py`, and production
-   gate still use 7.16 while release commits/assets advertise 7.24. Write a rejecting
-   test for a stale deployment first; fix exact static identity/gate. No deployment.
-4. Then **P1-001**: independent cost/fee/FIFO/partial-history/DST accounting oracle
-   at small and >140k scale. Today's recorded profit hero already exists: audit it,
-   do not add a second card. F003 calibration claims are a high-priority follow-up.
-5. Baseline: `npm ci --ignore-scripts`; PyYAML 6.0.3; Chromium (or
-   `npx playwright-core install --with-deps chromium`); `python scripts/audit_baseline.py`.
-   Artifacts record tested SHA, dirty flag, commands, exits, timings. `--skip-browser`
-   is PARTIAL/nonzero. Reuse prior evidence unless affected by changes.
-6. Update seven audit files as relevant, commit, push, open/update PR, record exact
-   next action. Report BATCH/STATUS/FIXED/TESTED/EVIDENCE/NEXT/CHECKPOINT briefly.
+1. Fetch/status; check PR #20 merge state and newest CI before coding. Current
+   implementation baf7c16d292fc65f8f575f2cfef700c31b3b1823 includes main 7379ede (7.29). Do not
+   reopen obsolete 7.16 work or redo P0-001. Prior bda60d9 CI 42324339781 passed.
+2. **User priority is market discovery first**, then sound calculations/useful bids.
+   Release identity P0-002 remains TODO, deliberately deferred.
+3. Completed: 003c52b prevents impossible expected profit and shared-wallet overflow,
+   removes false calibration claims. Latest fix reserves public and recipe scan
+   slots; previous early-lane quota sum exceeded 100%. These are synthetic-tested
+   correctness repairs, not proof of better live trading returns.
+4. Next **P4-001a**: trace actual catalogue category counts through quote screening,
+   seed selection, research candidates and board display. Reproduce low-unit-margin
+   commodity/consumable and equipment/name exclusions; fix the highest-impact gate
+   with regression coverage. Never replace spread heuristics with invented volume.
+5. Then independent accounting oracle (fees/FIFO/partial history/DST) and execution
+   evidence/quantity/ranking validation. Keep zero fills and cancellation uncertainty.
+6. Test command `python scripts/audit_baseline.py` after dependencies described in
+   AGENTS. Check EVIDENCE before repeating unchanged work. Update checkpoint, commit,
+   push and PR. No automatic deployment or in-game orders.
 
-Production probes: default Python User-Agent gets 403/error 1010; use
-`User-Agent: Mozilla/5.0` for HTTP 200 on Pages and public Worker status.
-Live HTML still identifies 7.16; exact deployed assets need reconciliation. Recent Actions runs report success, but
-actual private database contents and downstream freshness were not verified. Never
-print private logs/keys or infer health from workflow status. No unattended work after
-usage reset is promised; this checkpoint is the continuation mechanism.
+No private credentials/readback or physical Android verification. Public HTTP probes
+need `User-Agent: Mozilla/5.0` here. No unattended continuation is promised.
