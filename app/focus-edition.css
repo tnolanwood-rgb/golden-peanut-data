@@ -277,3 +277,11 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-top-research>p{font-size:12px;line-height:1.4;margin:0 0 9px}
 .focus-top-research .focus-market-values small{white-space:normal;line-height:1.3}
 .focus-top-research .focus-top-research-row{padding:11px 4px}
+
+/* Quiet Trading Desk: recurring monitoring diagnostics live behind ⚙ Settings. */
+.focus-settings-shelf{border:1px solid #55705b;border-radius:12px;background:#1b2d23;margin:10px 0;overflow:hidden}
+.focus-settings-shelf>summary{cursor:pointer;padding:13px 15px;font-size:14px;font-weight:700;color:#e5d6b5;min-height:45px}
+.focus-settings-shelf[open]>summary{border-bottom:1px solid #465e4e}
+.focus-settings-body{padding:10px 12px}
+.focus-settings-body .focus-account-watcher,.focus-settings-body .focus-deployment-lab{margin:0}
+.focus-monitor-warning{display:block;width:100%;text-align:left;border:1px solid #ac8260;border-radius:9px;padding:12px 13px;margin:10px 0;background:#342920;color:#ffe2af;font-weight:700;font-size:12px}
