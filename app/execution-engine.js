@@ -120,9 +120,12 @@ function forecast({samples=[],cohorts=[],item,quantity,buy,exit,now=Date.now(),s
 function validateRecommendation(o){
  return o?.status==='estimated'&&integer(o.id||o.item,1)&&integer(o.quantity,1)&&o.quantity<=250&&
  integer(o.buy,1)&&integer(o.exit,1)&&Number.isFinite(o.expectedProfit)&&o.expectedProfit>0&&
- Number.isFinite(o.expectedAcquired)&&Number.isFinite(o.expectedSold)&&o.expectedSold>=0&&o.expectedSold<=o.expectedAcquired&&
+ Number.isFinite(o.expectedAcquired)&&Number.isFinite(o.expectedSold)&&o.expectedSold>0&&o.expectedSold<=o.expectedAcquired&&
  o.expectedAcquired<=o.quantity&&o.expectedProfit<=Math.max(0,net(o.exit,o.quantity)-o.buy*o.quantity)&&
- integer(o.cost,1)&&o.cost===o.quantity*o.buy+fee(o.exit,o.quantity)&&o.sampleCount>=MIN_SAMPLES;
+ // Even before rounding and unsold listing fees, income cannot exceed the
+ // margin on expected COMPLETED sales. Full-lot spread is not expected income.
+ o.expectedProfit<=Math.max(0,(o.exit*85-o.buy*100)/100*o.expectedSold)+1e-8&&
+ integer(o.cost,1)&&o.cost===o.quantity*o.buy+fee(o.exit,o.quantity)&&integer(o.sampleCount,MIN_SAMPLES);
 }
 function allocate(candidates,wallet){
  if(!integer(wallet))return {orders:[],spent:0,expectedProfit:null,reason:'Wallet unverified'};

@@ -1,6 +1,6 @@
 /* Golden Peanut 7.16: one evidence-labelled decision board.
  * This is a PRESENTATION adapter, not an invented execution model.
- * Prospective calibrated forecasts, personal historical conditional returns,
+ * Prospective empirical estimates, personal historical conditional returns,
  * existing standing positions, and new public-market research remain distinct.
  */
 (function(root){'use strict';
@@ -68,8 +68,10 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  const empty={ready:false,forecast:[],standing:[],history:[],newMarkets:[],counts:{forecast:0,standing:0,history:0,newMarkets:0,scanned:0,catalogue:0},disclaimer:'No verified market plan available'};
  if(!plan?.ok)return empty;
  const available=whole(wallet)?wallet:(whole(plan.budget)?plan.budget:0);
- const forecast=(root.GPExecution?.ranked?.(plan)?.rows||[]).filter(o=>finite(o.expectedProfit)&&o.expectedProfit>0&&whole(o.quantity,1)&&whole(o.cost,1)&&o.cost<=available)
-  .map(o=>({...o,tier:'calibrated-24h',kind:'funded'}))
+ // Reallocate against the current wallet, not each order independently.
+ const eligible=root.GPExecution?.ranked?.(plan)?.rows||[];
+ const forecast=(root.GPExecution?.allocate?.(eligible,available)?.orders||[])
+  .map(o=>({...o,tier:'observed-24h'}))
   .sort((a,b)=>b.expectedProfit-a.expectedProfit||a.id-b.id);
  const standing=(plan.activeBook?.entries||[]).filter(o=>whole(o.id,1)&&whole(o.scenarioUnits,1)&&finite(o.conditionalWeek)&&o.conditionalWeek>0)
   .map(o=>({id:o.id,kind:'standing',tier:'current-position',quantity:o.scenarioUnits,openUnits:o.units,
@@ -151,7 +153,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   broadCandidates:plan.publicDiscovery?.broadMarginCandidates||0,
   rawPersonalResearch:plan.marketChoices?.length||0,rawPublicResearch:plan.publicResearch?.length||0,
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
- return {ready:true,...categories,counts,available,disclaimer:'Only calibrated 24h entries are expected-profit estimates. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
+ return {ready:true,...categories,counts,available,disclaimer:'24h estimates use observed outcomes; predictive calibration is not established. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
 }
 root.GPMarketBoard={buildId:'7.16.0-evidence',build};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketBoard;

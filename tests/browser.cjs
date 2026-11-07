@@ -219,6 +219,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.render();
  });
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
+ assert.match(await page.locator('#focus-best-rows').innerText(),/ESTIMATED 24-HOUR OPPORTUNITIES/);
+ assert.doesNotMatch(await page.locator('#focus-best-rows').innerText(),/CALIBRATED 24-HOUR/);
  assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
  await page.locator('#focus-best-rows .focus-home-order').first().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Expected net profit · 24h/);
@@ -233,6 +235,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.evaluate(()=>GPFocus.goto('legendaries'));assert.equal(await page.locator('#lp-search').isVisible(),true);
  const backup=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;const b=await PeanutBackupV2.build(s.db,s.account,'');const v=await PeanutBackupV2.verify(b.blob);return {bytes:b.blob.size,configs:v.counts['config:'+s.account]};});
  assert.ok(backup.bytes>0&&backup.configs>0);
+ const originalSold=await page.evaluate(()=>{const o=GoldenPeanutClean.State.opportunityPlan.orders[0];const sold=o.expectedSold;o.expectedSold=0;GPFocus.goto('today');GPFocus.render();return sold;});
+ assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0,'positive profit with zero expected resales must not render as a bid');
+ await page.evaluate(sold=>{GoldenPeanutClean.State.opportunityPlan.orders[0].expectedSold=sold;GPFocus.render();},originalSold);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders[0].expectedProfit=Infinity;GPFocus.goto('today');GPFocus.render();});
  assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;s.opportunityPlan.orders=[];s.opportunityPlan.expectedProfit=null;s.opportunityPlan.spent=0;s.opportunityPlan.unallocated=s.snapshot.wallet;s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];s.opportunityPlan.activeBook={entries:[]};GPFocus.render();});
