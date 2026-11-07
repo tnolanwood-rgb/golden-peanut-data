@@ -86,7 +86,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await delivery.count(),1);
  assert.equal(await items.locator('.focus-delivery-row').count(),8,'show all eight grouped item types');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-quantity').innerText(),'×8','merge duplicate stacks');
- assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] img').count(),1,'show verified GW2 item icon');
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-item-art img').count(),1,'show verified GW2 item icon');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .gp-rarity-exotic').count(),1,'item names use rarity');
  const expectedDelivery=await page.evaluate(()=>{
   const s=GoldenPeanutClean.State,v=GP57Desk.listingValuation(s.snapshot,s.ledger);
