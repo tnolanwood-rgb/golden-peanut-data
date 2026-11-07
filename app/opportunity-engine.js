@@ -153,7 +153,8 @@ function equipmentVariantSeeds(hist,metadata={},limit=120,offset=0){
  for(const ids of buckets.values())ids.sort((a,b)=>a-b);
  const keys=[...buckets.keys()].sort();
  const ordered=[],seen=new Set();
- let depth=0;while(ordered.length<Object.keys(metadata).length){
+ const catalogueSize=Object.keys(metadata||{}).length;
+ let depth=0;while(ordered.length<catalogueSize){
   let added=false;
   for(const key of keys){const id=buckets.get(key)[depth];if(valid(id)&&!seen.has(id)){ordered.push(id);seen.add(id);added=true;}}
   if(!added)break;depth++;
@@ -804,12 +805,15 @@ function equipmentCoverageAudit({metadata={},discoveryIds=[],quotes=[],plan=null
  * crowd out lower-price bulk opportunities. A quote is NOT a turnover sample.
  */
 function researchQuoteScore(q){
- const buy=Number(q?.buy)||0,sell=Number(q?.sell)||0;
- if(!valid(buy)||!valid(sell)||sell<=buy||Number(q.buyQty)<2||Number(q.sellQty)<1)return null;
- const bid=buy+1<sell?buy+1:buy,exit=Math.floor(sell*.97);
+ const buy=q?.buy,sell=q?.sell;
+ if(!valid(q?.id)||!valid(buy)||!valid(sell)||sell<=buy||
+    !valid(q.buyQty)||!valid(q.sellQty))return null;
+ // Research at one copper inside each quote, not an arbitrary 3% exit discount.
+ const bid=buy+1,exit=sell-1;
+ if(!valid(bid)||!valid(exit)||exit<=bid)return null;
  const afterFee=saleNet(exit,1);if(!finite(afterFee))return null;
  const net=afterFee-bid,roi=net/bid;
- if(net<2||roi<.055||roi>8)return null;
+ if(!valid(net))return null;
  const book=Math.max(1,Math.min(Number(q.buyQty)||0,Number(q.sellQty)||0));
  // Discovery ranking ONLY. Book quantities signal competition, not transactions.
  const score=Math.log1p(net)*Math.log1p(Math.min(book,800))*(.7+Math.min(roi,2)) *
@@ -831,7 +835,8 @@ async function gatherPublicSeeds(state,hist,limit=1450){
    const at=Date.parse(q?.at);if(!finite(at)||Date.now()-at>18*HOUR||at>Date.now()+60000)continue;
    fresh++;
    const c=researchQuoteScore(q);if(!c)continue;
-   eligible++;const g=c.priceBand+':'+c.bookBand;
+   eligible++;const category=String(state.meta?.[c.id]?.type||'Unknown');
+   const g=JSON.stringify([category,c.priceBand,c.bookBand]);
    if(!groups.has(g))groups.set(g,[]);
    keep(groups.get(g),c,125);keep(global,c,330);
   }

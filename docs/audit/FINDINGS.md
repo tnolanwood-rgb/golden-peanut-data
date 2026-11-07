@@ -33,3 +33,27 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   and 124 consumable entries survive the offline snapshot replay. Coverage counters
   expose remaining gates. F005 is now partly confirmed: name/unlock/ROI policies
   reject thousands of otherwise screened research entries; needs P4-001b review.
+
+- **F011 / High, repaired:** public seeds grouped only price/depth, so categories
+  with lower spreads could get zero slots despite eligible quotes. c09ad57 adds
+  metadata category to grouping; failing crowded-category fixture now passes.
+
+- **F012 / High, repaired 2e29aa6:** research visibility depended on English name
+  tokens (Mini, Recipe, Tonic etc.) and collection unlock subtype. Rename-invariance
+  and unlock fixtures failed despite identical viable quotes. Removed these gates
+  without adding execution quantities/income. Remaining numeric policies stay explicit.
+
+- **F013 / High, repaired a456967:** board rejected valid public research above
+  250,000 copper regardless of research capital. Removed ceiling; actual wallet
+  affordability and funded-allocation checks remain. Browser confirms expensive
+  row is only in unfunded watchlist, never funded or cheap-primary suggestions.
+- **F014 / Medium, repaired a456967:** public quote screener did not validate IDs
+  and accepted NaN/infinite/fractional/string standing quantities through coercion.
+  It now requires positive safe integer IDs/prices/depth, retaining the existing
+  minimum standing quantity policy until separately audited. Book size is not fills.
+
+- **F015 / High, repaired 8e5bc43:** ROI/depth gates and an arbitrary 3% exit
+  discount hid positive-margin quote research. Now use inside-quote prices, retain
+  positive net research, caution wide/thin books in secondary watchlist, no income claim.
+- **F016 / High, repaired d19ae75:** Object.keys(metadata) ran on each family-loop
+  iteration. Cache cardinality once; 1002→2 enumerations at 1000 rows, same candidates.

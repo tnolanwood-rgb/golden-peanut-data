@@ -74,3 +74,44 @@ test('low-unit-margin commodity and consumable research survives engine-to-board
  for(const row of board.newMarkets){assert.ok(row.unitMargin>0&&row.unitMargin<50);assert.equal(row.quantity,undefined);assert.equal(row.expectedProfit,undefined);}
  assert.equal(board.publicCoverage.accepted,2);
 });
+test('public seed quota preserves minor metadata categories among dominant weapons',async()=>{
+ const c=context(),meta={},values=Array.from({length:1000},(_,i)=>{
+  const id=8000+i;meta[id]={type:i===999?'Bag':'Weapon'};
+  return {latest:{id,buy:1000,sell:i===999?1400:2000,buyQty:100,sellQty:100,at:new Date(Date.now()).toISOString()}};
+ });
+ const state={meta,db:{marketPage:async()=>({values,done:true})}};
+ const seeds=await c.GPOpportunity.gatherPublicSeeds(state,{},40);
+ assert.ok(seeds.ids.includes(8999),'minor category must not lose every slot to higher weapon spreads');
+ assert.ok(seeds.ids.length<=40);assert.equal(new Set(seeds.ids).size,seeds.ids.length);
+});
+test('public quote screening rejects malformed identifiers and standing quantities',()=>{
+ const c=context(),good={id:1,buy:100,sell:200,buyQty:10,sellQty:10};
+ assert.ok(c.GPOpportunity.researchQuoteScore(good));
+ for(const patch of [{id:0},{id:1.5},{buyQty:NaN},{sellQty:Infinity},{buyQty:2.5},{sellQty:'10'},{buy:'100'}])
+  assert.equal(c.GPOpportunity.researchQuoteScore({...good,...patch}),null,JSON.stringify(patch));
+});
+test('positive narrow spreads and thin or wide books remain research without forecast promotion',()=>{
+ const c=context(),Board=require('../app/market-board.js'),now=Date.now();
+ const quotes=[{id:9911,buy:1000,sell:1200,buyQty:100,sellQty:100},
+  {id:9912,buy:100,sell:200,buyQty:1,sellQty:1},
+  {id:9913,buy:10,sell:1000,buyQty:50,sellQty:50}].map(q=>({...q,at:new Date(now).toISOString()}));
+ const metadata=Object.fromEntries(quotes.map(q=>[q.id,{name:'Quote '+q.id,type:'CraftingMaterial'}]));
+ const research=c.GPOpportunity.publicResearchCandidates({quotes,metadata,now});
+ assert.equal(research.length,3);
+ const narrow=research.find(x=>x.id===9911);assert.equal(narrow.buy,1001);assert.equal(narrow.exit,1199);
+ const b=Board.build({ok:true,budget:10000,orders:[],publicResearch:research},{wallet:10000,metadata,now});
+ assert.equal(b.newMarkets.length,3);assert.equal(b.forecast.length,0);
+ assert.deepEqual(b.otherLeads.map(x=>x.id),[9911]);
+ for(const x of b.newMarkets){assert.equal(x.quantity,undefined);assert.equal(x.expectedProfit,undefined);}
+ for(const id of [9912,9913]){const row=b.newMarkets.find(x=>x.id===id);assert.equal(row.watchOnly,true);assert.ok(row.researchWarnings.length);}
+});
+test('family exploration enumerates catalogue keys a bounded number of times without losing rotation',()=>{
+ const c=context();let enumerations=0;
+ const metadata=new Proxy(Object.fromEntries(Array.from({length:1000},(_,i)=>[i+1,{name:'Family '+i,type:'Weapon',rarity:'Exotic'}])),{
+  ownKeys(target){enumerations++;return Reflect.ownKeys(target);}
+ });
+ const ids=c.GPOpportunity.equipmentVariantSeeds({markets:new Map()},metadata,1000,0);
+ assert.equal(ids.length,1000);assert.equal(new Set(ids).size,1000);
+ assert.ok(enumerations<=3,'catalogue enumerated '+enumerations+' times');
+ assert.deepEqual(Array.from(c.GPOpportunity.equipmentVariantSeeds({markets:new Map()},metadata,3,1)),[4,5,6]);
+});

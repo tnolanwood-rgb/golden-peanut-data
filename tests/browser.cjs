@@ -227,6 +227,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.doesNotMatch(await page.locator('#focus-trade-detail').innerText(),/NaN|undefined/);
  await page.evaluate(()=>{GPFocus.goto('trades');});
  await page.getByRole('button',{name:'← Back to opportunities',exact:true}).click();
+ await page.evaluate(()=>{GoldenPeanutClean.State.meta[99001]={id:99001,name:'Mini Untraded Catalogue Test',type:'MiniPet',rarity:'Rare'};});
+ await page.locator('#focus-trade-search').fill('Mini Untraded Catalogue Test');
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Mini Untraded Catalogue Test'));
+ assert.match(await page.locator('#focus-trade-rows').innerText(),/current price and profit unverified|no fill or profit forecast/i);
+ await page.locator('#focus-trade-search').fill('99001');
+ assert.match(await page.locator('#focus-trade-rows').innerText(),/Mini Untraded Catalogue Test/);
  await page.locator('#focus-trade-search').fill('Catalogue family');
  await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Show more catalogue matches'));
  const before=await page.locator('#focus-trade-rows .focus-memory-related').count();
@@ -309,8 +315,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(enriched,/Dire Pearl Reaver/);
  assert.match(enriched,/Magi's Exalted Coat/);
  assert.match(enriched,/Net IF ALL 10 buy AND resell/);
- assert.doesNotMatch(enriched,/Jormag's Claw Fragment|20 units.*Dire Pearl Reaver/);
- assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),2,'top candidates are not duplicated in lower research lists');
+ assert.doesNotMatch(enriched,/20 units.*Dire Pearl Reaver/);
+ const wideWatch=page.locator('#focus-best-rows [data-section-id="new-watchlist"]');
+ assert.match(await wideWatch.innerText(),/Jormag's Claw Fragment/);
+ assert.match(await wideWatch.innerText(),/Unusually wide quoted spread/);
+ assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="67276"]').count(),0);
+ assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),3,'top candidates are not duplicated in lower research lists');
  // The quantity control MUST live on the market LIST, not only item details.
  const marketLot=page.locator('#focus-best-rows .focus-market-lot-select');
  assert.equal(await marketLot.inputValue(),'10');
@@ -319,7 +329,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(resized,/Research 50 ×/);
  assert.match(resized,/Net IF ALL 50 buy AND resell/);
  assert.doesNotMatch(resized,/3-day comparable ACTIVE-pace: 6–10/);
- await page.locator('#focus-best-rows .focus-connected-market').last().click();
+ await page.locator('#focus-best-rows [data-section-id="exotic-armour"] .focus-connected-market').first().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
  // History was pushed by the actual item tap; the Android-equivalent browser
@@ -517,6 +527,11 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    id:6000+i,name:"Magi's Exalted Test Coat "+i,type:'Armor',rarity:'Exotic',
    buy:2100+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
   }));
+  items.push({id:6105,name:'Thin book research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:145,buyQty:1,sellQty:1,at:stamp});
+  items.push({id:6106,name:'Wide spread research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:10000,buyQty:20,sellQty:20,at:stamp});
+  items.push({id:6104,name:'High capital research',type:'UpgradeComponent',rarity:'Exotic',buy:300000,exit:450000,buyQty:20,sellQty:20,at:stamp});
+  items.push({id:6102,name:'Mini Research Test',type:'MiniPet',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
+  items.push({id:6103,name:'Research Unlock',type:'Consumable',subtype:'Unlock',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
   items.push(...['CraftingMaterial','Consumable'].map((type,i)=>({id:6100+i,name:'Low margin '+type,type,rarity:'Basic',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp})));
   for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:item.type,rarity:item.rarity};
   s.opportunityPlan={...s.opportunityPlan,ok:true,at:Date.now(),source:'wallet',budget:s.snapshot.wallet,
@@ -536,7 +551,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const otherResearch=page.locator('#focus-best-rows [data-section-id="other-affordable"]');
  assert.match(await otherResearch.innerText(),/Low margin CraftingMaterial/);
  assert.match(await otherResearch.innerText(),/Low margin Consumable/);
+ assert.match(await otherResearch.innerText(),/Mini Research Test/);
+ assert.match(await otherResearch.innerText(),/Research Unlock/);
  assert.match(await otherResearch.innerText(),/not a forecast/);
+ const unfunded=page.locator('#focus-best-rows [data-section-id="new-watchlist"]');
+ assert.match(await unfunded.innerText(),/High capital research/);
+ assert.match(await unfunded.innerText(),/not covered by current wallet/);
+ assert.match(await unfunded.innerText(),/Thin standing order book; completed volume unknown/);
+ assert.match(await unfunded.innerText(),/Unusually wide quoted spread; verify current prices/);
+ assert.doesNotMatch(await otherResearch.innerText(),/Thin book research|Wide spread research/);
+ assert.doesNotMatch(await otherResearch.innerText(),/High capital research/);
+ assert.equal(await page.locator('#focus-best-rows .focus-home-order').count(),0);
+
  assert.equal(await armorSection.count(),1);
  assert.match(await armorSection.innerText(),/of 72 markets/);
  const armorScroll=armorSection.locator('.focus-section-scroll');

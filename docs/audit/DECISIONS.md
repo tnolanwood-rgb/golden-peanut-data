@@ -30,3 +30,18 @@
   hypothetical volume. Remove the unsupported display floor, retain positive net
   fees/malformed-input guards, expose first rejection reason per row. Defer other
   policy changes until category evidence; never turn visibility into forecast income.
+
+- **D010:** translated item names and collection use are not evidence of absent
+  trading opportunity. Permit quote-only research independently of these attributes;
+  do not promote it to funded bids. Existing numeric/freshness guards remain until
+  separately challenged. Keep risk statements on all public research rows.
+
+- **D011:** an arbitrary fixed item price must not define research affordability.
+  Keep above-wallet quotes in the existing unfunded watchlist, preserve actual
+  wallet allocation, and reject malformed numeric inputs before scoring. ROI/depth
+  policy and rotation remain explicit separate audit tasks rather than blanket removal.
+
+- D012: turn speculative ROI/depth exclusions into explicit research cautions;
+  keep thin/wide quotes outside primary lists. Preserve funded execution gates.
+- D013: prioritise bounded enumeration fix discovered during rotation replay;
+  prove identical IDs/order and benchmark the same fixture, not synthetic live returns.

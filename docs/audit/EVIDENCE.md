@@ -138,3 +138,89 @@ The same comparison applies to each saved asset path (index.html served at `/`).
 This establishes deployed code identity, not private account-data lineage or live
 forecast accuracy. No account data, secrets, database schema or orders mutated.
 Release labels still need P0-002; next development remains P4-001b.
+
+## P4-001b1 — category-aware public quote seeds
+
+Based on main d3b9688, retaining upstream D1-write and mobile changes.
+Implementation c09ad575fbf45cd9a0517149f719b1f7b9e46819. `node tests/execution.test.cjs` reproducer failed
+before repair (one Bag lost among 999 higher-spread Weapons), then all 27 cases
+passed. The 40-slot bound and uniqueness assertions remain enforced.
+`python scripts/audit_baseline.py` final result recorded in P4-001b1-baseline.json.
+`node scripts/audit_discovery.cjs` replays the same public snapshot; Bag seeds
+0 → 33, CraftingMaterial 32 → 80, Weapons 477 → 233 within the same 1450 budget.
+These are offline research-selection counts, not execution or profitability proof.
+Official metadata categories now subdivide existing price/depth buckets. Unknown
+metadata retains its own bucket; no names or handpicked families added. Very small
+budgets may still require rotation for complete coverage; no universal fairness claim.
+Name/unlock display exclusions and catalogue search remain unfinished. No deployment.
+
+## P4-001b2 — name/unlock independence and catalogue search
+
+PR #30 open/unmerged; prior cca2728 CI 42398829818 passed. Main unchanged at d3b9688.
+`node tests/market-board.test.cjs`: before repair 10 passed/2 failed; after 12 passed.
+Fixtures rename identical quotes across Mini/Recipe/Tonic/Skin/Infusion labels and
+assert unlock quotes remain research without quantities, expected profit or funding.
+The rejection-counter test now counts the formerly name-rejected row as accepted;
+other invalid/stale/duplicate cases retain their assertions.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`2e29aa6d6697fa8fd5d22243d1493959f6c0fdde`; source, Python, 8 JS test files and
+assembled desktop/mobile Chromium. New browser assertions prove Mini/unlock rows
+render as “not a forecast” and a no-history catalogue item is searchable by name/ID.
+Results: P4-001b2-baseline.json. `git diff --check` passed. Remote CI pending.
+
+`node scripts/audit_discovery.cjs` before/after same-snapshot replay:
+MiniPet 0→252, Consumable 526→2041; exact checksum and per-category changes in
+P4-001b2-replay.json. Remaining first rejections: ROI 6445, price ceiling 1171,
+standing depth 30. Gate order matters; no independent causal count implied.
+Research visibility is not profitable execution evidence. No deployment this batch.
+
+## P4-001c1 — research capital and malformed public quote guards
+
+Main unchanged d3b9688; PR #30 open/unmerged. Prior ea9a600 CI
+[42399130329](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42399130329)
+passed. Before repair, `node tests/market-board.test.cjs` failed the new expensive
+research case (0 rows instead of 1). `node tests/execution.test.cjs` failed the new
+malformed-ID/depth case. After repair: board 13/13, execution 28/28.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`a456967df56b8fddf59abf7695385043fd85ab78`: source validation, 34 Python tests,
+all 8 JS files including stress fixtures, desktop/mobile Chromium. New browser case
+proves a 30g research quote appears as not covered by the wallet, is absent from
+cheap-primary suggestions and creates no funded order. P4-001c1-baseline.json
+records commands and conditions. `git diff --check` passed. New remote CI pending.
+
+`node scripts/audit_discovery.cjs` same-public-snapshot replay: board research
+10,349→11,436 (+1,087). P4-001c1-replay.json records checksum and categories.
+Remaining first rejections: ROI 6,521, standing depth 38. These are policy-screen
+counts, not live liquidity or profit outcomes. Existing ROI/minimum-depth policies
+are intentionally retained for the next audit; whole Phase 4 is not complete.
+No release, private account write or game order performed.
+
+## P4-001c2 + P8-000 — final checkpoint before allowance reset
+
+Prior 6688d55 CI 42399490369 passed. PR #30 open; main unchanged d3b9688.
+New pipeline fixture failed before repair: zero of three positive narrow/thin/wide
+quote candidates survived. 8e5bc43 retains positive net one-copper-inside quotes,
+removes arbitrary 3% exit discount and ROI visibility gates; malformed/empty books
+still rejected. Thin/wide books are cautioned and withheld from primary research
+lists, never funded. Old browser assertion forbidding wide quotes everywhere was
+replaced by secondary-watchlist/caution/no-top-buy assertions; mobile/desktop pass.
+
+Full-catalogue replay selected all 27,999 IDs over 18 successful fixed 6500-budget
+passes, with bounded unique IDs per pass. This is ID selection, NOT live quotes,
+persisted cursor recovery or execution evidence. Research candidates 17,995→22,313;
+board 11,436→22,313; no eligible positive-margin research rejected at board stage.
+
+Replay exposed repeated Object.keys(metadata) inside family iteration. Regression
+counted 1002 enumerations for 1000 items; d19ae75 reduces to 2, preserving IDs/order.
+`python scripts/audit_baseline.py` passed on clean d19ae759bad135e844267e86cb23cb7cecdda780:
+source, 34 Python tests, all 8 JS files (30 execution, 13 board cases), desktop/mobile
+Chromium. Saved P4-001c2-baseline.json. New remote CI pending, not deployed.
+
+Benchmark: `git show 8e5bc43:app/opportunity-engine.js > /tmp/gp-family-before.js`
+then `node scripts/benchmark_family.cjs /tmp/gp-family-before.js`. Initial attempt
+using child_process git hit sandbox EPERM; shell extraction succeeded. Seven warmed
+runs on 1000 same-family rows: median 10.796ms before, 1.528ms after; exact same IDs
+asserted every run. Engine microbenchmark only, not a physical Android speed claim.
+User reports 3% allowance: stop here, next P4-002. No deployment or private writes.
