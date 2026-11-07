@@ -211,8 +211,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   st.opportunityPlan.activeBook={committed:8070091,entries:[]};
   GPFocus.goto('today');GPFocus.render();
  });
- const lab=page.locator('#focus-best-rows .focus-deployment-lab');
- assert.equal(await lab.count(),1);
+ // Capital allocation is optional detail under ⚙ Settings, not the home screen.
+ assert.equal(await page.locator('#focus-best-rows .focus-deployment-lab').count(),0);
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ await page.locator('#focus-capital-settings > summary').click();
+ const lab=page.locator('#focus-deployment-research .focus-deployment-lab');
+ assert.equal(await lab.isVisible(),true);
  assert.match(await lab.innerText(),/CAPITAL DEPLOYMENT/);
  assert.match(await lab.innerText(),/WHAT-IF ONLY/);
  assert.match(await lab.innerText(),/Already committed to buys/);
