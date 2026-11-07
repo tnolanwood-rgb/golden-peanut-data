@@ -1,0 +1,81 @@
+{
+  "conditions": "Offline replay at snapshot generation time; all quotes evaluated to isolate gates, seed quota separate; no live profitability inference",
+  "catalogueSHA256": "28bdb364054dff6e30afdfeb6c02d4aa96aa08cd2c257bfaf33b2c6233531c28",
+  "generatedAt": 1794024394,
+  "beforeSource": "ea9a600",
+  "afterSource": "a456967",
+  "boardByCategory": {
+    "Consumable": {
+      "before": 2041,
+      "after": 2559
+    },
+    "Armor": {
+      "before": 2293,
+      "after": 2312
+    },
+    "Gizmo": {
+      "before": 38,
+      "after": 63
+    },
+    "Container": {
+      "before": 162,
+      "after": 209
+    },
+    "Bag": {
+      "before": 36,
+      "after": 36
+    },
+    "CraftingMaterial": {
+      "before": 817,
+      "after": 817
+    },
+    "Trinket": {
+      "before": 331,
+      "after": 342
+    },
+    "Weapon": {
+      "before": 3863,
+      "after": 4046
+    },
+    "": {
+      "before": 0,
+      "after": 0
+    },
+    "Trophy": {
+      "before": 86,
+      "after": 98
+    },
+    "MiniPet": {
+      "before": 252,
+      "after": 341
+    },
+    "Tool": {
+      "before": 0,
+      "after": 0
+    },
+    "UpgradeComponent": {
+      "before": 346,
+      "after": 527
+    },
+    "Back": {
+      "before": 25,
+      "after": 27
+    },
+    "JadeTechModule": {
+      "before": 13,
+      "after": 13
+    },
+    "PowerCore": {
+      "before": 1,
+      "after": 1
+    },
+    "Relic": {
+      "before": 45,
+      "after": 45
+    }
+  },
+  "remainingFirstRejections": {
+    "roi-policy": 6521,
+    "standing-depth-policy": 38
+  }
+}

@@ -4,11 +4,12 @@ Repository `tnolanwood-rgb/golden-peanut-data`. Branch
 `audit/discovery-category-seeds`, PR #30. Read root AGENTS.md.
 
 1. Fetch/status; check PR #30 merge state and newest CI. Base main d3b9688;
-   implementation 2e29aa6d6697fa8fd5d22243d1493959f6c0fdde. Earlier cca2728
-   passed CI 42398829818. New code passed local assembled baseline, not deployed.
+   implementation a456967df56b8fddf59abf7695385043fd85ab78. Earlier ea9a600
+   passed CI 42399130329. New code passed local assembled baseline, not deployed.
 2. Do not restart the audit. Category seed fairness and name/unlock exclusion
    repairs are complete. Untraded catalogue name/ID search is browser-tested.
-3. Next **P4-001c**: remaining ROI/price/depth gates and rejected-item access.
+3. Completed c1: no arbitrary research-price ceiling; malformed quote inputs rejected.
+   Next **P4-001c2**: remaining ROI/depth gates and rejected-item access.
    Use `node scripts/audit_discovery.cjs`; consider refresh rotation and small
    budgets before claiming complete coverage. Public depth is not completed volume.
 4. Later: independent accounting oracle, learning evidence and quantity/ranking.

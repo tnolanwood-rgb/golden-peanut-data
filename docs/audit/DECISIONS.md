@@ -35,3 +35,8 @@
   trading opportunity. Permit quote-only research independently of these attributes;
   do not promote it to funded bids. Existing numeric/freshness guards remain until
   separately challenged. Keep risk statements on all public research rows.
+
+- **D011:** an arbitrary fixed item price must not define research affordability.
+  Keep above-wallet quotes in the existing unfunded watchlist, preserve actual
+  wallet allocation, and reject malformed numeric inputs before scoring. ROI/depth
+  policy and rotation remain explicit separate audit tasks rather than blanket removal.

@@ -174,3 +174,25 @@ MiniPet 0→252, Consumable 526→2041; exact checksum and per-category changes 
 P4-001b2-replay.json. Remaining first rejections: ROI 6445, price ceiling 1171,
 standing depth 30. Gate order matters; no independent causal count implied.
 Research visibility is not profitable execution evidence. No deployment this batch.
+
+## P4-001c1 — research capital and malformed public quote guards
+
+Main unchanged d3b9688; PR #30 open/unmerged. Prior ea9a600 CI
+[42399130329](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42399130329)
+passed. Before repair, `node tests/market-board.test.cjs` failed the new expensive
+research case (0 rows instead of 1). `node tests/execution.test.cjs` failed the new
+malformed-ID/depth case. After repair: board 13/13, execution 28/28.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`a456967df56b8fddf59abf7695385043fd85ab78`: source validation, 34 Python tests,
+all 8 JS files including stress fixtures, desktop/mobile Chromium. New browser case
+proves a 30g research quote appears as not covered by the wallet, is absent from
+cheap-primary suggestions and creates no funded order. P4-001c1-baseline.json
+records commands and conditions. `git diff --check` passed. New remote CI pending.
+
+`node scripts/audit_discovery.cjs` same-public-snapshot replay: board research
+10,349→11,436 (+1,087). P4-001c1-replay.json records checksum and categories.
+Remaining first rejections: ROI 6,521, standing depth 38. These are policy-screen
+counts, not live liquidity or profit outcomes. Existing ROI/minimum-depth policies
+are intentionally retained for the next audit; whole Phase 4 is not complete.
+No release, private account write or game order performed.

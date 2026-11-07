@@ -42,3 +42,12 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   tokens (Mini, Recipe, Tonic etc.) and collection unlock subtype. Rename-invariance
   and unlock fixtures failed despite identical viable quotes. Removed these gates
   without adding execution quantities/income. Remaining numeric policies stay explicit.
+
+- **F013 / High, repaired a456967:** board rejected valid public research above
+  250,000 copper regardless of research capital. Removed ceiling; actual wallet
+  affordability and funded-allocation checks remain. Browser confirms expensive
+  row is only in unfunded watchlist, never funded or cheap-primary suggestions.
+- **F014 / Medium, repaired a456967:** public quote screener did not validate IDs
+  and accepted NaN/infinite/fractional/string standing quantities through coercion.
+  It now requires positive safe integer IDs/prices/depth, retaining the existing
+  minimum standing quantity policy until separately audited. Book size is not fills.

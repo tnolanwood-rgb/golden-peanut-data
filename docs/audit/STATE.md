@@ -3,27 +3,29 @@
 Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: market discovery,
 then calculation correctness/useful bids. Keep releases separate from ordinary audits.
 
-- **Current phase/batch:** P4-001b2 VERIFIED locally: remove name/unlock research
-  exclusions and verify untraded catalogue search. Full Phase 4 remains incomplete.
+- **Current phase/batch:** P4-001c1 VERIFIED locally: remove research price ceiling
+  and reject malformed public quote identifiers/prices/standing quantities. Full Phase 4 remains incomplete.
 - **Branch:** `audit/discovery-category-seeds`, based on main `d3b9688`.
   [PR #30](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/30) open/unmerged.
   Upstream 7.30 mobile styling and D1 write reductions preserved.
-- **Latest implementation:** `2e29aa6d6697fa8fd5d22243d1493959f6c0fdde`.
+- **Latest implementation:** `a456967df56b8fddf59abf7695385043fd85ab78`.
   Seed category repair c09ad57 also on this branch. Checkpoint SHA resolves with
   `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed:** category-aware seed budgets; positive small-margin research;
   names and collection unlock use no longer silently block quote research.
-  Freshness, valid prices, positive net margin and other numeric policies remain.
+  The fixed 25g research ceiling is removed; above-wallet quotes remain explicitly
+  unfunded. Malformed IDs/prices/depth now fail early. Freshness, positive net
+  margin and remaining ROI/depth policies remain.
   No public-only entry gains a funded order, execution probability or expected profit.
 - **Tests:** all four audit_baseline.py stages pass on clean implementation above.
-  Board tests 12/12; desktop 1440x1000 and mobile 390x844 prove research visibility
-  and untraded catalogue name/ID search. Prior PR head cca2728 CI 42398829818 passed.
+  Board tests 13/13, execution tests 28/28, Python 34/34; desktop 1440x1000 and mobile 390x844 prove research visibility
+  and untraded catalogue name/ID search. Prior PR head ea9a600 CI 42399130329 passed.
   CI for the newest commit remains pending; see EVIDENCE.md.
 - **Production:** this batch NOT deployed. Last independently hash-verified audit
   release e5d67e6 via run 42369046821 (14 assets matched). Main subsequently added
   7.30 mobile changes and D1 write reductions; not independently deployed-verified here.
 - **In progress:** none; next bounded discovery batch not started.
-- **Exact next action:** P4-001c: audit remaining ROI/price/depth policies and
+- **Exact next action:** P4-001c2: audit remaining ROI/depth policies and
   exposure of rejected research through catalogue search. Use saved offline replay
   to distinguish numeric safety checks from speculative profitability filters;
   inspect bounded refresh rotation before claiming complete category coverage.
@@ -45,5 +47,5 @@ then calculation correctness/useful bids. Keep releases separate from ordinary a
 | Public D1 | `Golden_Peanut_Background_Collector.yml` → quote/depth/shadow tables; public Worker URL embedded in HTML | Source of deployed public Worker still absent; HTTP 200 with browser-style User-Agent |
 | Private monitoring | `private-account-collector.yml` (11,41 minutes hourly) → `services/account-monitor/github-collector.py` → `gp_monitor_*` D1 tables | Opt-in Actions secrets; no key read locally |
 | Private relay | `services/account-monitor/worker.js`, `schema.sql`; `account-monitor-client.js` reads authenticated `/events`, `/status`, `/nights` | API data isolation/lineage requires Phase 2 proof |
-| Decisions | execution/opportunity/market-board/capacity/portfolio/growth modules | Joint cohorts and conditional research coexist; F003 labelling defect |
+| Decisions | execution/opportunity/market-board/capacity/portfolio/growth modules | Joint cohorts and conditional research coexist; F003 labels repaired |
 | Release | `pages-production.yml`, `pages-preview.yml`, `account-monitor-deploy.yml` | Release-request files gate production; do not edit them in ordinary audit work |
