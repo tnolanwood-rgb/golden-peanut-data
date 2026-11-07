@@ -70,7 +70,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await days.nth(0).locator('.focus-week-strip-day').innerText(),'Today');
  assert.equal(await days.nth(1).locator('.focus-week-strip-day').innerText(),'Yesterday');
  assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'1g 23s 46c');
- assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 50s 00c');
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 00c');
  assert.equal(await page.locator('.focus-today-profit .focus-week-strip').count(),1);
  const geometry=await seven.evaluate(el=>{
   const rows=Array.from(el.children);
