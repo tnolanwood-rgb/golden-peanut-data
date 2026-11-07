@@ -62,6 +62,15 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   s.snapshot={...s.snapshot,deliveryAt:now,delivery:{
    coins:1234567,items:[{id:301,count:5},{id:301,count:3},...ids.slice(1).map((id,i)=>({id,count:i+1}))]
   }};
+  const stamp=Date.now()-86400000;
+  s.ledger=ids.map((id,i)=>({
+   key:'history/buys:'+(19000+id),id:19000+id,item:id,side:'buy',
+   q:i===0?10:20,price:i===0?180:100,
+   purchased:stamp,created:stamp-60000
+  }));
+  // Two already-sold units reduce the first completed purchase lot.
+  s.ledger.push({key:'history/sells:19301',id:19301,item:301,side:'sell',
+   q:2,price:200,purchased:stamp+3600000,created:stamp+3500000});
   const day=PeanutCore.ukDay(Date.now());
   s.summary={days:{[day]:{p100:1234567}},totalRecords:12,weekP100:1234567};
   GPFocus.goto('today');GPFocus.render();GP57Desk.schedule();
@@ -71,7 +80,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  // any item; the existing account-scoped quote consumer requests each ID.
  await page.waitForFunction(()=>{
   const s=GoldenPeanutClean.State;
-  return GP57Desk.listingValuation(s.snapshot).covered===8 &&
+  return GP57Desk.listingValuation(s.snapshot,s.ledger).covered===8 &&
    document.querySelector('#focus-delivery-caption')?.textContent.includes('all item proceeds');
  },null,{timeout:15000});
  assert.equal(await delivery.count(),1);
@@ -80,22 +89,29 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] img').count(),1,'show verified GW2 item icon');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .gp-rarity-exotic').count(),1,'item names use rarity');
  const expectedDelivery=await page.evaluate(()=>{
-  const s=GoldenPeanutClean.State,v=GP57Desk.listingValuation(s.snapshot);
+  const s=GoldenPeanutClean.State,v=GP57Desk.listingValuation(s.snapshot,s.ledger);
   const expectedItems=PeanutMarket.batchSaleNet(201,8)+[1,2,3,4,5,6,7]
    .reduce((sum,count)=>sum+PeanutMarket.batchSaleNet(201,count),0);
   return {full:v.complete,unpriced:v.unpriced,total:v.combined,expected:1234567+expectedItems,
    label:GPFocus.cash(1234567+expectedItems),ask:v.rows.find(x=>x.id===301)?.ask,
-   net:v.rows.find(x=>x.id===301)?.net};
+   net:v.rows.find(x=>x.id===301)?.net,profit:v.rows.find(x=>x.id===301)?.profit,
+   cost:v.rows.find(x=>x.id===301)?.purchaseCost,
+   row302:v.rows.find(x=>x.id===302)?.profit};
  });
  assert.equal(expectedDelivery.full,true,'all public sell listings should be valued');
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'cash plus net resale, not two totals');
  assert.equal(await page.locator('#focus-delivery-total .focus-money').getAttribute('title'),expectedDelivery.label);
  assert.equal(await page.locator('#focus-delivery-total .focus-money').count(),1,'only one headline value');
- assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-ask').innerText(),
-  'Sell ask 0g 02s 01c each');
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-ask').count(),0,
+  'no selling-price breakdown inside item rows');
+ assert.equal(expectedDelivery.cost,8*180,'historical sale consumes two units from first FIFO purchase');
+ assert.equal(expectedDelivery.profit,expectedDelivery.net-8*180,'item profit deducts completed acquisition cost');
+ assert.ok(expectedDelivery.profit<0,'losses are not hidden by positive listing values');
+ assert.ok(expectedDelivery.row302>0,'supported cheaper purchase produces positive estimated profit');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-net .focus-money').getAttribute('title'),
-  await page.evaluate(n=>GPFocus.cash(n),expectedDelivery.net));
+  await page.evaluate(n=>GPFocus.cash(n),expectedDelivery.profit));
+ assert.match(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-net').innerText(),/Est. profit/);
  const currency=await page.locator('#focus-delivery-total .focus-money-part').evaluateAll(parts=>parts.map(el=>getComputedStyle(el).color));
  assert.deepEqual(currency,['rgb(251, 209, 100)','rgb(216, 231, 237)','rgb(229, 163, 124)']);
  assert.equal(await page.locator('#focus-delivery-total img[src*="gw2-"]').count(),3,'official coin icons');
@@ -111,6 +127,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const deliveryPosition=await items.evaluate(el=>el.scrollTop);
  await page.evaluate(()=>GPFocus.render());
  assert.equal(await items.evaluate(el=>el.scrollTop),deliveryPosition,'repeated redraws preserve Delivery Box scroll');
+ // When cost history is absent, the UI must not misrepresent net proceeds as profit.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State;s.ledger=[];
+  GPFocus.render();
+ });
+ assert.match(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-unpriced').innerText(),
+  /Purchase cost not matched/);
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-net .focus-money').count(),0);
+ assert.equal(await page.locator('#focus-delivery-total .focus-money').getAttribute('title'),expectedDelivery.label,
+  'combined coins and resale proceeds must not depend on purchase cost');
  // Seven calendar days live beside the Delivery Box: exactly three rows fit without scrolling.
  await page.evaluate(()=>{
   const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
