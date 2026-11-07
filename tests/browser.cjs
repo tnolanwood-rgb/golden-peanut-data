@@ -120,6 +120,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  // History was pushed by the actual item tap; the Android-equivalent browser
  // Back must return to the in-app list, not navigate out of our app.
  assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
+ assert.match(new URL(page.url()).hash,/^#gp-route-\d+-trades$/);
  await page.goBack();
  await page.waitForFunction(()=>!document.querySelector('#focus-trade-list-view').hidden);
  assert.equal(new URL(page.url()).origin,origin);
@@ -136,6 +137,17 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.goBack();
  await page.waitForFunction(()=>!document.querySelector('#focus-today').hidden);
  assert.equal(new URL(page.url()).origin,origin);
+ // Native Android Back and the visible Back must both close Settings.
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ assert.equal(await page.locator('#focus-research').isVisible(),true);
+ assert.match(new URL(page.url()).hash,/^#gp-route-\d+-today-settings$/);
+ await page.goBack();
+ await page.waitForFunction(()=>document.querySelector('#focus-research')?.hidden);
+ assert.equal(await page.locator('#focus-today').isVisible(),true);
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ await page.getByRole('button',{name:'Back to trading'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-research')?.hidden);
+ assert.equal(await page.locator('#focus-today').isVisible(),true);
  // Re-enter the Pearl detail for the execution benchmark regression.
  await page.locator('#focus-best-rows .focus-connected-market').filter({hasText:'Dire Pearl Reaver'}).click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
