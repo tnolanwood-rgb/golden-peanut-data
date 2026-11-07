@@ -285,3 +285,24 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-settings-body{padding:10px 12px}
 .focus-settings-body .focus-account-watcher,.focus-settings-body .focus-deployment-lab{margin:0}
 .focus-monitor-warning{display:block;width:100%;text-align:left;border:1px solid #ac8260;border-radius:9px;padding:12px 13px;margin:10px 0;background:#342920;color:#ffe2af;font-weight:700;font-size:12px}
+
+/* Exact item-name rarity palette documented by the GW2 Wiki dark-mode CSS.
+ * Unknown rarities retain normal text, never guessed from the item's name. */
+.gp-item-name.gp-rarity-junk{color:#aaaaaa!important}
+.gp-item-name.gp-rarity-basic{color:#ffffff!important}
+.gp-item-name.gp-rarity-fine{color:#62a4da!important}
+.gp-item-name.gp-rarity-masterwork{color:#1a9306!important;text-shadow:0 0 1px #a4d79a}
+.gp-item-name.gp-rarity-rare{color:#fcd00b!important}
+.gp-item-name.gp-rarity-exotic{color:#ffa405!important}
+.gp-item-name.gp-rarity-ascended{color:#fb3e8d!important}
+.gp-item-name.gp-rarity-legendary{color:#974eff!important}
+
+/* One-glance motivation: realised UK-day earnings, independent of wallet funds. */
+.focus-today-profit{border:1px solid #9aa65b;background:linear-gradient(120deg,#273b24,#1b3128);padding:14px 17px;border-radius:16px;margin:0 0 11px;display:flex;flex-direction:column;gap:5px}
+.focus-today-profit>span{font-size:11px;letter-spacing:.11em;font-weight:800;color:#e4ddac}
+.focus-today-profit-value{font-size:clamp(27px,5.7vw,42px);font-weight:850;letter-spacing:-.045em;color:#c7efb1;line-height:1.35;font-variant-numeric:tabular-nums}
+.focus-today-profit-value .focus-money{font-size:inherit}
+.focus-today-profit-value .focus-money img{height:clamp(19px,3.5vw,25px);width:clamp(19px,3.5vw,25px)}
+.focus-today-profit-value .focus-negative{color:#f0afa3}
+.focus-today-profit>small{font-size:11px;line-height:1.35;color:#bbcdb6}
+@media(max-width:400px){.focus-today-profit{padding:12px 13px}.focus-today-profit-value{font-size:clamp(24px,6.4vw,30px)}.focus-today-profit-value .focus-money img{width:18px;height:18px}}

@@ -44,6 +44,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
  });
  assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
+ // The primary motivational number is strictly realised UK-day matched profit.
+ assert.equal(await page.locator('#focus-today .focus-today-profit').count(),1);
+ assert.equal(await page.locator('#focus-today .focus-summary-grid').count(),1);
+ assert.equal(await page.locator('#focus-today .focus-today-profit').evaluate(el=>el.compareDocumentPosition(document.querySelector('#focus-wallet'))&Node.DOCUMENT_POSITION_FOLLOWING),4);
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  s.summary={days:{[day]:{p100:1234567}},totalRecords:12,weekP100:1234567};
+  GPFocus.goto('today');GPFocus.render();
+ });
+ assert.equal(await page.locator('#focus-today-profit .focus-money').getAttribute('title'),'1g 23s 46c');
+ await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
+ assert.match(await page.locator('#focus-today-profit').innerText(),/0/);
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
  assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
  await page.locator('#focus-best-rows .focus-home-order').first().click();
@@ -90,6 +102,30 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   s.opportunityPlan.candidateRefresh={checked:6500,phase:'expanded'};
   GPFocus.goto('today');GPFocus.render();
  });
+ // Names are coloured from verified item rarity, not guessed from item names.
+ assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic').count(),1);
+ const namedColor=await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic')
+  .evaluate(el=>getComputedStyle(el).color);
+ assert.equal(namedColor,'rgb(255, 164, 5)');
+ const rarityPalette=await page.evaluate(()=>{
+  const pairs={Junk:'rgb(170, 170, 170)',Basic:'rgb(255, 255, 255)',
+   Fine:'rgb(98, 164, 218)',Masterwork:'rgb(26, 147, 6)',
+   Rare:'rgb(252, 208, 11)',Exotic:'rgb(255, 164, 5)',
+   Ascended:'rgb(251, 62, 141)',Legendary:'rgb(151, 78, 255)'};
+  const probe=document.createElement('section');document.body.append(probe);
+  const result={};
+  for(const rarity of Object.keys(pairs)){
+   const node=document.createElement('strong');node.textContent='Verified item';
+   GPRarity.apply(node,rarity);probe.append(node);
+   result[rarity]=getComputedStyle(node).color;
+  }
+  const unknown=document.createElement('strong');GPRarity.apply(unknown,'unknown');probe.append(unknown);
+  result.unknownClass=unknown.classList.contains('gp-item-name');probe.remove();
+  return {result,pairs};
+ });
+ assert.equal(rarityPalette.result.unknownClass,false);
+ for(const [rarity,color]of Object.entries(rarityPalette.pairs))
+  assert.equal(rarityPalette.result[rarity],color,'incorrect GW2 rarity colour: '+rarity);
  const enriched=await page.locator('#focus-best-rows').innerText();
  assert.match(enriched,/TOP BUY RESEARCH · MOST PROMISING FIRST/);
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row').count(),2);
@@ -228,6 +264,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account settings and research'}).click();
  await page.locator('#focus-capital-settings > summary').click();
  const lab=page.locator('#focus-deployment-research .focus-deployment-lab');
+ // Native <details> toggle events are dispatched asynchronously after click.
+ await lab.waitFor({state:'visible',timeout:4000});
  assert.equal(await lab.isVisible(),true);
  assert.match(await lab.innerText(),/CAPITAL DEPLOYMENT/);
  assert.match(await lab.innerText(),/WHAT-IF ONLY/);
@@ -346,6 +384,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account settings and research'}).click();
  await page.locator('#focus-monitor-settings > summary').click();
  const watch=page.locator('#focus-account-watcher-host .focus-account-watcher');
+ await watch.waitFor({state:'visible',timeout:4000});
  assert.equal(await watch.isVisible(),true);
  assert.match(await watch.innerText(),/The private cloud monitor is currently unreachable/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
@@ -407,6 +446,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
  const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config','Fixture.1234','execution-learning-v1'))?.value?.samples?.length||0;});assert.equal(persisted,20,'WebView reload must preserve account-scoped IndexedDB learning');
+ // Fast-path contract: background rerenders do not reconstruct hidden tabs.
+ const perf=await page.evaluate(()=>{
+  const original=GPMarketBoard.build;let builds=0;
+  GPMarketBoard.build=(...args)=>{builds++;return original(...args);};
+  try{
+   GPFocus.goto('today');GPFocus.render();GPFocus.render();
+   const homeBuilds=builds;GPFocus.goto('orders');GPFocus.render();GPFocus.render();
+   return {homeBuilds,hiddenBuilds:builds-homeBuilds};
+  }finally{GPMarketBoard.build=original;}
+ });
+ assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
+ assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
  await context.close();
 }}finally{await browser.close();server.close();}

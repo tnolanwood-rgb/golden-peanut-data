@@ -212,7 +212,7 @@ function renderCatalog(){
 function renderGoals(){const node=$('lp-goals');if(!node)return;const all=cache.list.goals.map(id=>cache.catalog.find(it=>it.id===id)).filter(Boolean);
  node.replaceChildren();if(!all.length){node.textContent='No tracked goals yet. Choose a legendary and add it below.';return;}
  for(const it of all){const row=document.createElement('div');row.className='lp-goal';
-  const button=document.createElement('button');button.type='button';button.className='secondary lp-goal-select';button.textContent=it.name+(cache.ownedKnown&&unlocked(it.id)?' ✓ Armory':'');button.addEventListener('click',()=>{cache.chosen=it.id;cache.list.chosen=it.id;save();renderCatalog();render();});
+  const button=document.createElement('button');button.type='button';button.className='secondary lp-goal-select';button.textContent=it.name+(cache.ownedKnown&&unlocked(it.id)?' ✓ Armory':'');root.GPRarity?.apply?.(button,it.rarity||'Legendary');button.addEventListener('click',()=>{cache.chosen=it.id;cache.list.chosen=it.id;save();renderCatalog();render();});
   const remove=document.createElement('button');remove.type='button';remove.className='secondary lp-small';remove.textContent='×';remove.setAttribute('aria-label','Remove '+it.name+' goal');remove.addEventListener('click',()=>{cache.list.goals=cache.list.goals.filter(x=>x!==it.id);if(cache.chosen===it.id)cache.chosen=cache.list.goals[0]||null;save();renderCatalog();render();});
   row.append(button,remove);node.append(row);
  }
@@ -221,7 +221,7 @@ function render(){
  renderCatalog();const d=derive(),detail=$('lp-detail');if(!detail)return;
  if(!d.it){detail.hidden=true;return;}detail.hidden=false;
  const it=d.it,ownedCount=cache.owned.get(it.id)||0,plan=d.plan;
- $('lp-target-name').textContent=it.name;
+ $('lp-target-name').textContent=it.name;root.GPRarity?.apply?.($('lp-target-name'),it.rarity||'Legendary');
  $('lp-target-kind').textContent=kind(it)+(it.details?.type?' · '+it.details.type:'')+(cache.ownedKnown?` · Armory: ${ownedCount}/${it.max_count||'?'} owned`:' · Armory ownership not refreshed');
  const icon=$('lp-target-icon');if(safeIcon(it.icon)){icon.src=it.icon;icon.hidden=false;}else icon.hidden=true;
  $('lp-wiki').href=linkName(it.name);
@@ -238,7 +238,7 @@ function render(){
    const intro=document.createElement('p');intro.className='muted';intro.textContent=`${r.type==='mystic_forge'?'Mystic Forge':r.type==='vendor'?'Vendor':'Crafting'} · ${r.disciplines?.join('/')||'Any discipline'}${r.rating?' '+r.rating:''} · ${r.ingredients.length} immediate components`;
    direct.append(intro);
    for(const branch of plan.tree.children){const div=document.createElement('div');div.className='lp-direct-row';
-    const name=document.createElement('a');name.href=linkName(branch.name);name.target='_blank';name.rel='noopener noreferrer';name.textContent=branch.name;
+    const name=document.createElement('a');name.href=linkName(branch.name);name.target='_blank';name.rel='noopener noreferrer';name.textContent=branch.name;root.GPRarity?.apply?.(name,book?.itemMap?.get(branch.id)?.rarity||branch.rarity);
     const val=document.createElement('strong');val.textContent=`×${fmt(branch.count)}${branch.owned?' · '+fmt(branch.owned)+' held':''}`;
     div.append(name,val);direct.append(div);
    }
@@ -246,7 +246,7 @@ function render(){
  }
  const steps=$('lp-craft-steps');if(steps){steps.replaceChildren();if(plan?.steps.length){for(const x of plan.steps.slice(0,12)){
    const div=document.createElement('div');div.className='lp-direct-row';
-   const link=document.createElement('a');link.href=linkName(x.name);link.target='_blank';link.rel='noopener noreferrer';link.textContent=x.name;
+   const link=document.createElement('a');link.href=linkName(x.name);link.target='_blank';link.rel='noopener noreferrer';link.textContent=x.name;root.GPRarity?.apply?.(link,book?.itemMap?.get(x.id)?.rarity||x.rarity);
    const val=document.createElement('small');val.textContent=`${x.method==='mystic_forge'?'Forge':x.method==='vendor'?'Vendor':'Craft'} ×${fmt(x.quantity)}`;div.append(link,val);steps.append(div);
   }if(plan.steps.length>12){const small=document.createElement('p');small.className='muted';small.textContent=`+ ${plan.steps.length-12} more crafting steps included in the shopping calculations`;steps.append(small);}}else steps.textContent='No craftable route available yet.';}
  const tasks=$('lp-tasks');tasks.replaceChildren();for(const t of d.g.tasks){const label=document.createElement('label');label.className='lp-task';const input=document.createElement('input');input.type='checkbox';input.checked=Boolean(cache.list.checked[`${it.id}:${t.id}`]);input.addEventListener('change',()=>{cache.list.checked[`${it.id}:${t.id}`]=input.checked;save();renderBreakdown();});const txt=document.createElement('span');txt.textContent=t.text;label.append(input,txt);tasks.append(label);}
@@ -300,7 +300,7 @@ function renderBreakdown(){
  $('lp-account-note').textContent=cache.storageFresh?'Owned quantities checked against material storage, bank, shared slots and character bags; these materials are not reserved for projects.':'Account holdings are incomplete or still loading; missing quantities may be overstated.';
  function renderSection(title,rows,showPrices=true){if(!rows.length)return;const heading=document.createElement('h4');heading.className='lp-group-label';heading.textContent=title+' · '+fmt(rows.length)+' types';list.append(heading);
   const top=rows.slice(0,9),rest=rows.slice(9);
-  function draw(items,container){for(const row of items){const line=document.createElement('div');line.className='lp-material-row';const header=document.createElement('div');header.className='lp-material-title';const link=document.createElement('a');link.href=linkName(itemName(row.id));link.target='_blank';link.rel='noopener noreferrer';link.textContent=itemName(row.id);const qty=document.createElement('strong');qty.textContent=fmt(row.missing)+' missing';header.append(link,qty);const desc=document.createElement('small');desc.className='muted';
+  function draw(items,container){for(const row of items){const line=document.createElement('div');line.className='lp-material-row';const header=document.createElement('div');header.className='lp-material-title';const link=document.createElement('a');link.href=linkName(itemName(row.id));link.target='_blank';link.rel='noopener noreferrer';link.textContent=itemName(row.id);root.GPRarity?.apply?.(link,cache.book?.itemMap?.get(row.id)?.rarity||row.rarity);const qty=document.createElement('strong');qty.textContent=fmt(row.missing)+' missing';header.append(link,qty);const desc=document.createElement('small');desc.className='muted';
    const p=cache.price.get(row.id);let detail=`${fmt(row.owned)} owned / ${fmt(row.count)} required`;
    if(showPrices){if(p?.sell>0)detail+=` · ${cash(p.sell*row.missing)} at current lowest asks`;else detail+=' · market price unavailable';}
    else if(row.id===19675)detail+=' · choose a guaranteed/earned clover source; random forging not costed';
