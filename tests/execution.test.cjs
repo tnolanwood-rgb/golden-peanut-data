@@ -64,3 +64,30 @@ test('50-unit order shrinking to 30 then 20 becomes measured personal fill evide
  assert.equal(board.newMarkets[0].quantity,undefined);
  assert.equal(board.newMarkets[0].expectedProfit,undefined);
 });
+
+test('private-night research rotates across more than 200 quoted open-order markets without increasing 40-ID request cap',()=>{
+ const c=context(),all=Array.from({length:269},(_,i)=>7000+i);
+ const snapshot={buys:all.map((item,i)=>({id:i+1,item,price:1000,q:i%3?20:50})),sells:[]};
+ const recentEvents=[{item:7260,at:NOW-1000,q:10},{item:7261,at:NOW-2000,q:5}];
+ const ranked=all.slice(0,12).map(id=>({id}));
+ const quotedIds=new Set(all);
+ let cursor=0;
+ const seen=new Set(),rounds=[];
+ for(let n=0;n<20;n++){
+  const plan=c.GPOpportunity.selectPrivateNightCandidates({
+   ranked,snapshot,buyEvidence:{events:recentEvents},sellEvidence:{events:[]},
+   quotedIds,cursor,now:NOW
+  });
+  assert.ok(plan.ids.length<=40,'never exceed existing API lookup limit');
+  assert.equal(new Set(plan.ids).size,plan.ids.length,'no repeated IDs within one request');
+  assert.ok(plan.ids.includes(7260)&&plan.ids.includes(7261),'recent observed fills are prioritised');
+  assert.ok(plan.ids.includes(7000),'historical winner remains reviewed');
+  plan.ids.forEach(id=>seen.add(id));
+  rounds.push(plan.ids);
+  cursor=plan.nextCursor;
+ }
+ assert.equal(seen.size,269,'every quoted active market eventually receives a turn');
+ assert.notDeepEqual(rounds[0],rounds[1],'rotation must not repeat the same first 40 forever');
+ const noQuote=c.GPOpportunity.selectPrivateNightCandidates({snapshot,quotedIds:new Set(),now:NOW});
+ assert.deepEqual(Array.from(noQuote.ids),[],'never fetch arbitrary unquoted market');
+});
