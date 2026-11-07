@@ -177,3 +177,10 @@ test('collection unlock quotes remain research without becoming funded profit fo
  assert.equal(board.newMarkets.length,1);assert.equal(board.forecast.length,0);
  assert.match(board.newMarkets[0].evidence,/No measured completed trades/);
 });
+test('expensive positive-margin quotes remain research above the current wallet',()=>{
+ const row={id:9901,name:'High capital research',type:'UpgradeComponent',buy:300000,exit:450000,buyQty:20,sellQty:20,at:stamp};
+ const b=Board.build({ok:true,budget:10000,orders:[],publicResearch:[row]},{wallet:10000,now:NOW});
+ assert.equal(b.newMarkets.length,1);assert.equal(b.newMarkets[0].affordability,'not-wallet-funded');
+ assert.equal(b.otherLeads.length,0);assert.equal(b.forecast.length,0);
+ assert.equal(b.newMarkets[0].quantity,undefined);assert.equal(b.newMarkets[0].expectedProfit,undefined);
+});

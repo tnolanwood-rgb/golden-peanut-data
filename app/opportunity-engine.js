@@ -804,8 +804,9 @@ function equipmentCoverageAudit({metadata={},discoveryIds=[],quotes=[],plan=null
  * crowd out lower-price bulk opportunities. A quote is NOT a turnover sample.
  */
 function researchQuoteScore(q){
- const buy=Number(q?.buy)||0,sell=Number(q?.sell)||0;
- if(!valid(buy)||!valid(sell)||sell<=buy||Number(q.buyQty)<2||Number(q.sellQty)<1)return null;
+ const buy=q?.buy,sell=q?.sell;
+ if(!valid(q?.id)||!valid(buy)||!valid(sell)||sell<=buy||
+    !valid(q.buyQty)||q.buyQty<2||!valid(q.sellQty))return null;
  const bid=buy+1<sell?buy+1:buy,exit=Math.floor(sell*.97);
  const afterFee=saleNet(exit,1);if(!finite(afterFee))return null;
  const net=afterFee-bid,roi=net/bid;

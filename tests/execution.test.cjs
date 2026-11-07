@@ -84,3 +84,9 @@ test('public seed quota preserves minor metadata categories among dominant weapo
  assert.ok(seeds.ids.includes(8999),'minor category must not lose every slot to higher weapon spreads');
  assert.ok(seeds.ids.length<=40);assert.equal(new Set(seeds.ids).size,seeds.ids.length);
 });
+test('public quote screening rejects malformed identifiers and standing quantities',()=>{
+ const c=context(),good={id:1,buy:100,sell:200,buyQty:10,sellQty:10};
+ assert.ok(c.GPOpportunity.researchQuoteScore(good));
+ for(const patch of [{id:0},{id:1.5},{buyQty:NaN},{sellQty:Infinity},{buyQty:2.5},{sellQty:'10'},{buy:'100'}])
+  assert.equal(c.GPOpportunity.researchQuoteScore({...good,...patch}),null,JSON.stringify(patch));
+});

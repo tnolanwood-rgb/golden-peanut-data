@@ -128,7 +128,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   // Research visibility is independent of translated names and collection use.
   // Eligibility for a funded bid still requires separate execution evidence.
   if(!whole(c.buy,1)||!whole(c.exit,1)||c.exit<=c.buy){reject('invalid-prices');continue;}
-  if(c.buy>250000){reject('price-ceiling-policy');continue;}
+  // Expensive quotes may be researched; current wallet funding is separate.
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
   // Positive small per-unit margins remain research; no volume is assumed.
   if(!finite(margin)||margin<=0){reject('nonpositive-net-margin');continue;}
