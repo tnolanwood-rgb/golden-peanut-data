@@ -54,7 +54,44 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.goto('today');GPFocus.render();
  });
  assert.equal(await page.locator('#focus-today-profit .focus-money').getAttribute('title'),'1g 23s 46c');
+ // Seven calendar days live beside today's hero: exactly three rows fit without scrolling.
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  s.summary={
+   totalRecords:40,weekP100:1234567,
+   days:Object.fromEntries(Array.from({length:7},(_,i)=>[
+    PeanutCore.shiftDay(day,-i),{p100:i===0?1234567:i===1?-50000:250000*i}
+   ]))
+  };
+  GPFocus.goto('today');GPFocus.render();
+ });
+ const seven=page.locator('#focus-week-strip-list'),days=seven.locator('.focus-week-strip-row');
+ assert.equal(await days.count(),7);
+ assert.equal(await days.nth(0).locator('.focus-week-strip-day').innerText(),'Today');
+ assert.equal(await days.nth(1).locator('.focus-week-strip-day').innerText(),'Yesterday');
+ assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'1g 23s 46c');
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 00c');
+ assert.equal(await page.locator('.focus-today-profit .focus-week-strip').count(),1);
+ const geometry=await seven.evaluate(el=>{
+  const rows=Array.from(el.children);
+  const r=el.getBoundingClientRect();
+  return {height:el.clientHeight,scrollHeight:el.scrollHeight,
+   first:rows[0].getBoundingClientRect().top,third:rows[2].getBoundingClientRect().bottom,
+   fourth:rows[3].getBoundingClientRect().top,bottom:r.bottom,
+   itemHeight:rows[0].getBoundingClientRect().height};
+ });
+ assert.equal(geometry.height,3*geometry.itemHeight,'show exactly three profit days');
+ assert.ok(geometry.third<=geometry.bottom+1,'third day immediately visible');
+ assert.ok(geometry.fourth>=geometry.bottom-1,'fourth day requires scrolling');
+ assert.ok(geometry.scrollHeight>geometry.height,'remaining four days scroll');
+ await seven.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+ const position=await seven.evaluate(el=>el.scrollTop);
+ assert.ok(position>0,'seven-day panel scrolls to older days');
+ await page.evaluate(()=>GPFocus.render());
+ assert.ok((await seven.evaluate(el=>el.scrollTop))>0,'refresh preserves seven-day scroll position');
  await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
+ assert.equal(await days.count(),7,'an empty recorded period still renders seven days');
+ assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'0g 00s 00c');
  assert.match(await page.locator('#focus-today-profit').innerText(),/0/);
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
  assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
