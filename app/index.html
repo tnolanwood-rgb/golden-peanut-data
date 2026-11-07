@@ -3861,6 +3861,26 @@ function calculateDelivery(s){const grouped=groupItems(s?.delivery),own=ownSells
  rows.push({id,count,target,net});}
  return {rows,sum,qty,pricedQty,covered,unpriced:grouped.size-covered,types:grouped.size,chosenNet,referenceNet};
 }
+/* The main Delivery Box deliberately uses public lowest sell listings, not
+ * a user's hypothetical targets. Price integrity is independent of sale
+ * assumptions: quoted asks are NOT guaranteed execution volume or profit. */
+function listingValuation(s){
+ const grouped=groupItems(s?.delivery),rows=[];let net=0,covered=0;
+ for(const [id,count] of grouped){
+  const quote=priceMap.get(id),when=Date.parse(quote?.at||'');
+  const age=Date.now()-when;
+  const fresh=Number.isFinite(when)&&age>=-30000&&age<=maxQuoteAgeMs;
+  const ask=fresh&&safeInt(quote?.sell,1)?quote.sell:null;
+  const afterFees=ask===null?null:netAtTarget(ask,count);
+  if(afterFees!==null){net+=afterFees;covered++;}
+  rows.push({id,count,ask,net:afterFees,quotedAt:ask===null?null:quote.at,
+   awaitingQuote:afterFees===null});
+ }
+ return {rows,covered,types:rows.length,unpriced:rows.length-covered,
+  itemsNet:net,coins:safeInt(s?.delivery?.coins)?s.delivery.coins:null,
+  combined:safeInt(s?.delivery?.coins)&&Number.isSafeInteger(net+s.delivery.coins)?net+s.delivery.coins:null,
+  complete:rows.length===covered};
+}
 function paintDelivery(s,State){const priced=calculateDelivery(s);money('gp57-items-net',priced.covered?priced.sum:null);
  label('gp57-items-note',priced.types?`${priced.covered}/${priced.types} item types priced · hypothetical after fees`:'No Delivery Box items to value');
  label('gp57-scenario-note',priced.types?`${human(priced.qty)} units in Delivery Box. These proceeds are NOT in your wallet or collectible coins. Selling is not guaranteed.`:'Item valuations appear after a verified account check.');
@@ -3879,8 +3899,8 @@ async function persistTargets(State){if(!State?.db||!State?.account)return;await
 async function changeTarget(id,State){const current=safeInt(targetOverrides[id],1)?coinText(targetOverrides[id]):(getTarget(id,State.snapshot,ownSells(State.snapshot))?.price?coinText(getTarget(id,State.snapshot,ownSells(State.snapshot)).price):'');const text=prompt(`Set a hypothetical sell target for ${State.meta?.[id]?.name||'this item'}.\nUse 1g 25s 40c.\nThis does NOT list the item on the Trading Post.`,current);if(text===null)return;const price=parsePrice(text);if(!price){alert('Enter a valid price, for example 1g 25s 40c. No target was changed.');return;}const previous={...targetOverrides};targetOverrides[id]=price;try{await persistTargets(State);lastError='';}catch(e){targetOverrides=previous;lastError='Could not save target locally. No trading history changed.';label('gp57-delivery-error',lastError);}schedule();}
 async function removeTarget(id,State){const old={...targetOverrides};delete targetOverrides[id];try{await persistTargets(State);lastError='';}catch{targetOverrides=old;lastError='Could not update saved target.';label('gp57-delivery-error',lastError);}schedule();}
 async function loadTargets(State){if(!State.db||!State.account||targetLoading||currentAccount===State.account)return;const account=State.account;targetLoading=true;try{const stored=(await State.db.get('config',account,'gp57-delivery-targets'))?.value?.targets||{};if(State.account!==account)return;const clean={};for(const [id,v] of Object.entries(stored))if(/^\d+$/.test(id)&&safeInt(Number(v),1))clean[id]=v;targetOverrides=clean;currentAccount=account;priceMap.clear();loadedCache='';quoteUpdatedAt=0;lastRequestedIds='';lastActionSignature='';}catch{if(State.account===account){currentAccount=account;targetOverrides={};}}finally{targetLoading=false;schedule();}}
-async function cachedQuotes(State,s){const ids=[...groupItems(s.delivery).keys()];if(!ids.length||!State.db)return;const key=State.account+'|'+ids.join(',');if(loadedCache===key)return;loadedCache=key;try{const records=await State.db.getMany('market','global',ids.map(id=>'quote:'+id));for(let i=0;i<records.length;i++)if(records[i]?.latest&&records[i].id===ids[i])priceMap.set(ids[i],records[i].latest);}catch{}schedule();}
-async function liveQuotes(State,s){if(fetching||!State.api||!State.db||!State.account||State.busy)return;const ids=[...groupItems(s.delivery).keys()];const idSignature=ids.join(',');if(!ids.length||(idSignature===lastRequestedIds&&Date.now()-quoteUpdatedAt<15*60000))return;fetching=true;lastRequestedIds=idSignature;const account=State.account;quoteUpdatedAt=Date.now();try{const list=await State.api.pricesForIds(ids);if(account!==State.account)return;for(const q of list||[])if(safeInt(q.id,1))priceMap.set(q.id,q);if(list?.length)await State.db.upsertMarketBatch(list,{priorityIds:ids});lastError='';}catch(e){lastError='Delivery item quotes could not be refreshed; existing verified targets remain available.';}finally{fetching=false;schedule();}}
+async function cachedQuotes(State,s){const ids=[...groupItems(s.delivery).keys()];if(!ids.length||!State.db)return;const key=State.account+'|'+ids.join(',');if(loadedCache===key)return;loadedCache=key;try{const records=await State.db.getMany('market','global',ids.map(id=>'quote:'+id));for(let i=0;i<records.length;i++)if(records[i]?.latest&&records[i].id===ids[i])priceMap.set(ids[i],records[i].latest);}catch{}schedule();root.GPFocus?.render?.();}
+async function liveQuotes(State,s){if(fetching||!State.api||!State.db||!State.account||State.busy)return;const ids=[...groupItems(s.delivery).keys()];const idSignature=ids.join(',');if(!ids.length||(idSignature===lastRequestedIds&&Date.now()-quoteUpdatedAt<15*60000))return;fetching=true;lastRequestedIds=idSignature;const account=State.account;quoteUpdatedAt=Date.now();try{const list=await State.api.pricesForIds(ids);if(account!==State.account)return;for(const q of list||[])if(safeInt(q.id,1))priceMap.set(q.id,q);if(list?.length)await State.db.upsertMarketBatch(list,{priorityIds:ids});lastError='';}catch(e){lastError='Delivery item quotes could not be refreshed; existing verified targets remain available.';}finally{fetching=false;schedule();root.GPFocus?.render?.();}}
 function actionData(State,s){const key=[State.account,s?.at||'',s?.buysAt||'',s?.sellsAt||'',State.ledger?.length||0,State.exec52LastAt||'',State.allocationAt||0].join('|');if(key===lastActionSignature)return actionsCache;lastActionSignature=key;let acts=[];
  try{const report=root.PeanutExecution52.analyze({ledger:State.ledger||[],buys:s?.buys||[],sells:s?.sells||[],delivery:s?.delivery?.items||[],depth:State.exec52Depth||new Map(),now:Date.now(),filter:'active',limit:250});const ranked=root.PeanutCommander54.decide({execution:report,snapshot:s,plan:State.allocationPlan,allocationAt:State.allocationAt,now:Date.now(),limit:20});for(const a of ranked.actions){if(!a.itemId)continue;acts.push({kind:'review',itemId:a.itemId,title:(State.meta[a.itemId]?.name||'Market review')+': '+a.action,note:a.reasons?.[0]||a.next||'Review order exposure.',value:a.amountType==='reserved'?a.capitalAtStake:null});if(acts.length>=4)break;}}
  catch(e){console.warn('Trading Desk priorities could not be generated; account values are unaffected.');}
@@ -3915,14 +3935,14 @@ function paint(){const State=root.GoldenPeanutClean?.State;if(!initComplete||!St
  money('gp57-wallet',safeInt(s?.wallet)?s.wallet:null);money('gp57-collect',safeInt(s?.delivery?.coins)?s.delivery.coins:null);money('gp57-week',Number.isFinite(State.summary?.weekP100)?State.summary.weekP100/100:null);money('gp57-reserved',Array.isArray(s?.buys)?root.PeanutCore.committedBuys(s.buys):null);
  label('gp57-last-check',s?.walletAt?'Account checked '+stamp(s.walletAt):'Account not verified yet');label('gp57-delivery-error',lastError);
  paintDelivery(s,State);paintActions(State,s);
- if(State.account!==currentAccount)void loadTargets(State);
+ if(State.account!==currentAccount){void loadTargets(State);return;}
  if(s?.delivery){void cachedQuotes(State,s);if(!State.busy)void liveQuotes(State,s);}
 }
 function schedule(){if(paintTimer)return;paintTimer=setTimeout(()=>{paintTimer=null;paint();},120);}
 function init(){if(initComplete)return;initComplete=true;$('gp57-refresh')?.addEventListener('click',refreshAll);$('gp57-open-alloc')?.addEventListener('click',()=>openResearch('allocator-panel'));$('gp57-open-outcomes')?.addEventListener('click',()=>openResearch('outcome56-panel'));$('gp57-open-delivery')?.addEventListener('click',()=>{$('gp57-delivery-detail').open=true;$('gp57-delivery-detail').scrollIntoView({behavior:'smooth',block:'start'});});$('gp57-open-intelligence')?.addEventListener('click',()=>openResearch('market-panel'));
  // No custom persistent UI schema: only the optional per-item target prices use an existing config store.
  schedule();}
-root.GP57Desk={init,schedule,calculateDelivery,parsePrice};
+root.GP57Desk={init,schedule,calculateDelivery,listingValuation,parsePrice};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GP57Desk;
 if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',init,{once:true});
 })(typeof globalThis!=='undefined'?globalThis:this);
