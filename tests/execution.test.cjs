@@ -30,3 +30,64 @@ module.exports={samples,sample,snapshot,quote,NOW,DAY};
 test('matched realised ledger profit uses rounded fees, not an optimistic flat 15%',()=>{const c=context();assert.equal(c.PeanutCore.saleRevenueP100(3,1),100);const rows=[{id:1,item:1,q:1,price:1,side:'buy',purchased:NOW-1000},{id:2,item:1,q:1,price:3,side:'sell',purchased:NOW}];assert.equal(c.PeanutCore.summarizeLedger(rows,NOW).p100,0);});
 test('backup learning merge retains older and newer disjoint observations',()=>{const a=sample(1),b=sample(2);const merged=E.mergeLearning({samples:[a],cohorts:[],seen:{1:1}},{samples:[b,a],cohorts:[],seen:{2:2}});assert.equal(merged.samples.length,2);assert.equal(Object.keys(merged.seen).length,2);});
 test('recipe universe includes non-equipment outputs and interrupted cursor is resumable',async()=>{const c=context(),writes=[];const recipe={id:1,type:'Inscription',output_item_id:111,output_item_count:1,ingredients:[{item_id:1,count:1}]};assert.equal(c.GPOpportunity.recipeByOutput([recipe]).size,1);let n=0;const state={db:{get:async()=>null,put:async(...x)=>writes.push(x)},api:{get:async()=>{if(n++)throw Error('temporary');return {data:Array.from({length:200},(_,i)=>({...recipe,id:i+1})),pages:3,total:600};}}};const partial=await c.GPOpportunity.ensureRecipeUniverse(state);assert.equal(partial.complete,false);assert.equal(partial.nextPage,1);assert.equal(partial.recipes.length,200);assert.ok(writes.length);});
+
+test('50-unit order shrinking to 30 then 20 becomes measured personal fill evidence in market discovery',()=>{
+ const c=context(),start=NOW-2*3600000,item=5102;
+ const buy=(q)=>({id:600,item,price:1000,q});
+ let buys=c.GPOpportunity.observeBuyOrderBook(null,{buysVerified:true,buys:[buy(50)]},start);
+ buys=c.GPOpportunity.observeBuyOrderBook(buys,{buysVerified:true,buys:[buy(30)]},start+3600000);
+ buys=c.GPOpportunity.observeBuyOrderBook(buys,{buysVerified:true,buys:[buy(20)]},NOW);
+ assert.equal(c.GPOpportunity.observedFillsByItem(buys,item,NOW).sinceTracking,30);
+ assert.deepEqual(Array.from(buys.events,x=>x.q),[20,10]);
+ const sell=(q)=>({id:601,item,price:1900,q});
+ let sells=c.GPOpportunity.observeSellOrderBook(null,{sellsVerified:true,sells:[sell(40)]},start);
+ sells=c.GPOpportunity.observeSellOrderBook(sells,{sellsVerified:true,sells:[sell(25)]},start+3600000);
+ sells=c.GPOpportunity.observeSellOrderBook(sells,{sellsVerified:true,sells:[sell(20)]},NOW);
+ assert.equal(c.GPOpportunity.observedFillsByItem(sells,item,NOW).sinceTracking,20);
+ const quote={id:item,buy:1000,sell:1900,buyQty:70,sellQty:65,at:new Date(NOW).toISOString()};
+ const leads=c.GPOpportunity.publicResearchCandidates({
+  quotes:[quote],metadata:{[item]:{name:'Iron Ore',type:'CraftingMaterial',rarity:'Basic'}},
+  hist:{markets:new Map()},orderEvidence:buys,sellOrderEvidence:sells,now:NOW
+ });
+ assert.equal(leads.length,1);
+ assert.equal(leads[0].observedOrderFillsAll,30);
+ assert.equal(leads[0].observedSellFillsAll,20);
+ vm.runInContext(fs.readFileSync('app/market-board.js','utf8'),c);
+ const board=c.GPMarketBoard.build({
+  ok:true,budget:50000,orders:[],marketChoices:[],publicResearch:leads,
+  activeBook:{entries:[]}
+ },{wallet:50000,now:NOW});
+ assert.equal(board.newMarkets.length,1);
+ assert.equal(board.newMarkets[0].observedOrderFillsAll,30);
+ assert.equal(board.newMarkets[0].observedSellFillsAll,20);
+ assert.equal(board.newMarkets[0].tier,'public-unverified');
+ assert.equal(board.newMarkets[0].quantity,undefined);
+ assert.equal(board.newMarkets[0].expectedProfit,undefined);
+});
+
+test('private-night research rotates across more than 200 quoted open-order markets without increasing 40-ID request cap',()=>{
+ const c=context(),all=Array.from({length:269},(_,i)=>7000+i);
+ const snapshot={buys:all.map((item,i)=>({id:i+1,item,price:1000,q:i%3?20:50})),sells:[]};
+ const recentEvents=[{item:7260,at:NOW-1000,q:10},{item:7261,at:NOW-2000,q:5}];
+ const ranked=all.slice(0,12).map(id=>({id}));
+ const quotedIds=new Set(all);
+ let cursor=0;
+ const seen=new Set(),rounds=[];
+ for(let n=0;n<20;n++){
+  const plan=c.GPOpportunity.selectPrivateNightCandidates({
+   ranked,snapshot,buyEvidence:{events:recentEvents},sellEvidence:{events:[]},
+   quotedIds,cursor,now:NOW
+  });
+  assert.ok(plan.ids.length<=40,'never exceed existing API lookup limit');
+  assert.equal(new Set(plan.ids).size,plan.ids.length,'no repeated IDs within one request');
+  assert.ok(plan.ids.includes(7260)&&plan.ids.includes(7261),'recent observed fills are prioritised');
+  assert.ok(plan.ids.includes(7000),'historical winner remains reviewed');
+  plan.ids.forEach(id=>seen.add(id));
+  rounds.push(plan.ids);
+  cursor=plan.nextCursor;
+ }
+ assert.equal(seen.size,269,'every quoted active market eventually receives a turn');
+ assert.notDeepEqual(rounds[0],rounds[1],'rotation must not repeat the same first 40 forever');
+ const noQuote=c.GPOpportunity.selectPrivateNightCandidates({snapshot,quotedIds:new Set(),now:NOW});
+ assert.deepEqual(Array.from(noQuote.ids),[],'never fetch arbitrary unquoted market');
+});
