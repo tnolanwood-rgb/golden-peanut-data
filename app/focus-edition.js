@@ -376,7 +376,7 @@ function install(){if(started)return;started=true;load();document.body.classList
   updateBackAffordance();
  }catch{}
 }
-function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Today's recorded matched trading profit"><span>PROFIT TODAY · UK TIME</span><div id="focus-today-profit" class="focus-today-profit-value">—</div><small>Completed sales minus matched acquisition cost and TP fees · recorded history only</small></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
+function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Delivery Box and seven-day profit"><section class="focus-delivery-panel" aria-label="Delivery Box contents"><div class="focus-delivery-head"><strong>DELIVERY BOX</strong><small id="focus-delivery-status">Not checked</small></div><div id="focus-delivery-total" class="focus-delivery-money" aria-live="polite">—</div><small id="focus-delivery-caption" class="focus-delivery-caption">Collectible coins + item sell-listing value · before TP fees</small><div id="focus-delivery-items" class="focus-delivery-items" role="region" tabindex="0" aria-label="Items waiting in the Delivery Box; scroll to see all">Check your account to see the contents.</div></section><aside class="focus-week-strip" aria-label="Seven-day trading profit history"><div class="focus-week-strip-header"><strong>LAST 7 DAYS</strong><span aria-hidden="true">↓</span></div><div id="focus-week-strip-list" class="focus-week-strip-list" role="region" tabindex="0" aria-label="Recorded profit by UK day. Scroll to see all seven days."></div></aside></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
  $('focus-deep-stop').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.stopExpanded?.(st);schedule();});
  $('focus-deep-retry').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.resumeExpanded?.(st);schedule();});
  // Put the actual funded opportunities above the old explanatory prompts.
@@ -394,11 +394,107 @@ function openHomeMarket(id,kind){
  window.scrollTo({top:0,behavior:'instant'});
 }
 function userSnapshot(){const s=State();return s?.snapshot?.account===s.account?s.snapshot:null;}
+function renderSevenDayProfitStrip(s,day){
+ const host=$('focus-week-strip-list');if(!host||!day)return;
+ const previousDay=host.dataset.baseDay,top=host.scrollTop,hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric'});
+ const rows=[];
+ for(let i=0;i<7;i++){
+  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+  const label=i===0?'Today':i===1?'Yesterday':formatter.format(new Date(date+'T12:00:00Z'));
+  const amount=hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN;
+  const row=h('div','focus-week-strip-row');
+  row.dataset.profitDate=date;
+  const name=h('span','focus-week-strip-day',label),value=h('strong','focus-week-strip-amount');
+  value.append(money(amount));
+  if(Number.isFinite(amount)&&amount<0)row.classList.add('is-loss');
+  row.append(name,value);rows.push(row);
+ }
+ host.replaceChildren(...rows);
+ host.dataset.baseDay=day;
+ // The global app refreshes frequently. Keep a user's scroll position within
+ // the seven-day strip, but jump to Today when the UK calendar day changes.
+ host.scrollTop=previousDay===day?top:0;
+}
+let deliveryHeroSignature='';
+function renderDeliveryBox(){
+ const s=State(),snap=userSnapshot(),delivery=snap?.delivery;
+ const list=$('focus-delivery-items'),total=$('focus-delivery-total'),status=$('focus-delivery-status'),caption=$('focus-delivery-caption');
+ if(!list||!total||!status||!caption)return;
+ const hasData=!!delivery&&Number.isSafeInteger(delivery.coins)&&delivery.coins>=0&&Array.isArray(delivery.items);
+ const values=hasData?root.GP57Desk?.listingValuation?.({delivery},s?.ledger||[]):null;
+ const grouped=new Map();
+ if(hasData)for(const item of delivery.items){
+  const id=Number(item?.id),count=Number(item?.count);
+  if(Number.isSafeInteger(id)&&id>0&&Number.isSafeInteger(count)&&count>0)
+   grouped.set(id,(grouped.get(id)||0)+count);
+ }
+ const byId=new Map((values?.rows||[]).map(v=>[v.id,v]));
+ // Quote changes must invalidate this card; unrelated trading refreshes
+ // should not recreate dozens of item images or reset inner scroll.
+ const signature=JSON.stringify([s?.account||'',snap?.deliveryAt||'',hasData?delivery.coins:null,
+  values?.combined,values?.covered,values?.unpriced,
+  [...grouped].map(([id,count])=>{const m=currentMeta(id),v=byId.get(id);
+   return [id,count,m?.name||'',m?.icon||'',m?.rarity||'',v?.ask??null,v?.net??null,v?.profit??null,v?.purchaseCost??null,v?.quotedAt??'',v?.quoteIssue??''];})]);
+ if(signature===deliveryHeroSignature)return;
+ deliveryHeroSignature=signature;
+ const complete=hasData&&values?.complete===true&&Number.isSafeInteger(values.combined);
+ // Do not fall back to collectible coins when one or more item types has no
+ // verified current sell listing: that looked like a complete box total.
+ total.replaceChildren(money(complete?values.combined:NaN,'focus-money-big'));
+ total.classList.toggle('is-pending',hasData&&!complete);
+ total.title=complete?'Collectible coins plus ALL Delivery Box item quantities × current lowest public sell listing, BEFORE TP fees. This is a potential gross sale value, not spendable gold or trading profit.':
+  'Waiting for a current sell listing for every Delivery Box item. A coin-only or partially priced figure is NOT the total value.';
+ if(!hasData){
+  status.textContent=snap?'Not verified':'Not checked';
+  caption.textContent='No verified Delivery Box balance available';
+  list.replaceChildren(h('p','focus-delivery-empty',snap?'Delivery Box unavailable · refresh to check.':'Check your account to see the contents.'));
+  list.scrollTop=0;return;
+ }
+ const at=Date.parse(snap?.deliveryAt||'');
+ status.textContent=Number.isFinite(at)?'Checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved balance';
+ const missing=values?.unpriced??grouped.size;
+ caption.textContent=grouped.size===0?
+  'Collectible coins only · nothing to sell':
+  missing?('Valuing items '+(values?.covered||0)+'/'+grouped.size+' · total shown when all asks are available'):
+  'Coins + ALL items at lowest sell listings · BEFORE fees';
+ const previousScroll=list.scrollTop;
+ if(!grouped.size){
+  list.replaceChildren(h('p','focus-delivery-empty','No items waiting for collection.'));
+ }else{
+  const rows=[];
+  for(const [id,count]of grouped){
+   const m=currentMeta(id),priced=byId.get(id),row=h('div','focus-delivery-row');
+   row.dataset.itemId=String(id);
+   const icon=artwork(id),label=h('div','focus-delivery-label');
+   const name=itemTitle(id,m?.name||'Item details loading…');
+   if(m?.name)name.title=m.name;
+   label.append(name);
+   const profitLine=h('div','focus-delivery-net');
+   if(Number.isSafeInteger(priced?.profit)){
+    profitLine.append(h('span','','Est. profit: '),money(priced.profit));
+    profitLine.title='Estimated profit for this stack after listing and exchange fees, minus recent remaining recorded purchase costs. Exact stock-to-purchase attribution is not verified.';
+    if(priced.profit<0)profitLine.classList.add('is-loss');
+   }else{
+    profitLine.append(h('span','focus-delivery-unpriced',
+     !Number.isSafeInteger(priced?.ask)?
+      priced?.quoteIssue==='no-listing'?'No current sell listing':
+      priced?.quoteIssue==='stale'?'Refreshing sell listing…':'Checking sell listing…':
+      'Purchase cost not matched'));
+    profitLine.title='Trading profit requires both a current public sell listing and a supported historical purchase cost. No profit is invented when either is missing.';
+   }
+   label.append(profitLine);
+   const units=h('span','focus-delivery-quantity','×'+num(count));
+   row.append(icon,label,units);rows.push(row);
+  }
+  list.replaceChildren(...rows);
+ }
+ list.scrollTop=previousScroll;
+}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
- const day=root.PeanutCore?.ukDay?.(Date.now()),entries=s.summary?.days||{};
- const todays=day&&entries[day]?.p100;
- const todayAmount=Number.isFinite(todays)?todays/100:(s.summary?.totalRecords>=0?0:null);
- $('focus-today-profit').replaceChildren(money(todayAmount,'focus-money-big'));
+ const day=root.PeanutCore?.ukDay?.(Date.now());
+ renderDeliveryBox();
+ renderSevenDayProfitStrip(s,day);
  $('focus-wallet').replaceChildren(money(Number.isFinite(snap?.wallet)?snap.wallet:NaN,'focus-money-big'));
  $('focus-week').replaceChildren(money(Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN,'focus-money-big'));
  const at=snap?.walletAt||snap?.at;labelText('focus-account-at',at?'Account checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved account · tap ↻ to check');
