@@ -153,3 +153,24 @@ Official metadata categories now subdivide existing price/depth buckets. Unknown
 metadata retains its own bucket; no names or handpicked families added. Very small
 budgets may still require rotation for complete coverage; no universal fairness claim.
 Name/unlock display exclusions and catalogue search remain unfinished. No deployment.
+
+## P4-001b2 — name/unlock independence and catalogue search
+
+PR #30 open/unmerged; prior cca2728 CI 42398829818 passed. Main unchanged at d3b9688.
+`node tests/market-board.test.cjs`: before repair 10 passed/2 failed; after 12 passed.
+Fixtures rename identical quotes across Mini/Recipe/Tonic/Skin/Infusion labels and
+assert unlock quotes remain research without quantities, expected profit or funding.
+The rejection-counter test now counts the formerly name-rejected row as accepted;
+other invalid/stale/duplicate cases retain their assertions.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`2e29aa6d6697fa8fd5d22243d1493959f6c0fdde`; source, Python, 8 JS test files and
+assembled desktop/mobile Chromium. New browser assertions prove Mini/unlock rows
+render as “not a forecast” and a no-history catalogue item is searchable by name/ID.
+Results: P4-001b2-baseline.json. `git diff --check` passed. Remote CI pending.
+
+`node scripts/audit_discovery.cjs` before/after same-snapshot replay:
+MiniPet 0→252, Consumable 526→2041; exact checksum and per-category changes in
+P4-001b2-replay.json. Remaining first rejections: ROI 6445, price ceiling 1171,
+standing depth 30. Gate order matters; no independent causal count implied.
+Research visibility is not profitable execution evidence. No deployment this batch.

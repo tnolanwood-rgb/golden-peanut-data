@@ -37,3 +37,8 @@ Android defect has been proved in this batch. Those remain tests to perform, not
 - **F011 / High, repaired:** public seeds grouped only price/depth, so categories
   with lower spreads could get zero slots despite eligible quotes. c09ad57 adds
   metadata category to grouping; failing crowded-category fixture now passes.
+
+- **F012 / High, repaired 2e29aa6:** research visibility depended on English name
+  tokens (Mini, Recipe, Tonic etc.) and collection unlock subtype. Rename-invariance
+  and unlock fixtures failed despite identical viable quotes. Removed these gates
+  without adding execution quantities/income. Remaining numeric policies stay explicit.

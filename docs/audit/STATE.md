@@ -1,54 +1,40 @@
-> Latest checkpoint: P4-001b1 category seed selection, branch `audit/discovery-category-seeds`,
-> based on main d3b9688 (upstream D1-write and mobile changes preserved).
-> Implementation SHA: c09ad575fbf45cd9a0517149f719b1f7b9e46819. Not deployed.
-> Category-aware price/depth buckets prevent dominant equipment spreads excluding
-> smaller metadata categories. Next: P4-001b2 name/unlock filters and real catalogue
-> search; do not repeat the completed seed-category repair. PR/CI status: new review pending.
-
 # Golden Peanut — authoritative engineering state
 
-Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: **market discovery
-first**, then calculation correctness and useful bids; defer release cosmetics.
+Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: market discovery,
+then calculation correctness/useful bids. Keep releases separate from ordinary audits.
 
-- **Phase / batches:** P0-001 VERIFIED. P1-000, P4-000 and P4-001a VERIFIED locally;
-  CI and production deployment verified. Discovery and calculation audit remains ongoing.
-  Full phases 0/1/4 are not complete.
-- **Branch:** resume from `main`; local release checkout is `release/audit-discovery`.
-  PR #20 merged at `09e49acc68c83fe5dd6eb53a66da2f212b02021c`. User explicitly
-  authorised deployment. Release commit `e5d67e6cfcda8086e06e0f23fae13d9fcd413cc0`.
-- **Latest implementation:** 7e15c007887c50876b9468601f6b35cc13bd1543. Recommendation repair `003c52b`.
-  Resolve latest checkpoint SHA with `git log -1 --format=%H -- docs/audit/STATE.md`.
-- **Completed:** impossible resale/profit combinations and invalid sample counts
-  rejected; board suggestions share actual wallet; uncalibrated estimates no longer
-  labelled calibrated. Public and recipe scan lanes now receive reserved budget;
-  early equipment/history lanes cannot consume it all. Full catalogue rotation retained.
-  Removed arbitrary 50-copper research display floor; added per-category rejection
-  accounting and offline replay. Low-margin commodity/food UI regressions pass.
-- **Production:** deployed and exact assets verified against e5d67e6 on 2026-11-07.
-  [Deploy 42369046821](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42369046821)
-  passed target checks, regression tests, deployment and live smoke tests. Separate
-  SHA256 verification matched all 14 referenced HTML/JS/CSS files on Pages.
-  Legacy version labels remain inconsistent (P0-002); no private D1 readback claim.
-- **Review/tests:** PR CI 42355743535 passed at a140386 before merge; production
-  regression stage also passed. Exact live hashes in DEPLOY-e5d67e6-assets.json.
-- **In progress:** none; deployment complete and checkpoint saved on main.
-- **Exact next action:** P4-001b: reproduce name/unlock-policy exclusion and
-  category seed starvation using the saved replay. Decide research visibility
-  separately from bid eligibility; preserve explicit unknown execution evidence.
-  Add category-based coverage/rotation tests and an actual catalogue-search journey.
-  See P4-001a-discovery.md for counts and remaining gates.
-- **Deferred:** P0-002 exact release identity, at user's request to prioritise discovery.
-  After discovery bottlenecks: P1-001 independent fee/FIFO/DST/partial-history oracle;
-  P3/P5 evidence-to-quantity learning. Do not infer standing depth is completed volume.
-- **Outstanding:** F002 stale release identity; F004 private data lineage unverified;
-  F005 name/ROI/unlock filters confirmed to exclude research; audit remains open. No claim of
-  complete discovery or improved live profitability. Physical S23 Ultra untested.
-- **Release authority:** user explicitly requested deployment this turn. PR merged
-  and existing production workflow triggered through release-request file. No
-  database migration, private account write, credential change or in-game order.
-- **Recovery/environment:** current worktree `/workspace/gp-audit`; old 7.16 checkout
-  remains `/workspace/repository`. Committed GitHub checkpoints, not VM files, are
-  permanent memory. Network/local browser servers require network permission.
+- **Current phase/batch:** P4-001b2 VERIFIED locally: remove name/unlock research
+  exclusions and verify untraded catalogue search. Full Phase 4 remains incomplete.
+- **Branch:** `audit/discovery-category-seeds`, based on main `d3b9688`.
+  [PR #30](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/30) open/unmerged.
+  Upstream 7.30 mobile styling and D1 write reductions preserved.
+- **Latest implementation:** `2e29aa6d6697fa8fd5d22243d1493959f6c0fdde`.
+  Seed category repair c09ad57 also on this branch. Checkpoint SHA resolves with
+  `git log -1 --format=%H -- docs/audit/STATE.md`.
+- **Completed:** category-aware seed budgets; positive small-margin research;
+  names and collection unlock use no longer silently block quote research.
+  Freshness, valid prices, positive net margin and other numeric policies remain.
+  No public-only entry gains a funded order, execution probability or expected profit.
+- **Tests:** all four audit_baseline.py stages pass on clean implementation above.
+  Board tests 12/12; desktop 1440x1000 and mobile 390x844 prove research visibility
+  and untraded catalogue name/ID search. Prior PR head cca2728 CI 42398829818 passed.
+  CI for the newest commit remains pending; see EVIDENCE.md.
+- **Production:** this batch NOT deployed. Last independently hash-verified audit
+  release e5d67e6 via run 42369046821 (14 assets matched). Main subsequently added
+  7.30 mobile changes and D1 write reductions; not independently deployed-verified here.
+- **In progress:** none; next bounded discovery batch not started.
+- **Exact next action:** P4-001c: audit remaining ROI/price/depth policies and
+  exposure of rejected research through catalogue search. Use saved offline replay
+  to distinguish numeric safety checks from speculative profitability filters;
+  inspect bounded refresh rotation before claiming complete category coverage.
+- **Outstanding:** no private D1-to-app readback proof; no live profitability or
+  calibration improvement proven; real S23 Ultra untested. P0-002 release identity
+  and P1-001 independent accounting oracle remain deferred, not complete.
+- **Authority:** push/PR permitted. No new release authority inferred from ordinary
+  “Continue”. No migrations, game orders, credential changes or private fixtures.
+- **Environment:** `/workspace/gp-audit`; network/local browser servers need network
+  permission. No direct private keys or Cloudflare credentials. GitHub checkpoints
+  are the recovery source; do not rely on VM or conversation history.
 
 ## Verified source inventory (not a claim of live health)
 

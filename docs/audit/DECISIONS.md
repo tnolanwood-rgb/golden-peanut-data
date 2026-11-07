@@ -30,3 +30,8 @@
   hypothetical volume. Remove the unsupported display floor, retain positive net
   fees/malformed-input guards, expose first rejection reason per row. Defer other
   policy changes until category evidence; never turn visibility into forecast income.
+
+- **D010:** translated item names and collection use are not evidence of absent
+  trading opportunity. Permit quote-only research independently of these attributes;
+  do not promote it to funded bids. Existing numeric/freshness guards remain until
+  separately challenged. Keep risk statements on all public research rows.
