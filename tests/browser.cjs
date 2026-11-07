@@ -284,7 +284,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   for(const rarity of Object.keys(pairs)){
    const node=document.createElement('strong');node.textContent='Verified item';
    GPRarity.apply(node,rarity);probe.append(node);
-   result[rarity]=getComputedStyle(node).color;
+   result[rarity]={color:getComputedStyle(node).color,shadow:getComputedStyle(node).textShadow};
   }
   const unknown=document.createElement('strong');GPRarity.apply(unknown,'unknown');probe.append(unknown);
   result.unknownClass=unknown.classList.contains('gp-item-name');probe.remove();
@@ -292,7 +292,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.equal(rarityPalette.result.unknownClass,false);
  for(const [rarity,color]of Object.entries(rarityPalette.pairs))
-  assert.equal(rarityPalette.result[rarity],color,'incorrect GW2 rarity colour: '+rarity);
+  assert.equal(rarityPalette.result[rarity].color,color,'incorrect GW2 rarity colour: '+rarity);
+ assert.equal(rarityPalette.result.Masterwork.shadow,'none',
+  'green Masterwork text must have crisp edges, not a fuzzy 1px glow');
  const enriched=await page.locator('#focus-best-rows').innerText();
  assert.match(enriched,/TOP BUY RESEARCH · MOST PROMISING FIRST/);
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row').count(),2);
