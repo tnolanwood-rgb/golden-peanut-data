@@ -53,7 +53,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   s.summary={days:{[day]:{p100:1234567}},totalRecords:12,weekP100:1234567};
   GPFocus.goto('today');GPFocus.render();
  });
- assert.match(await page.locator('#focus-today-profit').innerText(),/123g/);
+ assert.equal(await page.locator('#focus-today-profit .focus-money').getAttribute('title'),'1g 23s 46c');
  await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
  assert.match(await page.locator('#focus-today-profit').innerText(),/0/);
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
