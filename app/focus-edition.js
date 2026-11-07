@@ -483,6 +483,9 @@ function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
  * the execution model's eight-window promotion gate. Unverified public
  * leads never receive a 24h profit, batch size or funded badge. */
 function openBoardMarket(m){
+ // This action can originate from a collapsed research settings shelf.
+ // Close the overlay before opening the selected item's normal trade screen.
+ if(!$('focus-research')?.hidden)closeResearch();
  ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;
  const wasTrade=ui.tab==='trades';
  if(!wasTrade)goto('trades');
