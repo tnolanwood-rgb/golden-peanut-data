@@ -74,3 +74,13 @@ test('low-unit-margin commodity and consumable research survives engine-to-board
  for(const row of board.newMarkets){assert.ok(row.unitMargin>0&&row.unitMargin<50);assert.equal(row.quantity,undefined);assert.equal(row.expectedProfit,undefined);}
  assert.equal(board.publicCoverage.accepted,2);
 });
+test('public seed quota preserves minor metadata categories among dominant weapons',async()=>{
+ const c=context(),meta={},values=Array.from({length:1000},(_,i)=>{
+  const id=8000+i;meta[id]={type:i===999?'Bag':'Weapon'};
+  return {latest:{id,buy:1000,sell:i===999?1400:2000,buyQty:100,sellQty:100,at:new Date(Date.now()).toISOString()}};
+ });
+ const state={meta,db:{marketPage:async()=>({values,done:true})}};
+ const seeds=await c.GPOpportunity.gatherPublicSeeds(state,{},40);
+ assert.ok(seeds.ids.includes(8999),'minor category must not lose every slot to higher weapon spreads');
+ assert.ok(seeds.ids.length<=40);assert.equal(new Set(seeds.ids).size,seeds.ids.length);
+});

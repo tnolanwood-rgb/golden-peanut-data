@@ -19,7 +19,7 @@ for(const [id,name,type,rarity,buy,sell,buyQty,sellQty] of data.items){
 }
 const hist={markets:new Map(),ranked:[],archive:[]};
 (async()=>{
- const seeds=await c.GPOpportunity.gatherPublicSeeds({db:{marketPage:async(after,size)=>{
+ const seeds=await c.GPOpportunity.gatherPublicSeeds({meta:metadata,db:{marketPage:async(after,size)=>{
   const start=Number(after)||0,end=Math.min(start+size,quotes.length);
   return {values:quotes.slice(start,end).map(latest=>({latest})),done:end===quotes.length,afterPk:String(end)};
  }},marketStatus:{complete:true}},hist,1450);

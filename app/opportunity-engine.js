@@ -831,7 +831,8 @@ async function gatherPublicSeeds(state,hist,limit=1450){
    const at=Date.parse(q?.at);if(!finite(at)||Date.now()-at>18*HOUR||at>Date.now()+60000)continue;
    fresh++;
    const c=researchQuoteScore(q);if(!c)continue;
-   eligible++;const g=c.priceBand+':'+c.bookBand;
+   eligible++;const category=String(state.meta?.[c.id]?.type||'Unknown');
+   const g=JSON.stringify([category,c.priceBand,c.bookBand]);
    if(!groups.has(g))groups.set(g,[]);
    keep(groups.get(g),c,125);keep(global,c,330);
   }
