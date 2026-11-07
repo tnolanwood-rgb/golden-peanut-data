@@ -152,3 +152,41 @@ test('incomplete and stale night evidence cannot create fill predictions',()=>{
  assert.equal(b.history.find(x=>x.id===101).measuredNights,null);
  assert.equal(b.history.find(x=>x.id===101).tier,'observed-night-conditional');
 });
+
+test('uncalibrated empirical results must never become calibrated opportunities',()=>{
+ const execution=require('../app/execution-engine.js');
+ const previous=execution.ranked;
+ execution.ranked=()=>({rows:[{id:3501,item:3501,quantity:5,buy:100,exit:200,
+  cost:550,expectedProfit:180,expectedAcquired:4,expectedSold:3,
+  calibrated:false,model:'empirical-joint-24h-v1'}]});
+ try{
+  const result=Board.build({...source,activeBook:{entries:[]},marketChoices:[]},
+   {wallet:40651,now:NOW});
+  assert.equal(result.forecast.length,1);
+  assert.equal(result.forecast[0].tier,'empirical-24h-unvalidated');
+  assert.equal(result.forecast[0].calibrated,false);
+  assert.match(result.disclaimer,/NOT calibrated/);
+ }finally{execution.ranked=previous;}
+});
+test('personally observed BUY AND SELL reductions improve discovery priority without inventing fill forecasts',()=>{
+ const candidate=(id)=>({
+  id,name:'Crystalline Dust Parcel '+id,type:'CraftingMaterial',rarity:'Rare',
+  buy:3200,exit:7200,buyQty:60,sellQty:60,observations:2,
+  at:stamp,openBuys:0
+ });
+ const matched={...candidate(5102),observedOrderFillsAll:26,observedSellFillsAll:23,
+  observedOrderFills24h:13,observedSellFills24h:10};
+ const oneSide={...candidate(5103),observedOrderFillsAll:300,observedSellFillsAll:0};
+ const result=Board.build({...source,activeBook:{entries:[]},marketChoices:[],
+  publicResearch:[candidate(5101),matched,oneSide]},{wallet:40651,now:NOW});
+ assert.deepEqual(result.newMarkets.map(x=>x.id).slice(0,2),[5102,5101]);
+ assert.equal(result.newMarkets[0].observedOrderFillsAll,26);
+ assert.equal(result.newMarkets[0].observedSellFillsAll,23);
+ assert.match(result.newMarkets[0].evidence,/NOT an attributed round trip/);
+ assert.equal(result.newMarkets.find(x=>x.id===5103).observedSellFillsAll,0);
+ for(const r of result.newMarkets){
+  assert.equal(r.expectedProfit,undefined);
+  assert.equal(r.quantity,undefined);
+  assert.equal(r.nightProfit,undefined);
+ }
+});
