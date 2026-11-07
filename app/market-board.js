@@ -10,7 +10,6 @@ const finite=x=>Number.isFinite(x);
 const net=(unit,qty)=>{let left=qty,total=0;while(left>0){const n=Math.min(250,left),v=unit*n;total+=v-Math.ceil(v*.05)-Math.ceil(v*.10);left-=n;}return total;};
 const when=x=>{const t=Date.parse(x);return Number.isFinite(t)?t:NaN;};
 const fresh=(x,now)=>finite(when(x))&&when(x)<=now+30000&&now-when(x)<=30*MINUTE;
-const souvenir=/\b(?:infusion|music box|miniature|mini |ticket|tonic|skin|recipe:|toy-|envelope)\b/i;
 function equipmentKind(name,type,rarity){
  if(rarity!=='Exotic')return null;
  if(type==='Armor')return 'armor';
@@ -126,12 +125,10 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   if(activeIds.has(id)||historyIds.has(id)||forecastIds.has(id)||c.openBuys>0){reject('existing-position-or-evidence-lane');continue;}
   if(!fresh(c.at,now)){reject('stale-or-invalid-quote');continue;}
 
-  // A collection unlock such as Jormag's Claw Fragment is NOT an
-  // overnight turnover market just because its lowest ask is far above bid.
-  if(type==='Consumable'&&/unlock/i.test(subtype)){reject('unlock-policy');continue;}
+  // Research visibility is independent of translated names and collection use.
+  // Eligibility for a funded bid still requires separate execution evidence.
   if(!whole(c.buy,1)||!whole(c.exit,1)||c.exit<=c.buy){reject('invalid-prices');continue;}
   if(c.buy>250000){reject('price-ceiling-policy');continue;}
-  if(souvenir.test(name)){reject('name-policy');continue;}
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
   // Positive small per-unit margins remain research; no volume is assumed.
   if(!finite(margin)||margin<=0){reject('nonpositive-net-margin');continue;}
