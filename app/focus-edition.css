@@ -306,3 +306,44 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-today-profit-value .focus-negative{color:#f0afa3}
 .focus-today-profit>small{font-size:11px;line-height:1.35;color:#bbcdb6}
 @media(max-width:400px){.focus-today-profit{padding:12px 13px}.focus-today-profit-value{font-size:clamp(24px,6.4vw,30px)}.focus-today-profit-value .focus-money img{width:18px;height:18px}}
+
+/* 7.25 — seven UK-calendar days in the top-right, exactly three visible.
+ * Independent finger/trackpad scrolling keeps the primary Today metric visible. */
+.focus-edition .focus-today-profit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,154px);align-items:start;gap:11px;padding:12px 13px}
+.focus-today-current{display:flex;flex-direction:column;min-width:0;gap:6px;padding:3px 0 0}
+.focus-today-current>span{font-size:11px;letter-spacing:.09em;font-weight:800;color:#e4ddac}
+.focus-today-current>small{font-size:11px;line-height:1.4;color:#bbcdb6}
+.focus-today-current .focus-today-profit-value{min-width:0;font-size:clamp(24px,3.9vw,38px);overflow-wrap:anywhere}
+.focus-today-current .focus-today-profit-value .focus-money{display:flex;flex-wrap:wrap;white-space:normal;column-gap:5px;row-gap:1px}
+.focus-week-strip{min-width:0;background:#12271c;border:1px solid #476648;border-radius:11px;padding:5px 6px 6px;overflow:hidden}
+.focus-week-strip-header{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 3px 5px;color:#ddcb96;font-size:10px;letter-spacing:.04em;line-height:1.3}
+.focus-week-strip-header strong{font-size:inherit}.focus-week-strip-header>span{font-size:13px;line-height:1}
+.focus-week-strip-list{height:153px;max-height:153px;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#68876d transparent;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.focus-week-strip-list:focus-visible{outline:2px solid var(--focus-accent);outline-offset:-2px;border-radius:6px}
+.focus-week-strip-row{height:51px;box-sizing:border-box;padding:5px 4px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-bottom:1px solid #3b5240}
+.focus-week-strip-row:last-child{border-bottom:0}
+.focus-week-strip-row:first-child{background:#244332;border-radius:5px}
+.focus-week-strip-day{font-size:10px;line-height:1.15;color:#c4d3c0;font-weight:650;white-space:nowrap}
+.focus-week-strip-row:first-child .focus-week-strip-day{color:#f1d49b}
+.focus-week-strip-amount{font-size:12px;line-height:1.25;font-weight:760;color:#b7e7bf;min-width:0}
+.focus-week-strip-row.is-loss .focus-week-strip-amount{color:#f1b1a4}
+.focus-week-strip-amount .focus-money{display:flex;gap:2px;white-space:nowrap;overflow:hidden;align-items:center}
+.focus-week-strip-amount .focus-money-part{gap:1px}
+.focus-week-strip-amount .focus-money img{height:11px;width:11px}
+.focus-week-strip-amount .focus-coin-letter{font-size:9px}
+@media(max-width:460px){
+ .focus-edition .focus-today-profit{grid-template-columns:minmax(0,1fr) minmax(0,139px);gap:8px;padding:10px 9px}
+ .focus-today-current .focus-today-profit-value{font-size:clamp(22px,6.2vw,27px);line-height:1.3}
+ .focus-today-current .focus-today-profit-value .focus-money img{width:16px;height:16px}
+ .focus-week-strip{padding:4px}
+ .focus-week-strip-row{padding-left:3px;padding-right:3px}
+ .focus-week-strip-amount{font-size:11px}
+ .focus-week-strip-amount .focus-money img{height:10px;width:10px}
+}
+@media(max-width:340px){
+ .focus-edition .focus-today-profit{grid-template-columns:minmax(0,1fr) minmax(0,124px);gap:6px}
+ .focus-today-current>span{font-size:10px}
+ .focus-today-current .focus-today-profit-value{font-size:21px}
+ .focus-week-strip-amount{font-size:10px}
+ .focus-week-strip-amount .focus-money img{height:9px;width:9px}
+}
