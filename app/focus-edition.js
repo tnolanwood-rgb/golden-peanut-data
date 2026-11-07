@@ -41,7 +41,9 @@ function showMoreRemembered(){
   window.scrollTo({top:Math.max(0,Math.round(y)),behavior:'instant'});}
 }
 
-const iconMissing=new Map(),metaInFlight=new Set(),metaQueue=new Set();let metaBusy=false;
+const iconMissing=new Map(),metaInFlight=new Set(),metaQueue=new Set();
+let metaBusy=false,metaRevision=0,iconVisibilityObserver=null;
+let boardCache={plan:null,metadata:null,revision:-1,wallet:null,at:0,result:null};
 const num=v=>Number(v||0).toLocaleString('en-GB');
 const cash=v=>{if(!Number.isFinite(v))return '—';const abs=Math.round(Math.abs(v));return (v<0?'−':'')+num(Math.floor(abs/10000))+'g '+String(Math.floor(abs%10000/100)).padStart(2,'0')+'s '+String(abs%100).padStart(2,'0')+'c';};
 const h=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
@@ -52,12 +54,38 @@ function money(v,cls=''){const wrap=h('span','focus-money '+cls);wrap.title=Numb
 function validIcon(m){return typeof m?.icon==='string'&&/^https:\/\/render\.guildwars2\.com\/file\/[a-f0-9]+\/\d+\.(png|jpe?g|webp)$/i.test(m.icon);}
 function currentMeta(id){return State()?.meta?.[Number(id)]||null;}
 function itemName(id){return currentMeta(id)?.name||'Item #'+id;}
+function itemTitle(id,label=null,tag='strong',hint=''){
+ const el=h(tag,'',label??itemName(id));
+ root.GPRarity?.apply?.(el,currentMeta(id)?.rarity||hint);
+ return el;
+}
+function marketBoard(state){
+ const plan=state?.opportunityPlan,metadata=state?.meta,wallet=userSnapshot()?.wallet,at=Date.now();
+ if(boardCache.plan===plan&&boardCache.metadata===metadata&&boardCache.revision===metaRevision&&
+    boardCache.wallet===wallet&&at-boardCache.at<30000)return boardCache.result;
+ const result=root.GPMarketBoard?.build?.(plan,{wallet,metadata:metadata||{}});
+ boardCache={plan,metadata,revision:metaRevision,wallet,at,result};
+ return result;
+}
+function scheduleMetadataWhenVisible(wrap,id,retry=false){
+ if(typeof IntersectionObserver!=='function'){queueMeta([id],retry);return;}
+ if(!iconVisibilityObserver)iconVisibilityObserver=new IntersectionObserver(entries=>{
+  for(const e of entries)if(e.isIntersecting){
+   iconVisibilityObserver.unobserve(e.target);
+   const item=Number(e.target.dataset.itemId);
+   if(item>0)queueMeta([item]);
+  }
+ },{rootMargin:'110px 0px'});
+ wrap.dataset.itemId=String(id);iconVisibilityObserver.observe(wrap);
+}
 function artwork(id,large=false){const wrap=h('span','focus-item-art '+(large?'focus-item-art-lg':''));wrap.setAttribute('aria-hidden','true');const m=currentMeta(id);
- if(validIcon(m)){const img=h('img');img.src=m.icon;img.alt='';img.loading='lazy';img.decoding='async';img.onerror=()=>{const q=iconMissing.get(Number(id))||0;iconMissing.set(Number(id),q+1);wrap.replaceChildren(h('span','focus-item-fallback','◇'));if(q<2)queueMeta([Number(id)],true);};wrap.append(img);}else{wrap.append(h('span','focus-item-fallback','◇'));queueMeta([Number(id)]);}return wrap;}
+ if(validIcon(m)){const img=h('img');img.src=m.icon;img.alt='';img.loading='lazy';img.decoding='async';img.onerror=()=>{const q=iconMissing.get(Number(id))||0;iconMissing.set(Number(id),q+1);wrap.replaceChildren(h('span','focus-item-fallback','◇'));if(q<2)scheduleMetadataWhenVisible(wrap,Number(id),true);};wrap.append(img);}
+ else{wrap.append(h('span','focus-item-fallback','◇'));scheduleMetadataWhenVisible(wrap,Number(id));}
+ return wrap;}
 function queueMeta(ids,retry=false){const s=State();if(!s?.api||!s?.db)return;for(const x of ids){const id=Number(x);if(!Number.isInteger(id)||id<=0||metaInFlight.has(id))continue;const until=iconMissing.get(id)||0;if(!retry&&until===-1)continue;if(until>3)continue;metaQueue.add(id);}if(!metaBusy&&metaQueue.size)window.setTimeout(flushMeta,100);}
 async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();if(!s?.api||!s?.db)return;const batch=[...metaQueue].slice(0,35);for(const id of batch){metaQueue.delete(id);metaInFlight.add(id);}metaBusy=true;
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
- try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
+ try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
 /* Persist navigation and visible research during Android WebView Activity
  * recreation (including a rotation-induced page reload). No account key,
