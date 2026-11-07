@@ -90,6 +90,30 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   s.opportunityPlan.candidateRefresh={checked:6500,phase:'expanded'};
   GPFocus.goto('today');GPFocus.render();
  });
+ // Names are coloured from verified item rarity, not guessed from item names.
+ assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic').count(),1);
+ const namedColor=await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic')
+  .evaluate(el=>getComputedStyle(el).color);
+ assert.equal(namedColor,'rgb(255, 164, 5)');
+ const rarityPalette=await page.evaluate(()=>{
+  const pairs={Junk:'rgb(170, 170, 170)',Basic:'rgb(255, 255, 255)',
+   Fine:'rgb(98, 164, 218)',Masterwork:'rgb(26, 147, 6)',
+   Rare:'rgb(252, 208, 11)',Exotic:'rgb(255, 164, 5)',
+   Ascended:'rgb(251, 62, 141)',Legendary:'rgb(151, 78, 255)'};
+  const probe=document.createElement('section');document.body.append(probe);
+  const result={};
+  for(const rarity of Object.keys(pairs)){
+   const node=document.createElement('strong');node.textContent='Verified item';
+   GPRarity.apply(node,rarity);probe.append(node);
+   result[rarity]=getComputedStyle(node).color;
+  }
+  const unknown=document.createElement('strong');GPRarity.apply(unknown,'unknown');probe.append(unknown);
+  result.unknownClass=unknown.classList.contains('gp-item-name');probe.remove();
+  return {result,pairs};
+ });
+ assert.equal(rarityPalette.result.unknownClass,false);
+ for(const [rarity,color]of Object.entries(rarityPalette.pairs))
+  assert.equal(rarityPalette.result[rarity],color,'incorrect GW2 rarity colour: '+rarity);
  const enriched=await page.locator('#focus-best-rows').innerText();
  assert.match(enriched,/TOP BUY RESEARCH · MOST PROMISING FIRST/);
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row').count(),2);
@@ -407,6 +431,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  fs.mkdirSync('artifacts',{recursive:true});await page.screenshot({path:`artifacts/browser-${viewport.width}.png`,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');
  const persisted=await page.evaluate(async()=>{const s=GoldenPeanutClean.State;return (await s.db.get('config','Fixture.1234','execution-learning-v1'))?.value?.samples?.length||0;});assert.equal(persisted,20,'WebView reload must preserve account-scoped IndexedDB learning');
+ // Fast-path contract: background rerenders do not reconstruct hidden tabs.
+ const perf=await page.evaluate(()=>{
+  const original=GPMarketBoard.build;let builds=0;
+  GPMarketBoard.build=(...args)=>{builds++;return original(...args);};
+  try{
+   GPFocus.goto('today');GPFocus.render();GPFocus.render();
+   const homeBuilds=builds;GPFocus.goto('orders');GPFocus.render();GPFocus.render();
+   return {homeBuilds,hiddenBuilds:builds-homeBuilds};
+  }finally{GPMarketBoard.build=original;}
+ });
+ assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
+ assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
  await context.close();
 }}finally{await browser.close();server.close();}
