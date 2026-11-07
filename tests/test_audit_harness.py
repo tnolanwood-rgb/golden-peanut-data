@@ -10,6 +10,12 @@ spec.loader.exec_module(audit)
 
 
 class AuditHarnessTests(unittest.TestCase):
+    def test_incomplete_checkpoint_is_not_verified(self):
+        self.assertEqual(audit.overall([]), 'IN PROGRESS')
+        self.assertEqual(audit.overall([{'status': 'VERIFIED'}], expected=4), 'IN PROGRESS')
+        self.assertEqual(audit.overall([{'status': 'FAILED'}], expected=4), 'FAILED')
+        self.assertEqual(audit.overall([{'status': 'VERIFIED'}] * 4, expected=4), 'VERIFIED')
+
     def test_failed_process_is_not_success_even_if_it_prints_success(self):
         with tempfile.TemporaryDirectory() as directory:
             r = audit.run_check('probe', [sys.executable, '-c', "print('success'); raise SystemExit(3)"], pathlib.Path(directory))

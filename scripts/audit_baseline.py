@@ -38,9 +38,11 @@ def run_check(name, command, output, *, timeout=600):
             'seconds': round(time.perf_counter() - started, 3), 'log': path.name}
 
 
-def overall(checks):
+def overall(checks, expected=None):
     if any(c['status'] not in ('VERIFIED', 'SKIPPED') for c in checks):
         return 'FAILED'
+    if not checks or (expected is not None and len(checks) < expected):
+        return 'IN PROGRESS'
     return 'PARTIAL' if any(c['status'] == 'SKIPPED' for c in checks) else 'VERIFIED'
 
 
@@ -56,13 +58,14 @@ def main():
               'dirty': bool(git('status', '--porcelain')), 'platform': platform.platform(),
               'python': platform.python_version(), 'node': subprocess.check_output(['node', '--version'], text=True).strip(),
               'conditions': 'Synthetic local regression; browser emulation, not physical Android or live account validation',
-              'checks': []}
+              'planned_checks': [name for name, _ in CHECKS], 'checks': [], 'status': 'IN PROGRESS'}
+    (args.output / 'baseline.json').write_text(json.dumps(report, indent=2) + '\n')
     for name, command in CHECKS:
         result = ({'name': name, 'command': command, 'status': 'SKIPPED', 'seconds': None,
                    'reason': 'explicit --skip-browser'} if name == 'browser' and args.skip_browser
                   else run_check(name, command, args.output))
         report['checks'].append(result)
-        report['status'] = overall(report['checks'])
+        report['status'] = overall(report['checks'], expected=len(CHECKS))
         # Checkpoint after each command, so interruption preserves completed evidence.
         (args.output / 'baseline.json').write_text(json.dumps(report, indent=2) + '\n')
         print(name + ': ' + result['status'], flush=True)
