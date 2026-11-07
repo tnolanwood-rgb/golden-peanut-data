@@ -112,17 +112,32 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  // Scores are selection heuristics, not predicted incomes or probabilities.
  history.sort((a,b)=>b.rankScore-a.rankScore||b.scenarioProfit-a.scenarioProfit||a.id-b.id);
  const historyIds=new Set(history.map(x=>x.id));
- const newMarkets=[];
+ const newMarkets=[],seenPublic=new Set();
+ const publicCoverage={scanned:0,accepted:0,rejected:{},byCategory:Object.create(null)};
  for(const c of plan.publicResearch||[]){
   const id=c.id,name=String(c.name||''),meta=metadata?.[id]||{};
-  if(!whole(id,1)||!name||activeIds.has(id)||historyIds.has(id)||forecastIds.has(id)||!fresh(c.at,now)||c.openBuys>0)continue;
   const type=c.type||meta.type||'',rarity=c.rarity||meta.rarity||'',subtype=c.subtype||meta.details?.type||'';
+  const category=type||'Unknown';
+  const group=publicCoverage.byCategory[category]??={scanned:0,accepted:0,rejected:{}};
+  publicCoverage.scanned++;group.scanned++;
+  const reject=reason=>{for(const counts of [publicCoverage,group])counts.rejected[reason]=(counts.rejected[reason]||0)+1;};
+  if(!whole(id,1)||!name){reject('invalid-identity');continue;}
+  if(seenPublic.has(id)){reject('duplicate');continue;}seenPublic.add(id);
+  if(activeIds.has(id)||historyIds.has(id)||forecastIds.has(id)||c.openBuys>0){reject('existing-position-or-evidence-lane');continue;}
+  if(!fresh(c.at,now)){reject('stale-or-invalid-quote');continue;}
+
   // A collection unlock such as Jormag's Claw Fragment is NOT an
   // overnight turnover market just because its lowest ask is far above bid.
-  if(type==='Consumable'&&/unlock/i.test(subtype))continue;
-  if(!whole(c.buy,1)||!whole(c.exit,1)||c.buy>250000||c.exit<=c.buy||souvenir.test(name))continue;
+  if(type==='Consumable'&&/unlock/i.test(subtype)){reject('unlock-policy');continue;}
+  if(!whole(c.buy,1)||!whole(c.exit,1)||c.exit<=c.buy){reject('invalid-prices');continue;}
+  if(c.buy>250000){reject('price-ceiling-policy');continue;}
+  if(souvenir.test(name)){reject('name-policy');continue;}
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
-  if(!finite(margin)||margin<50||roi<.055||roi>1.5||Number(c.sellQty||0)<2||Number(c.buyQty||0)<4)continue;
+  // Positive small per-unit margins remain research; no volume is assumed.
+  if(!finite(margin)||margin<=0){reject('nonpositive-net-margin');continue;}
+  if(roi<.055||roi>1.5){reject('roi-policy');continue;}
+  if(!whole(c.sellQty,2)||!whole(c.buyQty,4)){reject('standing-depth-policy');continue;}
+  publicCoverage.accepted++;group.accepted++;
   // No requested lot size or overnight profit forecast on a public quote.
   newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
    buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
@@ -153,7 +168,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   broadCandidates:plan.publicDiscovery?.broadMarginCandidates||0,
   rawPersonalResearch:plan.marketChoices?.length||0,rawPublicResearch:plan.publicResearch?.length||0,
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
- return {ready:true,...categories,counts,available,disclaimer:'24h estimates use observed outcomes; predictive calibration is not established. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
+ return {ready:true,...categories,counts,available,publicCoverage,disclaimer:'24h estimates use observed outcomes; predictive calibration is not established. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
 }
 root.GPMarketBoard={buildId:'7.16.0-evidence',build};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketBoard;

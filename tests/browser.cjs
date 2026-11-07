@@ -515,7 +515,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    id:6000+i,name:"Magi's Exalted Test Coat "+i,type:'Armor',rarity:'Exotic',
    buy:2100+i,exit:4300+i,buyQty:55,sellQty:42,observations:2,openBuys:0,at:stamp
   }));
-  for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:'Armor',rarity:'Exotic'};
+  items.push(...['CraftingMaterial','Consumable'].map((type,i)=>({id:6100+i,name:'Low margin '+type,type,rarity:'Basic',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp})));
+  for(const item of items)s.meta[item.id]={id:item.id,name:item.name,type:item.type,rarity:item.rarity};
   s.opportunityPlan={...s.opportunityPlan,ok:true,at:Date.now(),source:'wallet',budget:s.snapshot.wallet,
    spent:0,unallocated:s.snapshot.wallet,asOf:stamp,publicResearch:items,
    marketChoices:[],orders:[],activeBook:{entries:[]}};
@@ -530,6 +531,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    researchCount:GoldenPeanutClean.State.opportunityPlan?.publicResearch?.length}));
   console.log('SCROLL_DIAG '+JSON.stringify(diag));throw e;
  });
+ const otherResearch=page.locator('#focus-best-rows [data-section-id="other-affordable"]');
+ assert.match(await otherResearch.innerText(),/Low margin CraftingMaterial/);
+ assert.match(await otherResearch.innerText(),/Low margin Consumable/);
+ assert.match(await otherResearch.innerText(),/not a forecast/);
  assert.equal(await armorSection.count(),1);
  assert.match(await armorSection.innerText(),/of 72 markets/);
  const armorScroll=armorSection.locator('.focus-section-scroll');

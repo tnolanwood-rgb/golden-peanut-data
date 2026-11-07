@@ -64,3 +64,13 @@ test('crowded equipment and personal lanes cannot starve public commodity or rec
   assert.ok(d.ids.some(id=>id>=3001&&id<3101),'recipe lane lost at budget '+budget);
  }
 });
+test('low-unit-margin commodity and consumable research survives engine-to-board gates',()=>{
+ const c=context(),Board=require('../app/market-board.js');
+ const metadata={11:{name:'Research material',type:'CraftingMaterial'},12:{name:'Research food',type:'Consumable'}};
+ const research=c.GPOpportunity.publicResearchCandidates({quotes:[11,12].map(id=>({...quote(NOW,id),buy:100,sell:150})),metadata,now:NOW});
+ assert.equal(research.length,2);
+ const board=Board.build({ok:true,budget:1000,orders:[],publicResearch:research},{wallet:1000,metadata,now:NOW});
+ assert.equal(board.newMarkets.length,2);
+ for(const row of board.newMarkets){assert.ok(row.unitMargin>0&&row.unitMargin<50);assert.equal(row.quantity,undefined);assert.equal(row.expectedProfit,undefined);}
+ assert.equal(board.publicCoverage.accepted,2);
+});
