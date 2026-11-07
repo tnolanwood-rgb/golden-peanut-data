@@ -407,3 +407,18 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 /* Distinguish estimated profit/loss from gross sale proceeds. */
 .focus-delivery-net.is-loss,.focus-delivery-net.is-loss>.focus-money{color:#f4afa5}
 .focus-delivery-unpriced{font-weight:550;color:#c4c9bd}
+
+/* 7.29: a partial quote cache MUST NOT look like a confirmed gross total. */
+.focus-delivery-money.is-pending>.focus-money{color:#bbd1bc;opacity:.85}
+.focus-delivery-net .focus-money-part:nth-last-child(3){color:#fbd164}
+.focus-delivery-net .focus-money-part:nth-last-child(2){color:#d8e7ed}
+.focus-delivery-net .focus-money-part:last-child{color:#e5a37c}
+.focus-delivery-net.is-loss .focus-negative{color:#f4afa5}
+.focus-delivery-panel .focus-delivery-head{flex-shrink:0}
+.focus-delivery-label{overflow:hidden}
+.focus-delivery-row .focus-delivery-net{overflow-wrap:anywhere}
+@media(max-width:460px){
+ .focus-delivery-items{max-height:181px}
+ .focus-delivery-row{align-items:flex-start;min-height:55px}
+ .focus-delivery-row .focus-item-art{margin-top:1px}
+}

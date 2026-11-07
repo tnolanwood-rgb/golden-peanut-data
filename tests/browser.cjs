@@ -81,7 +81,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForFunction(()=>{
   const s=GoldenPeanutClean.State;
   return GP57Desk.listingValuation(s.snapshot,s.ledger).covered===8 &&
-   document.querySelector('#focus-delivery-caption')?.textContent.includes('all item listing values');
+   document.querySelector('#focus-delivery-caption')?.textContent.includes('ALL items at lowest sell listings');
  },null,{timeout:15000});
  assert.equal(await delivery.count(),1);
  assert.equal(await items.locator('.focus-delivery-row').count(),8,'show all eight grouped item types');
@@ -101,7 +101,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'coins plus full gross ask value, BEFORE listing and exchange fees');
  assert.ok(expectedDelivery.total>1234567+expectedDelivery.net,'headline must not deduct TP fees');
- assert.match(await page.locator('#focus-delivery-caption').innerText(),/before TP fees/);
+ assert.match(await page.locator('#focus-delivery-caption').innerText(),/BEFORE fees/);
  assert.equal(await page.locator('#focus-delivery-total .focus-money').getAttribute('title'),expectedDelivery.label);
  assert.equal(await page.locator('#focus-delivery-total .focus-money').count(),1,'only one headline value');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-ask').count(),0,
@@ -116,6 +116,28 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const currency=await page.locator('#focus-delivery-total .focus-money-part').evaluateAll(parts=>parts.map(el=>getComputedStyle(el).color));
  assert.deepEqual(currency,['rgb(251, 209, 100)','rgb(216, 231, 237)','rgb(229, 163, 124)']);
  assert.equal(await page.locator('#focus-delivery-total img[src*="gw2-"]').count(),3,'official coin icons');
+ // An item whose public ask has NOT arrived must invalidate the headline;
+ // an apparent coin-only/partially-valued "total" misleads the trader.
+ const partial=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,old=s.snapshot.delivery;
+  s.snapshot={...s.snapshot,delivery:{...old,items:[...old.items,{id:998877,count:2}]}};
+  GPFocus.render();
+  const cash=document.querySelector('#focus-delivery-total .focus-money');
+  const caption=document.querySelector('#focus-delivery-caption');
+  const row=document.querySelector('.focus-delivery-row[data-item-id="998877"] .focus-delivery-unpriced');
+  const output={value:cash?.textContent,title:cash?.title,caption:caption?.textContent,
+   row:row?.textContent,complete:GP57Desk.listingValuation(s.snapshot,s.ledger).complete};
+  s.snapshot={...s.snapshot,delivery:old};
+  GPFocus.render();
+  return output;
+ });
+ assert.equal(partial.complete,false);
+ assert.equal(partial.title,'Not verified','never show collectible coins as the full box total');
+ assert.equal(partial.value,'—');
+ assert.match(partial.caption,/Valuing items 8\/9/);
+ assert.match(partial.row,/Checking sell listing/);
+ assert.equal(await page.locator('#focus-delivery-total .focus-money').getAttribute('title'),expectedDelivery.label,
+  'full combined gross total is restored when all quote coverage returns');
  const siblingLayout=await page.locator('.focus-today-profit').evaluate(el=>{
   const left=el.querySelector('.focus-delivery-panel').getBoundingClientRect();
   const right=el.querySelector('.focus-week-strip').getBoundingClientRect();
