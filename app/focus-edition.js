@@ -521,7 +521,7 @@ function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
   desc:'Descending by actual matched net profit over seven days, not predicted 24-hour income. Market quotes and future fills require independent verification.',
   items:winners,initial:limit,renderRow:m=>{
    const row=h('button','focus-market-row focus-actual-winner');row.type='button';row.append(artwork(m.id));
-   const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(m.id)));
+   const middle=h('span','focus-market-title');middle.append(itemTitle(m.id));
    const standing=buys.has(m.id)?' · buy order already standing':'';
    middle.append(h('small','','ACTUAL 7D · '+num(m.matched7)+' matched sold · '+num(m.bought7)+' bought'+standing));
    if(m.unknown7>0)middle.append(h('small','focus-muted',num(m.unknown7)+' sold units have unverified costs and are excluded from this profit'));
@@ -596,7 +596,7 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[]}={}){
     const row=h('button','focus-market-row focus-connected-market');row.type='button';
     row.dataset.marketTier=String(m.tier);row.dataset.marketId=String(m.id);
     row.append(artwork(m.id));
-    const middle=h('span','focus-market-title');middle.append(h('strong','',name(m)));
+    const middle=h('span','focus-market-title');middle.append(itemTitle(m.id,name(m),'strong',m.rarity));
     middle.append(h('small','',subtitle(m)));
     if(m.kind==='new'&&root.GPCapacity){
      const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
@@ -940,7 +940,7 @@ function renderTopResearch(host,state){
   button.dataset.marketTier=m.tier;
   button.append(artwork(m.id));
   const middle=h('span','focus-market-title');
-  middle.append(h('strong','',m.name||itemName(m.id)));
+  middle.append(itemTitle(m.id,m.name||itemName(m.id),'strong',m.rarity));
   middle.append(h('small','','BUY '+num(m.quantity)+' × '+cash(m.buy)+' · sell reference '+cash(m.exit)+
    ' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'requires additional wallet gold')));
   if(m.measuredNights){
@@ -1021,7 +1021,7 @@ function renderOpportunityHome(){
   desc:'Verified prospective observations only. Scroll within this section for every currently qualifying market.',
   items:strongest,initial:9,renderRow:o=>{
   const row=h('button','focus-market-row focus-home-order');row.type='button';row.append(artwork(o.id));
-  const middle=h('span','focus-market-title');middle.append(h('strong','',itemName(o.id)));
+  const middle=h('span','focus-market-title');middle.append(itemTitle(o.id));
   let summary='',metric=o.expectedProfit,label='Expected 24h net · '+Number(o.expectedSold).toFixed(1)+' sold';
   if(o.kind==='standing')summary='ALREADY ON ORDER · '+num(o.openUnits)+' open · '+num(o.quantity)+' within historical active-week pace';
   else if(o.kind==='funded')summary='NEW BUY '+num(o.quantity)+' × '+cash(o.bid)+' · '+cash(o.cost)+' from wallet';
@@ -1080,7 +1080,7 @@ function renderGrowthContext(){const host=$('focus-growth-context');if(!host)ret
  const reserve=Array.isArray(snap.buys)?root.PeanutCore.committedBuys(snap.buys):null;
  const brief=h('p','focus-muted focus-growth-capital','');brief.textContent='Wallet '+cash(snap.wallet)+(reserve!==null?' · already reserved '+cash(reserve):'')+'. Reserved gold is not spendable.';host.append(brief);
 }
-function growthRow(m,plan){const row=h('button','focus-market-row focus-growth-market');row.type='button';row.append(artwork(m.id));const center=h('span','focus-market-title');center.append(h('strong','',itemName(m.id)));
+function growthRow(m,plan){const row=h('button','focus-market-row focus-growth-market');row.type='button';row.append(artwork(m.id));const center=h('span','focus-market-title');center.append(itemTitle(m.id));
  const live=plan?.valid?plan.orders.find(o=>o.id===m.id&&o.tier!=='quote-only'):null;
  const note='Bought '+num(m.bought7)+' · sold '+num(m.sold7)+' in 7 days'+(live?' · new buy '+num(live.quantity)+' supported':'');center.append(h('small','',note));row.append(center);
  const side=h('span','focus-market-values');const val=h('strong','');val.append(money(m.profit));side.append(val,h('small','','actual matched net'));row.append(side,h('span','focus-chevron','›'));
@@ -1109,22 +1109,22 @@ function quoteInspector(id,host){host.replaceChildren();const b=button('↻ Chec
 }
 function renderRelatedDetail(){const l=ui.relatedDetail;if(!l)return;const el=$('focus-trade-detail');$('focus-trade-list-view').hidden=true;el.hidden=false;el.replaceChildren();
  el.append(button('← Back to market memory',()=>backToList('trades'),'focus-back'));
- const head=h('div','focus-detail-title');head.append(artwork(l.id,true));const title=h('div');title.append(h('h3','',l.name),h('p','focus-muted','Related by item name · no verified completed sales'));head.append(title);el.append(head);
+ const head=h('div','focus-detail-title');head.append(artwork(l.id,true));const title=h('div');title.append(itemTitle(l.id,l.name,'h3',l.rarity),h('p','focus-muted','Related by item name · no verified completed sales'));head.append(title);el.append(head);
  el.append(h('p','focus-muted','This item is discoverable independently of your prior trades. Its price, order fills and resale pace are not verified. Check its live quote before considering a trade.'));
  const quote=h('div','focus-quote-inspector');el.append(quote);quoteInspector(l.id,quote);
  el.append(button('Copy item name for GW2 search',async()=>{try{await navigator.clipboard.writeText(l.name);}catch{}},'focus-button focus-button-secondary'));
 }
 function memoryRow(m){const row=h('button','focus-market-row focus-memory-market');row.type='button';row.dataset.memoryId=String(m.id);row.append(artwork(m.id));
- const center=h('span','focus-market-title');center.append(h('strong','',itemName(m.id)));
+ const center=h('span','focus-market-title');center.append(itemTitle(m.id));
  const when=m.lastActivity?new Date(m.lastActivity).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'unknown';
  center.append(h('small','',num(m.matchedAll)+' matched sold units · last traded '+when+(m.unknownAll?' · incomplete costs':'')));
  row.append(center);const side=h('span','focus-market-values');const value=h('strong','');value.append(money(m.profit));side.append(value,h('small','',m.proven?'saved matched profit':'matched net / partial'));row.append(side,h('span','focus-chevron','›'));
  row.addEventListener('click',()=>{ui.tradeY=window.scrollY;ui.tradeDetail=null;ui.growthDetail=m.id;pushHistory();renderGrowthDetail();window.scrollTo({top:0,behavior:'instant'});});return row;
 }
-function relatedRow(l){const row=h('button','focus-market-row focus-memory-related');row.type='button';row.append(artwork(l.id));const center=h('span','focus-market-title');center.append(h('strong','',l.name),h('small','',l.family+' · similar naming, not verified profits'));row.append(center);const side=h('span','focus-market-values');side.append(h('small','','Research only'));row.append(side,h('span','focus-chevron','›'));row.addEventListener('click',()=>{ui.tradeY=window.scrollY;ui.growthDetail=null;ui.tradeDetail=null;ui.relatedDetail=l;pushHistory();renderRelatedDetail();window.scrollTo({top:0,behavior:'instant'});});return row;}
+function relatedRow(l){const row=h('button','focus-market-row focus-memory-related');row.type='button';row.append(artwork(l.id));const center=h('span','focus-market-title');center.append(itemTitle(l.id,l.name,'strong',l.rarity),h('small','',l.family+' · similar naming, not verified profits'));row.append(center);const side=h('span','focus-market-values');side.append(h('small','','Research only'));row.append(side,h('span','focus-chevron','›'));row.addEventListener('click',()=>{ui.tradeY=window.scrollY;ui.growthDetail=null;ui.tradeDetail=null;ui.relatedDetail=l;pushHistory();renderRelatedDetail();window.scrollTo({top:0,behavior:'instant'});});return row;}
 function renderGrowthDetail(){const t=tradeData(),d=root.GPGrowth?.allHistory(State()?.ledger||[],Date.now())?.byId?.get(ui.growthDetail);if(!d){ui.growthDetail=null;renderTrades();return;}
  const el=$('focus-trade-detail');$('focus-trade-list-view').hidden=true;el.hidden=false;el.replaceChildren();el.append(button('← Back to trades',()=>backToList('trades'),'focus-back'));
- const head=h('div','focus-detail-title');head.append(artwork(d.id,true));const title=h('div');title.append(h('h3','',itemName(d.id)),h('p','focus-muted','Your saved historical trades · matched costs only'));head.append(title);el.append(head);
+ const head=h('div','focus-detail-title');head.append(artwork(d.id,true));const title=h('div');title.append(itemTitle(d.id,null,'h3'),h('p','focus-muted','Your saved historical trades · matched costs only'));head.append(title);el.append(head);
  const openScenario=State()?.opportunityPlan?.activeBook?.entries?.find(x=>x.id===d.id);
  if(openScenario){const current=h('div','focus-info-box');current.append(h('strong','','Already on order · current margin opportunity'),
   h('p','focus-muted',num(openScenario.units)+' units standing; '+num(openScenario.scenarioUnits)+' units within estimated active-week capacity. Conditional profit '+cash(openScenario.conditionalWeek)+' over a comparable active week, if purchases and resales complete at the modelled prices. Historical active-day buys '+num(openScenario.observedBuyMedian||0)+'; sales '+num(openScenario.observedSellMedian||0)+'. No measured fill probability.'));
@@ -1259,7 +1259,7 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
   const connected=renderConnectedMarkets(host,s,{query:q,limit:ui.tradeAll?70:12});
   if(!ranked.length&&connected.count===0&&!q)renderVerifiedRecentMarkets(host,s,{limit:12});
   for(const o of (ui.tradeAll?ranked.slice(0,80):ranked.slice(0,12))){
-   const row=h('button','focus-market-row');row.type='button';row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(h('strong','',itemName(o.id)));
+   const row=h('button','focus-market-row');row.type='button';row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(itemTitle(o.id));
    const desc=o.kind==='standing'?'ALREADY ON ORDER · '+num(o.openUnits)+' open · '+num(o.quantity)+' scenario units':
     o.kind==='potential'?'CONSERVATIVE 24H TRIAL · '+num(o.quantity)+' × '+cash(o.bid)+' · needs capital / active-order check':
     o.kind==='hypothetical'||t.p?.source==='hypothetical'?'WHAT-IF ONLY · '+num(o.quantity)+' × '+cash(o.bid)+' · NOT funded':
@@ -1353,7 +1353,7 @@ const visible=ui.tradeAll?rows.slice(0,80):rows.slice(0,12);
  appendCatalogueMatches(host,q,new Set(rows.map(x=>x.id)));
  more.hidden=rows.length<=12;more.textContent=ui.tradeAll?'Show top 12':'View all '+num(Math.min(80,rows.length))+' opportunities';
 }
-function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.type='button';row.dataset.tradeId=o.id;row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(h('strong','',itemName(o.id)));
+function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.type='button';row.dataset.tradeId=o.id;row.append(artwork(o.id));const center=h('span','focus-market-title');center.append(itemTitle(o.id));
  center.append(h('small','',o.kind==='lead'?'WATCH ONLY · current spread '+cash(o.buy)+' bid → '+cash(o.exit)+' exit · no fills predicted':o.kind==='craft'?'CRAFT '+num(o.quantity)+' · materials '+cash(o.cost)+' · access & sell-through unverified':o.kind==='capacity-research'?'UNVERIFIED BIGGER TEST · '+num(o.quantity)+' units · normal 24h trial '+num(o.supportedOrderQty||0)+' · observed buy/resale pace '+num(o.observed24Reference||0)+' per active day · not funded':o.kind==='research'?'UNPROVEN PILOT · '+num(o.quantity)+' units × '+cash(o.buy)+' · '+cash(o.cost)+' max exposure · NO expected profit'+(o.observedOrderFills24h?' · '+num(o.observedOrderFills24h)+' observed buy fills in 24h':'')+(o.craftableSupply?' · craftable':''):newMode?'Not funded in this plan · inspect evidence':o.kind==='standing'?'On order · '+num(o.openUnits)+' units':o.kind==='potential'?'CONSERVATIVE 24H TRIAL · '+num(o.quantity)+' units · observed lower-quartile day '+num(o.observed24Reference||0)+' · not funded':o.kind==='hypothetical'||tradeData().p?.source==='hypothetical'?'WHAT-IF '+num(o.quantity)+' units · not spendable':'Buy '+num(o.quantity)+' unit'+(o.quantity===1?'':'s')+' · wallet plan'));row.append(center);
  const side=h('span','focus-market-values');if(o.kind==='research'||o.kind==='craft'||o.kind==='capacity-research'){
   const value=h('strong','');
@@ -1445,7 +1445,7 @@ function renderCapacityExplorer(el,item){
 function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selected=ui.selectedMarket?.id===ui.tradeDetail?ui.selectedMarket:null,
  item=selected||[...t.orders,...(t.p?.marketChoices||[]),...t.watch].find(x=>x.id===ui.tradeDetail);if(!item){ui.tradeDetail=null;renderTrades();return;}
  const funded=selected?selected.kind==='funded':t.orders.some(o=>o.id===item.id),newMode=!funded,el=$('focus-trade-detail');$('focus-trade-list-view').hidden=true;el.hidden=false;el.replaceChildren();el.append(button('← Back to opportunities',()=>backToList('trades'),'focus-back'));
- const head=h('div','focus-detail-title');head.append(artwork(item.id,true));const title=h('div');title.append(h('h3','',selected?.restoredView&&selected.name?selected.name:itemName(item.id)),h('p','focus-muted',newMode?'Market research · not a funded buy order':'Suggested manual buy order · not placed'));head.append(title);el.append(head);
+ const head=h('div','focus-detail-title');head.append(artwork(item.id,true));const title=h('div');title.append(itemTitle(item.id,selected?.restoredView&&selected.name?selected.name:itemName(item.id),'h3',item.rarity),h('p','focus-muted',newMode?'Market research · not a funded buy order':'Suggested manual buy order · not placed'));head.append(title);el.append(head);
  if(!t.valid)el.append(h('p','focus-alert','These quotes have expired. Refresh before trading.'));
  if(selected?.restoredView)el.append(h('p','focus-alert','Restored this market after the phone reloaded. The saved bid and resale reference may be outdated — refresh current prices before making a trading decision.'));
  const metrics=h('div','focus-detail-grid');const addMetric=(label,v)=>{const x=h('div','focus-detail-metric');x.append(h('span','focus-muted',label),h('strong','',v));metrics.append(x);};
@@ -1521,7 +1521,7 @@ function renderOrders(){const s=State(),snap=userSnapshot();if(!s||!$('focus-ord
  labelText('focus-order-state',isReview?(entries.length+' market groups need review · review does not mean cancel'):(num(entries.reduce((n,g)=>n+g.orders.length,0))+' open '+(lane==='buy'?'buy':'sell')+' orders across '+entries.length+' groups. Existing orders may be filling—no need to reset every day.'));
  if(!entries.length){host.append(h('p','focus-empty',isReview?'No outstanding reviews from the currently verified evidence. Your orders can keep working.':'No matching open '+(lane==='buy'?'buy':'sell')+' orders.'));$('focus-more-orders').hidden=true;return;}
  const archive=root.GPGrowth?.allHistory(s.ledger||[],Date.now());
- for(const g of entries.slice(0,ui.orderAll?100:10)){const btn=h('button','focus-market-row');btn.type='button';const id=isReview?g.actions[0].itemId:g.items.keys().next().value;btn.append(artwork(id));const text=h('span','focus-market-title');text.append(h('strong','',g.name));let subtitle=isReview?g.actions.length+' specific review'+(g.actions.length===1?'':'s')+' · inspect before changing orders':num(g.units)+' units · '+num(g.orders.length)+' orders';
+ for(const g of entries.slice(0,ui.orderAll?100:10)){const btn=h('button','focus-market-row');btn.type='button';const id=isReview?g.actions[0].itemId:g.items.keys().next().value;btn.append(artwork(id));const text=h('span','focus-market-title');text.append(itemTitle(id,g.name));let subtitle=isReview?g.actions.length+' specific review'+(g.actions.length===1?'':'s')+' · inspect before changing orders':num(g.units)+' units · '+num(g.orders.length)+' orders';
  if(lane==='buy'&&!isReview&&g.items?.size){const active=[...g.items.keys()].map(id=>archive?.byId?.get(id)).filter(x=>x&&x.bought7>0&&x.sold7>0&&x.profit7P100>0);
   if(active.length)subtitle+=' · recent fills & profit — consider keeping';}
  text.append(h('small','',subtitle));btn.append(text);const side=h('span','focus-market-values');side.append(money(isReview?g.total:g.value),h('small','',isReview?'capital involved':lane==='buy'?'reserved':'listed value'));btn.append(side,h('span','focus-chevron','›'));
@@ -1530,12 +1530,12 @@ function renderOrders(){const s=State(),snap=userSnapshot();if(!s||!$('focus-ord
 }
 function renderOrderDetail(){const data=ui.orderDetail;if(!data)return;const s=State(),snap=userSnapshot();if(!snap){ui.orderDetail=null;renderOrders();return;}const isReview=data.lane==='review';const groups=isReview?reviewGroups():groupedOrders(data.lane==='buy'?snap.buys||[]:snap.sells||[],data.lane);const g=groups.find(x=>x.key===data.key);if(!g){ui.orderDetail=null;renderOrders();return;}
  const target=$('focus-order-detail');$('focus-orders-list').hidden=true;target.hidden=false;target.replaceChildren();target.append(button('← Back to '+(isReview?'reviews':data.lane==='buy'?'buy orders':'sell orders'),()=>backToList('orders'),'focus-back'));
- target.append(h('h3','focus-detail-h3',g.name));if(isReview){const report=h('p','focus-muted','These are reviews, not instructions to cancel. Check current prices and whether there is a genuinely better alternative.');target.append(report);
-  for(const a of g.actions){const div=h('section','focus-review-detail');const title=h('div','focus-review-detail-head');title.append(artwork(a.itemId),h('strong','',itemName(a.itemId)));div.append(title,h('p','',a.action),h('p','focus-muted',a.next||a.reasons?.[0]||'Inspect the current position before changing an order.'));
+ target.append(itemTitle(g.items?.keys().next().value||g.actions?.[0]?.itemId,g.name,'h3'));if(isReview){const report=h('p','focus-muted','These are reviews, not instructions to cancel. Check current prices and whether there is a genuinely better alternative.');target.append(report);
+  for(const a of g.actions){const div=h('section','focus-review-detail');const title=h('div','focus-review-detail-head');title.append(artwork(a.itemId),itemTitle(a.itemId));div.append(title,h('p','',a.action),h('p','focus-muted',a.next||a.reasons?.[0]||'Inspect the current position before changing an order.'));
    if(a.amountType==='reserved')div.append(h('p','focus-muted','Capital reserved: '+cash(a.capitalAtStake)));
    const why=h('details','focus-why');why.append(h('summary','','Why this was flagged'));for(const x of a.reasons||[])why.append(h('p','focus-muted',x));div.append(why,button('Mark reviewed',()=>{setReviewed(a);renderOrderDetail();},'focus-button focus-button-secondary'));target.append(div);}
  }else{target.append(h('p','focus-muted',num(g.units)+' units in '+num(g.orders.length)+' orders · '+cash(g.value)+(data.lane==='buy'?' committed':' at listed prices')));
-  for(const item of [...g.items.values()].sort((a,b)=>b.qty-a.qty)){const row=h('div','focus-order-detail-row');row.append(artwork(item.id));const center=h('div','focus-order-detail-copy');center.append(h('strong','',item.name),h('small','',num(item.qty)+' units · '+num(item.orders.length)+' orders'));row.append(center);const prices=h('span','focus-order-price');prices.append(h('strong','',cash(item.orders[0].price)),h('small','','per unit · first order'));row.append(prices);target.append(row);}
+  for(const item of [...g.items.values()].sort((a,b)=>b.qty-a.qty)){const row=h('div','focus-order-detail-row');row.append(artwork(item.id));const center=h('div','focus-order-detail-copy');center.append(itemTitle(item.id,item.name),h('small','',num(item.qty)+' units · '+num(item.orders.length)+' orders'));row.append(center);const prices=h('span','focus-order-price');prices.append(h('strong','',cash(item.orders[0].price)),h('small','','per unit · first order'));row.append(prices);target.append(row);}
   target.append(h('p','focus-muted focus-legal','Open orders may retain queue priority while filling. Replacing them can lose that position. Only change after reviewing actual fills and fresh alternatives; no automatic actions.'));}
  target.append(button('Inspect full order evidence',()=>showResearch('execution52-panel'),'focus-button focus-button-secondary'));
 }
