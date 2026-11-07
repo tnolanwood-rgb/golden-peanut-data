@@ -44,6 +44,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
  });
  assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
+ // The primary motivational number is strictly realised UK-day matched profit.
+ assert.equal(await page.locator('#focus-today .focus-today-profit').count(),1);
+ assert.equal(await page.locator('#focus-today .focus-summary-grid').count(),1);
+ assert.equal(await page.locator('#focus-today .focus-today-profit').evaluate(el=>el.compareDocumentPosition(document.querySelector('#focus-wallet'))&Node.DOCUMENT_POSITION_FOLLOWING),4);
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  s.summary={days:{[day]:{p100:1234567}},totalRecords:12,weekP100:1234567};
+  GPFocus.goto('today');GPFocus.render();
+ });
+ assert.match(await page.locator('#focus-today-profit').innerText(),/123g/);
+ await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
+ assert.match(await page.locator('#focus-today-profit').innerText(),/0/);
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
  assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
  await page.locator('#focus-best-rows .focus-home-order').first().click();
