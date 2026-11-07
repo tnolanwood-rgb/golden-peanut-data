@@ -372,21 +372,27 @@ def finalize_nights(account_id, stamp):
 
 
 def run():
+    """Return a process status: successful collection/intentional skip is 0.
+
+    Every attempted collection failure is nonzero, even when its diagnostic
+    cannot be persisted. Actions must not mistake a handled error for success.
+    """
     global GW2_KEY
     GW2_KEY = os.environ.get('GW2_PRIVATE_MONITOR_KEY', '').strip()
     if not GW2_KEY:
         print('No private GW2 monitor key configured. No account connection attempted.')
-        return
-    for name in ('CF_ACCOUNT_ID', 'CF_DATABASE_ID', 'CF_API_TOKEN'):
-        if not os.environ.get(name):
-            raise MonitorProblem('Required private D1 permission not configured')
-    digest = hashlib.sha256(('golden-peanut-monitor:v1:' + GW2_KEY).encode()).hexdigest()
-    # Check opt-out tombstone before contacting ArenaNet, preserving user control.
-    rows = db('SELECT enabled FROM gp_monitor_credentials WHERE token_digest=?', [digest])
-    if rows and not rows[0]['enabled']:
-        print('Private monitoring disabled in the app. No GW2 API requests made.')
-        return
+        return 0
+    digest = None
     try:
+        for name in ('CF_ACCOUNT_ID', 'CF_DATABASE_ID', 'CF_API_TOKEN'):
+            if not os.environ.get(name):
+                raise MonitorProblem('Required private D1 permission not configured')
+        digest = hashlib.sha256(('golden-peanut-monitor:v1:' + GW2_KEY).encode()).hexdigest()
+        # Check opt-out tombstone before contacting ArenaNet, preserving user control.
+        rows = db('SELECT enabled FROM gp_monitor_credentials WHERE token_digest=?', [digest])
+        if rows and not rows[0]['enabled']:
+            print('Private monitoring disabled in the app. No GW2 API requests made.')
+            return 0
         token, _ = arena('/tokeninfo')
         permissions = token.get('permissions', [])
         if 'account' not in permissions or 'tradingpost' not in permissions:
@@ -395,21 +401,25 @@ def run():
         if not isinstance(account, dict) or not isinstance(account.get('id'), str):
             raise MonitorProblem('ArenaNet did not return a valid account identity')
         if not bootstrap(account, digest):
-            return
+            return 0
         metrics, buys, sells = poll(account)
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
+        return 0
     except Exception as e:
         # No API keys, account names, API response bodies, raw SQL parameters
         # or Python tracebacks enter GitHub Actions logs.
-        safe = str(e)[:180] if isinstance(e,MonitorProblem) else 'unexpected collector processing error'
+        safe = str(e)[:180] if isinstance(e, MonitorProblem) else 'unexpected collector processing error'
         print('Monitor check inconclusive:', safe)
-        try:
-            db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1
-                  WHERE token_digest=? AND enabled=1''', [NOW(),safe,digest])
-        except MonitorProblem:
-            print('Failed to persist monitor error safely; completed account data remains unchanged.')
+        if digest is not None:
+            try:
+                db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1
+                      WHERE token_digest=? AND enabled=1''', [NOW(), safe, digest])
+            except Exception:
+                # Unexpected errors here can contain credentials or SQL too.
+                print('Failed to persist monitor error safely; partial writes may remain; poll not verified.')
+        return 1
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())

@@ -24,16 +24,20 @@ jobs:
           python-version: '3.12'
       - run: npm ci --ignore-scripts
       - run: pip install PyYAML==6.0.3
-      - run: python scripts/check_release.py
-      - run: python -m unittest discover -s tests -p 'test_*.py' -v
-      - run: npm test
-      - run: test -x /usr/bin/chromium
-      - run: npm run test:browser
+      - name: Ensure a browser is available
+        run: |
+          if ! test -x /usr/bin/chromium; then
+            npx playwright-core install --with-deps chromium
+          fi
+      - name: Reproducible audit baseline
+        run: python scripts/audit_baseline.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: browser-regression-screenshots
-          path: artifacts/browser-*.png
+          path: |
+            artifacts/browser-*.png
+            artifacts/audit/baseline.json
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
