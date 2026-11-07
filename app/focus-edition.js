@@ -761,6 +761,9 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
  const unitSubtitle=m=>'Research '+num(lot)+' × '+cash(m.buy)+' · capital '+cash(m.buy*lot)+
   ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at quoted prices'+(m.craftableSupply?' · craftable':'');
  const unitLabel=()=> 'Net IF ALL '+num(lot)+' buy AND resell · not a forecast';
+ count+=group('commodity-markets','MATERIALS, CONSUMABLES & COMMODITIES · NEW MARKETS',
+  'Includes low-margin-per-unit goods which can be worth investigating at volume. Your observed personal reductions appear where available; public standing quantities do NOT prove volume or daily profit.',
+  board.commodityLeads||[],m=>hypotheticalNet(m),unitLabel,unitSubtitle);
  count+=group('pearl-weapons','CHEAPER PEARL WEAPONS · NEW MARKETS',
   'Exotic Pearl candidates across stat prefixes. Scroll for the full list; there is no measured market-wide bulk-fill rate.',
   board.pearlLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
