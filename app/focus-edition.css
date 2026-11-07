@@ -285,3 +285,14 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .focus-settings-body{padding:10px 12px}
 .focus-settings-body .focus-account-watcher,.focus-settings-body .focus-deployment-lab{margin:0}
 .focus-monitor-warning{display:block;width:100%;text-align:left;border:1px solid #ac8260;border-radius:9px;padding:12px 13px;margin:10px 0;background:#342920;color:#ffe2af;font-weight:700;font-size:12px}
+
+/* Exact item-name rarity palette documented by the GW2 Wiki dark-mode CSS.
+ * Unknown rarities retain normal text, never guessed from the item's name. */
+.gp-item-name.gp-rarity-junk{color:#aaaaaa!important}
+.gp-item-name.gp-rarity-basic{color:#ffffff!important}
+.gp-item-name.gp-rarity-fine{color:#62a4da!important}
+.gp-item-name.gp-rarity-masterwork{color:#1a9306!important;text-shadow:0 0 1px #a4d79a}
+.gp-item-name.gp-rarity-rare{color:#fcd00b!important}
+.gp-item-name.gp-rarity-exotic{color:#ffa405!important}
+.gp-item-name.gp-rarity-ascended{color:#fb3e8d!important}
+.gp-item-name.gp-rarity-legendary{color:#974eff!important}
