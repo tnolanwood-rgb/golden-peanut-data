@@ -11,6 +11,7 @@ const net=(unit,qty)=>{let left=qty,total=0;while(left>0){const n=Math.min(250,l
 const when=x=>{const t=Date.parse(x);return Number.isFinite(t)?t:NaN;};
 const fresh=(x,now)=>finite(when(x))&&when(x)<=now+30000&&now-when(x)<=30*MINUTE;
 const souvenir=/\b(?:infusion|music box|miniature|mini |ticket|tonic|skin|recipe:|toy-|envelope)\b/i;
+const isCommodityType=type=>['CraftingMaterial','UpgradeComponent','Consumable','Container','Trophy'].includes(type);
 function equipmentKind(name,type,rarity){
  if(rarity!=='Exotic')return null;
  if(type==='Armor')return 'armor';
@@ -41,8 +42,20 @@ function measuredNightCapacity(data,quantity,now){
  return {buy,sell,units:Math.max(0,Math.min(quantity,buy.p25,sell.p25)),
   label:'Personal fully observed overnight orders (including zero fills); buy and sale separately observed'};
 }
-const studyScore=x=>x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
- Math.pow(1+x.buy/10000,.85);
+/* Two separately observed PERSONAL order reductions are stronger research
+ * evidence than a public spread alone, but not proof of a matched round trip.
+ * The modest capped weight never creates an order quantity or fill forecast. */
+const personalSideFills=x=>{
+ const buy=whole(x.observedOrderFillsAll)?x.observedOrderFillsAll:0;
+ const sell=whole(x.observedSellFillsAll)?x.observedSellFillsAll:0;
+ return {buy,sell,pairedReference:Math.min(buy,sell)};
+};
+const studyScore=x=>{
+ const base=x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
+  Math.pow(1+x.buy/10000,.85);
+ const observed=personalSideFills(x).pairedReference;
+ return base*(1+Math.min(.20,Math.log1p(observed)/15));
+};
 function diverseEquipment(rows,max=150){
  // Preserve cheap price bands and stat diversity instead of repeatedly
  // showing the largest one-unit gross spread from a single stat family.
@@ -69,7 +82,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  if(!plan?.ok)return empty;
  const available=whole(wallet)?wallet:(whole(plan.budget)?plan.budget:0);
  const forecast=(root.GPExecution?.ranked?.(plan)?.rows||[]).filter(o=>finite(o.expectedProfit)&&o.expectedProfit>0&&whole(o.quantity,1)&&whole(o.cost,1)&&o.cost<=available)
-  .map(o=>({...o,tier:'calibrated-24h',kind:'funded'}))
+  .map(o=>({...o,tier:'empirical-24h-unvalidated',calibrated:false,kind:'funded'}))
   .sort((a,b)=>b.expectedProfit-a.expectedProfit||a.id-b.id);
  const standing=(plan.activeBook?.entries||[]).filter(o=>whole(o.id,1)&&whole(o.scenarioUnits,1)&&finite(o.conditionalWeek)&&o.conditionalWeek>0)
   .map(o=>({id:o.id,kind:'standing',tier:'current-position',quantity:o.scenarioUnits,openUnits:o.units,
@@ -120,13 +133,27 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   if(type==='Consumable'&&/unlock/i.test(subtype))continue;
   if(!whole(c.buy,1)||!whole(c.exit,1)||c.buy>250000||c.exit<=c.buy||souvenir.test(name))continue;
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
-  if(!finite(margin)||margin<50||roi<.055||roi>1.5||Number(c.sellQty||0)<2||Number(c.buyQty||0)<4)continue;
+  // A fixed 50c per-unit threshold suppressed Jute/Wood/Leather-style
+  // commodity markets even when the user's completed trades supported them.
+  // These are READ-ONLY discovery leads: standing book depth does not imply
+  // actual turnover, so the lower 2c margin gate requires a nontrivial quote
+  // on both sides without projecting a bulk order or daily profit.
+  const commodity=isCommodityType(type);
+  const minUnitMargin=commodity?2:50;
+  const minBuyBook=commodity?20:4,minSellBook=commodity?20:2;
+  if(!finite(margin)||margin<minUnitMargin||roi<.055||roi>1.5||
+     Number(c.sellQty||0)<minSellBook||Number(c.buyQty||0)<minBuyBook)continue;
   // No requested lot size or overnight profit forecast on a public quote.
   newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
    buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
+   observedOrderFillsAll:personalSideFills(c).buy,observedSellFillsAll:personalSideFills(c).sell,
+   observedOrderFills24h:whole(c.observedOrderFills24h)?c.observedOrderFills24h:0,
+   observedSellFills24h:whole(c.observedSellFills24h)?c.observedSellFills24h:0,
    affordability:c.buy<=available?'one-unit-affordable':'not-wallet-funded',at:c.at,
    craftableSupply:c.craftableSupply||null,
-   evidence:'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
+   evidence:personalSideFills(c).pairedReference>0?
+    'Separate verified personal buy- and sell-order reductions + public spread; NOT an attributed round trip or 24h fill estimate.':
+    'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
  }
  const candidateRank=(a,b)=>
    Number(b.buy<=available)-Number(a.buy<=available)||
@@ -135,7 +162,9 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  const cheapLimit=Math.min(100000,Math.max(10000,Math.floor(available)));
  const pearlLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='pearl'&&x.buy<=cheapLimit));
  const armorLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='armor'&&x.buy<=cheapLimit));
- const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&x.buy<=cheapLimit&&
+ const commodityLeads=newMarkets.filter(x=>isCommodityType(x.type)&&x.buy<=cheapLimit&&
+   x.buy<=Math.max(1,available)*.65).sort(candidateRank).slice(0,150);
+ const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&!isCommodityType(x.type)&&x.buy<=cheapLimit&&
    x.buy<=Math.max(1,available)*.65).sort(candidateRank);
  const historyEquipment=history.filter(x=>{
   const meta=metadata?.[x.id]||{};
@@ -143,7 +172,8 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  });
  const uniq=a=>{const seen=new Set();return a.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});};
  const categories={forecast:uniq(forecast),standing:uniq(standing),history:uniq(history),
-  historyEquipment:uniq(historyEquipment),pearlLeads:uniq(pearlLeads),armorLeads:uniq(armorLeads),
+  historyEquipment:uniq(historyEquipment),commodityLeads:uniq(commodityLeads),
+  pearlLeads:uniq(pearlLeads),armorLeads:uniq(armorLeads),
   otherLeads:uniq(otherLeads),newMarkets:uniq(newMarkets)};
  const counts={...Object.fromEntries(Object.entries(categories).map(([k,v])=>[k,v.length])),
   scanned:plan.candidateRefresh?.checked||0,catalogue:plan.publicCatalogue?.items||0,
@@ -151,7 +181,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   broadCandidates:plan.publicDiscovery?.broadMarginCandidates||0,
   rawPersonalResearch:plan.marketChoices?.length||0,rawPublicResearch:plan.publicResearch?.length||0,
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
- return {ready:true,...categories,counts,available,disclaimer:'Only calibrated 24h entries are expected-profit estimates. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
+ return {ready:true,...categories,counts,available,disclaimer:'Empirical 24h estimates are NOT calibrated predictions. Other figures are historical or conditional what-if margins. Personal order reductions do not prove matched buy-to-resale turnover. No orders are placed automatically.'};
 }
 root.GPMarketBoard={buildId:'7.16.0-evidence',build};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketBoard;

@@ -1265,6 +1265,39 @@ function resumeExpanded(state){
  state.opportunityDeepPaused=false;state.opportunityDeepLastStarted=0;
  return queueExpanded(state,{immediate:true});
 }
+/* Rotate read-only cloud night checks across ALL quoted active order items.
+ * A 40-ID API request previously always chose only the highest historical
+ * winners and the first 30 buys. With 200+ outstanding orders, later items
+ * never gained their own nighttime evidence. No extra API calls are made:
+ * keep the 40-ID cap and persist the cursor across app restarts. */
+function selectPrivateNightCandidates({ranked=[],snapshot={},buyEvidence=null,sellEvidence=null,
+ quotedIds=new Set(),cursor=0,now=Date.now(),limit=40}={}){
+ const eligible=quotedIds instanceof Set?quotedIds:new Set(quotedIds||[]);
+ const max=Math.min(40,Math.max(1,Math.floor(Number(limit)||40)));
+ const ids=[],seen=new Set();
+ const add=id=>{if(!valid(id)||!eligible.has(id)||seen.has(id)||ids.length>=max)return;
+  seen.add(id);ids.push(id);};
+ // Prioritise a small subset of older proven winners and newly OBSERVED
+ // personal order reductions, then allocate the remaining 24+ slots to rotation.
+ for(const o of (ranked||[]).slice(0,8))add(o.id);
+ const recent=[...(buyEvidence?.events||[]),...(sellEvidence?.events||[])]
+  .filter(e=>valid(e?.item)&&finite(e?.at)&&e.at<=now&&now-e.at<=7*DAY)
+  .sort((a,b)=>b.at-a.at||a.item-b.item);
+ let eventSlots=0;
+ for(const e of recent){if(eventSlots>=8)break;if(seen.has(e.item)||!eligible.has(e.item))continue;
+  add(e.item);eventSlots++;}
+ const active=[...new Set([...(snapshot?.buys||[]),...(snapshot?.sells||[])]
+  .map(o=>o.item).filter(id=>valid(id)&&eligible.has(id)))].sort((a,b)=>a-b);
+ const offset=active.length?Math.max(0,Math.floor(Number(cursor)||0))%active.length:0;
+ let advance=0;
+ for(let i=0;i<active.length&&ids.length<max;i++){
+  const id=active[(offset+i)%active.length];advance=i+1;add(id);
+ }
+ for(const o of ranked||[])if(ids.length<max)add(o.id);
+ return {ids,nextCursor:active.length?(offset+advance)%active.length:0,
+  activeQuotedMarkets:active.length,selectedRecentEvents:eventSlots,
+  limitation:'At most 40 quoted item IDs per cloud lookup; rotating active orders are research evidence, not proof of fills or future liquidity'};
+}
 async function refresh(state,{force=true,phase='quick'}={}){
  const deep=phase==='deep';
  if(busy)return state.opportunityPlan||null;
@@ -1392,15 +1425,24 @@ async function refresh(state,{force=true,phase='quick'}={}){
   // new evidence. A failed background lookup never invents a fill rate.
   const privateNights=new Map(),cloudMonitor=root.GPCloudAccount;
   if(cloudMonitor?.primeNights&&cloudMonitor.status?.(state.account)?.enabled){
-   const quoted=new Set(quotes.map(q=>q.id));
-   const ids=[...new Set([
-    ...hist.ranked.slice(0,35).map(x=>x.id),
-    ...(snap.buys||[]).slice(0,30).map(x=>x.item),
-    ...(snap.sells||[]).slice(0,20).map(x=>x.item)
-   ])].filter(id=>quoted.has(id)).slice(0,40);
+   const account=state.account,rotationKey='private-night-review-cursor-v1';
    try{
-    const result=await cloudMonitor.primeNights(state,ids);
+    const savedCursor=(await state.db.get('config',account,rotationKey))?.value?.cursor||0;
+    const selection=selectPrivateNightCandidates({
+     ranked:hist.ranked,snapshot:snap,buyEvidence:state.orderEvidence,
+     sellEvidence:state.sellOrderEvidence,
+     quotedIds:new Set(quotes.map(q=>q.id)),cursor:savedCursor,now:Date.now()
+    });
+    if(state.account!==account)throw Error('Account changed during private-night selection');
+    const result=await cloudMonitor.primeNights(state,selection.ids);
+    if(state.account!==account)throw Error('Account changed during private-night lookup');
     for(const [id,data]of result)privateNights.set(id,data);
+    if(selection.ids.length)try{
+     await state.db.put('config',account,rotationKey,{
+      cursor:selection.nextCursor,activeQuotedMarkets:selection.activeQuotedMarkets,
+      lastChecked:selection.ids.length,at:new Date().toISOString()
+     });
+    }catch{state.privateNightStatus='Night evidence read; rotation checkpoint could not be saved';}
    }catch(e){state.privateNightStatus='Cloud night lookup incomplete; saved market history retained';}
   }
   const plan=evaluate({learning:state.executionLearning||{},ledger:state.ledger,quotes:relevant.filter(Boolean),metadata:state.meta,snapshot:snap,now:Date.now(),budget:snap.wallet,
@@ -1488,6 +1530,6 @@ async function refresh(state,{force=true,phase='quick'}={}){
   if(!deep&&state.opportunityPlan?.ok)queueExpanded(state);
  }
 }
-root.GPOpportunity={buildId:MARKET_BUILD,validateOvernightModel,equipmentFamily,extendTradableCatalogue,observeSellOrderBook,nightlyExposure,tradingNightKey,researchPolicy,validateResearchCandidate,researchWatchLeads,history,discoveryIds,equipmentVariantSeeds,equipmentCoverageAudit,position,findQuantity,evaluate,capitalReview,activeBookScenario,rankedMarkets,historicalExperiments,earningsPace,gatherPublicSeeds,ensurePublicUniverse,researchQuoteScore,publicResearchCandidates,researchLots,observeBuyOrderBook,observedFillsByItem,ensureRecipeUniverse,craftableEquipmentSeeds,analyseCraftRoutes,craftLots,recipeByOutput,safeMetadata,safePrices,refresh,queueExpanded,stopExpanded,resumeExpanded,saleNet};
+root.GPOpportunity={buildId:MARKET_BUILD,selectPrivateNightCandidates,validateOvernightModel,equipmentFamily,extendTradableCatalogue,observeSellOrderBook,nightlyExposure,tradingNightKey,researchPolicy,validateResearchCandidate,researchWatchLeads,history,discoveryIds,equipmentVariantSeeds,equipmentCoverageAudit,position,findQuantity,evaluate,capitalReview,activeBookScenario,rankedMarkets,historicalExperiments,earningsPace,gatherPublicSeeds,ensurePublicUniverse,researchQuoteScore,publicResearchCandidates,researchLots,observeBuyOrderBook,observedFillsByItem,ensureRecipeUniverse,craftableEquipmentSeeds,analyseCraftRoutes,craftLots,recipeByOutput,safeMetadata,safePrices,refresh,queueExpanded,stopExpanded,resumeExpanded,saleNet};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPOpportunity;
 })(typeof globalThis!=='undefined'?globalThis:this);
