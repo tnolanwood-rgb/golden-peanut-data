@@ -403,3 +403,7 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
  .focus-delivery-ask,.focus-delivery-net,.focus-delivery-net>.focus-money{font-size:9.5px}
  .focus-delivery-net .focus-money img{width:9px;height:9px}
 }
+
+/* Distinguish estimated profit/loss from gross sale proceeds. */
+.focus-delivery-net.is-loss,.focus-delivery-net.is-loss>.focus-money{color:#f4afa5}
+.focus-delivery-unpriced{font-weight:550;color:#c4c9bd}
