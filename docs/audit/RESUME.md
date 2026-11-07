@@ -6,7 +6,9 @@ Implementation `e7e6e57e5af36c096362ae1846890b500eade67e` repairs private collec
 false-success exits and adds `scripts/audit_baseline.py`. Root AGENTS.md governs work.
 
 1. Fetch GitHub; inspect status and instructions. Read STATE, then relevant roadmap,
-   findings/evidence. Verify implementation SHA exists; inspect whether audit PR merged.
+   findings/evidence. Verify implementation SHA exists; inspect whether PR #20 merged.
+   CI 42324153790 passed at 6776e3f; subsequent checkpoint changes are docs only.
+   Confirm any newer CI before continuing. P0-001 is verified; no code is in progress.
 2. If unmerged, continue its branch or a dependent review branch; do not reset main
    or overwrite other changes. Old 7.16 branch is already contained in current main.
 3. Next: **P0-002**, release identity. `package.json`, `check_release.py`, and production

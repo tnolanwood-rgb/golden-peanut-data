@@ -23,7 +23,7 @@ entrypoint regressions and 4 harness tests (31 total); JS and assembled browser
 remain unchanged. Failure, D1 write, diagnostic write, missing configuration,
 success and intentional skip paths exercised with synthetic transport responses.
 No-key/disabled success does not mean collection occurred. Logs stay ignored locally.
-CI runs the same harness on Node 22 (local Node 24); remote result pending PR. Final local run: all four checks VERIFIED;
+CI runs the same harness on Node 22 (local Node 24); remote result subsequently passed (see closure below). Final local run: all four checks VERIFIED;
 `/tmp/actionlint` passed all workflows.
 
 ## Live observations and limits
@@ -45,3 +45,18 @@ P0-002 must reconcile asset identity. Public status 200 is not private data proo
 
 Physical Android, private persisted lineage and predictive calibration remain
 UNVERIFIED. No merge, production deployment or database mutation performed.
+
+## Session closure: verified remote CI
+
+[PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20) is open,
+unmerged and conflict-free at verification. Main remains d7d2a24.
+[CI run 42324153790](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42324153790)
+completed successfully on PR head `6776e3fc25ff00194badf904c7081eadff078d7b`.
+Job `128255431960` confirms baseline, browser availability, artifact upload and
+actionlint steps all succeeded (none skipped). Node 22 CI complements Node 24 local.
+
+This closure changes documentation only. `git diff --check` validates whitespace;
+no redundant full suite is needed. A newly triggered run on the final documentation
+commit is not claimed as passed; next session should check it. P0-001 is VERIFIED;
+Phase 0 remains partial pending P0-002. No deployment or merge performed. Stop here
+at the user's request to conserve allowance, then resume P0-002 from GitHub.

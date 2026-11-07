@@ -3,7 +3,7 @@
 Updated: 2026-11-07 UTC. Start here, then RESUME.md. Historical 7.16 documents are
 release history, not the current architecture/access record.
 
-- **Phase / batch:** Phase 0, P0-001 — trustworthy, resumable baseline and collector failure status.
+- **Phase / batch:** Phase 0 (partial), P0-001 VERIFIED — trustworthy, resumable baseline and collector failure status.
 - **Branch:** `development/audit-p0-checkpoint`, based on `origin/main` at
   `d7d2a243b490c382a3c2bf6f1be3fdad764302a7` (release-labelled 7.24).
 - **Latest implementation:** `e7e6e57e5af36c096362ae1846890b500eade67e`.
@@ -19,7 +19,13 @@ release history, not the current architecture/access record.
   collector API/D1 failures now exit 1, intentional opt-out/no-key skips remain 0;
   subprocess/privacy regressions; fail-closed baseline runner and CI integration;
   durable seven-file audit system and root session instructions.
-- **In progress:** PR CI evidence reconciliation; see EVIDENCE.md.
+- **In progress:** none; stopped at a clean batch boundary to conserve allowance.
+- **Review:** [PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20)
+  is open, unmerged and conflict-free as checked this session. Main remains d7d2a24.
+  [CI 42324153790](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42324153790)
+  passed at checkpoint `6776e3fc25ff00194badf904c7081eadff078d7b`, including the
+  assembled baseline and actionlint. Final checkpoint changes are documentation only;
+  any newly triggered CI must be checked next session.
 - **Failures/blockers:** F002 stale release identity/gates; F003 uncalibrated estimates
   labelled calibrated; F004 actual private D1-to-app lineage unverified. No direct
   Cloudflare credentials, account key or real Android device in this session.
@@ -29,12 +35,13 @@ release history, not the current architecture/access record.
 - **Tests completed:** baseline d7d2a24: source check (31 JS programs), 20 Python tests,
   8 JS test files including 141,879-row synthetic scale fixture, desktop/mobile
   assembled browser. New collector targeted suite: 17 tests; harness: 4 tests.
-  Final consolidated result/CI links are in EVIDENCE.md.
+  Final baseline: 31 Python tests, 8 JS test files, source validation, desktop/mobile
+  Chromium and actionlint passed locally and in CI. See EVIDENCE.md.
 - **Still required:** real private persisted-row → authenticated API → app lineage;
   correct production static assets; physical S23 Ultra; independent financial oracle;
   real forecast calibration. None is implied by mocked green tests.
 - **Authority / release:** push/PR permitted. No merge or production deployment done
-  by this batch. Local checks passed; ready for PR review; remote CI pending; production release is NOT approved
+  by this batch. Local and remote implementation checks passed; ready for PR review; production release is NOT approved
   by this checkpoint. No migrations, schema changes, secret changes or game orders.
 - **Environment:** `/workspace/gp-audit` is the current worktree; `/workspace/repository`
   retains old 7.16 checkout. Shell networking/local servers need network permission.
