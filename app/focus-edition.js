@@ -70,8 +70,10 @@ function marketBoard(state){
 function scheduleMetadataWhenVisible(wrap,id,retry=false){
  if(typeof IntersectionObserver!=='function'){queueMeta([id],retry);return;}
  if(!iconVisibilityObserver)iconVisibilityObserver=new IntersectionObserver(entries=>{
-  for(const e of entries)if(e.isIntersecting){
+  for(const e of entries)if(e.isIntersecting||!e.target.isConnected){
+   // The UI may replace rows during a refresh; release detached targets.
    iconVisibilityObserver.unobserve(e.target);
+   if(!e.isIntersecting||!e.target.isConnected)continue;
    const item=Number(e.target.dataset.itemId);
    if(item>0)queueMeta([item]);
   }
@@ -1598,6 +1600,19 @@ function renderVisible({background=false}={}){
  }else if(ui.tab==='orders'){
   if(!background||!(ui.orderDetail&&!$('focus-order-detail').hidden))renderOrders();
  }else if(ui.tab==='legendaries')updateLegendView();
+ // A deliberately opened Settings panel stays up-to-date even if the
+ // underlying page is Orders or Trades. Collapsed shelves do no work.
+ if(ui.tab!=='today'&&$('focus-research')?.hidden===false){
+  const s=State();
+  if($('focus-monitor-settings')?.open){
+   const host=$('focus-account-watcher-host');
+   if(host){host.replaceChildren();renderAccountWatcher(host,s);}
+  }
+  if($('focus-capital-settings')?.open){
+   const host=$('focus-deployment-research');
+   if(host){host.replaceChildren();if(s?.opportunityPlan?.ok)renderDeploymentPlanner(host,s);}
+  }
+ }
  const s=State(),busy=s?.busy||s?.allocationBusy;
  labelText('focus-sync-state',busy?'Refreshing saved account and market evidence…':
   s?.error?'Some account data may be unavailable; previous values were kept.':'');
