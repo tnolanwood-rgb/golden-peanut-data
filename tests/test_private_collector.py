@@ -220,5 +220,54 @@ class PrivateMonitorTests(unittest.TestCase):
         self.assertEqual(len(rows), 400)
 
 
+    def test_unchanged_open_orders_are_not_rewritten(self):
+        order = {"id": 123, "item_id": 19684, "quantity": 20, "price": 125,
+                 "created": "2026-11-06T11:00:00Z"}
+        previous = {"side": "buys", "order_id": 123, "item_id": 19684,
+                    "price": 125, "remaining": 20, "first_seen_at": 123456}
+        writes = []
+        def fake_db(sql, params=()):
+            writes.append((sql, params))
+            if sql.lstrip().startswith("SELECT side,order_id,item_id,price,remaining,first_seen_at"):
+                return [previous]
+            return []
+        def fake_current(side):
+            return [order] if side == "buys" else []
+        with mock.patch.object(m, "db", side_effect=fake_db), \
+             mock.patch.object(m, "current_side", side_effect=fake_current), \
+             mock.patch.object(m, "history_side", return_value=[]), \
+             mock.patch.object(m, "finalize_nights", return_value=0):
+            counts, buys, sells = m.poll({"id": "fixture-account"})
+        self.assertEqual((buys, sells), (1, 0))
+        self.assertEqual(counts["newTrades"], 0)
+        self.assertFalse(any("INSERT INTO gp_monitor_orders" in sql for sql, _ in writes))
+        self.assertFalse(any("INTO gp_monitor_events" in sql for sql, _ in writes))
+
+    def test_partial_fill_is_still_written_once(self):
+        order = {"id": 123, "item_id": 19684, "quantity": 15, "price": 125,
+                 "created": "2026-11-06T11:00:00Z"}
+        previous = {"side": "buys", "order_id": 123, "item_id": 19684,
+                    "price": 125, "remaining": 20, "first_seen_at": 123456}
+        writes = []
+        def fake_db(sql, params=()):
+            writes.append((sql, params))
+            if sql.lstrip().startswith("SELECT side,order_id,item_id,price,remaining,first_seen_at"):
+                return [previous]
+            return []
+        with mock.patch.object(m, "db", side_effect=fake_db), \
+             mock.patch.object(m, "current_side", side_effect=lambda s: [order] if s == "buys" else []), \
+             mock.patch.object(m, "history_side", return_value=[]), \
+             mock.patch.object(m, "finalize_nights", return_value=0):
+            counts, _, _ = m.poll({"id": "fixture-account"})
+        self.assertEqual(counts["partialUnits"], 5)
+        self.assertTrue(any("INSERT INTO gp_monitor_orders" in sql for sql, _ in writes))
+        self.assertTrue(any("INTO gp_monitor_events" in sql for sql, _ in writes))
+
+    def test_public_cloud_collector_runs_hourly_with_separate_shadow_reports(self):
+        text = (SOURCE.parents[2] / ".github/workflows/Golden_Peanut_Background_Collector.yml").read_text()
+        self.assertIn('cron: "7 * * * *"', text)
+        self.assertNotIn('cron: "7,22,37,52 * * * *"', text)
+        self.assertIn('cron: "35 4,16 * * *"', text)
+
 if __name__ == "__main__":
     unittest.main()

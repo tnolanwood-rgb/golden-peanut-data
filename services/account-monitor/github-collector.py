@@ -25,6 +25,7 @@ MAX_CURRENT_PAGES = 20
 MAX_HISTORY_PAGES = 12
 QUERY_BATCH = 30
 MAX_D1_PARAMS = 100  # Cloudflare D1 hard limit, not SQLite's usual 999+
+D1_ROWS_WRITTEN = 0
 NOW = lambda: int(time.time() * 1000)
 
 
@@ -96,6 +97,7 @@ def arena(path):
 
 
 def db(sql, params=()):
+    global D1_ROWS_WRITTEN
     # Private verification run: classify D1 errors without logging queries.
     url = 'https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query' % (
         os.environ['CF_ACCOUNT_ID'], os.environ['CF_DATABASE_ID'])
@@ -127,6 +129,8 @@ def db(sql, params=()):
     if not data.get('success') or any(not x.get('success', False) for x in data.get('result', [])):
         raise MonitorProblem('Cloudflare private D1 query rejected')
     groups = data.get('result') or []
+    for part in groups:
+        D1_ROWS_WRITTEN += int((part.get('meta') or {}).get('rows_written') or 0)
     return groups[0].get('results', []) if groups else []
 
 
@@ -218,7 +222,12 @@ def bootstrap(account, digest):
       VALUES(?,?,?,NULL,NULL,1,?)
       ON CONFLICT(account_id) DO UPDATE SET
       account_name=excluded.account_name,token_digest=excluded.token_digest,
-      iv=NULL,encrypted=NULL,enabled=1''',
+      iv=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.iv ELSE NULL END,
+      encrypted=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.encrypted ELSE NULL END,
+      enabled=1
+      WHERE gp_monitor_credentials.account_name IS NOT excluded.account_name
+         OR gp_monitor_credentials.token_digest IS NOT excluded.token_digest
+         OR gp_monitor_credentials.enabled<>1''',
       [account['id'], account['name'], digest, NOW()])
     return True
 
@@ -292,8 +301,12 @@ def poll(account):
                     events.append((account_id, 'partial:%s:%d:%d' % (side, order_id, stamp),
                                   'partial', side, order_id, item, price, old_qty - qty, stamp, old_qty, qty))
                     counts['partialUnits'] += old_qty - qty
-            orders.append((account_id, side, order_id, item, price, qty,
-                           int(old['first_seen_at']) if old and 'first_seen_at' in old else stamp, stamp))
+            # Avoid rewriting unchanged open orders on every 30-minute poll.
+            # last_changed_at must reflect actual changes, not poll frequency.
+            if (not old or int(old['item_id']) != item or
+                    int(old['price']) != price or int(old['remaining']) != qty):
+                orders.append((account_id, side, order_id, item, price, qty,
+                               int(old['first_seen_at']) if old and 'first_seen_at' in old else stamp, stamp))
         for (old_side, order_id), old in open_map.items():
             if old_side != side or (old_side, order_id) in observed:
                 continue
@@ -405,6 +418,7 @@ def run():
         metrics, buys, sells = poll(account)
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
+        print('D1 rows written by private collector this run: %d' % D1_ROWS_WRITTEN)
         return 0
     except Exception as e:
         # No API keys, account names, API response bodies, raw SQL parameters
