@@ -387,3 +387,23 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
  .focus-delivery-label strong{font-size:10px}
  .focus-delivery-quantity{font-size:9px}
 }
+
+/* 7.27 — one combined Delivery Box value and item-specific public listing
+ * scenarios. Small Android widths wrap monetary detail, never truncate it. */
+.focus-delivery-caption{display:block;overflow-wrap:anywhere}
+.focus-delivery-row{align-items:flex-start}
+.focus-delivery-row .focus-item-art{margin-top:2px}
+.focus-delivery-row .focus-delivery-quantity{margin-top:3px}
+.focus-delivery-ask{display:block;font-size:10px;line-height:1.3;color:#d4c59e;margin-top:3px;overflow-wrap:anywhere}
+.focus-delivery-net{font-size:10px;line-height:1.3;color:#a6e0b4;margin-top:3px;font-weight:720}
+.focus-delivery-net>.focus-money{display:inline-flex;flex-wrap:wrap;white-space:normal;column-gap:3px;row-gap:1px;font-size:10px}
+.focus-delivery-net .focus-money-part{gap:1px}
+.focus-delivery-net .focus-money img{width:10px;height:10px}
+@media(max-width:460px){
+ .focus-delivery-ask,.focus-delivery-net,.focus-delivery-net>.focus-money{font-size:9.5px}
+ .focus-delivery-net .focus-money img{width:9px;height:9px}
+}
+
+/* Distinguish estimated profit/loss from gross sale proceeds. */
+.focus-delivery-net.is-loss,.focus-delivery-net.is-loss>.focus-money{color:#f4afa5}
+.focus-delivery-unpriced{font-weight:550;color:#c4c9bd}
