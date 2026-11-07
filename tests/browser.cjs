@@ -384,6 +384,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account settings and research'}).click();
  await page.locator('#focus-monitor-settings > summary').click();
  const watch=page.locator('#focus-account-watcher-host .focus-account-watcher');
+ await watch.waitFor({state:'visible',timeout:4000});
  assert.equal(await watch.isVisible(),true);
  assert.match(await watch.innerText(),/The private cloud monitor is currently unreachable/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
