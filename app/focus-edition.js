@@ -323,7 +323,7 @@ function install(){if(started)return;started=true;load();document.body.classList
  capitalShelf.addEventListener('toggle',()=>{
   if(!capitalShelf.open)return;
   capitalBody.replaceChildren();
-  if(State()?.opportunityPlan?.ok)renderDeploymentPlanner(capitalBody,State());
+  if(tradeData('wallet').valid)renderDeploymentPlanner(capitalBody,State());
  });
  overlay.append(engine);app.append(overlay);$('focus-research-close').addEventListener('click',dismissResearch);overlay.addEventListener('keydown',ev=>{if(ev.key==='Escape')dismissResearch();});
  initToday();initTrades();initOrders();initLegend();
@@ -1626,7 +1626,7 @@ function renderVisible({background=false}={}){
   }
   if($('focus-capital-settings')?.open){
    const host=$('focus-deployment-research');
-   if(host){host.replaceChildren();if(s?.opportunityPlan?.ok)renderDeploymentPlanner(host,s);}
+   if(host){host.replaceChildren();if(tradeData('wallet').valid)renderDeploymentPlanner(host,s);}
   }
  }
  const s=State(),busy=s?.busy||s?.allocationBusy;
