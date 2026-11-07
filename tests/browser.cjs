@@ -95,7 +95,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row').count(),2);
  assert.match(await page.locator('#focus-best-rows .focus-top-research-row').first().innerText(),/BUY 3 ×|BUY 2 ×/);
  assert.match(await page.locator('#focus-best-rows .focus-top-research-row').first().innerText(),/NOT a forecast/);
- assert.match(enriched,/HISTORY-BACKED MARKETS/);
+ assert.match(enriched,/TOP BUY RESEARCH/);
+ assert.equal(await page.locator('#focus-best-rows .focus-account-watcher').count(),0,'monitor panel must not fill the Trading Desk');
  assert.match(enriched,/Cleric's Pearl Sword/);
  assert.match(enriched,/Berserker's Shattered Sword/);
  assert.match(enriched,/CHEAPER PEARL WEAPONS/);
@@ -104,7 +105,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(enriched,/Magi's Exalted Coat/);
  assert.match(enriched,/Net IF ALL 10 buy AND resell/);
  assert.doesNotMatch(enriched,/Jormag's Claw Fragment|20 units.*Dire Pearl Reaver/);
- assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),4);
+ assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),2,'top candidates are not duplicated in lower research lists');
  // The quantity control MUST live on the market LIST, not only item details.
  const marketLot=page.locator('#focus-best-rows .focus-market-lot-select');
  assert.equal(await marketLot.inputValue(),'10');
@@ -119,6 +120,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  // History was pushed by the actual item tap; the Android-equivalent browser
  // Back must return to the in-app list, not navigate out of our app.
  assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
+ assert.match(new URL(page.url()).hash,/^#gp-route-\d+-trades$/);
  await page.goBack();
  await page.waitForFunction(()=>!document.querySelector('#focus-trade-list-view').hidden);
  assert.equal(new URL(page.url()).origin,origin);
@@ -135,6 +137,17 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.goBack();
  await page.waitForFunction(()=>!document.querySelector('#focus-today').hidden);
  assert.equal(new URL(page.url()).origin,origin);
+ // Native Android Back and the visible Back must both close Settings.
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ assert.equal(await page.locator('#focus-research').isVisible(),true);
+ assert.match(new URL(page.url()).hash,/^#gp-route-\d+-today-settings$/);
+ await page.goBack();
+ await page.waitForFunction(()=>document.querySelector('#focus-research')?.hidden);
+ assert.equal(await page.locator('#focus-today').isVisible(),true);
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ await page.getByRole('button',{name:'Back to trading'}).click();
+ await page.waitForFunction(()=>document.querySelector('#focus-research')?.hidden);
+ assert.equal(await page.locator('#focus-today').isVisible(),true);
  // Re-enter the Pearl detail for the execution benchmark regression.
  await page.locator('#focus-best-rows .focus-connected-market').filter({hasText:'Dire Pearl Reaver'}).click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
@@ -210,8 +223,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   st.opportunityPlan.activeBook={committed:8070091,entries:[]};
   GPFocus.goto('today');GPFocus.render();
  });
- const lab=page.locator('#focus-best-rows .focus-deployment-lab');
- assert.equal(await lab.count(),1);
+ // Capital allocation is optional detail under ⚙ Settings, not the home screen.
+ assert.equal(await page.locator('#focus-best-rows .focus-deployment-lab').count(),0);
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ await page.locator('#focus-capital-settings > summary').click();
+ const lab=page.locator('#focus-deployment-research .focus-deployment-lab');
+ assert.equal(await lab.isVisible(),true);
  assert.match(await lab.innerText(),/CAPITAL DEPLOYMENT/);
  assert.match(await lab.innerText(),/WHAT-IF ONLY/);
  assert.match(await lab.innerText(),/Already committed to buys/);
@@ -323,22 +340,20 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');
  const scrollSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null')?.sectionScrolls);
  assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
- const watch=page.locator('#focus-best-rows .focus-account-watcher');
- assert.equal(await watch.count(),1);
+ // The monitor is an opt-in privacy setting, not a permanent trading card.
+ assert.equal(await page.locator('#focus-best-rows .focus-account-watcher').count(),0);
+ assert.equal(await page.locator('#focus-watcher-jump').count(),0);
+ await page.getByRole('button',{name:'Account settings and research'}).click();
+ await page.locator('#focus-monitor-settings > summary').click();
+ const watch=page.locator('#focus-account-watcher-host .focus-account-watcher');
+ assert.equal(await watch.isVisible(),true);
  assert.match(await watch.innerText(),/The private cloud monitor is currently unreachable/);
  assert.equal(await watch.getByRole('button',{name:'Background monitoring unavailable'}).isDisabled(),true);
- // This is an account setting, not a trading forecast: it must remain
- // visible when price/forecast research goes stale.
+ // Controls remain accessible with no fresh quotes, but never on the desk.
  await page.evaluate(()=>{GoldenPeanutClean.State.opportunityPlan.at=0;GPFocus.render();});
- await page.waitForFunction(()=>document.querySelector('#focus-account-watcher'));
- assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
- assert.match(await page.locator('#focus-account-watcher').innerText(),/ACCOUNT TRADE WATCHER/);
- await page.evaluate(()=>GPFocus.goto('trades'));
- await page.getByRole('button',{name:'Account Trade Watcher'}).click();
- await page.waitForFunction(()=>document.querySelector('#focus-account-watcher')?.getBoundingClientRect().top<innerHeight);
- assert.equal(await page.locator('#focus-account-watcher').isVisible(),true);
- assert.match(await page.locator('#focus-account-watcher').innerText(),/The private cloud monitor is currently unreachable/);
- assert.match(await page.locator('#focus-account-watcher [data-monitor-state=off]').innerText(),/OFF — background monitoring/);
+ assert.equal(await watch.isVisible(),true);
+ assert.equal(await page.locator('#focus-best-rows .focus-account-watcher').count(),0);
+ assert.match(await watch.innerText(),/ACCOUNT TRADE WATCHER/);
  // WebViews may suppress native confirm()/alert(). Enrollment must use
  // explicit in-page consent and must NEVER send a key just from Watch click.
  await page.evaluate(()=>{
@@ -376,7 +391,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  await page.waitForFunction(()=>document.querySelector('#focus-account-watcher [data-monitor-state=active]'));
  assert.match(await page.locator('#focus-account-watcher [data-monitor-state=active]').innerText(),/ACTIVE — last successful cloud check/);
- assert.match(await page.locator('#focus-watcher-jump').innerText(),/Watch ✓/);
+ assert.equal(await page.locator('#focus-watcher-jump').count(),0);
  await page.evaluate(()=>{
   GPCloudAccount.status=()=>({enabled:true,syncing:false,serviceReady:true,lastError:null,
    status:{lastSuccess:Date.now()-3*3600000,currentBuys:17}});

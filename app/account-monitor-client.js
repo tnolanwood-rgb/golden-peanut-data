@@ -48,16 +48,48 @@ async function request(state,path,opts={}){
 }
 const getEntry=account=>{
  let x=active.get(account);
- if(!x){x={enabled:false,checkedAt:0,status:null,lastError:null,syncing:false,consent:false};active.set(account,x);}
+ if(!x){x={enabled:false,checkedAt:0,status:null,lastError:null,syncing:false,consent:false,
+  restoring:true,restored:false,restorePromise:null};active.set(account,x);}
  return x;
 };
 function status(account){return {...getEntry(account||current()?.account||''),serviceReady:availability.ready,serviceMode:availability.mode,serviceChecked:!!availability.at,serviceChecking:availability.checking};}
 function wake(){root.GPFocus?.render?.();}
 async function loadPreferences(state){
- if(!state?.db||!state.account)return;
- const stored=(await state.db.get('config',state.account,'cloud-account-monitor-v1'))?.value;
- if(stored?.enabled){const x=getEntry(state.account);x.enabled=true;x.consent=true;x.lastError=null;return true;}
- return false;
+ if(!state?.db||!state.account||!state.key)return false;
+ const account=state.account,x=getEntry(account);
+ if(x.restorePromise)return x.restorePromise;
+ x.restoring=true;
+ x.restorePromise=(async()=>{
+  const stored=(await state.db.get('config',account,'cloud-account-monitor-v1'))?.value;
+  if(stored?.enabled){
+   x.enabled=true;x.consent=true;x.lastError=null;x.restoreError=null;
+   return true;
+  }
+  if(stored?.disabledAt){
+   // Explicit user opt-out always wins over automatic restoration.
+   x.enabled=false;x.consent=false;return false;
+  }
+  // Only re-verify a previously consented connection. Without evidence
+  // of prior opt-in, do NOT transmit the user's GW2 API key to the Worker.
+  // A stored cloud status is produced only by a previous successful opt-in.
+  const previous=(await state.db.get('config',account,'cloud-monitor-status-v1'))?.value;
+  if(previous?.enabled!==true)return false;
+  try{
+   const remote=await request(state,'/status');
+   if(state.account!==account||remote.backend!=='github-actions'||remote.enabled!==true)
+    return false;
+   await state.db.put('config',account,'cloud-account-monitor-v1',{
+    enabled:true,mode:'github-actions',confirmedAt:now(),intervalMinutes:30
+   });
+   x.enabled=true;x.consent=true;x.checkedAt=0;x.status=remote;x.lastError=null;
+   return true;
+  }catch(e){
+   // Never claim OFF just because a status check failed on Android startup.
+   x.restoreError=String(e?.message||e).slice(0,140);
+   return false;
+  }
+ })().finally(()=>{x.restoring=false;x.restored=true;x.restorePromise=null;wake();});
+ return x.restorePromise;
 }
 async function enable(state=current()){
  if(!state?.key||!state?.account)throw Error('Connect your GW2 trading account first');
