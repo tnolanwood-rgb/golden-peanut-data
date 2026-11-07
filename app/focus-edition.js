@@ -246,29 +246,17 @@ function install(){if(started)return;started=true;load();document.body.classList
  const app=document.querySelector('.app'),main=app?.querySelector('main'),desk=$('view-desk');if(!app||!main||!desk)return;
  const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><button type="button" id="focus-back-main" class="focus-icon-button focus-main-back" aria-label="Back within Golden Peanut" hidden>←</button><div><p class="focus-kicker"THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
  main.before(toolbar);$('focus-back-main').addEventListener('click',navigateBack);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
- const watcherShortcut=h('button','focus-icon-button focus-watcher-shortcut','Watch');
- watcherShortcut.type='button';watcherShortcut.id='focus-watcher-jump';
- watcherShortcut.setAttribute('aria-label','Account Trade Watcher');
- watcherShortcut.title='Background trade monitoring';
- const openWatcher=()=>{
-  if(!navReady) return;
-  if(!document.getElementById('focus-research')?.hidden)dismissResearch();
-  goto('today',{scroll:false});
-  setTimeout(()=>{
-   const card=document.getElementById('focus-account-watcher');
-   if(!card)return;
-   card.scrollIntoView({block:'start',behavior:'instant'});
-   card.tabIndex=-1;card.focus({preventScroll:true});
-   card.classList.add('focus-watcher-selected');
-   setTimeout(()=>card.classList.remove('focus-watcher-selected'),1600);
-  },160);
- };
- watcherShortcut.addEventListener('click',openWatcher);
- $('focus-top').querySelector('.focus-top-buttons').prepend(watcherShortcut);
  const nav=h('nav','focus-primary-nav');nav.setAttribute('aria-label','Primary navigation');for(const key of ['today','trades','orders','legendaries']){const b=h('button','focus-nav-button');b.type='button';b.dataset.focusNav=key;b.setAttribute('aria-label',NAMES[key]);const glyph=h('span','focus-nav-glyph',ICO[key]);glyph.setAttribute('aria-hidden','true');b.append(glyph,h('span','focus-nav-text',key==='trades'?'Trades':key==='orders'?'Orders':NAMES[key]));b.addEventListener('click',()=>goto(key));nav.append(b);}app.append(nav);
  const rootPage=h('div','focus-workspaces');rootPage.id='focus-workspaces';for(const key of ['today','trades','orders']){const page=h('section','focus-page');page.dataset.focusPage=key;page.id='focus-'+key;page.hidden=true;rootPage.append(page);}desk.prepend(rootPage);
  const overlay=h('div','focus-research');overlay.id='focus-research';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Detailed research and account settings');overlay.innerHTML='<div class="focus-research-bar"><strong>Research & settings</strong><button class="focus-icon-button" id="focus-research-close" aria-label="Close research">✕</button></div>';
- const engine=h('div','focus-engine');engine.id='focus-engine';engine.hidden=true;const original=[...desk.children].filter(x=>x!==rootPage);for(const x of original)engine.append(x);for(const id of ['connection-panel','safety-panel','stage-message']){const panel=$(id);if(panel)engine.append(panel);}overlay.append(engine);app.append(overlay);$('focus-research-close').addEventListener('click',dismissResearch);overlay.addEventListener('keydown',ev=>{if(ev.key==='Escape')dismissResearch();});
+ const engine=h('div','focus-engine');engine.id='focus-engine';engine.hidden=true;const original=[...desk.children].filter(x=>x!==rootPage);for(const x of original)engine.append(x);for(const id of ['connection-panel','safety-panel','stage-message']){const panel=$(id);if(panel)engine.append(panel);}const monitorShelf=h('details','focus-settings-shelf');monitorShelf.id='focus-monitor-settings';
+ const monitorBody=h('div','focus-settings-body');monitorBody.id='focus-account-watcher-host';
+ monitorShelf.append(h('summary','','Background monitoring'),monitorBody);
+ const capitalShelf=h('details','focus-settings-shelf');capitalShelf.id='focus-capital-settings';
+ const capitalBody=h('div','focus-settings-body');capitalBody.id='focus-deployment-research';
+ capitalShelf.append(h('summary','','Capital deployment research'),capitalBody);
+ engine.prepend(capitalShelf);engine.prepend(monitorShelf);
+ overlay.append(engine);app.append(overlay);$('focus-research-close').addEventListener('click',dismissResearch);overlay.addEventListener('keydown',ev=>{if(ev.key==='Escape')dismissResearch();});
  initToday();initTrades();initOrders();initLegend();
  // Observe only the legacy output containers; mutations to the new workspaces won't loop.
  for(const id of ['gp57-wallet','gp57-week','gp57-collect','gp57-actions','allocation-plan','commander53-results','lp-materials','lp-direct','lp-tasks','lp-target-name']){const x=$(id);if(x)new MutationObserver(()=>{if(id.startsWith('lp-'))decorateLegendArtwork();schedule();}).observe(x,{childList:true,subtree:id!=='allocation-plan'});}
@@ -510,10 +498,10 @@ function openBoardMarket(m){
  if(m.kind==='standing')renderGrowthDetail();else renderTradeDetail();
  window.scrollTo({top:0,behavior:'instant'});
 }
-function renderConnectedMarkets(host,s,{query='',limit=7}={}){
+function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[]}={}){
  const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
  if(!board?.ready)return {count:0,board:null};
- const q=query.toLowerCase().trim(),shown=new Set(),lot=Number(ui.marketResearchLot)||10;
+ const q=query.toLowerCase().trim(),shown=new Set(excludeIds),lot=Number(ui.marketResearchLot)||10;
  const name=m=>m.name||m.itemName||itemName(m.id);
  const match=m=>!q||(name(m)+' '+m.id).toLowerCase().includes(q);
  // One shared research size; scroll positions and page stay put on changes.
@@ -602,13 +590,6 @@ function renderConnectedMarkets(host,s,{query='',limit=7}={}){
   board.newMarkets,m=>hypotheticalNet(m),()=> 'Conditional quoted round only · turnover UNKNOWN',
   m=>'Bid '+cash(m.buy)+' · '+(m.buy>Number(userSnapshot()?.wallet||0)?'not covered by current wallet':'single unit affordable')+
    ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot));
- if(!q&&board.counts.catalogue){
-  host.append(h('p','focus-muted','Market coverage: '+num(board.counts.catalogue)+' public catalogue items; '+
-   num(board.counts.scanned)+' refreshed quote candidates; '+num(board.counts.affordableExoticSeeds||0)+' affordable equipment seeds; '+
-   num(board.counts.history)+' history-backed opportunities; '+num(board.counts.pearlLeads)+' cheaper Pearl and '+
-   num(board.counts.armorLeads)+' cheaper exotic armour leads. '+num(board.counts.newMarkets)+
-   ' unverified markets, now accessible through section scrolling. Public standing orders are NOT evidence of completed sales.'));
- }
  return {count,board};
 }
 /* A capital choice is a WHAT-IF allocation across real currently quoted
@@ -718,10 +699,12 @@ function renderAccountWatcher(host,state){
  if(watcherConsentAccount!==account){watcherConsentAccount=account;watcherConsentPending=false;watcherConsentChecked=false;watcherEnrollmentBusy=false;watcherFeedback=null;}
  const info=cloud.status(account);
  const last=Number(info.status?.lastSuccess)||0,elapsed=last>0?Date.now()-last:Infinity;
- const watcherState=!info.enabled?'off':info.lastError?'error':info.syncing?'checking':
+ const watcherState=info.restoring?'restoring':!info.enabled?(info.restoreError?'unverified':'off'):info.lastError?'error':info.syncing?'checking':
   Number.isFinite(elapsed)&&elapsed>=0&&elapsed<(info.status?.backend==='github-actions'?85:40)*60000?'active':last?'stale':'pending';
  const states={
-  off:'OFF — background monitoring has not been enabled',
+  restoring:'Restoring saved background monitoring…',
+   unverified:'CONNECTION NOT VERIFIED — check cloud account status',
+   off:'OFF — background monitoring has not been enabled',
   checking:'CHECKING — confirming cloud account status',
   active:'ACTIVE — last successful cloud check '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+' (UK)',
   stale:'CHECKS OVERDUE — last confirmed cloud check '+new Date(last).toLocaleString('en-GB',{timeZone:'Europe/London'})+' (UK)',
@@ -935,18 +918,21 @@ function renderOpportunityHome(){
  host.replaceChildren();
  const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
  if(fresh)renderTopResearch(host,s);
- renderAccountWatcher(host,s);
- if(fresh){
-  const observedBuy=(s?.orderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
-  const observedSell=(s?.sellOrderEvidence?.events||[]).reduce((n,x)=>n+Math.max(0,Number(x.q)||0),0);
-  const buyTracked=Object.values(s?.orderEvidence?.tracked||{}).filter(x=>!x.closed).length;
-  const sellTracked=Object.values(s?.sellOrderEvidence?.tracked||{}).filter(x=>!x.closed).length;
-  const line=h('p','focus-fill-observation',
-   'ORDER LEARNING · '+num(buyTracked)+' active buy orders and '+num(sellTracked)+' active sell orders tracked · '+
-   num(observedBuy)+' observed buy-fill units · '+num(observedSell)+' observed sell-fill units since tracking. '+
-   'Updated when the app checks your account; it cannot monitor closed. Disappearing orders are not assumed filled.');
-  host.append(line);
-  renderDeploymentPlanner(host,s);
+ // Keep operational details in ⚙ Settings, not the trade list.
+ const monitorHost=$('focus-account-watcher-host');
+ if(monitorHost){monitorHost.replaceChildren();renderAccountWatcher(monitorHost,s);}
+ const capitalHost=$('focus-deployment-research');
+ if(capitalHost){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
+ // Alert only if a previously connected collector has truly missed several
+ // scheduled checks, never while restoring local session state.
+ const cloud=root.GPCloudAccount?.status?.(s?.account);
+ const lastCloud=Number(cloud?.status?.lastSuccess)||0;
+ if(cloud?.enabled===true&&!cloud?.restoring&&!cloud?.syncing&&lastCloud>0&&
+    Date.now()-lastCloud>(cloud.status?.backend==='github-actions'?95:55)*60000){
+  const warning=h('button','focus-monitor-warning',
+   'Background checks overdue · Review in settings');
+  warning.type='button';warning.addEventListener('click',()=>showResearch('focus-monitor-settings'));
+  host.append(warning);
  }
  copy.hidden=!fresh||!(p?.orders||[]).some(o=>o.scenarioProfit>=30000||o.quantity>=3);
  if(!fresh){
@@ -959,7 +945,7 @@ function renderOpportunityHome(){
  status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESEARCH · ':'')+
   num(rows.length)+' calibrated 24h orders · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
  if(!rows.length){
-  const connected=renderConnectedMarkets(host,s,{limit:6});
+  const connected=renderConnectedMarkets(host,s,{limit:6,excludeIds:(board?.history||[]).slice(0,8).map(x=>x.id)});
   if(!connected.count)host.append(h('p','focus-empty','No quote-supported markets surfaced in this scan. Full-market discovery is separate from execution calibration; check Trades for the complete catalogue and refresh market checks.'));
   renderVerifiedRecentMarkets(host,s,{limit:5});
   return;
@@ -995,7 +981,7 @@ function renderOpportunityHome(){
   return row;
   }
  });
- renderConnectedMarkets(host,s,{limit:6});
+ renderConnectedMarkets(host,s,{limit:6,excludeIds:(board?.history||[]).slice(0,8).map(x=>x.id)});
 }
 function renderPortfolioOutlook(){
  const host=$('focus-earnings-pace'),s=State(),t=tradeData('wallet');if(!host)return;
