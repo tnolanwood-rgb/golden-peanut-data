@@ -347,3 +347,43 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
  .focus-week-strip-amount{font-size:10px}
  .focus-week-strip-amount .focus-money img{height:9px;width:9px}
 }
+
+/* 7.26 — Delivery Box replaces the left Today hero, with profit days unchanged
+ * in the right-hand scroll panel. Both panels scroll independently on mobile. */
+.focus-delivery-panel{min-width:0;display:flex;flex-direction:column;gap:5px}
+.focus-delivery-head{display:flex;flex-direction:column;gap:2px;min-width:0}
+.focus-delivery-head>strong{color:#f1d49b;font-size:11px;font-weight:850;letter-spacing:.085em}
+.focus-delivery-head>small{color:#bbd1bc;font-size:9px;line-height:1.25}
+.focus-delivery-money{min-width:0;color:#f4e4b8;font-size:clamp(15px,2.5vw,21px);font-weight:830;line-height:1.25}
+.focus-delivery-money>.focus-money{display:flex;flex-wrap:wrap;column-gap:4px;row-gap:1px;white-space:normal}
+.focus-delivery-money .focus-money-part:nth-child(1){color:#fbd164}
+.focus-delivery-money .focus-money-part:nth-child(2){color:#d8e7ed}
+.focus-delivery-money .focus-money-part:nth-child(3){color:#e5a37c}
+.focus-delivery-money .focus-money img{width:15px;height:15px}
+.focus-delivery-caption{font-size:10px;color:#b4cbb7;line-height:1.3}
+.focus-delivery-items{min-width:0;max-height:192px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#68876d transparent;border-top:1px solid #526b50;margin-top:4px}
+.focus-delivery-items:focus-visible{outline:2px solid var(--focus-accent);outline-offset:-2px}
+.focus-delivery-row{min-width:0;display:flex;align-items:center;gap:6px;padding:7px 2px;border-bottom:1px solid #425a43}
+.focus-delivery-row:last-child{border-bottom:0}
+.focus-delivery-row .focus-item-art{width:29px;height:29px;flex:0 0 29px;border-radius:6px}
+.focus-delivery-row .focus-item-fallback{font-size:17px}
+.focus-delivery-label{flex:1;min-width:0}
+.focus-delivery-label strong{display:block;font-size:11px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.focus-delivery-quantity{color:#eddbb4;flex:0 0 auto;font-size:10px;font-weight:780;font-variant-numeric:tabular-nums;white-space:nowrap}
+.focus-delivery-empty{font-size:11px;line-height:1.45;color:#bbd1bc;margin:10px 2px}
+@media(max-width:460px){
+ .focus-delivery-head>strong{font-size:10px}
+ .focus-delivery-money{font-size:clamp(14px,3.8vw,16px)}
+ .focus-delivery-money .focus-money img{width:12px;height:12px}
+ .focus-delivery-items{max-height:177px}
+ .focus-delivery-row{gap:4px;padding:6px 1px}
+ .focus-delivery-row .focus-item-art{width:26px;height:26px;flex-basis:26px}
+ .focus-delivery-label strong{font-size:10.5px}
+ .focus-delivery-quantity{font-size:10px}
+}
+@media(max-width:340px){
+ .focus-delivery-money{font-size:13px}
+ .focus-delivery-row .focus-item-art{width:23px;height:23px;flex-basis:23px}
+ .focus-delivery-label strong{font-size:10px}
+ .focus-delivery-quantity{font-size:9px}
+}

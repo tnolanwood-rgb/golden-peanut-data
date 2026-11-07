@@ -7,6 +7,10 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(
 try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const context=await browser.newContext({viewport});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin)return route.continue();
+  if(u.hostname==='render.guildwars2.com'&&u.pathname.endsWith('.png'))return route.fulfill({
+   status:200,contentType:'image/png',
+   body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Yp4HJEAAAAASUVORK5CYII=','base64')
+  });
   const now=Math.floor(Date.now()/1000),day=Math.floor(now/86400);let data=[];
   if(u.pathname.endsWith('market_public.json'))data={schema:'golden-peanut-public-v1',generated_at:now,count:1100,items:Array.from({length:1100},(_,i)=>[i+1,i<2?'Fixture opportunity '+(i+1):'Catalogue family '+(i+1),'Weapon','Exotic',99,201,100,100])};
   else if(u.pathname.endsWith('market_history.json'))data={schema:'golden-peanut-daily-v1',generated_at:now,history:Object.fromEntries([1,2].map(id=>[id,Array.from({length:8},(_,i)=>[day-7+i,99,id===2?241:201,100,100])]))};
@@ -44,17 +48,47 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
  });
  assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
- // The primary motivational number is strictly realised UK-day matched profit.
+ // The top-left card is the real Delivery Box; seven-day matched profits remain on the right.
  assert.equal(await page.locator('#focus-today .focus-today-profit').count(),1);
  assert.equal(await page.locator('#focus-today .focus-summary-grid').count(),1);
- assert.equal(await page.locator('#focus-today .focus-today-profit').evaluate(el=>el.compareDocumentPosition(document.querySelector('#focus-wallet'))&Node.DOCUMENT_POSITION_FOLLOWING),4);
+ assert.equal(await page.locator('#focus-today-profit').count(),0,'do not duplicate the Today hero');
  await page.evaluate(()=>{
-  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  const s=GoldenPeanutClean.State,now=new Date().toISOString();
+  const ids=[301,302,303,304,305,306,307,308];
+  for(const [i,id] of ids.entries())s.meta[id]={
+   id,name:'Delivery fixture item '+id,rarity:i===0?'Exotic':i===1?'Rare':i===2?'Masterwork':'Basic',
+   icon:'https://render.guildwars2.com/file/aabbcc/'+id+'.png'
+  };
+  s.snapshot={...s.snapshot,deliveryAt:now,delivery:{
+   coins:1234567,items:[{id:301,count:5},{id:301,count:3},...ids.slice(1).map((id,i)=>({id,count:i+1}))]
+  }};
+  const day=PeanutCore.ukDay(Date.now());
   s.summary={days:{[day]:{p100:1234567}},totalRecords:12,weekP100:1234567};
   GPFocus.goto('today');GPFocus.render();
  });
- assert.equal(await page.locator('#focus-today-profit .focus-money').getAttribute('title'),'1g 23s 46c');
- // Seven calendar days live beside today's hero: exactly three rows fit without scrolling.
+ const delivery=page.locator('.focus-delivery-panel'),items=page.locator('#focus-delivery-items');
+ assert.equal(await delivery.count(),1);
+ assert.equal(await items.locator('.focus-delivery-row').count(),8,'show all eight grouped item types');
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-quantity').innerText(),'×8','merge duplicate stacks');
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] img').count(),1,'show verified GW2 item icon');
+ assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .gp-rarity-exotic').count(),1,'item names use rarity');
+ assert.equal(await page.locator('#focus-delivery-coins .focus-money').getAttribute('title'),'123g 45s 67c');
+ const currency=await page.locator('#focus-delivery-coins .focus-money-part').evaluateAll(parts=>parts.map(el=>getComputedStyle(el).color));
+ assert.deepEqual(currency,['rgb(251, 209, 100)','rgb(216, 231, 237)','rgb(229, 163, 124)']);
+ assert.equal(await page.locator('#focus-delivery-coins img[src*="gw2-"]').count(),3,'use official coin icons');
+ const siblingLayout=await page.locator('.focus-today-profit').evaluate(el=>{
+  const left=el.querySelector('.focus-delivery-panel').getBoundingClientRect();
+  const right=el.querySelector('.focus-week-strip').getBoundingClientRect();
+  return {left:left.left,right:right.left,outer:el.getBoundingClientRect().width};
+ });
+ assert.ok(siblingLayout.left<siblingLayout.right,'Delivery Box must sit left of seven-day profit');
+ const deliveryScroll=await items.evaluate(el=>({height:el.clientHeight,scrollHeight:el.scrollHeight}));
+ assert.ok(deliveryScroll.scrollHeight>deliveryScroll.height,'all delivery item rows remain reachable by scrolling');
+ await items.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+ const deliveryPosition=await items.evaluate(el=>el.scrollTop);
+ await page.evaluate(()=>GPFocus.render());
+ assert.equal(await items.evaluate(el=>el.scrollTop),deliveryPosition,'repeated redraws preserve Delivery Box scroll');
+ // Seven calendar days live beside the Delivery Box: exactly three rows fit without scrolling.
  await page.evaluate(()=>{
   const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
   s.summary={
@@ -92,7 +126,26 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
  assert.equal(await days.count(),7,'an empty recorded period still renders seven days');
  assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'0g 00s 00c');
- assert.match(await page.locator('#focus-today-profit').innerText(),/0/);
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State;
+  s.snapshot={...s.snapshot,delivery:{coins:0,items:[]},deliveryAt:new Date().toISOString()};
+  GPFocus.render();
+ });
+ assert.equal(await items.locator('.focus-delivery-row').count(),0);
+ assert.match(await items.innerText(),/No items waiting/);
+ assert.equal(await page.locator('#focus-delivery-coins .focus-money').getAttribute('title'),'0g 00s 00c');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State;
+  s.snapshot={...s.snapshot,delivery:null};
+  GPFocus.render();
+ });
+ assert.match(await items.innerText(),/Delivery Box unavailable/,'unknown is not displayed as zero');
+ assert.equal(await page.locator('#focus-delivery-coins .focus-money').getAttribute('title'),'Not verified');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State;
+  s.snapshot={...s.snapshot,delivery:{coins:0,items:[]}};
+  GPFocus.render();
+ });
  await page.waitForFunction(()=>document.querySelectorAll('#focus-best-rows .focus-home-order').length===2);
  assert.match(await page.locator('#focus-best-rows').innerText(),/Expected 24h net/);
  await page.locator('#focus-best-rows .focus-home-order').first().click();

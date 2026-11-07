@@ -376,7 +376,7 @@ function install(){if(started)return;started=true;load();document.body.classList
   updateBackAffordance();
  }catch{}
 }
-function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Your realised trading profit"><div class="focus-today-current"><span>PROFIT TODAY · UK TIME</span><div id="focus-today-profit" class="focus-today-profit-value">—</div><small>Completed sales · matched costs · after TP fees</small></div><aside class="focus-week-strip" aria-label="Seven-day trading profit history"><div class="focus-week-strip-header"><strong>LAST 7 DAYS</strong><span aria-hidden="true">↓</span></div><div id="focus-week-strip-list" class="focus-week-strip-list" role="region" tabindex="0" aria-label="Recorded profit by UK day. Scroll to see all seven days."></div></aside></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
+function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Delivery Box and seven-day profit"><section class="focus-delivery-panel" aria-label="Delivery Box contents"><div class="focus-delivery-head"><strong>DELIVERY BOX</strong><small id="focus-delivery-status">Not checked</small></div><div id="focus-delivery-coins" class="focus-delivery-money">—</div><small class="focus-delivery-caption">Collectible coins · not yet in wallet</small><div id="focus-delivery-items" class="focus-delivery-items" role="region" tabindex="0" aria-label="Items waiting in the Delivery Box; scroll to see all">Check your account to see the contents.</div></section><aside class="focus-week-strip" aria-label="Seven-day trading profit history"><div class="focus-week-strip-header"><strong>LAST 7 DAYS</strong><span aria-hidden="true">↓</span></div><div id="focus-week-strip-list" class="focus-week-strip-list" role="region" tabindex="0" aria-label="Recorded profit by UK day. Scroll to see all seven days."></div></aside></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
  $('focus-deep-stop').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.stopExpanded?.(st);schedule();});
  $('focus-deep-retry').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.resumeExpanded?.(st);schedule();});
  // Put the actual funded opportunities above the old explanatory prompts.
@@ -416,11 +416,55 @@ function renderSevenDayProfitStrip(s,day){
  // the seven-day strip, but jump to Today when the UK calendar day changes.
  host.scrollTop=previousDay===day?top:0;
 }
+let deliveryHeroSignature='';
+function renderDeliveryBox(){
+ const s=State(),snap=userSnapshot(),delivery=snap?.delivery;
+ const list=$('focus-delivery-items'),coins=$('focus-delivery-coins'),status=$('focus-delivery-status');
+ if(!list||!coins||!status)return;
+ const hasData=!!delivery&&Number.isSafeInteger(delivery.coins)&&delivery.coins>=0&&Array.isArray(delivery.items);
+ const grouped=new Map();
+ if(hasData)for(const item of delivery.items){
+  const id=Number(item?.id),count=Number(item?.count);
+  if(Number.isSafeInteger(id)&&id>0&&Number.isSafeInteger(count)&&count>0)
+   grouped.set(id,(grouped.get(id)||0)+count);
+ }
+ // A ledger refresh should not destroy the user's Delivery Box scroll or
+ // repeatedly recreate dozens of images when the account data is unchanged.
+ const signature=JSON.stringify([s?.account||'',snap?.deliveryAt||'',hasData?delivery.coins:null,
+  [...grouped].map(([id,count])=>{const m=currentMeta(id);return [id,count,m?.name||'',m?.icon||'',m?.rarity||''];})]);
+ if(signature===deliveryHeroSignature)return;
+ deliveryHeroSignature=signature;
+ coins.replaceChildren(money(hasData?delivery.coins:NaN,'focus-money-big'));
+ if(!hasData){
+  status.textContent=snap?'Not verified':'Not checked';
+  list.replaceChildren(h('p','focus-delivery-empty',snap?'Delivery Box unavailable · refresh to check.':'Check your account to see the contents.'));
+  list.scrollTop=0;return;
+ }
+ const at=Date.parse(snap?.deliveryAt||'');
+ status.textContent=Number.isFinite(at)?'Checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved balance';
+ const previousScroll=list.scrollTop;
+ if(!grouped.size){
+  list.replaceChildren(h('p','focus-delivery-empty','No items waiting for collection.'));
+ }else{
+  const rows=[];
+  for(const [id,count]of grouped){
+   const m=currentMeta(id),row=h('div','focus-delivery-row');
+   row.dataset.itemId=String(id);
+   const icon=artwork(id);
+   const label=h('div','focus-delivery-label');
+   const name=itemTitle(id,m?.name||'Item details loading…');
+   if(m?.name)name.title=m.name;
+   label.append(name);
+   const units=h('span','focus-delivery-quantity','×'+num(count));
+   row.append(icon,label,units);rows.push(row);
+  }
+  list.replaceChildren(...rows);
+ }
+ list.scrollTop=previousScroll;
+}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
- const day=root.PeanutCore?.ukDay?.(Date.now()),entries=s.summary?.days||{};
- const todays=day&&entries[day]?.p100;
- const todayAmount=Number.isFinite(todays)?todays/100:(s.summary?.totalRecords>=0?0:null);
- $('focus-today-profit').replaceChildren(money(todayAmount,'focus-money-big'));
+ const day=root.PeanutCore?.ukDay?.(Date.now());
+ renderDeliveryBox();
  renderSevenDayProfitStrip(s,day);
  $('focus-wallet').replaceChildren(money(Number.isFinite(snap?.wallet)?snap.wallet:NaN,'focus-money-big'));
  $('focus-week').replaceChildren(money(Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN,'focus-money-big'));
