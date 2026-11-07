@@ -157,3 +157,46 @@ test('bulk order-night query is authenticated, bounded, and fails closed on inco
  assert.equal((await worker.fetch(req('/nights?items='+Array.from({length:41},(_,i)=>i+1).join(','),'GET',headers),env,{})).status,400);
  assert.equal((await worker.fetch(req('/nights?items=101,102'),env,{})).status,401);
 });
+
+test('monitor reload restores prior opt-in silently and never leaks a key without consent',async()=>{
+ const vm=require('node:vm'),src=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
+ const make=(fetchMock)=>{
+  const ctx={document:{readyState:'loading',addEventListener(){}},window:{addEventListener(){}},
+   fetch:fetchMock,AbortController,setTimeout,clearTimeout,Date,Map,Set,console};
+  vm.runInNewContext(src,ctx);
+  return ctx.GPCloudAccount;
+ };
+ let calls=0;
+ const api=make(async()=>{calls++;throw Error('Unexpected request');});
+ const db={async get(store,account,key){return key==='cloud-account-monitor-v1'?{value:{
+  enabled:true,mode:'github-actions',confirmedAt:Date.now()}}:null;}};
+ const state={db,account:'Fixture.1234',key:'private-key-never-log'};
+ assert.equal(api.status(state.account).restoring,true);
+ await api.loadPreferences(state);
+ assert.equal(api.status(state.account).enabled,true);
+ assert.equal(api.status(state.account).restoring,false);
+ assert.equal(calls,0,'saved preference should not require contacting the Worker');
+ const fresh=make(async()=>{calls++;throw Error('No prior consent');});
+ const blank={db:{async get(){return null;}},account:'Other.1234',key:'no-opt-in'};
+ await fresh.loadPreferences(blank);
+ assert.equal(fresh.status(blank.account).enabled,false);
+ assert.equal(calls,0,'unconsented startup must never transmit a personal API key');
+});
+test('monitor reload recovers server connection only when earlier opt-in evidence exists',async()=>{
+ const vm=require('node:vm'),src=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
+ let requests=0,writes=0;
+ const ctx={document:{readyState:'loading',addEventListener(){}},window:{addEventListener(){}},
+  fetch:async()=>{requests++;return {ok:true,json:async()=>({
+   ok:true,account:'Fixture.1234',enabled:true,backend:'github-actions',lastSuccess:Date.now()})};},
+  AbortController,setTimeout,clearTimeout,Date,Map,Set,console};
+ vm.runInNewContext(src,ctx);
+ const state={account:'Fixture.1234',key:'previously-approved-key',
+  db:{async get(store,account,key){
+    return key==='cloud-monitor-status-v1'?{value:{enabled:true}}:null;
+   },async put(){writes++;}}};
+ await ctx.GPCloudAccount.loadPreferences(state);
+ assert.equal(requests,1);
+ assert.equal(writes,1);
+ assert.equal(ctx.GPCloudAccount.status(state.account).enabled,true);
+ assert.equal(ctx.GPCloudAccount.status(state.account).status.backend,'github-actions');
+});
