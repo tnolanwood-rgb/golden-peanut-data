@@ -190,3 +190,25 @@ test('personally observed BUY AND SELL reductions improve discovery priority wit
   assert.equal(r.nightProfit,undefined);
  }
 });
+
+test('cheap materials with modest individual margins are visible as volume RESEARCH without inventing sales',()=>{
+ const publicResearch=[
+  {id:9101,name:'Jute Scrap',type:'CraftingMaterial',rarity:'Basic',
+   buy:50,exit:80,buyQty:1200,sellQty:1800,at:stamp},
+  {id:9102,name:'Wood Log',type:'CraftingMaterial',rarity:'Basic',
+   buy:60,exit:80,buyQty:1200,sellQty:1800,at:stamp},
+  {id:9103,name:'Thin Book Item',type:'CraftingMaterial',
+   buy:50,exit:80,buyQty:2,sellQty:2,at:stamp},
+  {id:9104,name:'Cheap Armor',type:'Armor',rarity:'Exotic',
+   buy:50,exit:80,buyQty:1200,sellQty:1800,at:stamp}
+ ];
+ const b=Board.build({...source,activeBook:{entries:[]},
+  marketChoices:[],publicResearch},{wallet:40651,now:NOW});
+ assert.ok(b.commodityLeads.some(x=>x.id===9101),'Jute-like material should reach new-market research');
+ assert.ok(b.commodityLeads.some(x=>x.id===9102),'Wood-like material should reach new-market research');
+ assert.ok(!b.newMarkets.some(x=>x.id===9103),'thin order book alone cannot promote microspread research');
+ assert.ok(!b.newMarkets.some(x=>x.id===9104),'do not lower the equipment minimum margin');
+ assert.ok(b.newMarkets.filter(x=>x.id===9101||x.id===9102).every(x=>
+  x.kind==='new'&&x.tier==='public-unverified'&&x.quantity===undefined&&
+  x.expectedProfit===undefined&&x.nightProfit===undefined));
+});
