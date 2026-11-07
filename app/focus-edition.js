@@ -376,7 +376,7 @@ function install(){if(started)return;started=true;load();document.body.classList
   updateBackAffordance();
  }catch{}
 }
-function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Today's recorded matched trading profit"><span>PROFIT TODAY · UK TIME</span><div id="focus-today-profit" class="focus-today-profit-value">—</div><small>Completed sales minus matched acquisition cost and TP fees · recorded history only</small></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
+function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-today-profit" aria-label="Your realised trading profit"><div class="focus-today-current"><span>PROFIT TODAY · UK TIME</span><div id="focus-today-profit" class="focus-today-profit-value">—</div><small>Completed sales · matched costs · after TP fees</small></div><aside class="focus-week-strip" aria-label="Seven-day trading profit history"><div class="focus-week-strip-header"><strong>LAST 7 DAYS</strong><span aria-hidden="true">↓</span></div><div id="focus-week-strip-list" class="focus-week-strip-list" role="region" tabindex="0" aria-label="Recorded profit by UK day. Scroll to see all seven days."></div></aside></div><div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
  $('focus-deep-stop').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.stopExpanded?.(st);schedule();});
  $('focus-deep-retry').addEventListener('click',()=>{const st=State();if(st)root.GPOpportunity?.resumeExpanded?.(st);schedule();});
  // Put the actual funded opportunities above the old explanatory prompts.
@@ -394,11 +394,34 @@ function openHomeMarket(id,kind){
  window.scrollTo({top:0,behavior:'instant'});
 }
 function userSnapshot(){const s=State();return s?.snapshot?.account===s.account?s.snapshot:null;}
+function renderSevenDayProfitStrip(s,day){
+ const host=$('focus-week-strip-list');if(!host||!day)return;
+ const previousDay=host.dataset.baseDay,top=host.scrollTop,hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric'});
+ const rows=[];
+ for(let i=0;i<7;i++){
+  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+  const label=i===0?'Today':i===1?'Yesterday':formatter.format(new Date(date+'T12:00:00Z'));
+  const amount=hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN;
+  const row=h('div','focus-week-strip-row');
+  row.dataset.profitDate=date;
+  const name=h('span','focus-week-strip-day',label),value=h('strong','focus-week-strip-amount');
+  value.append(money(amount));
+  if(Number.isFinite(amount)&&amount<0)row.classList.add('is-loss');
+  row.append(name,value);rows.push(row);
+ }
+ host.replaceChildren(...rows);
+ host.dataset.baseDay=day;
+ // The global app refreshes frequently. Keep a user's scroll position within
+ // the seven-day strip, but jump to Today when the UK calendar day changes.
+ host.scrollTop=previousDay===day?top:0;
+}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  const day=root.PeanutCore?.ukDay?.(Date.now()),entries=s.summary?.days||{};
  const todays=day&&entries[day]?.p100;
  const todayAmount=Number.isFinite(todays)?todays/100:(s.summary?.totalRecords>=0?0:null);
  $('focus-today-profit').replaceChildren(money(todayAmount,'focus-money-big'));
+ renderSevenDayProfitStrip(s,day);
  $('focus-wallet').replaceChildren(money(Number.isFinite(snap?.wallet)?snap.wallet:NaN,'focus-money-big'));
  $('focus-week').replaceChildren(money(Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN,'focus-money-big'));
  const at=snap?.walletAt||snap?.at;labelText('focus-account-at',at?'Account checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved account · tap ↻ to check');
