@@ -3912,7 +3912,7 @@ function outstandingDeliveryCosts(ledger,grouped){
  return basis;
 }
 function listingValuation(s,ledger=[]){
- const grouped=groupItems(s?.delivery),costs=outstandingDeliveryCosts(ledger,grouped),rows=[];let net=0,covered=0;
+ const grouped=groupItems(s?.delivery),costs=outstandingDeliveryCosts(ledger,grouped),rows=[];let net=0,gross=0,covered=0;
  for(const [id,count] of grouped){
   const quote=priceMap.get(id),when=Date.parse(quote?.at||'');
   const age=Date.now()-when;
@@ -3921,13 +3921,16 @@ function listingValuation(s,ledger=[]){
   const afterFees=ask===null?null:netAtTarget(ask,count);
   const basis=costs.get(id),purchaseCost=basis?.cost??null;
   const profit=afterFees!==null&&purchaseCost!==null?afterFees-purchaseCost:null;
-  if(afterFees!==null){net+=afterFees;covered++;}
+  // Delivery Box HEADLINE: collectible coins + all current lowest-ask
+  // listing values BEFORE fees. This is not spendable gold or trading profit.
+  // Per-item profit is calculated separately after fees and purchase cost.
+  if(afterFees!==null){net+=afterFees;gross+=ask*count;covered++;}
   rows.push({id,count,ask,net:afterFees,profit,purchaseCost,costCovered:basis?.covered??0,
    costMethod:basis?.method||null,quotedAt:ask===null?null:quote.at,awaitingQuote:afterFees===null});
  }
  return {rows,covered,types:rows.length,unpriced:rows.length-covered,
-  itemsNet:net,coins:safeInt(s?.delivery?.coins)?s.delivery.coins:null,
-  combined:safeInt(s?.delivery?.coins)&&Number.isSafeInteger(net+s.delivery.coins)?net+s.delivery.coins:null,
+  itemsNet:net,itemsGross:gross,coins:safeInt(s?.delivery?.coins)?s.delivery.coins:null,
+  combined:safeInt(s?.delivery?.coins)&&Number.isSafeInteger(gross+s.delivery.coins)?gross+s.delivery.coins:null,
   complete:rows.length===covered};
 }
 function paintDelivery(s,State){const priced=calculateDelivery(s);money('gp57-items-net',priced.covered?priced.sum:null);
@@ -4059,7 +4062,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="./account-monitor-client.js?v=722-quiet-monitor" defer></script>
 <script src="./portfolio-intelligence.js?v=718-deployment" defer></script>
 <script src="./market-board.js?v=721-learning-wired" defer></script>
-<script src="./focus-edition.js?v=727-delivery-listing-value" defer></script>
+<script src="./focus-edition.js?v=728-delivery-gross-header" defer></script>
 <script id="gp-integrity-check">
 document.addEventListener('DOMContentLoaded',()=>{
  const stamp='7.16.0-evidence',engine=window.GPOpportunity,front=window.GPFocus;
