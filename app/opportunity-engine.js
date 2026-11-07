@@ -153,7 +153,8 @@ function equipmentVariantSeeds(hist,metadata={},limit=120,offset=0){
  for(const ids of buckets.values())ids.sort((a,b)=>a-b);
  const keys=[...buckets.keys()].sort();
  const ordered=[],seen=new Set();
- let depth=0;while(ordered.length<Object.keys(metadata).length){
+ const catalogueSize=Object.keys(metadata||{}).length;
+ let depth=0;while(ordered.length<catalogueSize){
   let added=false;
   for(const key of keys){const id=buckets.get(key)[depth];if(valid(id)&&!seen.has(id)){ordered.push(id);seen.add(id);added=true;}}
   if(!added)break;depth++;

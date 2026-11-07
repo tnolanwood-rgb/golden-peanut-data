@@ -105,3 +105,13 @@ test('positive narrow spreads and thin or wide books remain research without for
  for(const x of b.newMarkets){assert.equal(x.quantity,undefined);assert.equal(x.expectedProfit,undefined);}
  for(const id of [9912,9913]){const row=b.newMarkets.find(x=>x.id===id);assert.equal(row.watchOnly,true);assert.ok(row.researchWarnings.length);}
 });
+test('family exploration enumerates catalogue keys a bounded number of times without losing rotation',()=>{
+ const c=context();let enumerations=0;
+ const metadata=new Proxy(Object.fromEntries(Array.from({length:1000},(_,i)=>[i+1,{name:'Family '+i,type:'Weapon',rarity:'Exotic'}])),{
+  ownKeys(target){enumerations++;return Reflect.ownKeys(target);}
+ });
+ const ids=c.GPOpportunity.equipmentVariantSeeds({markets:new Map()},metadata,1000,0);
+ assert.equal(ids.length,1000);assert.equal(new Set(ids).size,1000);
+ assert.ok(enumerations<=3,'catalogue enumerated '+enumerations+' times');
+ assert.deepEqual(Array.from(c.GPOpportunity.equipmentVariantSeeds({markets:new Map()},metadata,3,1)),[4,5,6]);
+});
