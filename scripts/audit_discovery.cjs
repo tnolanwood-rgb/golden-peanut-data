@@ -29,5 +29,14 @@ const hist={markets:new Map(),ranked:[],archive:[]};
  for(const id of seeds.ids)categories[metadata[id].type].seeded++;
  for(const r of research)categories[metadata[r.id].type].research++;
  for(const r of board.newMarkets)categories[metadata[r.id].type].board++;
- console.log(JSON.stringify({conditions:'Offline replay at snapshot generation time; all quotes evaluated to isolate gates, seed quota separate; no live profitability inference',catalogueSHA256:crypto.createHash('sha256').update(raw).digest('hex'),generatedAt:data.generated_at,categories,publicCoverage:board.publicCoverage||null},null,2));
+ const budget=6500,passes=Math.ceil(data.items.length/Math.floor(budget*.25)),selected=new Set();
+ for(let rotation=0;rotation<passes;rotation++){
+  const result=c.GPOpportunity.discoveryIds(hist,metadata,[],[],budget,[],rotation);
+  if(result.ids.length>budget||new Set(result.ids).size!==result.ids.length)throw Error('Invalid discovery budget');
+  for(const id of result.ids)if(metadata[id])selected.add(id);
+ }
+ const catalogueRotation={budget,passes,catalogueItems:data.items.length,selectedUnique:selected.size,
+  complete:selected.size===data.items.length,conditions:'Fixed catalogue, successful successive deep scans; ID selection only, not quote coverage'};
+ if(!catalogueRotation.complete)throw Error('Fixed catalogue rotation missed items');
+ console.log(JSON.stringify({catalogueRotation,conditions:'Offline replay at snapshot generation time; all quotes evaluated to isolate gates, seed quota separate; no live profitability inference',catalogueSHA256:crypto.createHash('sha256').update(raw).digest('hex'),generatedAt:data.generated_at,categories,publicCoverage:board.publicCoverage||null},null,2));
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

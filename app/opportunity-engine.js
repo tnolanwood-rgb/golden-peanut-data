@@ -806,11 +806,13 @@ function equipmentCoverageAudit({metadata={},discoveryIds=[],quotes=[],plan=null
 function researchQuoteScore(q){
  const buy=q?.buy,sell=q?.sell;
  if(!valid(q?.id)||!valid(buy)||!valid(sell)||sell<=buy||
-    !valid(q.buyQty)||q.buyQty<2||!valid(q.sellQty))return null;
- const bid=buy+1<sell?buy+1:buy,exit=Math.floor(sell*.97);
+    !valid(q.buyQty)||!valid(q.sellQty))return null;
+ // Research at one copper inside each quote, not an arbitrary 3% exit discount.
+ const bid=buy+1,exit=sell-1;
+ if(!valid(bid)||!valid(exit)||exit<=bid)return null;
  const afterFee=saleNet(exit,1);if(!finite(afterFee))return null;
  const net=afterFee-bid,roi=net/bid;
- if(net<2||roi<.055||roi>8)return null;
+ if(!valid(net))return null;
  const book=Math.max(1,Math.min(Number(q.buyQty)||0,Number(q.sellQty)||0));
  // Discovery ranking ONLY. Book quantities signal competition, not transactions.
  const score=Math.log1p(net)*Math.log1p(Math.min(book,800))*(.7+Math.min(roi,2)) *

@@ -49,14 +49,15 @@ test('never hide profitable older history or stat/weapon variants behind eight-w
 });
 test('no fabricated twenty-unit orders or projected public overnight income',()=>{
  const b=Board.build(source,{wallet:40651,now:NOW});
- assert.deepEqual(b.newMarkets.map(x=>x.id).sort(),[201,202]);
+ assert.deepEqual(b.newMarkets.map(x=>x.id).sort(),[201,202,203,204]);
  for(const r of b.newMarkets){
   assert.equal(r.kind,'new');assert.equal(r.tier,'public-unverified');
   assert.equal(r.quantity,undefined);assert.equal(r.expectedProfit,undefined);
   assert.equal(r.nightProfit,undefined);assert.equal(r.cost,undefined);
   assert.ok(r.unitMargin>0);
  }
- assert.ok(!b.newMarkets.some(x=>/infusion/i.test(x.name)));
+ assert.ok(b.newMarkets.find(x=>x.id===203).watchOnly);
+ assert.ok(!b.otherLeads.some(x=>x.id===203||x.id===204));
 });
 test('stale quote and unverified existing positions cannot become new buys',()=>{
  const b=Board.build(source,{wallet:40651,now:NOW});
@@ -76,7 +77,7 @@ test('cheap Pearl and exotic-armour leads are surfaced separately before expensi
  const b=Board.build(p,{wallet:40651,now:NOW});
  assert.deepEqual(b.pearlLeads.map(x=>x.id),[201]);
  assert.deepEqual(b.armorLeads.map(x=>x.id).sort(),[202,901]);
- assert.ok(!b.newMarkets.some(x=>x.id===67276));
+ assert.equal(b.newMarkets.find(x=>x.id===67276).watchOnly,true);
  assert.ok(b.pearlLeads.every(x=>x.buy<=b.available&&x.quantity===undefined));
  assert.ok(b.armorLeads.every(x=>x.expectedProfit===undefined));
  assert.equal(b.otherLeads.length,0);
@@ -158,7 +159,7 @@ test('public coverage accounts for every row, duplicates, stale quotes and polic
  const b=Board.build({ok:true,budget:1000,orders:[],publicResearch:rows},{wallet:1000,now:NOW});
  const p=b.publicCoverage,g=p.byCategory.CraftingMaterial;
  assert.equal(p.scanned,6);assert.equal(p.accepted,2);assert.equal(b.newMarkets.length,2);
- assert.deepEqual(p.rejected,{'duplicate':1,'stale-or-invalid-quote':1,'standing-depth-policy':1,'nonpositive-net-margin':1});
+ assert.deepEqual(p.rejected,{'duplicate':1,'stale-or-invalid-quote':1,'invalid-standing-quantity':1,'nonpositive-net-margin':1});
  assert.equal(p.scanned,p.accepted+Object.values(p.rejected).reduce((n,x)=>n+x,0));
  assert.deepEqual(g.rejected,p.rejected);assert.equal(g.scanned,6);assert.equal(g.accepted,2);
 });

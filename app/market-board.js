@@ -132,24 +132,29 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
   // Positive small per-unit margins remain research; no volume is assumed.
   if(!finite(margin)||margin<=0){reject('nonpositive-net-margin');continue;}
-  if(roi<.055||roi>1.5){reject('roi-policy');continue;}
-  if(!whole(c.sellQty,2)||!whole(c.buyQty,4)){reject('standing-depth-policy');continue;}
+  if(!whole(c.sellQty,1)||!whole(c.buyQty,1)){reject('invalid-standing-quantity');continue;}
+  // These are caution labels, not fitted fill probabilities or liquidity facts.
+  const researchWarnings=[];
+  if(roi>1.5)researchWarnings.push('Unusually wide quoted spread; verify current prices');
+  if(c.buyQty<4||c.sellQty<2)researchWarnings.push('Thin standing order book; completed volume unknown');
+  const watchOnly=researchWarnings.length>0;
   publicCoverage.accepted++;group.accepted++;
   // No requested lot size or overnight profit forecast on a public quote.
-  newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
+  newMarkets.push({id,name,researchWarnings,watchOnly,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
    buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
    affordability:c.buy<=available?'one-unit-affordable':'not-wallet-funded',at:c.at,
    craftableSupply:c.craftableSupply||null,
    evidence:'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
  }
  const candidateRank=(a,b)=>
+   Number(a.watchOnly)-Number(b.watchOnly)||
    Number(b.buy<=available)-Number(a.buy<=available)||
    studyScore(b)-studyScore(a)||b.unitMargin-a.unitMargin||a.id-b.id;
  newMarkets.sort(candidateRank);
  const cheapLimit=Math.min(100000,Math.max(10000,Math.floor(available)));
- const pearlLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='pearl'&&x.buy<=cheapLimit));
- const armorLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='armor'&&x.buy<=cheapLimit));
- const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&x.buy<=cheapLimit&&
+ const pearlLeads=diverseEquipment(newMarkets.filter(x=>!x.watchOnly&&x.equipmentKind==='pearl'&&x.buy<=cheapLimit));
+ const armorLeads=diverseEquipment(newMarkets.filter(x=>!x.watchOnly&&x.equipmentKind==='armor'&&x.buy<=cheapLimit));
+ const otherLeads=newMarkets.filter(x=>!x.watchOnly&&!x.equipmentKind&&x.buy<=cheapLimit&&
    x.buy<=Math.max(1,available)*.65).sort(candidateRank);
  const historyEquipment=history.filter(x=>{
   const meta=metadata?.[x.id]||{};

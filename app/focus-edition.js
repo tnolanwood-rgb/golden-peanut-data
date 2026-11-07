@@ -777,7 +777,8 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
   'Remaining researched price spreads, including items above your current wallet. Scroll to browse; these are NOT proven liquid markets or recommended bulk buys.',
   board.newMarkets,m=>hypotheticalNet(m),()=> 'Conditional quoted round only · turnover UNKNOWN',
   m=>'Bid '+cash(m.buy)+' · '+(m.buy>Number(userSnapshot()?.wallet||0)?'not covered by current wallet':'single unit affordable')+
-   ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot));
+   ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot)+
+   ((m.researchWarnings||[]).length?' · '+m.researchWarnings.join(' · '):''));
  return {count,board};
 }
 /* A capital choice is a WHAT-IF allocation across real currently quoted

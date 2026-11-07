@@ -90,3 +90,18 @@ test('public quote screening rejects malformed identifiers and standing quantiti
  for(const patch of [{id:0},{id:1.5},{buyQty:NaN},{sellQty:Infinity},{buyQty:2.5},{sellQty:'10'},{buy:'100'}])
   assert.equal(c.GPOpportunity.researchQuoteScore({...good,...patch}),null,JSON.stringify(patch));
 });
+test('positive narrow spreads and thin or wide books remain research without forecast promotion',()=>{
+ const c=context(),Board=require('../app/market-board.js'),now=Date.now();
+ const quotes=[{id:9911,buy:1000,sell:1200,buyQty:100,sellQty:100},
+  {id:9912,buy:100,sell:200,buyQty:1,sellQty:1},
+  {id:9913,buy:10,sell:1000,buyQty:50,sellQty:50}].map(q=>({...q,at:new Date(now).toISOString()}));
+ const metadata=Object.fromEntries(quotes.map(q=>[q.id,{name:'Quote '+q.id,type:'CraftingMaterial'}]));
+ const research=c.GPOpportunity.publicResearchCandidates({quotes,metadata,now});
+ assert.equal(research.length,3);
+ const narrow=research.find(x=>x.id===9911);assert.equal(narrow.buy,1001);assert.equal(narrow.exit,1199);
+ const b=Board.build({ok:true,budget:10000,orders:[],publicResearch:research},{wallet:10000,metadata,now});
+ assert.equal(b.newMarkets.length,3);assert.equal(b.forecast.length,0);
+ assert.deepEqual(b.otherLeads.map(x=>x.id),[9911]);
+ for(const x of b.newMarkets){assert.equal(x.quantity,undefined);assert.equal(x.expectedProfit,undefined);}
+ for(const id of [9912,9913]){const row=b.newMarkets.find(x=>x.id===id);assert.equal(row.watchOnly,true);assert.ok(row.researchWarnings.length);}
+});
