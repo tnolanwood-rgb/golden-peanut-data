@@ -11,6 +11,7 @@ const net=(unit,qty)=>{let left=qty,total=0;while(left>0){const n=Math.min(250,l
 const when=x=>{const t=Date.parse(x);return Number.isFinite(t)?t:NaN;};
 const fresh=(x,now)=>finite(when(x))&&when(x)<=now+30000&&now-when(x)<=30*MINUTE;
 const souvenir=/\b(?:infusion|music box|miniature|mini |ticket|tonic|skin|recipe:|toy-|envelope)\b/i;
+const isCommodityType=type=>['CraftingMaterial','UpgradeComponent','Consumable','Container','Trophy'].includes(type);
 function equipmentKind(name,type,rarity){
  if(rarity!=='Exotic')return null;
  if(type==='Armor')return 'armor';
@@ -132,7 +133,16 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   if(type==='Consumable'&&/unlock/i.test(subtype))continue;
   if(!whole(c.buy,1)||!whole(c.exit,1)||c.buy>250000||c.exit<=c.buy||souvenir.test(name))continue;
   const margin=net(c.exit,1)-c.buy,roi=margin/c.buy;
-  if(!finite(margin)||margin<50||roi<.055||roi>1.5||Number(c.sellQty||0)<2||Number(c.buyQty||0)<4)continue;
+  // A fixed 50c per-unit threshold suppressed Jute/Wood/Leather-style
+  // commodity markets even when the user's completed trades supported them.
+  // These are READ-ONLY discovery leads: standing book depth does not imply
+  // actual turnover, so the lower 2c margin gate requires a nontrivial quote
+  // on both sides without projecting a bulk order or daily profit.
+  const commodity=isCommodityType(type);
+  const minUnitMargin=commodity?2:50;
+  const minBuyBook=commodity?20:4,minSellBook=commodity?20:2;
+  if(!finite(margin)||margin<minUnitMargin||roi<.055||roi>1.5||
+     Number(c.sellQty||0)<minSellBook||Number(c.buyQty||0)<minBuyBook)continue;
   // No requested lot size or overnight profit forecast on a public quote.
   newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
    buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
@@ -152,7 +162,9 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  const cheapLimit=Math.min(100000,Math.max(10000,Math.floor(available)));
  const pearlLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='pearl'&&x.buy<=cheapLimit));
  const armorLeads=diverseEquipment(newMarkets.filter(x=>x.equipmentKind==='armor'&&x.buy<=cheapLimit));
- const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&x.buy<=cheapLimit&&
+ const commodityLeads=newMarkets.filter(x=>isCommodityType(x.type)&&x.buy<=cheapLimit&&
+   x.buy<=Math.max(1,available)*.65).sort(candidateRank).slice(0,150);
+ const otherLeads=newMarkets.filter(x=>!x.equipmentKind&&!isCommodityType(x.type)&&x.buy<=cheapLimit&&
    x.buy<=Math.max(1,available)*.65).sort(candidateRank);
  const historyEquipment=history.filter(x=>{
   const meta=metadata?.[x.id]||{};
@@ -160,7 +172,8 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  });
  const uniq=a=>{const seen=new Set();return a.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});};
  const categories={forecast:uniq(forecast),standing:uniq(standing),history:uniq(history),
-  historyEquipment:uniq(historyEquipment),pearlLeads:uniq(pearlLeads),armorLeads:uniq(armorLeads),
+  historyEquipment:uniq(historyEquipment),commodityLeads:uniq(commodityLeads),
+  pearlLeads:uniq(pearlLeads),armorLeads:uniq(armorLeads),
   otherLeads:uniq(otherLeads),newMarkets:uniq(newMarkets)};
  const counts={...Object.fromEntries(Object.entries(categories).map(([k,v])=>[k,v.length])),
   scanned:plan.candidateRefresh?.checked||0,catalogue:plan.publicCatalogue?.items||0,
