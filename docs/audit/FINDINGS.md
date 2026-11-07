@@ -33,3 +33,7 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   and 124 consumable entries survive the offline snapshot replay. Coverage counters
   expose remaining gates. F005 is now partly confirmed: name/unlock/ROI policies
   reject thousands of otherwise screened research entries; needs P4-001b review.
+
+- **F011 / High, repaired:** public seeds grouped only price/depth, so categories
+  with lower spreads could get zero slots despite eligible quotes. c09ad57 adds
+  metadata category to grouping; failing crowded-category fixture now passes.

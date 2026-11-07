@@ -1,3 +1,10 @@
+> Latest checkpoint: P4-001b1 category seed selection, branch `audit/discovery-category-seeds`,
+> based on main d3b9688 (upstream D1-write and mobile changes preserved).
+> Implementation SHA: c09ad575fbf45cd9a0517149f719b1f7b9e46819. Not deployed.
+> Category-aware price/depth buckets prevent dominant equipment spreads excluding
+> smaller metadata categories. Next: P4-001b2 name/unlock filters and real catalogue
+> search; do not repeat the completed seed-category repair. PR/CI status: new review pending.
+
 # Golden Peanut — authoritative engineering state
 
 Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: **market discovery

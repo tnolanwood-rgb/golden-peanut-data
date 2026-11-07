@@ -138,3 +138,18 @@ The same comparison applies to each saved asset path (index.html served at `/`).
 This establishes deployed code identity, not private account-data lineage or live
 forecast accuracy. No account data, secrets, database schema or orders mutated.
 Release labels still need P0-002; next development remains P4-001b.
+
+## P4-001b1 — category-aware public quote seeds
+
+Based on main d3b9688, retaining upstream D1-write and mobile changes.
+Implementation c09ad575fbf45cd9a0517149f719b1f7b9e46819. `node tests/execution.test.cjs` reproducer failed
+before repair (one Bag lost among 999 higher-spread Weapons), then all 27 cases
+passed. The 40-slot bound and uniqueness assertions remain enforced.
+`python scripts/audit_baseline.py` final result recorded in P4-001b1-baseline.json.
+`node scripts/audit_discovery.cjs` replays the same public snapshot; Bag seeds
+0 → 33, CraftingMaterial 32 → 80, Weapons 477 → 233 within the same 1450 budget.
+These are offline research-selection counts, not execution or profitability proof.
+Official metadata categories now subdivide existing price/depth buckets. Unknown
+metadata retains its own bucket; no names or handpicked families added. Very small
+budgets may still require rotation for complete coverage; no universal fairness claim.
+Name/unlock display exclusions and catalogue search remain unfinished. No deployment.
