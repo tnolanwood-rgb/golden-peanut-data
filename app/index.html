@@ -3864,17 +3864,66 @@ function calculateDelivery(s){const grouped=groupItems(s?.delivery),own=ownSells
 /* The main Delivery Box deliberately uses public lowest sell listings, not
  * a user's hypothetical targets. Price integrity is independent of sale
  * assumptions: quoted asks are NOT guaranteed execution volume or profit. */
-function listingValuation(s){
- const grouped=groupItems(s?.delivery),rows=[];let net=0,covered=0;
+/* Approximate cost basis for stock still in circulation.
+ * Reconcile sales chronologically against earlier completed purchases using
+ * FIFO. Remaining lots may also be in inventory or on active sell orders, so
+ * prefer the most recent unconsumed units as an ESTIMATE for Delivery Box stock.
+ * Do not invent a cost when there are insufficient recorded purchases. */
+let deliveryCostsCache={ledger:null,count:-1,tail:'',key:'',basis:new Map()};
+function outstandingDeliveryCosts(ledger,grouped){
+ if(!Array.isArray(ledger)||!grouped.size)return new Map();
+ const tail=ledger.at(-1),signature=tail?[tail.key,tail.item,tail.q,tail.purchased].join('|'):'';
+ const key=[...grouped].sort((a,b)=>a[0]-b[0]).map(([id,count])=>id+':'+count).join('|');
+ if(deliveryCostsCache.ledger===ledger&&deliveryCostsCache.count===ledger.length&&
+    deliveryCostsCache.tail===signature&&deliveryCostsCache.key===key)return deliveryCostsCache.basis;
+ const buckets=new Map();
+ for(const [id]of grouped)buckets.set(id,{buys:[],sells:[]});
+ for(const r of ledger){
+  const dest=buckets.get(r?.item);
+  if(!dest||!safeInt(r?.q,1)||!safeInt(r?.price,1)||!Number.isFinite(r.purchased)||r.purchased<=0)continue;
+  if(r.side==='buy')dest.buys.push(r);
+  else if(r.side==='sell')dest.sells.push(r);
+ }
+ const basis=new Map();
+ for(const [id,quantity] of grouped){
+  const rows=buckets.get(id),buys=rows.buys.sort((a,b)=>a.purchased-b.purchased||a.id-b.id)
+   .map(r=>({price:r.price,left:r.q,at:r.purchased})),sells=rows.sells.sort((a,b)=>a.purchased-b.purchased||a.id-b.id);
+  let i=0;
+  for(const sale of sells){
+   let needed=sale.q;
+   while(needed>0&&i<buys.length){
+    const buy=buys[i];
+    if(buy.at>sale.purchased)break;
+    if(buy.left<=0){i++;continue;}
+    const used=Math.min(buy.left,needed);needed-=used;buy.left-=used;
+    if(!buy.left)i++;
+   }
+  }
+  let left=quantity,cost=0;
+  // A current delivery holding is not proof of which outstanding lot it came
+  // from. Reverse lot attribution is an estimate, not a verified P&L figure.
+  for(let j=buys.length-1;j>=0&&left>0;j--){
+   if(buys[j].left<=0)continue;
+   const units=Math.min(left,buys[j].left);cost+=units*buys[j].price;left-=units;
+  }
+  basis.set(id,{cost:left===0?cost:null,covered:quantity-left,total:quantity,method:'recent unconsumed completed purchases after historical FIFO sales'});
+ }
+ deliveryCostsCache={ledger,count:ledger.length,tail:signature,key,basis};
+ return basis;
+}
+function listingValuation(s,ledger=[]){
+ const grouped=groupItems(s?.delivery),costs=outstandingDeliveryCosts(ledger,grouped),rows=[];let net=0,covered=0;
  for(const [id,count] of grouped){
   const quote=priceMap.get(id),when=Date.parse(quote?.at||'');
   const age=Date.now()-when;
   const fresh=Number.isFinite(when)&&age>=-30000&&age<=maxQuoteAgeMs;
   const ask=fresh&&safeInt(quote?.sell,1)?quote.sell:null;
   const afterFees=ask===null?null:netAtTarget(ask,count);
+  const basis=costs.get(id),purchaseCost=basis?.cost??null;
+  const profit=afterFees!==null&&purchaseCost!==null?afterFees-purchaseCost:null;
   if(afterFees!==null){net+=afterFees;covered++;}
-  rows.push({id,count,ask,net:afterFees,quotedAt:ask===null?null:quote.at,
-   awaitingQuote:afterFees===null});
+  rows.push({id,count,ask,net:afterFees,profit,purchaseCost,costCovered:basis?.covered??0,
+   costMethod:basis?.method||null,quotedAt:ask===null?null:quote.at,awaitingQuote:afterFees===null});
  }
  return {rows,covered,types:rows.length,unpriced:rows.length-covered,
   itemsNet:net,coins:safeInt(s?.delivery?.coins)?s.delivery.coins:null,
