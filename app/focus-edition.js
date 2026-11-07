@@ -715,6 +715,12 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
     row.append(artwork(m.id));
     const middle=h('span','focus-market-title');middle.append(itemTitle(m.id,name(m),'strong',m.rarity));
     middle.append(h('small','',subtitle(m)));
+    if(m.kind==='new'&&m.observedOrderFillsAll>0&&m.observedSellFillsAll>0){
+     middle.append(h('small','focus-muted',
+      'YOUR observed order reductions · buy '+num(m.observedOrderFillsAll)+
+      ' units · sell '+num(m.observedSellFillsAll)+
+      ' units · separate-side evidence, NOT a verified round trip'));
+    }
     if(m.kind==='new'&&root.GPCapacity){
      const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
      if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
