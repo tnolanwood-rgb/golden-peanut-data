@@ -196,3 +196,31 @@ Remaining first rejections: ROI 6,521, standing depth 38. These are policy-scree
 counts, not live liquidity or profit outcomes. Existing ROI/minimum-depth policies
 are intentionally retained for the next audit; whole Phase 4 is not complete.
 No release, private account write or game order performed.
+
+## P4-001c2 + P8-000 — final checkpoint before allowance reset
+
+Prior 6688d55 CI 42399490369 passed. PR #30 open; main unchanged d3b9688.
+New pipeline fixture failed before repair: zero of three positive narrow/thin/wide
+quote candidates survived. 8e5bc43 retains positive net one-copper-inside quotes,
+removes arbitrary 3% exit discount and ROI visibility gates; malformed/empty books
+still rejected. Thin/wide books are cautioned and withheld from primary research
+lists, never funded. Old browser assertion forbidding wide quotes everywhere was
+replaced by secondary-watchlist/caution/no-top-buy assertions; mobile/desktop pass.
+
+Full-catalogue replay selected all 27,999 IDs over 18 successful fixed 6500-budget
+passes, with bounded unique IDs per pass. This is ID selection, NOT live quotes,
+persisted cursor recovery or execution evidence. Research candidates 17,995→22,313;
+board 11,436→22,313; no eligible positive-margin research rejected at board stage.
+
+Replay exposed repeated Object.keys(metadata) inside family iteration. Regression
+counted 1002 enumerations for 1000 items; d19ae75 reduces to 2, preserving IDs/order.
+`python scripts/audit_baseline.py` passed on clean d19ae759bad135e844267e86cb23cb7cecdda780:
+source, 34 Python tests, all 8 JS files (30 execution, 13 board cases), desktop/mobile
+Chromium. Saved P4-001c2-baseline.json. New remote CI pending, not deployed.
+
+Benchmark: `git show 8e5bc43:app/opportunity-engine.js > /tmp/gp-family-before.js`
+then `node scripts/benchmark_family.cjs /tmp/gp-family-before.js`. Initial attempt
+using child_process git hit sandbox EPERM; shell extraction succeeded. Seven warmed
+runs on 1000 same-family rows: median 10.796ms before, 1.528ms after; exact same IDs
+asserted every run. Engine microbenchmark only, not a physical Android speed claim.
+User reports 3% allowance: stop here, next P4-002. No deployment or private writes.

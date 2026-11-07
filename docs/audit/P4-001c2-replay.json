@@ -1,0 +1,257 @@
+{
+  "conditions": "Offline replay at snapshot generation time; all quotes evaluated to isolate gates, seed quota separate; no live profitability inference",
+  "catalogueSHA256": "28bdb364054dff6e30afdfeb6c02d4aa96aa08cd2c257bfaf33b2c6233531c28",
+  "generatedAt": 1794024394,
+  "catalogueRotation": {
+    "budget": 6500,
+    "passes": 18,
+    "catalogueItems": 27999,
+    "selectedUnique": 27999,
+    "complete": true,
+    "conditions": "Fixed catalogue, successful successive deep scans; ID selection only, not quote coverage"
+  },
+  "beforeSource": "6688d55",
+  "afterSource": "d19ae75",
+  "categoriesBefore": {
+    "Consumable": {
+      "catalogue": 4906,
+      "quoteEligible": 3594,
+      "research": 3594,
+      "board": 2559,
+      "seeded": 198
+    },
+    "Armor": {
+      "catalogue": 6722,
+      "quoteEligible": 4079,
+      "research": 4079,
+      "board": 2312,
+      "seeded": 174
+    },
+    "Gizmo": {
+      "catalogue": 125,
+      "quoteEligible": 75,
+      "research": 75,
+      "board": 63,
+      "seeded": 66
+    },
+    "Container": {
+      "catalogue": 686,
+      "quoteEligible": 312,
+      "research": 312,
+      "board": 209,
+      "seeded": 144
+    },
+    "Bag": {
+      "catalogue": 69,
+      "quoteEligible": 39,
+      "research": 39,
+      "board": 36,
+      "seeded": 33
+    },
+    "CraftingMaterial": {
+      "catalogue": 1409,
+      "quoteEligible": 1020,
+      "research": 1020,
+      "board": 817,
+      "seeded": 80
+    },
+    "Trinket": {
+      "catalogue": 697,
+      "quoteEligible": 586,
+      "research": 586,
+      "board": 342,
+      "seeded": 120
+    },
+    "Weapon": {
+      "catalogue": 11780,
+      "quoteEligible": 7130,
+      "research": 7130,
+      "board": 4046,
+      "seeded": 233
+    },
+    "": {
+      "catalogue": 26,
+      "quoteEligible": 0,
+      "research": 0,
+      "board": 0,
+      "seeded": 0
+    },
+    "Trophy": {
+      "catalogue": 237,
+      "quoteEligible": 128,
+      "research": 128,
+      "board": 98,
+      "seeded": 72
+    },
+    "MiniPet": {
+      "catalogue": 429,
+      "quoteEligible": 359,
+      "research": 359,
+      "board": 341,
+      "seeded": 118
+    },
+    "Tool": {
+      "catalogue": 1,
+      "quoteEligible": 1,
+      "research": 1,
+      "board": 0,
+      "seeded": 1
+    },
+    "UpgradeComponent": {
+      "catalogue": 778,
+      "quoteEligible": 577,
+      "research": 577,
+      "board": 527,
+      "seeded": 126
+    },
+    "Back": {
+      "catalogue": 54,
+      "quoteEligible": 32,
+      "research": 32,
+      "board": 27,
+      "seeded": 32
+    },
+    "JadeTechModule": {
+      "catalogue": 18,
+      "quoteEligible": 14,
+      "research": 14,
+      "board": 13,
+      "seeded": 14
+    },
+    "PowerCore": {
+      "catalogue": 10,
+      "quoteEligible": 1,
+      "research": 1,
+      "board": 1,
+      "seeded": 1
+    },
+    "Relic": {
+      "catalogue": 52,
+      "quoteEligible": 48,
+      "research": 48,
+      "board": 45,
+      "seeded": 38
+    }
+  },
+  "categoriesAfter": {
+    "Consumable": {
+      "catalogue": 4906,
+      "quoteEligible": 4506,
+      "research": 4506,
+      "board": 4506,
+      "seeded": 194
+    },
+    "Armor": {
+      "catalogue": 6722,
+      "quoteEligible": 5026,
+      "research": 5026,
+      "board": 5026,
+      "seeded": 171
+    },
+    "Gizmo": {
+      "catalogue": 125,
+      "quoteEligible": 95,
+      "research": 95,
+      "board": 95,
+      "seeded": 73
+    },
+    "Container": {
+      "catalogue": 686,
+      "quoteEligible": 642,
+      "research": 642,
+      "board": 642,
+      "seeded": 174
+    },
+    "Bag": {
+      "catalogue": 69,
+      "quoteEligible": 44,
+      "research": 44,
+      "board": 44,
+      "seeded": 35
+    },
+    "CraftingMaterial": {
+      "catalogue": 1409,
+      "quoteEligible": 1140,
+      "research": 1140,
+      "board": 1140,
+      "seeded": 80
+    },
+    "Trinket": {
+      "catalogue": 697,
+      "quoteEligible": 624,
+      "research": 624,
+      "board": 624,
+      "seeded": 120
+    },
+    "Weapon": {
+      "catalogue": 11780,
+      "quoteEligible": 8943,
+      "research": 8943,
+      "board": 8943,
+      "seeded": 204
+    },
+    "": {
+      "catalogue": 26,
+      "quoteEligible": 1,
+      "research": 1,
+      "board": 1,
+      "seeded": 1
+    },
+    "Trophy": {
+      "catalogue": 237,
+      "quoteEligible": 147,
+      "research": 147,
+      "board": 147,
+      "seeded": 71
+    },
+    "MiniPet": {
+      "catalogue": 429,
+      "quoteEligible": 389,
+      "research": 389,
+      "board": 389,
+      "seeded": 114
+    },
+    "Tool": {
+      "catalogue": 1,
+      "quoteEligible": 1,
+      "research": 1,
+      "board": 1,
+      "seeded": 1
+    },
+    "UpgradeComponent": {
+      "catalogue": 778,
+      "quoteEligible": 635,
+      "research": 635,
+      "board": 635,
+      "seeded": 108
+    },
+    "Back": {
+      "catalogue": 54,
+      "quoteEligible": 44,
+      "research": 44,
+      "board": 44,
+      "seeded": 44
+    },
+    "JadeTechModule": {
+      "catalogue": 18,
+      "quoteEligible": 17,
+      "research": 17,
+      "board": 17,
+      "seeded": 17
+    },
+    "PowerCore": {
+      "catalogue": 10,
+      "quoteEligible": 7,
+      "research": 7,
+      "board": 7,
+      "seeded": 7
+    },
+    "Relic": {
+      "catalogue": 52,
+      "quoteEligible": 52,
+      "research": 52,
+      "board": 52,
+      "seeded": 36
+    }
+  }
+}

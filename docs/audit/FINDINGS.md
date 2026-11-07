@@ -51,3 +51,9 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   and accepted NaN/infinite/fractional/string standing quantities through coercion.
   It now requires positive safe integer IDs/prices/depth, retaining the existing
   minimum standing quantity policy until separately audited. Book size is not fills.
+
+- **F015 / High, repaired 8e5bc43:** ROI/depth gates and an arbitrary 3% exit
+  discount hid positive-margin quote research. Now use inside-quote prices, retain
+  positive net research, caution wide/thin books in secondary watchlist, no income claim.
+- **F016 / High, repaired d19ae75:** Object.keys(metadata) ran on each family-loop
+  iteration. Cache cardinality once; 1002→2 enumerations at 1000 rows, same candidates.

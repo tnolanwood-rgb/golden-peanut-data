@@ -40,3 +40,8 @@
   Keep above-wallet quotes in the existing unfunded watchlist, preserve actual
   wallet allocation, and reject malformed numeric inputs before scoring. ROI/depth
   policy and rotation remain explicit separate audit tasks rather than blanket removal.
+
+- D012: turn speculative ROI/depth exclusions into explicit research cautions;
+  keep thin/wide quotes outside primary lists. Preserve funded execution gates.
+- D013: prioritise bounded enumeration fix discovered during rotation replay;
+  prove identical IDs/order and benchmark the same fixture, not synthetic live returns.
