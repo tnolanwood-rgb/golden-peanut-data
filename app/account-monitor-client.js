@@ -62,16 +62,18 @@ async function loadPreferences(state){
  x.restorePromise=(async()=>{
   const stored=(await state.db.get('config',account,'cloud-account-monitor-v1'))?.value;
   if(stored?.enabled){
-   x.enabled=true;x.consent=true;x.lastError=null;
+   x.enabled=true;x.consent=true;x.lastError=null;x.restoreError=null;
    return true;
   }
   if(stored?.disabledAt){
    // Explicit user opt-out always wins over automatic restoration.
    x.enabled=false;x.consent=false;return false;
   }
-  // A previous successful GitHub connection may exist in the private
-  // monitor even if browser preferences were absent or not yet migrated.
-  // This is a READ-ONLY status check, never an enrolment or key upload.
+  // Only re-verify a previously consented connection. Without evidence
+  // of prior opt-in, do NOT transmit the user's GW2 API key to the Worker.
+  // A stored cloud status is produced only by a previous successful opt-in.
+  const previous=(await state.db.get('config',account,'cloud-monitor-status-v1'))?.value;
+  if(previous?.enabled!==true)return false;
   try{
    const remote=await request(state,'/status');
    if(state.account!==account||remote.backend!=='github-actions'||remote.enabled!==true)
