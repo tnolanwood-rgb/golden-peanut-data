@@ -94,3 +94,23 @@ Latest PR CI for these new commits is pending, not claimed successful.
 No live accuracy improvement, complete category coverage or physical-device result
 is established. No performance optimisation claim. P4-001a must investigate the
 remaining low-unit-margin/equipment/name filters using catalogue-to-UI evidence.
+
+## P4-001a — small-margin discovery and gate accounting
+
+Prior PR #20 head e286321 CI [42355298848](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42355298848)
+passed; main remained 7379ede, PR open/unmerged. Before repair,
+`node tests/execution.test.cjs`: 25 passed, new regression failed (0 board rows
+instead of 2 engine-accepted commodity/food candidates).
+
+Implementation `7e15c007887c50876b9468601f6b35cc13bd1543`:
+`python scripts/audit_baseline.py` VERIFIED all four stages on clean code:
+31 Python tests; 8 JS test files (26 execution cases, 10 board cases); source
+checks; desktop/mobile assembled Chromium. Browser now proves positive sub-50c
+material/food research renders with “not a forecast”. No new workflow edits.
+`git diff --check` passed. New PR CI pending; no deployment performed.
+
+`node scripts/audit_discovery.cjs` replayed the same 27,999-row public snapshot
+before/after. See [P4-001a-discovery.md](P4-001a-discovery.md) for immutable data
+checksum, per-category counts and limitations. Gate tests prove all examined rows
+are accounted for once and malformed depth is rejected. Snapshot replay is NOT
+live forecast-accuracy evidence or complete end-to-end discovery verification.

@@ -25,3 +25,8 @@
 - **D008:** reuse existing shared-wallet allocator and deterministic scan lanes;
   no new probabilistic model. A necessary expected-sales profit bound catches
   impossible inputs without claiming calibration. Preserve conditional research.
+
+- **D009:** positive low per-unit quoted margins are valid research regardless of
+  hypothetical volume. Remove the unsupported display floor, retain positive net
+  fees/malformed-input guards, expose first rejection reason per row. Defer other
+  policy changes until category evidence; never turn visibility into forecast income.

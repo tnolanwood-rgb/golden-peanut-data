@@ -26,3 +26,10 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   later categories. P4-000 reserves 25/20/10/15/10/10/10 percent for catalogue,
   positions, history, public, recipes, cheap equipment and equipment families;
   dedup/spare-slot filling retained. This does not remove downstream F005 filters.
+
+- **F010 / High, CONFIRMED and REPAIRED:** public quote screening admitted positive
+  small-unit margins, but board silently required at least 50 copper per item.
+  7e15c00 removes that mismatch without inventing volume; 220 additional material
+  and 124 consumable entries survive the offline snapshot replay. Coverage counters
+  expose remaining gates. F005 is now partly confirmed: name/unlock/ROI policies
+  reject thousands of otherwise screened research entries; needs P4-001b review.

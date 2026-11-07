@@ -3,35 +3,37 @@
 Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: **market discovery
 first**, then calculation correctness and useful bids; defer release cosmetics.
 
-- **Phase / batches:** P0-001 VERIFIED. P1-000 recommendation integrity and P4-000
-  discovery budget repair implemented; final checks recorded in EVIDENCE.md.
+- **Phase / batches:** P0-001 VERIFIED. P1-000, P4-000 and P4-001a VERIFIED locally;
+  latest remote CI pending. Discovery and calculation audit remains ongoing.
   Full phases 0/1/4 are not complete.
 - **Branch:** `development/audit-p0-checkpoint`; [PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20)
   remains the review boundary. Main advanced to `7379ede` (release-labelled 7.29)
   and was merged locally in `124f332`; upstream Delivery Box/history work preserved.
-- **Latest implementation:** baf7c16d292fc65f8f575f2cfef700c31b3b1823. Recommendation repair `003c52b`.
+- **Latest implementation:** 7e15c007887c50876b9468601f6b35cc13bd1543. Recommendation repair `003c52b`.
   Resolve latest checkpoint SHA with `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed:** impossible resale/profit combinations and invalid sample counts
   rejected; board suggestions share actual wallet; uncalibrated estimates no longer
   labelled calibrated. Public and recipe scan lanes now receive reserved budget;
   early equipment/history lanes cannot consume it all. Full catalogue rotation retained.
+  Removed arbitrary 50-copper research display floor; added per-category rejection
+  accounting and offline replay. Low-margin commodity/food UI regressions pass.
 - **Production:** NOT deployed or independently version-verified this session.
   Prior live probe returned HTML labelled 7.16; main now advertises 7.29. Default
   Python User-Agent returned Cloudflare 1010; `Mozilla/5.0` returned HTTP 200.
   No direct credentials or independent private D1 readback available.
-- **Review/tests:** prior PR head bda60d9 passed CI 42324339781. New implementation
+- **Review/tests:** prior PR head e286321 passed CI 42355298848. New implementation
   local verification and remote CI status are in EVIDENCE.md. No merge/deploy done.
 - **In progress:** next discovery audit not started; checkpoint/PR reconciliation only.
-- **Exact next action:** P4-001a: measure category coverage from `data/market_public.json`
-  through `researchQuoteScore`, `gatherPublicSeeds`, `publicResearchCandidates` and
-  `GPMarketBoard.build`. Reproduce low-unit-margin commodity/consumable exclusion
-  and equipment/name-only gates with fixtures before changing them. Track scanned,
-  rejected (with reason), surfaced and searchable counts by metadata category.
+- **Exact next action:** P4-001b: reproduce name/unlock-policy exclusion and
+  category seed starvation using the saved replay. Decide research visibility
+  separately from bid eligibility; preserve explicit unknown execution evidence.
+  Add category-based coverage/rotation tests and an actual catalogue-search journey.
+  See P4-001a-discovery.md for counts and remaining gates.
 - **Deferred:** P0-002 exact release identity, at user's request to prioritise discovery.
   After discovery bottlenecks: P1-001 independent fee/FIFO/DST/partial-history oracle;
   P3/P5 evidence-to-quantity learning. Do not infer standing depth is completed volume.
 - **Outstanding:** F002 stale release identity; F004 private data lineage unverified;
-  F005 equipment/name/price filters may still exclude useful research. No claim of
+  F005 name/ROI/unlock filters confirmed to exclude research; audit remains open. No claim of
   complete discovery or improved live profitability. Physical S23 Ultra untested.
 - **Release safety:** reviewable after required checks; no production release approval
   requested. No new release markers, database migrations, account writes or orders.
