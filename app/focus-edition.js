@@ -301,6 +301,16 @@ function install(){if(started)return;started=true;load();document.body.classList
  const capitalBody=h('div','focus-settings-body');capitalBody.id='focus-deployment-research';
  capitalShelf.append(h('summary','','Capital deployment research'),capitalBody);
  engine.prepend(capitalShelf);engine.prepend(monitorShelf);
+ monitorShelf.addEventListener('toggle',()=>{
+  if(!monitorShelf.open)return;
+  monitorBody.replaceChildren();
+  renderAccountWatcher(monitorBody,State());
+ });
+ capitalShelf.addEventListener('toggle',()=>{
+  if(!capitalShelf.open)return;
+  capitalBody.replaceChildren();
+  if(State()?.opportunityPlan?.ok)renderDeploymentPlanner(capitalBody,State());
+ });
  overlay.append(engine);app.append(overlay);$('focus-research-close').addEventListener('click',dismissResearch);overlay.addEventListener('keydown',ev=>{if(ev.key==='Escape')dismissResearch();});
  initToday();initTrades();initOrders();initLegend();
  // Observe only the legacy output containers; mutations to the new workspaces won't loop.
@@ -338,7 +348,7 @@ function install(){if(started)return;started=true;load();document.body.classList
   setTimeout(restoreScroll,250);
  }
  window.setTimeout(schedule,350);
- root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>{renderToday();renderTrades();renderOrders();updateLegendView();},cash};
+ root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>renderVisible(),cash};
  try{
   // Preserve the real initial history entry. Chromium skips startup-generated
   // pushState entries without user activation on Android physical Back.
@@ -507,7 +517,9 @@ function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow})
   if(cursor<items.length&&view.scrollTop+view.clientHeight>=view.scrollHeight-160)reveal(16);
  },{passive:true});
  section.append(view,controls);host.append(section);
- reveal(Math.max(base,Math.min(2500,Number(stored.loaded)||0)));
+ // A stored scroll state might contain thousands of rows. Mount only a
+ // small batch now and progressively reveal the rest on deliberate scrolling.
+ reveal(Math.max(base,Math.min(48,Number(stored.loaded)||0)));
  if(stored.top>0)window.requestAnimationFrame(()=>{if(view.isConnected)view.scrollTop=Math.min(stored.top,Math.max(0,view.scrollHeight-view.clientHeight));});
  return items.length;
 }
@@ -560,8 +572,8 @@ function openBoardMarket(m){
  if(m.kind==='standing')renderGrowthDetail();else renderTradeDetail();
  window.scrollTo({top:0,behavior:'instant'});
 }
-function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[]}={}){
- const board=root.GPMarketBoard?.build?.(s?.opportunityPlan,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
+function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=null}={}){
+ const board=prebuilt||marketBoard(s);
  if(!board?.ready)return {count:0,board:null};
  const q=query.toLowerCase().trim(),shown=new Set(excludeIds),lot=Number(ui.marketResearchLot)||10;
  const name=m=>m.name||m.itemName||itemName(m.id);
@@ -924,10 +936,7 @@ function renderAccountWatcher(host,state){
  * This section distinguishes hypothetical full-round profit from measured
  * night throughput and does not claim the whole lot will actually turn over.
  */
-function renderTopResearch(host,state){
- const board=root.GPMarketBoard?.build?.(state?.opportunityPlan,{
-  wallet:userSnapshot()?.wallet,metadata:state?.meta||{}
- });
+function renderTopResearch(host,state,board=marketBoard(state)){
  if(!board?.ready||!board.history?.length)return;
  const rows=board.history.slice(0,8);
  const section=h('section','focus-top-research');
@@ -979,12 +988,18 @@ function renderOpportunityHome(){
  }
  host.replaceChildren();
  const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
- if(fresh)renderTopResearch(host,s);
+ const board=fresh?marketBoard(s):null;
+ if(fresh)renderTopResearch(host,s,board);
  // Keep operational details in ⚙ Settings, not the trade list.
+ // Collapsed diagnostics cost NOTHING on normal trading refreshes.
  const monitorHost=$('focus-account-watcher-host');
- if(monitorHost){monitorHost.replaceChildren();renderAccountWatcher(monitorHost,s);}
+ if(monitorHost&&$('focus-monitor-settings')?.open&&$('focus-research')?.hidden===false){
+  monitorHost.replaceChildren();renderAccountWatcher(monitorHost,s);
+ }
  const capitalHost=$('focus-deployment-research');
- if(capitalHost){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
+ if(capitalHost&&$('focus-capital-settings')?.open&&$('focus-research')?.hidden===false){
+  capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);
+ }
  // Alert only if a previously connected collector has truly missed several
  // scheduled checks, never while restoring local session state.
  const cloud=root.GPCloudAccount?.status?.(s?.account);
@@ -1003,11 +1018,11 @@ function renderOpportunityHome(){
   renderVerifiedRecentMarkets(host,s);
   return;
  }
- const rows=book?.rows||[],board=root.GPMarketBoard?.build?.(p,{wallet:userSnapshot()?.wallet,metadata:s?.meta||{}});
+ const rows=book?.rows||[];
  status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESEARCH · ':'')+
   num(rows.length)+' calibrated 24h orders · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
  if(!rows.length){
-  const connected=renderConnectedMarkets(host,s,{limit:6,excludeIds:(board?.history||[]).slice(0,8).map(x=>x.id)});
+  const connected=renderConnectedMarkets(host,s,{limit:6,excludeIds:(board?.history||[]).slice(0,8).map(x=>x.id),prebuilt:board});
   if(!connected.count)host.append(h('p','focus-empty','No quote-supported markets surfaced in this scan. Full-market discovery is separate from execution calibration; check Trades for the complete catalogue and refresh market checks.'));
   renderVerifiedRecentMarkets(host,s,{limit:5});
   return;
@@ -1573,6 +1588,23 @@ function updateLegendView(){if(!$('focus-legend-workspace'))return;const p=root.
 function decorateLegendArtwork(){const cache=root.GPLegendaryPlanner?.cache;if(!cache?.book?.itemMap)return;const names=new Map();for(const item of cache.book.itemMap.values())if(item.name&&validIcon(item))names.set(item.name.toLowerCase(),item.icon);
  for(const row of document.querySelectorAll('#lp-materials .lp-material-row, #lp-direct .lp-direct-row, #lp-craft-steps .lp-direct-row')){if(row.querySelector('.focus-legend-item-art'))continue;const anchor=row.querySelector('a');if(!anchor)continue;const src=names.get(anchor.textContent.trim().toLowerCase());const wrap=h('span','focus-legend-item-art');if(src){const img=h('img');img.src=src;img.alt='';img.loading='lazy';img.onerror=()=>img.replaceWith(h('span','','◇'));wrap.append(img);}else wrap.append(h('span','','◇'));row.prepend(wrap);}
 }
-function schedule(){if(renderTimer)return;renderTimer=window.setTimeout(()=>{renderTimer=0;if(!started)return;renderToday();if(ui.tab==='trades'&&((!ui.tradeDetail&&!ui.growthDetail&&!ui.relatedDetail)||$('focus-trade-detail').hidden))renderTrades();if(ui.tab==='orders'&&!(ui.orderDetail&&!$('focus-order-detail').hidden))renderOrders();if(ui.tab==='legendaries')updateLegendView();const s=State();const busy=s?.busy||s?.allocationBusy;labelText('focus-sync-state',busy?'Refreshing saved account and market evidence…':s?.error?'Some account data may be unavailable; previous values were kept.':'');},170);}
+function renderVisible({background=false}={}){
+ if(!started)return;
+ // The previous global renderer rebuilt hidden tabs and heavy portfolio panels
+ // for every async status/icon update. Render only the screen the user sees.
+ if(ui.tab==='today')renderToday();
+ else if(ui.tab==='trades'){
+  if(!background||((!ui.tradeDetail&&!ui.growthDetail&&!ui.relatedDetail)||$('focus-trade-detail').hidden))renderTrades();
+ }else if(ui.tab==='orders'){
+  if(!background||!(ui.orderDetail&&!$('focus-order-detail').hidden))renderOrders();
+ }else if(ui.tab==='legendaries')updateLegendView();
+ const s=State(),busy=s?.busy||s?.allocationBusy;
+ labelText('focus-sync-state',busy?'Refreshing saved account and market evidence…':
+  s?.error?'Some account data may be unavailable; previous values were kept.':'');
+}
+function schedule(){
+ if(renderTimer)return;
+ renderTimer=window.setTimeout(()=>{renderTimer=0;renderVisible({background:true});},170);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })(typeof globalThis!=='undefined'?globalThis:this);
