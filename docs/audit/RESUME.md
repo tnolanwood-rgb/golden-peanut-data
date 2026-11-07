@@ -1,11 +1,12 @@
 # Resume — read after STATE.md
 
 Repository `tnolanwood-rgb/golden-peanut-data`, branch
-`development/audit-p0-checkpoint`, PR #20. Read root AGENTS.md.
+`main` (PR #20 is now merged/deployed). Read root AGENTS.md.
 
-1. Fetch/status; check PR #20 merge state and newest CI before coding. Current
-   implementation 7e15c007887c50876b9468601f6b35cc13bd1543 includes main 7379ede (7.29). Do not
-   reopen obsolete 7.16 work or redo P0-001. Prior e286321 CI 42355298848 passed.
+1. Fetch/status; start a new audit branch from main. PR #20 merged as 09e49ac;
+   release e5d67e6 deployed through successful run 42369046821. All 14 referenced
+   live HTML/JS/CSS files matched exact local hashes. Do not redeploy old PR #20.
+   Last local checkout `release/audit-discovery` tracks main; permanent state is main.
 2. **User priority is market discovery first**, then sound calculations/useful bids.
    Release identity P0-002 remains TODO, deliberately deferred.
 3. Completed: 003c52b prevents impossible expected profit and shared-wallet overflow,

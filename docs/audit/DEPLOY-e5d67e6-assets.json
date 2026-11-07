@@ -1,0 +1,91 @@
+{
+  "release": "e5d67e6cfcda8086e06e0f23fae13d9fcd413cc0",
+  "origin": "https://thegoldenpeanut.pages.dev/",
+  "assets": [
+    {
+      "asset": "index.html",
+      "expected": "ce3e9c659f7156c55b9703885a8d76d36d6459f6a20bcae5c3ee703d2db07487",
+      "actual": "ce3e9c659f7156c55b9703885a8d76d36d6459f6a20bcae5c3ee703d2db07487",
+      "match": true
+    },
+    {
+      "asset": "focus-edition.css",
+      "expected": "0bc67c4657f61216fb655a6d1bd4c104abe94333fa71011caf9cbc009f021d1c",
+      "actual": "0bc67c4657f61216fb655a6d1bd4c104abe94333fa71011caf9cbc009f021d1c",
+      "match": true
+    },
+    {
+      "asset": "gw2-rarity.js",
+      "expected": "6193792bdbfe145f8aee8bf66a23aac1380e28b94e1c8bf0174cd2ab0bf83d49",
+      "actual": "6193792bdbfe145f8aee8bf66a23aac1380e28b94e1c8bf0174cd2ab0bf83d49",
+      "match": true
+    },
+    {
+      "asset": "legendary-recipe-engine.js",
+      "expected": "045dc84549c5170422a6b04107fb71f0c36501aea5c0df7038723f3ab400fd3b",
+      "actual": "045dc84549c5170422a6b04107fb71f0c36501aea5c0df7038723f3ab400fd3b",
+      "match": true
+    },
+    {
+      "asset": "legendary-planner.js",
+      "expected": "87381b29974f1447586eee33f52d353470eb1f3dd081b0ec26c49a088fef92d1",
+      "actual": "87381b29974f1447586eee33f52d353470eb1f3dd081b0ec26c49a088fef92d1",
+      "match": true
+    },
+    {
+      "asset": "growth-intelligence.js",
+      "expected": "a5e5512292e7b059af823a794993179158de1b1497c9573a8ab35a601cde3403",
+      "actual": "a5e5512292e7b059af823a794993179158de1b1497c9573a8ab35a601cde3403",
+      "match": true
+    },
+    {
+      "asset": "public-market-feed.js",
+      "expected": "ca97c8bd0885844a7b34454cd7ecd8046bf2f215f9dae2aa16080e1701dccf66",
+      "actual": "ca97c8bd0885844a7b34454cd7ecd8046bf2f215f9dae2aa16080e1701dccf66",
+      "match": true
+    },
+    {
+      "asset": "execution-engine.js",
+      "expected": "262d01c9ddc3e755706e2f015e8e45af29b5cb4fcb6d47b8072c71786fd2db16",
+      "actual": "262d01c9ddc3e755706e2f015e8e45af29b5cb4fcb6d47b8072c71786fd2db16",
+      "match": true
+    },
+    {
+      "asset": "opportunity-engine.js",
+      "expected": "20da6911cb0c0ae68236256778ac8ccd8ab03ac776c37f3c3f3911bbf2ce3a5a",
+      "actual": "20da6911cb0c0ae68236256778ac8ccd8ab03ac776c37f3c3f3911bbf2ce3a5a",
+      "match": true
+    },
+    {
+      "asset": "capacity-intelligence.js",
+      "expected": "a1ddfe9ad7fc11649fff5baa742fa49b9b09b8a70927df0e13fb2f4396ba02ea",
+      "actual": "a1ddfe9ad7fc11649fff5baa742fa49b9b09b8a70927df0e13fb2f4396ba02ea",
+      "match": true
+    },
+    {
+      "asset": "account-monitor-client.js",
+      "expected": "c296dac5036b0d72661992362e519556f730a74f1bd31a0209346c1c0238ea20",
+      "actual": "c296dac5036b0d72661992362e519556f730a74f1bd31a0209346c1c0238ea20",
+      "match": true
+    },
+    {
+      "asset": "portfolio-intelligence.js",
+      "expected": "d19ee78c08e18a8d8ef7cea886350606c298f30d6d0ee330e639968d71a46ef2",
+      "actual": "d19ee78c08e18a8d8ef7cea886350606c298f30d6d0ee330e639968d71a46ef2",
+      "match": true
+    },
+    {
+      "asset": "market-board.js",
+      "expected": "de831e22fa37589d7283bc66c847bb5761922f1f2bb8377a0ae31c6152181f46",
+      "actual": "de831e22fa37589d7283bc66c847bb5761922f1f2bb8377a0ae31c6152181f46",
+      "match": true
+    },
+    {
+      "asset": "focus-edition.js",
+      "expected": "59f95244a01d9a900ccaf49bd3a34604f741e67aa6222569e0ae9b72269ec33e",
+      "actual": "59f95244a01d9a900ccaf49bd3a34604f741e67aa6222569e0ae9b72269ec33e",
+      "match": true
+    }
+  ],
+  "allMatch": true
+}

@@ -4,11 +4,11 @@ Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: **market discovery
 first**, then calculation correctness and useful bids; defer release cosmetics.
 
 - **Phase / batches:** P0-001 VERIFIED. P1-000, P4-000 and P4-001a VERIFIED locally;
-  latest remote CI pending. Discovery and calculation audit remains ongoing.
+  CI and production deployment verified. Discovery and calculation audit remains ongoing.
   Full phases 0/1/4 are not complete.
-- **Branch:** `development/audit-p0-checkpoint`; [PR #20](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/20)
-  remains the review boundary. Main advanced to `7379ede` (release-labelled 7.29)
-  and was merged locally in `124f332`; upstream Delivery Box/history work preserved.
+- **Branch:** resume from `main`; local release checkout is `release/audit-discovery`.
+  PR #20 merged at `09e49acc68c83fe5dd6eb53a66da2f212b02021c`. User explicitly
+  authorised deployment. Release commit `e5d67e6cfcda8086e06e0f23fae13d9fcd413cc0`.
 - **Latest implementation:** 7e15c007887c50876b9468601f6b35cc13bd1543. Recommendation repair `003c52b`.
   Resolve latest checkpoint SHA with `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed:** impossible resale/profit combinations and invalid sample counts
@@ -17,13 +17,14 @@ first**, then calculation correctness and useful bids; defer release cosmetics.
   early equipment/history lanes cannot consume it all. Full catalogue rotation retained.
   Removed arbitrary 50-copper research display floor; added per-category rejection
   accounting and offline replay. Low-margin commodity/food UI regressions pass.
-- **Production:** NOT deployed or independently version-verified this session.
-  Prior live probe returned HTML labelled 7.16; main now advertises 7.29. Default
-  Python User-Agent returned Cloudflare 1010; `Mozilla/5.0` returned HTTP 200.
-  No direct credentials or independent private D1 readback available.
-- **Review/tests:** prior PR head e286321 passed CI 42355298848. New implementation
-  local verification and remote CI status are in EVIDENCE.md. No merge/deploy done.
-- **In progress:** next discovery audit not started; checkpoint/PR reconciliation only.
+- **Production:** deployed and exact assets verified against e5d67e6 on 2026-11-07.
+  [Deploy 42369046821](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42369046821)
+  passed target checks, regression tests, deployment and live smoke tests. Separate
+  SHA256 verification matched all 14 referenced HTML/JS/CSS files on Pages.
+  Legacy version labels remain inconsistent (P0-002); no private D1 readback claim.
+- **Review/tests:** PR CI 42355743535 passed at a140386 before merge; production
+  regression stage also passed. Exact live hashes in DEPLOY-e5d67e6-assets.json.
+- **In progress:** none; deployment complete and checkpoint saved on main.
 - **Exact next action:** P4-001b: reproduce name/unlock-policy exclusion and
   category seed starvation using the saved replay. Decide research visibility
   separately from bid eligibility; preserve explicit unknown execution evidence.
@@ -35,8 +36,9 @@ first**, then calculation correctness and useful bids; defer release cosmetics.
 - **Outstanding:** F002 stale release identity; F004 private data lineage unverified;
   F005 name/ROI/unlock filters confirmed to exclude research; audit remains open. No claim of
   complete discovery or improved live profitability. Physical S23 Ultra untested.
-- **Release safety:** reviewable after required checks; no production release approval
-  requested. No new release markers, database migrations, account writes or orders.
+- **Release authority:** user explicitly requested deployment this turn. PR merged
+  and existing production workflow triggered through release-request file. No
+  database migration, private account write, credential change or in-game order.
 - **Recovery/environment:** current worktree `/workspace/gp-audit`; old 7.16 checkout
   remains `/workspace/repository`. Committed GitHub checkpoints, not VM files, are
   permanent memory. Network/local browser servers require network permission.

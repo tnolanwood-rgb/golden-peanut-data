@@ -114,3 +114,27 @@ before/after. See [P4-001a-discovery.md](P4-001a-discovery.md) for immutable dat
 checksum, per-category counts and limitations. Gate tests prove all examined rows
 are accounted for once and malformed depth is rejected. Snapshot replay is NOT
 live forecast-accuracy evidence or complete end-to-end discovery verification.
+
+## Authorized production deployment — 2026-11-07
+
+User explicitly requested deployment. PR #20 merged at
+`09e49acc68c83fe5dd6eb53a66da2f212b02021c` only after
+[CI 42355743535](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42355743535)
+passed on exact head `a1403862c6703fcf5326c36f5c305d16e342c063`.
+Release-request commit `e5d67e6cfcda8086e06e0f23fae13d9fcd413cc0` triggered
+[production 42369046821](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42369046821).
+Job 128393160177 succeeded: exact existing target, regression suite, deployment,
+HTML and critical-module smoke checks. No production workflow modifications needed.
+
+Independent read-only verification fetched index.html plus every referenced local
+JS/CSS asset (including HTML query strings) with `User-Agent: Mozilla/5.0` and
+`Cache-Control: no-cache`, bounded to four concurrent requests. SHA256 of response
+bytes matched repository file bytes for all 14 assets. Evidence:
+[DEPLOY-e5d67e6-assets.json](DEPLOY-e5d67e6-assets.json). To reproduce an asset check:
+`curl --fail -A 'Mozilla/5.0' -H 'Cache-Control: no-cache' https://thegoldenpeanut.pages.dev/market-board.js | sha256sum`;
+compare with `git show e5d67e6:app/market-board.js | sha256sum`.
+The same comparison applies to each saved asset path (index.html served at `/`).
+
+This establishes deployed code identity, not private account-data lineage or live
+forecast accuracy. No account data, secrets, database schema or orders mutated.
+Release labels still need P0-002; next development remains P4-001b.
