@@ -291,7 +291,8 @@ body.focus-edition{background:var(--focus-bg);color:var(--focus-text);font-famil
 .gp-item-name.gp-rarity-junk{color:#aaaaaa!important}
 .gp-item-name.gp-rarity-basic{color:#ffffff!important}
 .gp-item-name.gp-rarity-fine{color:#62a4da!important}
-.gp-item-name.gp-rarity-masterwork{color:#1a9306!important;text-shadow:0 0 1px #a4d79a}
+/* Native GW2 rarity green, with hard-edged glyphs: the former 1px green glow blurred mobile labels. */
+.gp-item-name.gp-rarity-masterwork{color:#1a9306!important;text-shadow:none!important}
 .gp-item-name.gp-rarity-rare{color:#fcd00b!important}
 .gp-item-name.gp-rarity-exotic{color:#ffa405!important}
 .gp-item-name.gp-rarity-ascended{color:#fb3e8d!important}
