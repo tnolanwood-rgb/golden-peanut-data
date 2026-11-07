@@ -264,6 +264,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'Account settings and research'}).click();
  await page.locator('#focus-capital-settings > summary').click();
  const lab=page.locator('#focus-deployment-research .focus-deployment-lab');
+ // Native <details> toggle events are dispatched asynchronously after click.
+ await lab.waitFor({state:'visible',timeout:4000});
  assert.equal(await lab.isVisible(),true);
  assert.match(await lab.innerText(),/CAPITAL DEPLOYMENT/);
  assert.match(await lab.innerText(),/WHAT-IF ONLY/);
