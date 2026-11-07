@@ -21,11 +21,14 @@ Local `observeBuyOrderBook` and `observeSellOrderBook` record reductions of the 
 **AI-AUDIT-003 — Private-night lookup starvation with large active books (confirmed by source, repaired).**
 The app previously selected the same historical top-35 and first open orders for every maximum 40-ID night lookup, starving later IDs when the account had hundreds of active orders. Added deterministic rotating selection over *all quoted active buy/sell item IDs*, prioritising a small set of historical winners and recent measured order reductions. A read-only rotation cursor is stored per account in existing IndexedDB config; each lookup still queries **at most 40 IDs**. Test covers 269 active items over successive rounds with no synthetic fills or extra per-request capacity.
 
+**AI-AUDIT-004 — Commodity discovery wrongly rejected small per-unit margins (confirmed; repaired).**
+`GPMarketBoard.build` applied a blanket **50 copper net margin per individual item** to public research leads. That excluded materials such as Jute/Wood/Leather whose real economic potential comes from high completed *personal* quantities, even though `publicResearchCandidates` could discover low-margin quotes. For material/consumable/container/upgrade-component/trophy research only, we allow a >=2c after-fee individual margin **with at least 20 standing units on both quote sides**, while retaining a 50c minimum for non-commodities. These become a separate visible **MATERIALS, CONSUMABLES & COMMODITIES** research section; no public-book quantity is treated as completed turnover, and no funded quantity or expected profit is generated. Regression covers Jute-like examples and exclusion of thin books.
+
 **UI-DELIVERY-001 — Gross Delivery Box versus trading profit (released separately as 7.28).**
 Header = collectible coins + quantity × public lowest sell listing price **before fees** (hypothetical gross listing value, not collectible cash). Each item = estimated profit **after fees and supported purchase cost**; cost attribution to outstanding lots remains an estimate, not guaranteed inventory provenance. Missing quotes/costs must not be silently treated as verified.
 
 ## Evidence / verification
-- `tests/market-board.test.cjs`: uncalibrated forecast tier; separate-side fill boost cannot invent fill forecasts.
+- `tests/market-board.test.cjs`: uncalibrated forecast tier; separate-side fill boost cannot invent fill forecasts; commodity microspread research with separate quote-depth gating.
 - `tests/execution.test.cjs`: 50→30→20 buy changes and 40→25→20 sell changes flow through discovery; rotation of 269 active order markets under 40-ID cap.
 - Full repository CI and browser regression to be linked from this branch's PR after completion.
 - **Live account/Cloudflare D1 backend was not accessed in this audit.** Synthetic fixtures test the code paths but do not establish real-world model calibration, actual backend fill coverage, or more trading profit.
