@@ -150,6 +150,10 @@ function viewHistory(){return {goldenPeanutFocus:true,tab:ui.tab,tradeDetail:ui.
  growthDetail:ui.growthDetail,relatedDetail:ui.relatedDetail,orderDetail:ui.orderDetail,
  tradeY:ui.tradeY,orderY:ui.orderY,research:!!$('focus-research')&&!$('focus-research').hidden};}
 function routeDepth(){const n=Number(history.state?.gpIndex);return history.state?.goldenPeanutFocus&&Number.isSafeInteger(n)&&n>0?n:0;}
+function routeHash(index){
+ return '#gp-route-'+index+'-'+(ui.tab==='legendaries'?'legend':ui.tab);
+}
+
 function updateBackAffordance(){
  const b=$('focus-back-main');if(!b)return;
  const detail=!!(ui.tradeDetail||ui.growthDetail||ui.relatedDetail||ui.orderDetail);
@@ -164,7 +168,11 @@ function pushHistory(){
   try{history.replaceState({...viewHistory(),gpIndex:routeDepth()},'');}catch{}
   updateBackAffordance();return;
  }
- try{history.pushState({...viewHistory(),gpIndex:routeDepth()+1},'');}catch{}
+ try{const next=routeDepth()+1;
+  // Android's native Back traverses URL-distinct, user-initiated history.
+  // Only a navigation index and tab name appear in the fragment.
+  history.pushState({...viewHistory(),gpIndex:next},'',routeHash(next));
+ }catch{}
  updateBackAffordance();
 }
 function showMainRoot(){
@@ -232,7 +240,9 @@ function showResearch(section){if($('focus-research')?.hidden)pushHistoryForRese
 function pushHistoryForResearch(){
  if(!navReady||restoringNav)return;
  if(navigator.userActivation&&!navigator.userActivation.isActive)return;
- try{history.pushState({...viewHistory(),gpIndex:routeDepth()+1,research:true},'');}catch{}
+ try{const next=routeDepth()+1;
+  history.pushState({...viewHistory(),gpIndex:next,research:true},'',routeHash(next)+'-settings');
+ }catch{}
  updateBackAffordance();
 }
 function dismissResearch(){if(routeDepth()>0&&history.state?.research){history.back();return;}closeResearch();updateBackAffordance();}
@@ -246,9 +256,16 @@ function install(){if(started)return;started=true;load();document.body.classList
  const app=document.querySelector('.app'),main=app?.querySelector('main'),desk=$('view-desk');if(!app||!main||!desk)return;
  const toolbar=h('div','focus-top');toolbar.id='focus-top';toolbar.innerHTML='<div class="focus-top-head"><button type="button" id="focus-back-main" class="focus-icon-button focus-main-back" aria-label="Back within Golden Peanut" hidden>←</button><div><p class="focus-kicker"THE GOLDEN PEANUT</p><h2 id="focus-title">Today</h2><p id="focus-subtitle" class="focus-muted">Your next useful move</p></div><div class="focus-top-buttons"><button type="button" class="focus-icon-button" id="focus-refresh" aria-label="Refresh account and investments" title="Refresh account">↻</button><button type="button" class="focus-icon-button" id="focus-more" aria-label="Account settings and research" title="Research and settings">⚙</button></div></div><p id="focus-sync-state" class="focus-small" role="status" aria-live="polite"></p>';
  main.before(toolbar);$('focus-back-main').addEventListener('click',navigateBack);$('focus-refresh').addEventListener('click',syncNow);$('focus-more').addEventListener('click',()=>showResearch('gp57-advanced'));
- const nav=h('nav','focus-primary-nav');nav.setAttribute('aria-label','Primary navigation');for(const key of ['today','trades','orders','legendaries']){const b=h('button','focus-nav-button');b.type='button';b.dataset.focusNav=key;b.setAttribute('aria-label',NAMES[key]);const glyph=h('span','focus-nav-glyph',ICO[key]);glyph.setAttribute('aria-hidden','true');b.append(glyph,h('span','focus-nav-text',key==='trades'?'Trades':key==='orders'?'Orders':NAMES[key]));b.addEventListener('click',()=>goto(key));nav.append(b);}app.append(nav);
+ const nav=h('nav','focus-primary-nav');nav.setAttribute('aria-label','Primary navigation');for(const key of ['today','trades','orders','legendaries']){const b=h('button','focus-nav-button');b.type='button';b.dataset.focusNav=key;b.setAttribute('aria-label',NAMES[key]);const glyph=h('span','focus-nav-glyph',ICO[key]);glyph.setAttribute('aria-hidden','true');b.append(glyph,h('span','focus-nav-text',key==='trades'?'Trades':key==='orders'?'Orders':NAMES[key]));b.addEventListener('click',()=>{
+  if(ui.tab===key&&key==='trades'&&(ui.tradeDetail||ui.growthDetail||ui.relatedDetail)){
+   ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;
+   pushHistory();renderTrades();window.scrollTo({top:ui.tradeY||0,behavior:'instant'});
+  }else if(ui.tab===key&&key==='orders'&&ui.orderDetail){
+   ui.orderDetail=null;pushHistory();renderOrders();window.scrollTo({top:ui.orderY||0,behavior:'instant'});
+  }else goto(key);
+ });nav.append(b);}app.append(nav);
  const rootPage=h('div','focus-workspaces');rootPage.id='focus-workspaces';for(const key of ['today','trades','orders']){const page=h('section','focus-page');page.dataset.focusPage=key;page.id='focus-'+key;page.hidden=true;rootPage.append(page);}desk.prepend(rootPage);
- const overlay=h('div','focus-research');overlay.id='focus-research';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Detailed research and account settings');overlay.innerHTML='<div class="focus-research-bar"><strong>Research & settings</strong><button class="focus-icon-button" id="focus-research-close" aria-label="Close research">✕</button></div>';
+ const overlay=h('div','focus-research');overlay.id='focus-research';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Detailed research and account settings');overlay.innerHTML='<div class="focus-research-bar"><strong>Research & settings</strong><button class="focus-button focus-button-secondary" id="focus-research-close" aria-label="Back to trading">← Back</button></div>';
  const engine=h('div','focus-engine');engine.id='focus-engine';engine.hidden=true;const original=[...desk.children].filter(x=>x!==rootPage);for(const x of original)engine.append(x);for(const id of ['connection-panel','safety-panel','stage-message']){const panel=$(id);if(panel)engine.append(panel);}const monitorShelf=h('details','focus-settings-shelf');monitorShelf.id='focus-monitor-settings';
  const monitorBody=h('div','focus-settings-body');monitorBody.id='focus-account-watcher-host';
  monitorShelf.append(h('summary','','Background monitoring'),monitorBody);
@@ -297,9 +314,14 @@ function install(){if(started)return;started=true;load();document.body.classList
  try{
   // Preserve the real initial history entry. Chromium skips startup-generated
   // pushState entries without user activation on Android physical Back.
-  history.replaceState({...viewHistory(),gpIndex:0,goldenPeanutRoot:true},'');
+  // Reloading a historic fragment starts a clean new document, not a
+  // phantom stack of inaccessible pages.
+  const cleanUrl=/^#gp-route-/.test(location.hash)?location.pathname+location.search:undefined;
+  history.replaceState({...viewHistory(),gpIndex:0,goldenPeanutRoot:true},'',cleanUrl);
   navReady=true;rootGuardReady=true;window.addEventListener('popstate',restoreView);
-  installEdgeSwipeBack();updateBackAffordance();
+  // Native Android Back already dispatches popstate; competing edge-touch
+  // handlers caused two Back actions for one gesture.
+  updateBackAffordance();
  }catch{}
 }
 function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus-summary-grid"><section class="focus-summary"><span>Available wallet</span><div id="focus-wallet" class="focus-big-money">—</div></section><section class="focus-summary"><span>7-day matched profit</span><div id="focus-week" class="focus-big-money">—</div></section></div><div id="focus-growth-goal" class="focus-growth-goal" aria-label="Weekly profit milestone"></div><div class="focus-meta-line" id="focus-account-at">Account not checked yet</div><section class="focus-single-task"><p class="focus-small-label">YOUR NEXT ACTION</p><div id="focus-next-action"><p class="focus-muted">Checking your account…</p></div></section><section class="focus-section-gap"><p class="focus-small-label">TRADING</p><button id="focus-open-trades" class="focus-destination-row"><span><strong>Find profitable trades</strong><small id="focus-trade-count">Compare your best bulk and single-item opportunities</small></span><span aria-hidden="true">›</span></button></section><div class="focus-meta-line" id="focus-capital-note"></div><section id="focus-operating-book" class="focus-capital-compare" hidden></section><section class="focus-today-best" aria-label="Recommended orders"><div class="focus-today-best-header"><strong>BEST CURRENT MARKET OPPORTUNITIES</strong><span id="focus-best-status" class="focus-muted"></span></div><div id="focus-deep-progress" class="focus-deep-progress" role="status" aria-live="polite"></div><div class="focus-deep-actions"><button type="button" id="focus-deep-stop" class="focus-button focus-button-secondary" hidden>Stop extended research</button><button type="button" id="focus-deep-retry" class="focus-button focus-button-secondary" hidden>Resume wider discovery</button></div><div id="focus-best-rows" class="focus-trade-rows"></div><button type="button" id="focus-copy-all" class="focus-button focus-button-secondary" hidden>Copy worthwhile new buy orders</button></section><section id="focus-earnings-pace" class="focus-earnings-pace" hidden></section><section id="focus-capital-compare" class="focus-capital-compare" hidden></section>`;$('focus-open-trades').addEventListener('click',()=>{ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;goto('trades');});$('focus-copy-all').addEventListener('click',copyOpportunityPlan);
@@ -309,6 +331,15 @@ function initToday(){const box=$('focus-today');box.innerHTML=`<div class="focus
  const best=$('focus-today')?.querySelector('.focus-today-best'),task=$('focus-today')?.querySelector('.focus-single-task');
  if(best&&task)task.before(best);
  const operating=$('focus-operating-book');if(operating&&best)best.before(operating);
+}
+function openHomeMarket(id,kind){
+ // Direct home-card taps enter the trade list first, then its detail.
+ // Back returns to the list, then the home screen—not the Android launcher.
+ ui.tradeDetail=null;ui.growthDetail=null;ui.relatedDetail=null;ui.selectedMarket=null;
+ goto('trades');
+ if(kind==='growth'){ui.growthDetail=id;pushHistory();renderGrowthDetail();}
+ else{ui.tradeDetail=id;pushHistory();renderTradeDetail();}
+ window.scrollTo({top:0,behavior:'instant'});
 }
 function userSnapshot(){const s=State();return s?.snapshot?.account===s.account?s.snapshot:null;}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
@@ -322,14 +353,14 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  else if(Number(snap.delivery?.coins)>0){title='Collect your Delivery Box';description='Ready in-game: '+cash(snap.delivery.coins)+'. Not spendable until collected.';action='Open delivery details';fn=()=>showResearch('gp57-delivery-detail');}
  else{const p=s.opportunityPlan,valid=p?.orders?.length&&Date.now()-s.opportunityAt<=25*60*1000;
   if(valid&&p.source==='wallet'){const best=p.orders.find(x=>x.cost>0);
-   if(best){title='Your strongest funded trade';description=itemName(best.id)+' · buy '+num(best.quantity)+' · expected 24h net '+cash(best.expectedProfit);action='See trade';fn=()=>{ui.growthDetail=null;ui.tradeDetail=best.id;goto('trades');};}
+   if(best){title='Your strongest funded trade';description=itemName(best.id)+' · buy '+num(best.quantity)+' · expected 24h net '+cash(best.expectedProfit);action='See trade';fn=()=>openHomeMarket(best.id,'trade');}
   }
   if(!title){const top=root.GPGrowth?.weeklyByMarket(s.ledger||[],Date.now())?.markets?.find(x=>x.profit>0&&x.matched7>0);
-   if(top){title='Inspect your strongest earning market';description=itemName(top.id)+' · actual '+cash(top.profit)+' matched net over seven UK days';action='Inspect market';fn=()=>{ui.tradeDetail=null;ui.growthDetail=top.id;goto('trades');};}
+   if(top){title='Inspect your strongest earning market';description=itemName(top.id)+' · actual '+cash(top.profit)+' matched net over seven UK days';action='Inspect market';fn=()=>openHomeMarket(top.id,'growth');}
    else{const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const old=mem?.markets.find(x=>x.proven&&x.dormant);
     title=old?'Revisit a forgotten profitable market':'Find your next profitable trade';
     description=old?itemName(old.id)+' · historical matched net '+cash(old.profit)+' · current buy not yet verified':'Compare your saved market history with fresh prices.';
-    action=old?'Inspect old winner':'Find trades';fn=()=>{ui.tradeDetail=null;ui.growthDetail=old?.id||null;goto('trades');};}}}
+    action=old?'Inspect old winner':'Find trades';fn=()=>old?openHomeMarket(old.id,'growth'):goto('trades');}}}
  // A validated portfolio replaces repetitive navigation prompts. Delivery Box
  // collection stays visible because those coins are not yet spendable.
  const hasFunded=!!(s.opportunityPlan?.orders?.length&&Date.now()-s.opportunityAt<25*60*1000);
