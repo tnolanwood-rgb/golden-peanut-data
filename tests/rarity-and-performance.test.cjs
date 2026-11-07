@@ -23,7 +23,8 @@ test('rerendering an item removes a stale rarity class and never guesses rarity'
  const node={
   title:'',
   classList:{
-   add(v){classes.add(v);},remove(v){classes.delete(v);},
+   add(...values){for(const v of values)classes.add(v);},
+   remove(...values){for(const v of values)classes.delete(v);},
    [Symbol.iterator](){return classes.values();}
   }
  };
