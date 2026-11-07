@@ -43,7 +43,8 @@ function showMoreRemembered(){
 
 const iconMissing=new Map(),metaInFlight=new Set(),metaQueue=new Set();
 let metaBusy=false,metaRevision=0,iconVisibilityObserver=null;
-let boardCache={plan:null,metadata:null,revision:-1,wallet:null,at:0,result:null};
+let boardCache={plan:null,metadata:null,revision:-1,wallet:null,at:0,result:null,
+ choices:null,publicResearch:null,orders:null,privateNightEvidence:null,activeBook:null,watch:null,metaSize:0};
 const num=v=>Number(v||0).toLocaleString('en-GB');
 const cash=v=>{if(!Number.isFinite(v))return '—';const abs=Math.round(Math.abs(v));return (v<0?'−':'')+num(Math.floor(abs/10000))+'g '+String(Math.floor(abs%10000/100)).padStart(2,'0')+'s '+String(abs%100).padStart(2,'0')+'c';};
 const h=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;};
@@ -61,10 +62,21 @@ function itemTitle(id,label=null,tag='strong',hint=''){
 }
 function marketBoard(state){
  const plan=state?.opportunityPlan,metadata=state?.meta,wallet=userSnapshot()?.wallet,at=Date.now();
+ // Market data is commonly updated by replacing arrays inside the SAME
+ // plan object. The object reference alone is not a valid cache key.
+ const choices=plan?.marketChoices,publicResearch=plan?.publicResearch,
+  orders=plan?.orders,privateNightEvidence=plan?.privateNightEvidence,
+  activeBook=plan?.activeBook,watch=plan?.watch,
+  metaSize=Object.keys(metadata||{}).length;
  if(boardCache.plan===plan&&boardCache.metadata===metadata&&boardCache.revision===metaRevision&&
-    boardCache.wallet===wallet&&at-boardCache.at<30000)return boardCache.result;
+    boardCache.wallet===wallet&&boardCache.choices===choices&&
+    boardCache.publicResearch===publicResearch&&boardCache.orders===orders&&
+    boardCache.privateNightEvidence===privateNightEvidence&&boardCache.activeBook===activeBook&&
+    boardCache.watch===watch&&boardCache.metaSize===metaSize&&at-boardCache.at<10000)
+    return boardCache.result;
  const result=root.GPMarketBoard?.build?.(plan,{wallet,metadata:metadata||{}});
- boardCache={plan,metadata,revision:metaRevision,wallet,at,result};
+ boardCache={plan,metadata,revision:metaRevision,wallet,at,result,
+  choices,publicResearch,orders,privateNightEvidence,activeBook,watch,metaSize};
  return result;
 }
 function scheduleMetadataWhenVisible(wrap,id,retry=false){
