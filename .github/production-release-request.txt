@@ -42,3 +42,7 @@ Deploy existing Cloudflare Pages site with updated app/index.html, focus-edition
 Approved discovery audit deployment — 2026-11-07.
 User explicitly requested deployment of the discovery fix. PR #20 merged at 09e49acc68c83fe5dd6eb53a66da2f212b02021c after CI 42355743535 passed at a1403862c6703fcf5326c36f5c305d16e342c063.
 Deploy the existing Pages app with reserved public/recipe scan capacity, positive small-margin research visibility, category rejection accounting, credible expected-sales profit bounds, shared-wallet allocation and accurate uncertainty labels. Keep the 7.29 Delivery Box/history UI intact. Do not mutate private data or credentials. Verify exact live asset hashes against this release commit; old 7.16 strings alone are not proof of this deployment. No in-game orders or schema migrations.
+
+Approved 7.30 mobile rarity text sharpness release — 2026-11-07.
+PR #28 merged at 83112d0e68195076aa0289dda5b51e8a60988e68; full GitHub CI regression 42369705575 passed at d5c860698dae5811279d7b41be18883d75861243.
+Deploy existing Cloudflare Pages production app with CSS v730-sharp-rarity-text. Remove the 1px green text-shadow that blurred Masterwork rarity names on Android; keep exact official green #1a9306 and all seven other official rarity hues. Browser regression now asserts computed Masterwork text-shadow is none. Preserve Delivery Box gross item valuation, account history, private collectors, market discovery and audit branches. No backend/secrets/account changes. Verify live CSS and production asset cache bust.
