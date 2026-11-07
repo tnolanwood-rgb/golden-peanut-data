@@ -1,3 +1,9 @@
+# The Golden Peanut — resumable engineering audit
+
+Start with [audit STATE](docs/audit/STATE.md) and [RESUME](docs/audit/RESUME.md).
+They supersede historical release notes below for current architecture, access and progress.
+Run `python scripts/audit_baseline.py` for the reproducible local baseline.
+
 # The Golden Peanut 7.16 — evidence-based 24-hour trading research
 
 Cloudflare Pages application in `app/`, public GW2 collector in `scripts/`, and

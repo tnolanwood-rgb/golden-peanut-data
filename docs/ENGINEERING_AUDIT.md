@@ -1,3 +1,5 @@
+> Historical 7.16 record. For current state, architecture, verified access and remaining work, read [audit/STATE.md](audit/STATE.md). Do not treat the old deployment/permission claims below as current.
+
 # Engineering audit — 7.16 development branch
 
 ## Recovery

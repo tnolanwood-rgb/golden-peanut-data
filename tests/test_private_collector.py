@@ -4,6 +4,9 @@ import importlib.util
 import io
 import os
 import pathlib
+import subprocess
+import sys
+import textwrap
 import unittest
 from unittest import mock
 
@@ -14,6 +17,98 @@ spec.loader.exec_module(m)
 
 
 class PrivateMonitorTests(unittest.TestCase):
+    def run_process_fixture(self, scenario):
+        # Execute the actual __main__ entry point with an in-process fake HTTP
+        # transport. No account key, database or public API is contacted.
+        code = textwrap.dedent("""
+            import io, json, runpy, sys, urllib.error, urllib.request
+            from unittest.mock import patch
+            from urllib.parse import urlsplit
+            scenario = sys.argv[2]
+            class Response(io.BytesIO):
+                headers = {}
+            def response(value):
+                return Response(json.dumps(value).encode())
+            def transport(request, timeout):
+                url = urlsplit(request.full_url)
+                if url.hostname == 'api.cloudflare.com':
+                    sql = json.loads(request.data)['sql']
+                    if scenario == 'd1_preflight_failure':
+                        return response({'success': False, 'result': []})
+                    if scenario == 'd1_write_failure' and sql.startswith('INSERT OR IGNORE INTO gp_monitor_polls'):
+                        return response({'success': False, 'result': []})
+                    if scenario == 'error_persistence_failure' and 'last_error=?' in sql:
+                        raise RuntimeError('PRIVATE_SENTINEL synthetic-personal-key SQL values must never log')
+                    rows = [{'enabled': 0}] if scenario == 'disabled' and sql.startswith('SELECT enabled') else []
+                    return response({'success': True, 'result': [{'success': True, 'results': rows}]})
+                if url.hostname == 'api.guildwars2.com':
+                    if scenario in ('no_key', 'disabled'):
+                        raise AssertionError('Private API must not be contacted for an intentional skip')
+                    if scenario in ('upstream_failure', 'error_persistence_failure'):
+                        raise urllib.error.HTTPError(request.full_url, 503, 'unavailable', {}, None)
+                    if url.path == '/v2/tokeninfo':
+                        return response({'permissions': ['account', 'tradingpost']})
+                    if url.path == '/v2/account':
+                        return response({'id': 'fixture-account-id', 'name': 'PRIVATE_SENTINEL'})
+                    return response([])
+                raise AssertionError('Unexpected network destination')
+            with patch.object(urllib.request, 'urlopen', side_effect=transport):
+                runpy.run_path(sys.argv[1], run_name='__main__')
+        """)
+        env = dict(os.environ, GW2_PRIVATE_MONITOR_KEY='synthetic-personal-key',
+                   CF_API_TOKEN='synthetic-cloudflare-key', CF_ACCOUNT_ID='fixture', CF_DATABASE_ID='fixture')
+        if scenario == 'no_key':
+            env['GW2_PRIVATE_MONITOR_KEY'] = ''
+        if scenario == 'missing_configuration':
+            env.pop('CF_DATABASE_ID', None)
+        result = subprocess.run([sys.executable, '-c', code, str(SOURCE), scenario],
+                                capture_output=True, text=True, timeout=15, env=env)
+        combined = result.stdout + result.stderr
+        for private in ('synthetic-personal-key', 'synthetic-cloudflare-key',
+                        'PRIVATE_SENTINEL', 'Traceback', 'token_digest'):
+            self.assertNotIn(private, combined)
+        return result
+
+    def test_upstream_failure_is_nonzero_process_exit(self):
+        result = self.run_process_fixture('upstream_failure')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Monitor check inconclusive: HTTP 503', result.stdout)
+        self.assertNotIn('Private monitoring successful', result.stdout)
+
+    def test_d1_preflight_failure_is_nonzero_without_traceback(self):
+        result = self.run_process_fixture('d1_preflight_failure')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Cloudflare private D1 query rejected', result.stdout)
+
+    def test_d1_write_failure_is_nonzero_process_exit(self):
+        result = self.run_process_fixture('d1_write_failure')
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn('Private monitoring successful', result.stdout)
+
+    def test_failure_recording_error_still_exits_nonzero_without_secrets(self):
+        result = self.run_process_fixture('error_persistence_failure')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Failed to persist monitor error safely', result.stdout)
+
+    def test_missing_configuration_is_nonzero_without_traceback(self):
+        result = self.run_process_fixture('missing_configuration')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Required private D1 permission not configured', result.stdout)
+
+    def test_successful_process_exit_requires_completed_collection(self):
+        result = self.run_process_fixture('success')
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('Private monitoring successful', result.stdout)
+        self.assertNotIn('inconclusive', result.stdout)
+
+    def test_intentional_no_key_and_disabled_skips_exit_successfully(self):
+        for scenario in ('no_key', 'disabled'):
+            with self.subTest(scenario=scenario):
+                result = self.run_process_fixture(scenario)
+                self.assertEqual(result.returncode, 0)
+                self.assertNotIn('Private monitoring successful', result.stdout)
+                self.assertNotIn('inconclusive', result.stdout)
+
     def test_current_order_matches_real_gw2_schema_without_purchased(self):
         row = {"id": 2800000000, "item_id": 19709, "quantity": 50, "price": 3000,
                "created": "2026-11-06T19:30:00+00:00"}

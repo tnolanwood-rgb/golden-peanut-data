@@ -1134,7 +1134,7 @@ function renderOpportunityHome(){
  }
  const rows=book?.rows||[];
  status.textContent=(p?.candidateRefresh?.phase==='quick'?'INITIAL RESEARCH · ':'')+
-  num(rows.length)+' calibrated 24h orders · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
+  num(rows.length)+' observed 24h estimates · '+num(board?.counts?.history||0)+' history-backed markets · '+num(board?.counts?.newMarkets||0)+' new quoted leads';
  if(!rows.length){
   const connected=renderConnectedMarkets(host,s,{limit:6,excludeIds:(board?.history||[]).slice(0,8).map(x=>x.id),prebuilt:board});
   if(!connected.count)host.append(h('p','focus-empty','No quote-supported markets surfaced in this scan. Full-market discovery is separate from execution calibration; check Trades for the complete catalogue and refresh market checks.'));
@@ -1146,8 +1146,8 @@ function renderOpportunityHome(){
  // weekly profit scenario is higher.
  const strongest=rows;
  appendScrollableSection(host,{
-  id:'calibrated-orders',title:'CALIBRATED 24-HOUR OPPORTUNITIES',
-  desc:'Verified prospective observations only. Scroll within this section for every currently qualifying market.',
+  id:'calibrated-orders',title:'ESTIMATED 24-HOUR OPPORTUNITIES',
+  desc:'Based on observed buys and resales, including zero fills. Predictive accuracy is not yet established.',
   items:strongest,initial:9,renderRow:o=>{
   const row=h('button','focus-market-row focus-home-order');row.type='button';row.append(artwork(o.id));
   const middle=h('span','focus-market-title');middle.append(itemTitle(o.id));
@@ -1381,10 +1381,10 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
  if(ui.tradeFilter==='best'){
   const book=root.GPOpportunity?.rankedMarkets?.(t.p),unfiltered=t.valid?(book?.rows||[]):[];
   const ranked=q?unfiltered.filter(x=>(itemName(x.id)+' '+x.id).toLowerCase().includes(q)):unfiltered;
-  labelText('focus-trade-state',t.valid?num(ranked.length)+' calibrated orders, plus history-backed current markets and public discovery below':
+  labelText('focus-trade-state',t.valid?num(ranked.length)+' observed estimates, plus history-backed current markets and public discovery below':
    (s.opportunityBusy?'Analysing saved markets and prices…':s.opportunityStatus||'Current market quotes need checking.'));
   if(!t.valid){host.append(h('p','focus-empty','Fresh account data is needed for funded recommendations. Catalogue search remains available.'));appendCatalogueMatches(host,q);return;}
-  if(!ranked.length){host.append(h('p','focus-muted','No calibrated exact-lot 24-hour forecasts yet. The active market research below remains available; conditional margins are not expected income.'));}
+  if(!ranked.length){host.append(h('p','focus-muted','No evidence-qualified exact-lot 24-hour estimates yet. The active market research below remains available; conditional margins are not expected income.'));}
   const connected=renderConnectedMarkets(host,s,{query:q,limit:ui.tradeAll?70:12});
   if(!ranked.length&&connected.count===0&&!q)renderVerifiedRecentMarkets(host,s,{limit:12});
   for(const o of (ui.tradeAll?ranked.slice(0,80):ranked.slice(0,12))){

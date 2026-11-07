@@ -152,3 +152,13 @@ test('incomplete and stale night evidence cannot create fill predictions',()=>{
  assert.equal(b.history.find(x=>x.id===101).measuredNights,null);
  assert.equal(b.history.find(x=>x.id===101).tier,'observed-night-conditional');
 });
+test('public coverage accounts for every row, duplicates, stale quotes and policy rejections',()=>{
+ const good={id:9901,name:'Low margin material',type:'CraftingMaterial',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp};
+ const rows=[good,good,{...good,id:9902,at:'invalid'},{...good,id:9903,sellQty:NaN},{...good,id:9904,exit:102},{...good,id:9905,name:'Special Infusion'}];
+ const b=Board.build({ok:true,budget:1000,orders:[],publicResearch:rows},{wallet:1000,now:NOW});
+ const p=b.publicCoverage,g=p.byCategory.CraftingMaterial;
+ assert.equal(p.scanned,6);assert.equal(p.accepted,1);assert.equal(b.newMarkets.length,1);
+ assert.deepEqual(p.rejected,{'duplicate':1,'stale-or-invalid-quote':1,'standing-depth-policy':1,'nonpositive-net-margin':1,'name-policy':1});
+ assert.equal(p.scanned,p.accepted+Object.values(p.rejected).reduce((n,x)=>n+x,0));
+ assert.deepEqual(g.rejected,p.rejected);assert.equal(g.scanned,6);assert.equal(g.accepted,1);
+});

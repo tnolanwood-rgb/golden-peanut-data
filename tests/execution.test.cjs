@@ -12,7 +12,7 @@ test('zeros lower the joint empirical profit, fees on unsold listings count',()=
 test('missing, stale, noncomparable and oversized lots never fabricate quantities',()=>{for(const a of [{quantity:50},{now:NOW+30*DAY},{buy:10000},{exit:NaN},{quantity:Infinity}])assert.equal(E.forecast({...args,...a}).status,'research');});
 test('censoring cannot silently select only winning windows',()=>{assert.equal(E.forecast({...args,cohorts:[sample(1,{status:'censored'})]}).status,'research');});
 test('future-known outcomes and overlapping duplicate episodes cannot train',()=>{assert.equal(E.forecast({...args,samples:samples.map(s=>({...s,knownAt:NOW+1}))}).status,'research');assert.equal(E.forecast({...args,samples:Array(10).fill(samples[1])}).status,'research');});
-test('one wallet including listing fees, no item duplicates, descending expected profit',()=>{const a={...E.forecast(args),id:1},b={...a,id:2,item:2,expectedProfit:200};const p=E.allocate([a,b,{...a,expectedProfit:NaN}],1100);assert.equal(p.spent,1100);assert.deepEqual(p.orders.map(x=>x.id),[2,1]);assert.equal(E.allocate([a,b],1099).orders.length,1);});
+test('one wallet including listing fees, no item duplicates, descending expected profit',()=>{const a={...E.forecast(args),id:1},b={...a,id:2,item:2,expectedProfit:165};const p=E.allocate([a,b,{...a,expectedProfit:NaN}],1100);assert.equal(p.spent,1100);assert.deepEqual(p.orders.map(x=>x.id),[2,1]);assert.equal(E.allocate([a,b],1099).orders.length,1);});
 test('malformed/impossible recommendations fail engine boundary',()=>{const a={...E.forecast(args),id:1};for(const patch of [{expectedSold:6},{expectedAcquired:Infinity},{expectedProfit:99999},{cost:0},{buy:1.1},{quantity:-1},{sampleCount:0}])assert.equal(E.validateRecommendation({...a,...patch}),false);});
 test('stale wallet and unknown inventory block funded orders independently of fresh quotes',()=>{const opt={learning:{samples},quotes:[quote(NOW)],metadata:{1:{name:'Any item'}},snapshot:snapshot(NOW),now:NOW,stability:()=>true};assert.equal(E.plan(opt).orders.length,1);for(const patch of [{walletAt:new Date(NOW-DAY).toISOString()},{inventoryVerified:false},{holdings:{1:1}},{buys:[{item:1,q:5}]}])assert.equal(E.plan({...opt,snapshot:{...opt.snapshot,...patch}}).orders.length,0);});
 test('zero-fill new order captured prospectively and retained at horizon',()=>{const o={id:100,item:1,q:5,price:100,created:NOW-1000};let l=E.observe(null,snapshot(NOW,[o]),[],[quote(NOW)],{now:NOW,historyAt:NOW});assert.equal(l.cohorts.length,1);l=E.observe(l,snapshot(NOW+DAY,[o]),[],[],{now:NOW+DAY,historyAt:NOW+DAY});assert.equal(l.samples.length,1);assert.equal(l.samples[0].acquired,0);assert.equal(l.samples[0].sold,0);assert.equal(l.samples[0].profit,0);});
@@ -30,3 +30,47 @@ module.exports={samples,sample,snapshot,quote,NOW,DAY};
 test('matched realised ledger profit uses rounded fees, not an optimistic flat 15%',()=>{const c=context();assert.equal(c.PeanutCore.saleRevenueP100(3,1),100);const rows=[{id:1,item:1,q:1,price:1,side:'buy',purchased:NOW-1000},{id:2,item:1,q:1,price:3,side:'sell',purchased:NOW}];assert.equal(c.PeanutCore.summarizeLedger(rows,NOW).p100,0);});
 test('backup learning merge retains older and newer disjoint observations',()=>{const a=sample(1),b=sample(2);const merged=E.mergeLearning({samples:[a],cohorts:[],seen:{1:1}},{samples:[b,a],cohorts:[],seen:{2:2}});assert.equal(merged.samples.length,2);assert.equal(Object.keys(merged.seen).length,2);});
 test('recipe universe includes non-equipment outputs and interrupted cursor is resumable',async()=>{const c=context(),writes=[];const recipe={id:1,type:'Inscription',output_item_id:111,output_item_count:1,ingredients:[{item_id:1,count:1}]};assert.equal(c.GPOpportunity.recipeByOutput([recipe]).size,1);let n=0;const state={db:{get:async()=>null,put:async(...x)=>writes.push(x)},api:{get:async()=>{if(n++)throw Error('temporary');return {data:Array.from({length:200},(_,i)=>({...recipe,id:i+1})),pages:3,total:600};}}};const partial=await c.GPOpportunity.ensureRecipeUniverse(state);assert.equal(partial.complete,false);assert.equal(partial.nextPage,1);assert.equal(partial.recipes.length,200);assert.ok(writes.length);});
+test('expected income cannot exceed the expected completed resales',()=>{
+ const a=E.forecast(args);
+ for(const patch of [{expectedSold:0},{expectedSold:.1},{expectedProfit:200},{sampleCount:Infinity}]){
+  const bad={...a,...patch};
+  assert.equal(E.validateRecommendation(bad),false,JSON.stringify(patch));
+  assert.equal(E.allocate([bad],10000).orders.length,0);
+  assert.equal(E.ranked({orders:[bad],budget:10000}).rows.length,0);
+ }
+ assert.ok(E.validateRecommendation(a));
+});
+test('market board preserves uncertainty and shares the actual spendable wallet',()=>{
+ const Board=require('../app/market-board.js'),a={...E.forecast(args),id:1},b={...a,id:2,item:2};
+ const plan={ok:true,budget:1100,orders:[a,b]};
+ const board=Board.build(plan,{wallet:1100,now:NOW});
+ assert.equal(board.forecast.length,2);
+ assert.ok(board.forecast.every(x=>x.tier==='observed-24h'&&x.calibrated===false));
+ assert.doesNotMatch(board.disclaimer,/Only calibrated/);
+ const reduced=Board.build(plan,{wallet:550,now:NOW});
+ assert.ok(reduced.forecast.reduce((sum,x)=>sum+x.cost,0)<=550);
+});
+test('crowded equipment and personal lanes cannot starve public commodity or recipe discovery',()=>{
+ const c=context(),metadata=Object.fromEntries(Array.from({length:400},(_,i)=>[i+1,{name:'Equipment '+i,type:'Armor',rarity:'Exotic',details:{type:'Coat'}}]));
+ const hist={ranked:Array.from({length:400},(_,i)=>({id:801+i,profitable:true})),markets:new Map()};
+ const opens=Array.from({length:400},(_,i)=>({item:401+i,q:1,price:100}));
+ const equipment=Array.from({length:400},(_,i)=>1201+i);
+ const publicRows=Array.from({length:100},(_,i)=>({id:2001+i}));
+ const recipes=Array.from({length:100},(_,i)=>3001+i);
+ for(const budget of [20,800,6500]){
+  const d=c.GPOpportunity.discoveryIds(hist,metadata,opens,publicRows,budget,recipes,0,equipment);
+  assert.ok(d.ids.length<=budget);assert.equal(new Set(d.ids).size,d.ids.length);
+  assert.ok(d.ids.some(id=>id>=2001&&id<2101),'public lane lost at budget '+budget);
+  assert.ok(d.ids.some(id=>id>=3001&&id<3101),'recipe lane lost at budget '+budget);
+ }
+});
+test('low-unit-margin commodity and consumable research survives engine-to-board gates',()=>{
+ const c=context(),Board=require('../app/market-board.js');
+ const metadata={11:{name:'Research material',type:'CraftingMaterial'},12:{name:'Research food',type:'Consumable'}};
+ const research=c.GPOpportunity.publicResearchCandidates({quotes:[11,12].map(id=>({...quote(NOW,id),buy:100,sell:150})),metadata,now:NOW});
+ assert.equal(research.length,2);
+ const board=Board.build({ok:true,budget:1000,orders:[],publicResearch:research},{wallet:1000,metadata,now:NOW});
+ assert.equal(board.newMarkets.length,2);
+ for(const row of board.newMarkets){assert.ok(row.unitMargin>0&&row.unitMargin<50);assert.equal(row.quantity,undefined);assert.equal(row.expectedProfit,undefined);}
+ assert.equal(board.publicCoverage.accepted,2);
+});

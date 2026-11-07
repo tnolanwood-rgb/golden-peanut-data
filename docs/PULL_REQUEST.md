@@ -1,3 +1,5 @@
+> Historical 7.16 record. For current state, architecture, verified access and remaining work, read [audit/STATE.md](audit/STATE.md). Do not treat the old deployment/permission claims below as current.
+
 ## Problem and resulting behavior
 
 The 7.15 application was absent from GitHub, and its primary ranking used conditional

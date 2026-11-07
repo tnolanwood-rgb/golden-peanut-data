@@ -1,3 +1,5 @@
+> Historical 7.16 record. For current state, architecture, verified access and remaining work, read [audit/STATE.md](audit/STATE.md). Do not treat the old deployment/permission claims below as current.
+
 # Deployment / rollback — 7.16
 
 No production deployment was performed. The environment has GitHub repository access
