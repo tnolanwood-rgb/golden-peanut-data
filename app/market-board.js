@@ -41,8 +41,20 @@ function measuredNightCapacity(data,quantity,now){
  return {buy,sell,units:Math.max(0,Math.min(quantity,buy.p25,sell.p25)),
   label:'Personal fully observed overnight orders (including zero fills); buy and sale separately observed'};
 }
-const studyScore=x=>x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
- Math.pow(1+x.buy/10000,.85);
+/* Two separately observed PERSONAL order reductions are stronger research
+ * evidence than a public spread alone, but not proof of a matched round trip.
+ * The modest capped weight never creates an order quantity or fill forecast. */
+const personalSideFills=x=>{
+ const buy=whole(x.observedOrderFillsAll)?x.observedOrderFillsAll:0;
+ const sell=whole(x.observedSellFillsAll)?x.observedSellFillsAll:0;
+ return {buy,sell,pairedReference:Math.min(buy,sell)};
+};
+const studyScore=x=>{
+ const base=x.unitMargin*Math.sqrt(Math.min(80,x.buyQty,x.sellQty)/10)/
+  Math.pow(1+x.buy/10000,.85);
+ const observed=personalSideFills(x).pairedReference;
+ return base*(1+Math.min(.20,Math.log1p(observed)/15));
+};
 function diverseEquipment(rows,max=150){
  // Preserve cheap price bands and stat diversity instead of repeatedly
  // showing the largest one-unit gross spread from a single stat family.
@@ -69,7 +81,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
  if(!plan?.ok)return empty;
  const available=whole(wallet)?wallet:(whole(plan.budget)?plan.budget:0);
  const forecast=(root.GPExecution?.ranked?.(plan)?.rows||[]).filter(o=>finite(o.expectedProfit)&&o.expectedProfit>0&&whole(o.quantity,1)&&whole(o.cost,1)&&o.cost<=available)
-  .map(o=>({...o,tier:'calibrated-24h',kind:'funded'}))
+  .map(o=>({...o,tier:'empirical-24h-unvalidated',calibrated:false,kind:'funded'}))
   .sort((a,b)=>b.expectedProfit-a.expectedProfit||a.id-b.id);
  const standing=(plan.activeBook?.entries||[]).filter(o=>whole(o.id,1)&&whole(o.scenarioUnits,1)&&finite(o.conditionalWeek)&&o.conditionalWeek>0)
   .map(o=>({id:o.id,kind:'standing',tier:'current-position',quantity:o.scenarioUnits,openUnits:o.units,
@@ -124,9 +136,14 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   // No requested lot size or overnight profit forecast on a public quote.
   newMarkets.push({id,name,kind:'new',tier:'public-unverified',type,rarity,subtype,equipmentKind:equipmentKind(name,type,rarity),
    buy:c.buy,exit:c.exit,unitMargin:margin,roi,observations:c.observations||1,buyQty:c.buyQty||0,sellQty:c.sellQty||0,
+   observedOrderFillsAll:personalSideFills(c).buy,observedSellFillsAll:personalSideFills(c).sell,
+   observedOrderFills24h:whole(c.observedOrderFills24h)?c.observedOrderFills24h:0,
+   observedSellFills24h:whole(c.observedSellFills24h)?c.observedSellFills24h:0,
    affordability:c.buy<=available?'one-unit-affordable':'not-wallet-funded',at:c.at,
    craftableSupply:c.craftableSupply||null,
-   evidence:'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
+   evidence:personalSideFills(c).pairedReference>0?
+    'Separate verified personal buy- and sell-order reductions + public spread; NOT an attributed round trip or 24h fill estimate.':
+    'Public bid/ask margin only. No measured completed trades, resale time or overnight fill estimate.'});
  }
  const candidateRank=(a,b)=>
    Number(b.buy<=available)-Number(a.buy<=available)||
@@ -151,7 +168,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   broadCandidates:plan.publicDiscovery?.broadMarginCandidates||0,
   rawPersonalResearch:plan.marketChoices?.length||0,rawPublicResearch:plan.publicResearch?.length||0,
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
- return {ready:true,...categories,counts,available,disclaimer:'Only calibrated 24h entries are expected-profit estimates. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
+ return {ready:true,...categories,counts,available,disclaimer:'Empirical 24h estimates are NOT calibrated predictions. Other figures are historical or conditional what-if margins. Personal order reductions do not prove matched buy-to-resale turnover. No orders are placed automatically.'};
 }
 root.GPMarketBoard={buildId:'7.16.0-evidence',build};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketBoard;
