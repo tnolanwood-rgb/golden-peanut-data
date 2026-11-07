@@ -422,7 +422,7 @@ function renderDeliveryBox(){
  const list=$('focus-delivery-items'),total=$('focus-delivery-total'),status=$('focus-delivery-status'),caption=$('focus-delivery-caption');
  if(!list||!total||!status||!caption)return;
  const hasData=!!delivery&&Number.isSafeInteger(delivery.coins)&&delivery.coins>=0&&Array.isArray(delivery.items);
- const values=hasData?root.GP57Desk?.listingValuation?.(delivery?{delivery}:null):null;
+ const values=hasData?root.GP57Desk?.listingValuation?.({delivery},s?.ledger||[]):null;
  const grouped=new Map();
  if(hasData)for(const item of delivery.items){
   const id=Number(item?.id),count=Number(item?.count);
@@ -435,7 +435,7 @@ function renderDeliveryBox(){
  const signature=JSON.stringify([s?.account||'',snap?.deliveryAt||'',hasData?delivery.coins:null,
   values?.combined,values?.covered,values?.unpriced,
   [...grouped].map(([id,count])=>{const m=currentMeta(id),v=byId.get(id);
-   return [id,count,m?.name||'',m?.icon||'',m?.rarity||'',v?.ask??null,v?.net??null,v?.quotedAt??''];})]);
+   return [id,count,m?.name||'',m?.icon||'',m?.rarity||'',v?.ask??null,v?.net??null,v?.profit??null,v?.purchaseCost??null,v?.quotedAt??''];})]);
  if(signature===deliveryHeroSignature)return;
  deliveryHeroSignature=signature;
  total.replaceChildren(money(hasData?(values?.combined??delivery.coins):NaN,'focus-money-big'));
@@ -464,13 +464,17 @@ function renderDeliveryBox(){
    const name=itemTitle(id,m?.name||'Item details loading…');
    if(m?.name)name.title=m.name;
    label.append(name);
-   const ask=h('small','focus-delivery-ask');
-   if(Number.isSafeInteger(priced?.ask)){ask.textContent='Sell ask '+cash(priced.ask)+' each';ask.title='Lowest public sell listing for one item, not a guaranteed resale price';}
-   else ask.textContent='Checking lowest sell listing…';
-   const netLine=h('div','focus-delivery-net');
-   netLine.append(h('span','','Net: '),money(Number.isSafeInteger(priced?.net)?priced.net:NaN));
-   netLine.title='Potential proceeds for this entire stack after Trading Post listing and exchange fees; no acquisition costs deducted';
-   label.append(ask,netLine);
+   const profitLine=h('div','focus-delivery-net');
+   if(Number.isSafeInteger(priced?.profit)){
+    profitLine.append(h('span','','Est. profit: '),money(priced.profit));
+    profitLine.title='Estimated profit for this stack after listing and exchange fees, minus recent remaining recorded purchase costs. Exact stock-to-purchase attribution is not verified.';
+    if(priced.profit<0)profitLine.classList.add('is-loss');
+   }else{
+    profitLine.append(h('span','focus-delivery-unpriced',
+     !Number.isSafeInteger(priced?.ask)?'Checking market quote…':'Purchase cost not matched'));
+    profitLine.title='Cannot calculate trading profit without both a current public sell listing and a supported purchase cost.';
+   }
+   label.append(profitLine);
    const units=h('span','focus-delivery-quantity','×'+num(count));
    row.append(icon,label,units);rows.push(row);
   }
