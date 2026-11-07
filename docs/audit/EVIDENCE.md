@@ -138,3 +138,61 @@ The same comparison applies to each saved asset path (index.html served at `/`).
 This establishes deployed code identity, not private account-data lineage or live
 forecast accuracy. No account data, secrets, database schema or orders mutated.
 Release labels still need P0-002; next development remains P4-001b.
+
+## P4-001b1 — category-aware public quote seeds
+
+Based on main d3b9688, retaining upstream D1-write and mobile changes.
+Implementation c09ad575fbf45cd9a0517149f719b1f7b9e46819. `node tests/execution.test.cjs` reproducer failed
+before repair (one Bag lost among 999 higher-spread Weapons), then all 27 cases
+passed. The 40-slot bound and uniqueness assertions remain enforced.
+`python scripts/audit_baseline.py` final result recorded in P4-001b1-baseline.json.
+`node scripts/audit_discovery.cjs` replays the same public snapshot; Bag seeds
+0 → 33, CraftingMaterial 32 → 80, Weapons 477 → 233 within the same 1450 budget.
+These are offline research-selection counts, not execution or profitability proof.
+Official metadata categories now subdivide existing price/depth buckets. Unknown
+metadata retains its own bucket; no names or handpicked families added. Very small
+budgets may still require rotation for complete coverage; no universal fairness claim.
+Name/unlock display exclusions and catalogue search remain unfinished. No deployment.
+
+## P4-001b2 — name/unlock independence and catalogue search
+
+PR #30 open/unmerged; prior cca2728 CI 42398829818 passed. Main unchanged at d3b9688.
+`node tests/market-board.test.cjs`: before repair 10 passed/2 failed; after 12 passed.
+Fixtures rename identical quotes across Mini/Recipe/Tonic/Skin/Infusion labels and
+assert unlock quotes remain research without quantities, expected profit or funding.
+The rejection-counter test now counts the formerly name-rejected row as accepted;
+other invalid/stale/duplicate cases retain their assertions.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`2e29aa6d6697fa8fd5d22243d1493959f6c0fdde`; source, Python, 8 JS test files and
+assembled desktop/mobile Chromium. New browser assertions prove Mini/unlock rows
+render as “not a forecast” and a no-history catalogue item is searchable by name/ID.
+Results: P4-001b2-baseline.json. `git diff --check` passed. Remote CI pending.
+
+`node scripts/audit_discovery.cjs` before/after same-snapshot replay:
+MiniPet 0→252, Consumable 526→2041; exact checksum and per-category changes in
+P4-001b2-replay.json. Remaining first rejections: ROI 6445, price ceiling 1171,
+standing depth 30. Gate order matters; no independent causal count implied.
+Research visibility is not profitable execution evidence. No deployment this batch.
+
+## P4-001c1 — research capital and malformed public quote guards
+
+Main unchanged d3b9688; PR #30 open/unmerged. Prior ea9a600 CI
+[42399130329](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/42399130329)
+passed. Before repair, `node tests/market-board.test.cjs` failed the new expensive
+research case (0 rows instead of 1). `node tests/execution.test.cjs` failed the new
+malformed-ID/depth case. After repair: board 13/13, execution 28/28.
+
+`python scripts/audit_baseline.py` passed all stages at clean implementation
+`a456967df56b8fddf59abf7695385043fd85ab78`: source validation, 34 Python tests,
+all 8 JS files including stress fixtures, desktop/mobile Chromium. New browser case
+proves a 30g research quote appears as not covered by the wallet, is absent from
+cheap-primary suggestions and creates no funded order. P4-001c1-baseline.json
+records commands and conditions. `git diff --check` passed. New remote CI pending.
+
+`node scripts/audit_discovery.cjs` same-public-snapshot replay: board research
+10,349→11,436 (+1,087). P4-001c1-replay.json records checksum and categories.
+Remaining first rejections: ROI 6,521, standing depth 38. These are policy-screen
+counts, not live liquidity or profit outcomes. Existing ROI/minimum-depth policies
+are intentionally retained for the next audit; whole Phase 4 is not complete.
+No release, private account write or game order performed.

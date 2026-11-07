@@ -157,8 +157,30 @@ test('public coverage accounts for every row, duplicates, stale quotes and polic
  const rows=[good,good,{...good,id:9902,at:'invalid'},{...good,id:9903,sellQty:NaN},{...good,id:9904,exit:102},{...good,id:9905,name:'Special Infusion'}];
  const b=Board.build({ok:true,budget:1000,orders:[],publicResearch:rows},{wallet:1000,now:NOW});
  const p=b.publicCoverage,g=p.byCategory.CraftingMaterial;
- assert.equal(p.scanned,6);assert.equal(p.accepted,1);assert.equal(b.newMarkets.length,1);
- assert.deepEqual(p.rejected,{'duplicate':1,'stale-or-invalid-quote':1,'standing-depth-policy':1,'nonpositive-net-margin':1,'name-policy':1});
+ assert.equal(p.scanned,6);assert.equal(p.accepted,2);assert.equal(b.newMarkets.length,2);
+ assert.deepEqual(p.rejected,{'duplicate':1,'stale-or-invalid-quote':1,'standing-depth-policy':1,'nonpositive-net-margin':1});
  assert.equal(p.scanned,p.accepted+Object.values(p.rejected).reduce((n,x)=>n+x,0));
- assert.deepEqual(g.rejected,p.rejected);assert.equal(g.scanned,6);assert.equal(g.accepted,1);
+ assert.deepEqual(g.rejected,p.rejected);assert.equal(g.scanned,6);assert.equal(g.accepted,2);
+});
+test('public research eligibility does not depend on translated or collectible item names',()=>{
+ const base={id:9901,name:'Ordinary item',type:'MiniPet',buy:1000,exit:1800,buyQty:20,sellQty:20,at:stamp};
+ for(const name of ['Ordinary item','Mini Test','Recipe: Test','Endless Test Tonic','Test Skin','Test Infusion']){
+  const board=Board.build({ok:true,budget:10000,orders:[],publicResearch:[{...base,name}]},{wallet:10000,now:NOW});
+  assert.equal(board.newMarkets.length,1,name);
+  assert.equal(board.forecast.length,0);assert.equal(board.newMarkets[0].quantity,undefined);
+  assert.equal(board.newMarkets[0].expectedProfit,undefined);
+ }
+});
+test('collection unlock quotes remain research without becoming funded profit forecasts',()=>{
+ const item={id:9901,name:'Test unlock',type:'Consumable',subtype:'Unlock',buy:1000,exit:1800,buyQty:20,sellQty:20,at:stamp};
+ const board=Board.build({ok:true,budget:10000,orders:[],publicResearch:[item]},{wallet:10000,now:NOW});
+ assert.equal(board.newMarkets.length,1);assert.equal(board.forecast.length,0);
+ assert.match(board.newMarkets[0].evidence,/No measured completed trades/);
+});
+test('expensive positive-margin quotes remain research above the current wallet',()=>{
+ const row={id:9901,name:'High capital research',type:'UpgradeComponent',buy:300000,exit:450000,buyQty:20,sellQty:20,at:stamp};
+ const b=Board.build({ok:true,budget:10000,orders:[],publicResearch:[row]},{wallet:10000,now:NOW});
+ assert.equal(b.newMarkets.length,1);assert.equal(b.newMarkets[0].affordability,'not-wallet-funded');
+ assert.equal(b.otherLeads.length,0);assert.equal(b.forecast.length,0);
+ assert.equal(b.newMarkets[0].quantity,undefined);assert.equal(b.newMarkets[0].expectedProfit,undefined);
 });

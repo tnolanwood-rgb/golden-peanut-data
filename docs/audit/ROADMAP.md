@@ -4,7 +4,7 @@ Statuses: TODO / IN PROGRESS / BLOCKED / VERIFIED / FAILED. VERIFIED requires th
 specified evidence, not merely implementation. Phases proceed in order except a
 critical trust/data-integrity defect may be repaired early. User now prioritises
 market discovery, followed by calculation correctness and useful bids. Release
-identity remains TODO; next batch is P4-001b before the accounting oracle.
+identity remains TODO; next batch is P4-001c2 before the accounting oracle.
 
 | ID / subsystem | Objective | Depends on | Impact | Required evidence / acceptance | Status |
 |---|---|---|---|---|---|
@@ -13,7 +13,10 @@ identity remains TODO; next batch is P4-001b before the accounting oracle.
 | P1-000 / bid integrity | Bound expected profit by completed resales; share wallet; preserve uncertainty | P0-001 | High | Impossible-profit and wallet regression plus assembled mobile/desktop UI rejection | VERIFIED |
 | P4-000 / discovery budget | Prevent early lanes starving public/recipe scanning | P0-001 | High | Crowded disjoint lanes at budgets 20/800/6500; bounded unique IDs; existing catalogue rotation and browser regressions | VERIFIED |
 | P4-001a / category gates | Trace catalogue to displayed research by category; repair exclusion at highest-impact gate | P4-000 | Critical/user priority | Reproducible counts/rejection reasons for commodities, consumables, equipment and upgrades; safe research beyond favourites; measured gate replay and low-margin browser regressions | VERIFIED |
-| P4-001b / remaining category coverage | Audit name/unlock restrictions, category seed starvation and catalogue search | P4-001a | Critical/user priority | Replay + adversarial category fixtures + real browser search; research remains separate from bid eligibility | TODO |
+| P4-001b1 / seed category diversity | Prevent dominant spreads starving smaller official categories | P4-001a | High | Failing 999-weapon/one-bag fixture; bounded distinct seeds; replay and assembled tests | VERIFIED |
+| P4-001b / remaining category coverage | Audit name/unlock restrictions, category seed starvation and catalogue search | P4-001a | Critical/user priority | Replay + adversarial category fixtures + real browser search; research remains separate from bid eligibility | VERIFIED |
+| P4-001c / remaining numeric gates | Audit ROI/price/depth exclusions, rejected-item search and bounded rotation | P4-001b | High | Rejection replay, safety-versus-policy distinction, repeated-refresh coverage tests; c1 complete, ROI/depth/rotation still open | IN PROGRESS |
+| P4-001c1 / price and quote validity | Separate research prices from funding; reject malformed public quotes | P4-001b | High | Above-wallet browser regression, malformed-input unit cases, offline replay and assembled suite | VERIFIED |
 | P1-001 / accounting | Verify all money definitions: dedup/pagination/partial fills, FIFO, rounded fees, unknown initial costs, realised/unrealised, UK day/7-day/DST, wallet/escrow/delivery, isolation, integer bounds | P0 | Critical | Independent oracle fixtures + >140k records; each displayed metric has source/coverage; today's matched profit remains first and incomplete totals labelled | TODO |
 | P2-001 / private monitoring | Trace ArenaNet → Actions → D1 → authenticated Worker → local persistence → decisions; prove closed-phone continuity | P1; live access for end-to-end | Critical | Recent successful persisted poll, idempotent event import, missed/duplicate/partial/zero/cancel observations; restart/no-reconnect, pagination/retry/D1 limits/error handling; no false-green attempts | TODO |
 | P3-001 / lineage | Catalogue all important datasets (personal trades/orders/exposure/zeros, quotes/history, metadata/recipes/families, allocations/evaluations), owners/schema/coverage/freshness/consumers | P2 | High | Each useful dataset has a causal-insertion test changing intended decision; otherwise explicitly archival; F003 labels repaired in P1-000 | TODO |

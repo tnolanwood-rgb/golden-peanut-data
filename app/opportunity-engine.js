@@ -804,8 +804,9 @@ function equipmentCoverageAudit({metadata={},discoveryIds=[],quotes=[],plan=null
  * crowd out lower-price bulk opportunities. A quote is NOT a turnover sample.
  */
 function researchQuoteScore(q){
- const buy=Number(q?.buy)||0,sell=Number(q?.sell)||0;
- if(!valid(buy)||!valid(sell)||sell<=buy||Number(q.buyQty)<2||Number(q.sellQty)<1)return null;
+ const buy=q?.buy,sell=q?.sell;
+ if(!valid(q?.id)||!valid(buy)||!valid(sell)||sell<=buy||
+    !valid(q.buyQty)||q.buyQty<2||!valid(q.sellQty))return null;
  const bid=buy+1<sell?buy+1:buy,exit=Math.floor(sell*.97);
  const afterFee=saleNet(exit,1);if(!finite(afterFee))return null;
  const net=afterFee-bid,roi=net/bid;
@@ -831,7 +832,8 @@ async function gatherPublicSeeds(state,hist,limit=1450){
    const at=Date.parse(q?.at);if(!finite(at)||Date.now()-at>18*HOUR||at>Date.now()+60000)continue;
    fresh++;
    const c=researchQuoteScore(q);if(!c)continue;
-   eligible++;const g=c.priceBand+':'+c.bookBand;
+   eligible++;const category=String(state.meta?.[c.id]?.type||'Unknown');
+   const g=JSON.stringify([category,c.priceBand,c.bookBand]);
    if(!groups.has(g))groups.set(g,[]);
    keep(groups.get(g),c,125);keep(global,c,330);
   }
