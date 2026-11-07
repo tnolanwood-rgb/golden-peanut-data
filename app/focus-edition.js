@@ -1576,7 +1576,7 @@ function initLegend(){const legend=$('view-legend');if(!legend)return;
 function updateLegendView(){if(!$('focus-legend-workspace'))return;const p=root.GPLegendaryPlanner,cache=p?.cache;for(const btn of document.querySelectorAll('[data-legend-section]')){const selected=btn.dataset.legendSection===ui.legendSection;btn.classList.toggle('is-active',selected);btn.setAttribute('aria-pressed',String(selected));}
  for(const view of document.querySelectorAll('[data-legend-view]'))view.hidden=view.dataset.legendView!==ui.legendSection;
  const id=Number(cache?.chosen),it=cache?.catalog?.find(x=>x.id===id);if(!it){$('focus-legend-summary').replaceChildren(h('strong','','Choose a legendary to begin'),h('p','focus-muted','Your saved goals and the full catalogue are under Choose / change goal.'));$('focus-legend-picker').hidden=false;return;}
- const title=h('strong','',it.name),help=h('p','focus-muted');const d=p?.derive?.(),req=d?.need?.filter(x=>x.missing>0)||[];const owned=d?.need?.filter(x=>x.missing===0)?.length||0;
+ const title=itemTitle(it.id,it.name,'strong',it.rarity||'Legendary'),help=h('p','focus-muted');const d=p?.derive?.(),req=d?.need?.filter(x=>x.missing>0)||[];const owned=d?.need?.filter(x=>x.missing===0)?.length||0;
  let next='';if(d?.g?.tasks?.length){const t=d.g.tasks.find(x=>!cache.list.checked[`${it.id}:${x.id}`]);if(t)next=t.text;}
  if(!next&&req.length){const row=req.find(x=>x.category==='buy')||req[0];next='Acquire '+num(row.missing)+' × '+(cache.book?.itemMap?.get(row.id)?.name||cache.catalog?.find(x=>x.id===row.id)?.name||'required ingredient');}
  if(!next)next=d?.plan?.hasRecipe?'Review your remaining crafting and account-bound requirements.':'Check the wiki acquisition route and complete the associated collection.';
