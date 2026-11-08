@@ -3,7 +3,7 @@ const C=require('../app/competitive-exposure.js');
 const H=3600000,T=Date.UTC(2026,10,1),account='Fixture.1234';
 const r=(at,remaining=50,extra={})=>({account,order:1,item:10,at,remaining,price:100,bestBuy:100,bestSell:200,quoteAt:at,original:null,created:T,...extra});
 const state=rows=>C.merge(null,rows,account);
-const sum=(rows,ledger=[],extra={})=>C.summarize(state(rows),10,{now:T+10*24*H,ledger,...extra});
+const sum=(rows,ledger=[],extra={})=>C.summarize(state(rows),10,{now:Math.max(T,...rows.map(r=>r.at)),ledger,...extra});
 const fill=(q,at,extra={})=>({id:1,item:10,side:'buy',price:100,q,purchased:at,...extra});
 test('50 items, 2 fills across three days outbid is not slow competitive capacity',()=>{
  const rows=Array.from({length:145},(_,i)=>r(T+i*H/2,i===144?48:50,{bestBuy:110}));
@@ -69,4 +69,10 @@ test('competitive sampled rate includes zeros with recency weighting and no lot 
  const rows=[],ledger=[];let remaining=50;
  for(let d=0;d<6;d++){const at=T+d*24*H;rows.push(r(at,remaining));if(d===5){remaining-=2;ledger.push(fill(2,at+H/2));}rows.push(r(at+H/2,remaining));}
  const s=sum(rows,ledger);assert.equal(s.competitiveDays,6);assert.ok(s.competitiveRatePerSampledHour>0&&s.competitiveRatePerSampledHour<4);assert.equal(s.maximumMarketCapacity,null);
+});
+
+test('time since the last open-order snapshot is unobserved without inventing order presence',()=>{
+ const s=sum([r(T)],[],{now:T+72*H});assert.equal(s.unobservedHours,72);
+ assert.equal(s.latest.position,'unobserved');assert.equal(s.latest.observedPosition,'competitive');
+ assert.equal(s.confirmedContinuousCompetitiveHours,0);
 });

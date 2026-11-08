@@ -70,6 +70,7 @@ function summarize(state,item,{now=Date.now(),ledger=[],toleranceCopper=0,maxGap
    intervals.push({a,b,hours,position,fills,delta:a.remaining-b.remaining});
   }
  }
+ const unknownSegments=[];
  const overlaps=new Set();let active=[];
  for(const x of [...intervals].sort((a,b)=>a.a.at-b.a.at)){
   active=active.filter(y=>y.b.at>x.a.at);
@@ -78,14 +79,18 @@ function summarize(state,item,{now=Date.now(),ledger=[],toleranceCopper=0,maxGap
  }
  for(const x of intervals){
   const overlap=overlaps.has(x);
-  if(overlap){result.overlappingIntervals++;result.censoredIntervals++;continue;}
+  if(overlap){result.overlappingIntervals++;result.censoredIntervals++;unknownSegments.push([x.a.at,x.b.at]);continue;}
   if(x.position==='competitive')result.sampledCompetitiveHours+=x.hours;
   else if(x.position==='outbid')result.sampledOutbidHours+=x.hours;
-  else result.unobservedHours+=x.hours;
+  else unknownSegments.push([x.a.at,x.b.at]);
   // A fully consumed order is a lower bound; unknown depletion/cancellation is censored.
   if(x.position!=='competitive'||x.b.remaining===0||x.delta!==x.fills){result.censoredIntervals++;continue;}
   result.verifiedCompetitiveFills+=x.fills;if(!x.fills)result.competitiveZeroIntervals++;
   const day=Math.floor(x.b.at/DAY),s=days.get(day)||{fills:0,hours:0};s.fills+=x.fills;s.hours+=x.hours;days.set(day,s);
+ }
+ for(const rows of groups.values()){const last=rows.at(-1);if(!last.absent&&last.at<now)unknownSegments.push([last.at,now]);}
+ let end=-Infinity;for(const [from,to]of unknownSegments.sort((a,b)=>a[0]-b[0])){
+  result.unobservedHours+=Math.max(0,to-Math.max(from,end))/HOUR;end=Math.max(end,to);
  }
  result.competitiveDays=days.size;
  // Descriptive, recency-weighted sampled rate only; never a funded forecast.
@@ -93,6 +98,7 @@ function summarize(state,item,{now=Date.now(),ledger=[],toleranceCopper=0,maxGap
  const last=all.at(-1);result.latest=last?{...classify(last,{toleranceCopper}),at:last.at,remaining:last.remaining,
   original:last.original,price:last.price,bestBuy:last.bestBuy,bestSell:last.bestSell,
   fresh:now-last.at<=15*60000,ageHours:Number.isFinite(last.created)?Math.max(0,(last.at-last.created)/HOUR):null}:null;
+ if(result.latest){result.latest.observedPosition=result.latest.position;if(!result.latest.fresh)result.latest.position='unobserved';}
  return result;
 }
 async function update(state,quotes){
