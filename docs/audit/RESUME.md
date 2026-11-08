@@ -1,6 +1,7 @@
 # Resume — competitive-exposure repair
 
 Repository `tnolanwood-rgb/golden-peanut-data`; branch `audit/competitive-exposure`.
+Draft PR #31: https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31
 Read AGENTS.md and STATE.md. User has limited allowance: keep bounded checkpoints.
 
 1. Fetch/status; check this branch's PR and latest CI/merge state. Base main

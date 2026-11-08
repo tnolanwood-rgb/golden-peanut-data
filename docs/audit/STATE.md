@@ -8,8 +8,8 @@ constrained, so stop at a pushed, reproducible batch boundary.
   repair PARTIAL; CE-002 next. Full Phase 5 and the wider audit are incomplete.
 - **Branch:** `audit/competitive-exposure`, base main `0aae3f1`.
   PR #30 merged upstream (`b7aa19b`); earlier discovery code is included in main.
-  New repair PR/status: check this branch's GitHub PR; local validation below is
-  independent of pending remote CI. No merge or release has occurred for CE-001.
+  [Draft PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
+  open; remote CI pending. No merge or release has occurred for CE-001.
 - **Latest implementation:** `ef7f27c29aee7d983e46155e2fa7e0ff4332f915`.
   Checkpoint SHA: `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed:** removed unpriced-night overrides of conditional research capacity

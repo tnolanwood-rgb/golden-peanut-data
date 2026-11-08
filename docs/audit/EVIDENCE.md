@@ -259,3 +259,7 @@ opportunity-engine.js, capacity-intelligence.js and market-board.js matched main
 0aae3f1 bytes. PR #30 merged upstream; CE-001 is NOT deployed. Remote CI for the
 new repair branch must be checked separately; no private D1 readback, historical
 backtest calibration or physical S23 evidence obtained in this batch.
+
+Delivery: draft [PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
+opened from pushed branch audit/competitive-exposure. Checkpoint dfc2db1 plus this
+PR-reference documentation update. Remote CI is pending, not reported as passed.
