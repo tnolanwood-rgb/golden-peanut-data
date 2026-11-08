@@ -71,3 +71,19 @@ test('a loss after TP fees is shown as a loss, never silently clamped to zero',(
  assert.equal(p.status,'research');
  assert.ok(p.scenarios.find(x=>x.days===3).profitTypical<0);
 });
+test('bulk hypothetical quantity is not capped by historical small lots or a single TP stack',()=>{
+ const p=Capacity.estimate({market:pearl,ledger,metadata,quantity:10000,now:NOW});
+ assert.equal(p.quantity,10000);assert.equal(p.oneRound,40*Capacity.feeNet(pearl.exit,250)-pearl.buy*10000);
+ assert.equal(p.expectedProfit,undefined);assert.equal(p.maximumMarketCapacity,null);
+ assert.ok(p.scenarios[0].acquiredHigh<10000,'historical examples must not scale into invented bulk execution');
+});
+test('unsafe hypothetical gold totals are rejected instead of rounded into recommendations',()=>{
+ const p=Capacity.estimate({market:{id:1,buy:1000,exit:Number.MAX_SAFE_INTEGER},quantity:2,ledger,metadata,now:NOW});
+ assert.equal(p.status,'invalid');assert.match(p.reason,/safe integer/);
+});
+test('bulk fee calculation matches an integer per-stack oracle including residual stacks',()=>{
+ for(const price of [1,3,101,99999])for(const quantity of [1,249,250,251,10001]){
+  let expected=0n,left=quantity;while(left){const units=Math.min(250,left),gross=BigInt(units)*BigInt(price);expected+=gross-(gross+19n)/20n-(gross+9n)/10n;left-=units;}
+  assert.equal(Capacity.feeNet(price,quantity),Number(expected));
+ }
+});

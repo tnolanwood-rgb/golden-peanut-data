@@ -10,9 +10,10 @@ const whole=(x,min=0)=>Number.isSafeInteger(x)&&x>=min;
 const quantile=(a,p)=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);return s[Math.max(0,Math.min(s.length-1,Math.floor((s.length-1)*p)))];};
 const feeNet=(price,quantity)=>{
  if(!whole(price,1)||!whole(quantity,0))return 0;
- let q=quantity,total=0;
- while(q>0){const units=Math.min(250,q),v=units*price;total+=v-Math.ceil(v*.05)-Math.ceil(v*.10);q-=units;}
- return total;
+ if(!Number.isSafeInteger(price*quantity))return 0;
+ const stacks=Math.floor(quantity/250),remainder=quantity%250;
+ const batch=n=>{const gross=n*price;return gross-Math.ceil(gross/20)-Math.ceil(gross/10);};
+ return (stacks?stacks*batch(250):0)+(remainder?batch(remainder):0);
 };
 function kind(name,type,rarity){
  if(rarity==='Exotic'&&type==='Weapon'&&/\bPearl\b/i.test(name||''))return 'pearl';
@@ -92,10 +93,12 @@ function analogous(data,id,name,metadata,buyPrice,now){
   category:k,label:'Not enough comparable completed buying AND resale records'};
 }
 function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNights=null,sellNights=null}={}){
- if(!whole(quantity,1)||quantity>250)throw Error('Research quantity must be between 1 and 250');
+ if(!whole(quantity,1))throw Error('Research quantity must be a positive safe integer');
  const id=market?.id,buy=market?.buy,exit=market?.exit;
  if(!whole(id,1)||!whole(buy,1)||!whole(exit,1)||exit<=buy)
   return {status:'invalid',reason:'No valid current bid and resale reference'};
+ if(!Number.isSafeInteger(quantity*buy)||!Number.isSafeInteger(quantity*exit))
+  return {status:'invalid',reason:'Total gold exceeds safe integer arithmetic; reduce the hypothetical quantity'};
  const margin=feeNet(exit,1)-buy,oneRound=feeNet(exit,quantity)-buy*quantity;
  const data=index(ledger,metadata,now),name=String(market?.name||metadata?.[id]?.name||'');
  const baseline=analogous(data,id,name,metadata,buy,now);
@@ -104,7 +107,7 @@ function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNi
  // as practice observations, never let unattended zeros override successful history.
  const practice={buyNights:buyNights?.samples?.length||0,sellNights:sellNights?.samples?.length||0,
   competitiveExposure:'unknown'};
- const result={observedPractice:practice,status:stats?'research':'insufficient',id,quantity,buy,exit,oneRound,margin,
+ const result={maximumMarketCapacity:null,observedPractice:practice,status:stats?'research':'insufficient',id,quantity,buy,exit,oneRound,margin,
   source,label,category:baseline.category,comparableMarkets:baseline.sampleItemIds.length,
   buyActiveDays:stats?.buyDays||0,sellActiveDays:stats?.sellDays||0,
   medianResaleLagDays:stats?.lagTypical??null,

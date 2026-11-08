@@ -160,7 +160,7 @@ function load(){
  else{
   const valid={};
   for(const [key,val]of Object.entries(ui.capacitySelections).slice(0,300))
-   if(/^\d{1,10}$/.test(key)&&[1,3,5,10,20,50,100,250].includes(Number(val)))valid[key]=Number(val);
+   if(/^\d{1,10}$/.test(key)&&Number.isSafeInteger(Number(val))&&Number(val)>0)valid[key]=Number(val);
   ui.capacitySelections=valid;
  }
  if(!ui.sectionScrolls||typeof ui.sectionScrolls!=='object'||Array.isArray(ui.sectionScrolls))ui.sectionScrolls={};
@@ -1511,10 +1511,9 @@ function renderCapacityExplorer(el,item){
  const section=h('section','focus-info-box focus-capacity-explorer');
  section.append(h('h4','','HOW MUCH COULD FILL & RESELL?'),
   h('p','focus-muted','Choose your own test quantity, regardless of your wallet. The scenarios show historic trading pace on ACTIVE days or comparable markets, not guaranteed fills or market-wide sales.'));
- const controls=h('div','focus-capacity-controls'),label=h('label','','Hypothetical buy order size');
- const picker=h('select','focus-capacity-select');picker.setAttribute('aria-label','Hypothetical order size');
- for(const q of [1,3,5,10,20,50,100,250]){const opt=h('option','',num(q)+' units');opt.value=String(q);picker.append(opt);}
- const initial=Number(ui.capacitySelections?.[item.id]||ui.marketResearchLot||item.quantity)||10;picker.value=String([1,3,5,10,20,50,100,250].includes(initial)?initial:10);
+ const controls=h('div','focus-capacity-controls'),label=h('label','','Hypothetical total quantity (across orders)');
+ const picker=h('input','focus-capacity-select');picker.type='number';picker.min='1';picker.step='1';picker.inputMode='numeric';picker.setAttribute('aria-label','Hypothetical order size');
+ const initial=Number(ui.capacitySelections?.[item.id]||ui.marketResearchLot||item.quantity)||10;picker.value=String(Number.isSafeInteger(initial)&&initial>0?initial:10);
  label.append(picker);controls.append(label);
  section.append(controls);
  const metrics=h('div','focus-capacity-grid');const note=h('p','focus-muted focus-capacity-limitation');
@@ -1533,6 +1532,7 @@ function renderCapacityExplorer(el,item){
   try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
    ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
   catch(e){note.textContent='Research calculation unavailable: '+String(e?.message||e);return;}
+  if(estimate.status==='invalid'){note.textContent=estimate.reason;return;}
   const itemExposure=state.competitiveItems?.get(item.id);
   const positioning=root.GPCompetitive?.summarize?.(itemExposure?.observations?itemExposure:state.competitiveExposure,item.id,{ledger:state.ledger||[]});
   const summary=h('div','focus-capacity-overview');
@@ -1584,7 +1584,7 @@ function renderCapacityExplorer(el,item){
    metrics.append(h('p','focus-muted','For the full lot: about '+num(estimate.activeDaysToComplete)+' COMPARABLE ACTIVE trading day(s) at historical median pace, not a calendar-time promise.'));
   note.textContent='Ranges are conditional planning references. Zero fills is always possible. Upper figures are observed higher active-day paces, not a maximum or a forecast. Only placed orders and later verified transactions can calibrate this specific market.';
  };
- picker.addEventListener('change',()=>{ui.capacitySelections[item.id]=Number(picker.value);render();});
+ picker.addEventListener('change',()=>{const q=Number(picker.value);if(Number.isSafeInteger(q)&&q>0)ui.capacitySelections[item.id]=q;render();});
  render();el.append(section);
 }
 function renderTradeDetail(){if(!ui.tradeDetail)return;const t=tradeData(),selected=ui.selectedMarket?.id===ui.tradeDetail?ui.selectedMarket:null,
