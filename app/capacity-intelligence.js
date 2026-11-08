@@ -100,17 +100,11 @@ function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNi
  const data=index(ledger,metadata,now),name=String(market?.name||metadata?.[id]?.name||'');
  const baseline=analogous(data,id,name,metadata,buy,now);
  let stats=baseline.stats,source=baseline.source,label=baseline.label;
- if(buyNights?.supported&&sellNights?.supported&&Array.isArray(buyNights.samples)&&Array.isArray(sellNights.samples)){
-  const buys=buyNights.samples.map(s=>s.filled),sells=sellNights.samples.map(s=>s.filled);
-  if(buys.length>=5&&sells.length>=5){
-   source='observed-order-nights';label='Your actual continuously observed overnight buy and sell orders, including zero-fill nights';
-   stats={buyTypical:quantile(buys,.5),sellTypical:quantile(sells,.5),
-    buyUpper:quantile(buys,.75),sellUpper:quantile(sells,.75),
-    lagTypical:stats?.lagTypical??null,lagFast:stats?.lagFast??null,
-    lagRecords:stats?.lagRecords||0,markets:1,buyDays:buys.length,sellDays:sells.length};
-  }
- }
- const result={status:stats?'research':'insufficient',id,quantity,buy,exit,oneRound,margin,
+ // Calendar-night fills do not establish price competitiveness. Preserve them
+ // as practice observations, never let unattended zeros override successful history.
+ const practice={buyNights:buyNights?.samples?.length||0,sellNights:sellNights?.samples?.length||0,
+  competitiveExposure:'unknown'};
+ const result={observedPractice:practice,status:stats?'research':'insufficient',id,quantity,buy,exit,oneRound,margin,
   source,label,category:baseline.category,comparableMarkets:baseline.sampleItemIds.length,
   buyActiveDays:stats?.buyDays||0,sellActiveDays:stats?.sellDays||0,
   medianResaleLagDays:stats?.lagTypical??null,
@@ -139,7 +133,7 @@ function estimate({market,ledger=[],metadata={},quantity=10,now=Date.now(),buyNi
  }
  const throughput=Math.min(stats.buyTypical||0,stats.sellTypical||0);
  result.activeDaysToComplete=throughput>0&&lag!==null?Math.ceil(quantity/throughput+lag):null;
- result.note='0 fills remains possible. Counts are sensitivity references from personally completed trades, not market-wide volume or calibrated fill probabilities. A large original order may have filled more; past small orders do not prove a capacity ceiling. Pricing, queue priority and cancellations change actual outcomes.';
+ result.note='0 fills remains possible. Counts are sensitivity references from personally completed trades, not market-wide volume or calibrated fill probabilities. Past small orders are lower bounds, not a market capacity ceiling. Unpriced zero-fill nights do not measure competitive acquisition; rates under maintained bids remain unknown. Pricing, queue priority and cancellations change actual outcomes.';
  return result;
 }
 root.GPCapacity={buildId:'7.16.0-evidence',estimate,index,kind,feeNet};

@@ -46,12 +46,12 @@ test('own completed market history supersedes peer analogy, but active-day recor
  assert.match(p.readiness,/zero-fill days unknown/);
  assert.equal(p.comparableMarkets,1);
 });
-test('fully observed zero-fill nights can override active-day analogues',()=>{
+test('unpriced zero-fill nights cannot override active-day analogues',()=>{
  const nights={supported:true,samples:[0,0,1,0,2,0,0].map(filled=>({filled}))};
  const p=Capacity.estimate({market:pearl,ledger,metadata,quantity:20,now:NOW,buyNights:nights,sellNights:nights});
- assert.equal(p.source,'observed-order-nights');
- assert.equal(p.scenarios[0].acquiredTypical,0);
- assert.equal(p.scenarios[0].resaleTypical,0);
+ assert.equal(p.source,'comparable-markets');
+ assert.deepEqual(p.scenarios,Capacity.estimate({market:pearl,ledger,metadata,quantity:20,now:NOW}).scenarios);
+ assert.equal(p.observedPractice.competitiveExposure,'unknown');
 });
 test('large chosen quantity is independent of tiny wallet, and zero-sales means zero claimed profit',()=>{
  const p=Capacity.estimate({market:pearl,ledger,metadata,quantity:250,now:NOW});
