@@ -76,3 +76,14 @@ CREATE TABLE IF NOT EXISTS gp_monitor_nights (
  PRIMARY KEY(account_id,night,side,order_id)
 );
 CREATE INDEX IF NOT EXISTS idx_gp_monitor_nights_item ON gp_monitor_nights(account_id,item_id,night);
+
+-- Additive CE-002 migration. One bounded JSON batch per poll, not one D1
+-- write per unchanged order. Private and append-only; never public price data.
+CREATE TABLE IF NOT EXISTS gp_monitor_exposure (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ account_id TEXT NOT NULL,
+ observed_at INTEGER NOT NULL,
+ payload TEXT NOT NULL,
+ UNIQUE(account_id,observed_at)
+);
+CREATE INDEX IF NOT EXISTS idx_gp_monitor_exposure_account ON gp_monitor_exposure(account_id,id);

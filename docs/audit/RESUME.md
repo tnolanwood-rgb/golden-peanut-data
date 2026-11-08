@@ -10,7 +10,8 @@ Read AGENTS.md and STATE.md. User has limited allowance: keep bounded checkpoint
 2. CE-001 passed all local baseline stages (94 JS, 34 Python, desktop/mobile).
    It removes unpriced-night capacity/ranking overrides and integrates priced,
    account-scoped foreground observation diagnostics. CE-001 NOT deployed here.
-3. Next **CE-002**: additive private background bid/ask collection and authenticated
+3. CE-002a collector/relay implemented; next **CE-002b** app import and atomic
+   bounded storage. Prior plan: additive private background bid/ask collection and authenticated
    app import, with D1 write-budget, freshness, deduplication and gap tests. Inspect
    `services/account-monitor/github-collector.py`, `schema.sql`, `worker.js`,
    `app/account-monitor-client.js`, `app/competitive-exposure.js`. Do not encode

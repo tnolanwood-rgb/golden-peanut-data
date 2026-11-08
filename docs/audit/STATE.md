@@ -5,11 +5,11 @@ exposure/acquisition/inactivity repair over remaining discovery work; allowance 
 constrained, so stop at a pushed, reproducible batch boundary.
 
 - **Current phase/batch:** CE-001 VERIFIED locally. Overall competitive-exposure
-  repair PARTIAL; CE-002 next. Full Phase 5 and the wider audit are incomplete.
+  repair PARTIAL; CE-002 IN PROGRESS. Full Phase 5 and the wider audit are incomplete.
 - **Branch:** `audit/competitive-exposure`, base main `0aae3f1`.
   PR #30 merged upstream (`b7aa19b`); earlier discovery code is included in main.
   [Draft PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
-  open; remote CI pending. No merge or release has occurred for CE-001.
+  open; previous head 4f22f02 CI 42429705868 passed. No merge or release has occurred for CE-001.
 - **Latest implementation:** `ef7f27c29aee7d983e46155e2fa7e0ff4332f915`.
   Checkpoint SHA: `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed:** removed unpriced-night overrides of conditional research capacity
@@ -27,7 +27,9 @@ constrained, so stop at a pushed, reproducible batch boundary.
   Mixed historical version labels remain; exact source identity is the evidence.
 - **In progress:** full critical repair; no unfinished local code changes expected
   after checkpoint. Remote CI pending until independently checked.
-- **Exact next action:** CE-002: inspect private collector `save_orders`/night paths,
+- **Exact next action:** CE-002b: collector/relay foundation is committed; connect
+  authenticated exposure import with atomic item/day storage and resumable cursor.
+  Prior diagnostic action (now implemented in CE-002a): inspect private collector `save_orders`/night paths,
   Worker schema/endpoints and account-monitor-client import; add bounded timestamped
   bid/ask observations with an additive migration and authenticated, deduplicated
   import to the exposure store. Preserve upstream D1 write reductions. Tests first.

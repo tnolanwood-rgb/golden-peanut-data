@@ -263,3 +263,15 @@ backtest calibration or physical S23 evidence obtained in this batch.
 Delivery: draft [PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
 opened from pushed branch audit/competitive-exposure. Checkpoint dfc2db1 plus this
 PR-reference documentation update. Remote CI is pending, not reported as passed.
+
+CE-002a (2026-11-08): bounded priced background collector and authenticated relay
+implemented. Synthetic SQLite/HTTP tests: `python -m unittest discover -s tests
+-p 'test_*collector.py' -q` passed 37 tests. `node --test
+tests/account-monitor.test.cjs` and `python scripts/check_release.py` passed.
+Coverage includes 401-order rotation, stable intraday cohorts, partial/missing
+quotes, idempotency, cancellation uncertainty, cache age, D1 write failure,
+public 503 retry bounds and authenticated account/cursor scoping. One JSON insert
+per poll, up to 200 current plus 200 absent sampled orders; actual D1 write billing
+not measured. Migration absence is explicit. No private/live D1 test performed.
+Prior PR #31 head 4f22f02 CI 42429705868 completed successfully.
+CE-002b app import/storage is still IN PROGRESS; CE-002 is not yet complete.
