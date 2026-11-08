@@ -67,3 +67,11 @@
   and evidence writes permit safe replay. Recent 90-day / 10,000-sample detail reads
   are explicitly partial; no stored evidence is deleted. Model use of partial reads
   is disabled rather than manufacturing complete exposure.
+
+- **D019:** historical-practice references should be invariant to inactivity alone.
+  Keep age warnings and fresh-quote requirements; no arbitrary shrinking or expansion
+  based on time away. Fresh execution outcomes, not login assumptions, must change
+  competitive forecasts. Exact-lot funded engine remains unchanged pending CE-003c.
+- **D020:** separate a user-selected hypothetical total from a TP stack and from
+  maximum market capacity. Numeric research input supports multiple orders; preserve
+  per-stack rounded fees and safe-integer arithmetic. Maximum capacity remains unknown.

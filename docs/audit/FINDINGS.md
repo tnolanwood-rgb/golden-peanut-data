@@ -84,3 +84,14 @@ Android defect has been proved in this batch. Those remain tests to perform, not
 - **F020 repaired locally 11f5566:** cloud refresh used mutable state.account after
   awaited operations. Capture account/key/db context for authenticated requests and
   persistence; publish in-memory results only for the still-selected account.
+
+- **F021 / High, repaired 2509b86:** inactivity age coefficients reduced otherwise
+  identical conditional quantities (4→1); 120-day night cutoff discarded saved
+  overnight examples (6→0). Historic references now persist, age remains explicit,
+  and inactivity alone cannot flag capital redeployment. No competitive rate inferred.
+- **F022 / High, repaired 2509b86:** future-dated prices could qualify as independent
+  research observations or lower the sampled exit; exclude them at both checks.
+- **F023 / Medium, repaired a0d131c:** hypothetical quantity rejected every value
+  over 250; single-order stack size was incorrectly used as a whole research limit.
+  Explicit total quantities now accepted; overflow rejected and fees preserved by
+  an integer per-stack oracle. No bulk execution probability inferred.

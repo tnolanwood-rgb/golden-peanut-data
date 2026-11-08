@@ -40,3 +40,7 @@ at 10,000 samples with explicit truncation; synthetic Chromium verifies all 10,0
 saved samples survive. Collector adds one bounded batch insert per poll (up to 400
 sample/absence rows) plus indexes; real D1 billing not measured. No claimed mobile
 latency improvement; per-day shard decoding can still be large on extreme books.
+
+CE-003b1 fee computation uses full-stack multiplication plus a residual stack rather
+than looping over every stack. Independent fee oracle verifies parity. No timed
+performance improvement claimed; upstream fast-startup fixes/test preserved on merge.

@@ -81,3 +81,16 @@ Acceptance cases 6–9/14–15 now have integrated storage/import coverage, not 
 monitoring or model accuracy proof. Cases 3–4 quantity caps, 11–12 ranking/resale and
 policy-specific forecasts still require CE-003. Next reproduce identical histories
 at differing inactivity ages in findQuantity and activeBookScenario before repair.
+
+## CE-003a/b1 checkpoint — partial model repair
+
+2509b86 removes inactivity discounts/age-based experimental multipliers, retains
+old personal night references, prevents inactivity alone flagging redeployment and
+rejects future quotes. a0d131c permits explicit bulk hypothetical quantities with
+safe integer/stack-fee validation. Full suite 109 JS / 41 Python and assembled tests
+passes. No funded quantity/expected profit is invented by these changes.
+
+Next CE-003c must repair legacy cap semantics and the actual joint forecasting
+path. Remaining evidence multipliers/wait adjustments, exact-lot samples,
+maintenance-specific resale and capital-allocation acceptance remain unfinished.
+No live model comparison, calibration gain or new deployment claimed.

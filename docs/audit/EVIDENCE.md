@@ -300,3 +300,35 @@ servers and child processes; restricted execution yielded EPERM on child spawn.
 Direct Node test execution and the permitted full baseline were both checked.
 Deployment is pending; no release-request files touched. Prior remote CI at 4f22f02
 passed run 42429705868, but the latest implementation's remote CI remains unchecked.
+
+## CE-003a and CE-003b1 (2026-11-08)
+
+Main advanced to 4b8bd13; merge 01b7c86 resolved only HTML script list and npm test
+list conflicts by retaining both upstream startup changes and exposure work.
+Read-only live HTML/opportunity-engine/focus-edition bytes matched origin/main.
+PR #31 is draft/open/unmerged. New repair changes were not deployed.
+
+Before CE-003a, `node tests/inactivity.test.cjs` failed all four initial cases:
+identical history cap 4→1 with inactivity; overnight reference count 6→0;
+open-book scenario 4→1; future quotes admitted as independent observations.
+At 2509b86 all six cases pass, including inactivity-only capital review and
+historical-only research never becoming funded. `python scripts/audit_baseline.py`
+passes at clean 2509b86; CE-003a-baseline.json. Removing unidentifiable 1.25–1.75x
+expansion multipliers also reduces the fresh fixture research ceiling (21→10),
+while stale and fresh references agree. This is conditional research, not an
+increase in proven acquisition capacity or a calibrated forecast.
+
+CE-003b1: two new capacity cases first failed (quantity >250 rejected and unsafe
+integer gold accepted). a0d131c passes these plus an independent BigInt fee oracle
+across full/residual stacks. Browser explicitly enters 10,000 units, checks unknown
+forecasts and returns to the saved 50-unit choice. Full baseline: 109 JS / 41 Python,
+source checks, desktop/mobile and collector-to-browser tests all pass. Report
+CE-003b1-baseline.json's dirty flag reflects only the prior CE-003a evidence JSON,
+which was untracked; implementation code was committed at the reported SHA.
+
+An assembled rarity assertion initially read an empty computed style during an
+asynchronous repaint. It now waits for the exact expected colour on the current
+attached row instead of retaining a potentially detached element; colour coverage
+is preserved. Final full browser checks pass. No live calibration or physical
+Android claims. Legacy evidence/wait factors and quantity-cap semantics are still
+CE-003c; full requested repair remains incomplete.

@@ -1,0 +1,72 @@
+{
+  "schema": "gp-audit-baseline-v1",
+  "started_at": "2026-11-08T08:17:44.012318+00:00",
+  "commit": "a0d131c4389696d639df818508223082181675eb",
+  "branch": "audit/competitive-exposure",
+  "dirty": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "node": "v24.22.1",
+  "conditions": "Synthetic local regression; browser emulation, not physical Android or live account validation",
+  "planned_checks": [
+    "source",
+    "python",
+    "javascript",
+    "browser"
+  ],
+  "checks": [
+    {
+      "name": "source",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "scripts/check_release.py"
+      ],
+      "status": "VERIFIED",
+      "exit_code": 0,
+      "seconds": 0.968,
+      "log": "source.log"
+    },
+    {
+      "name": "python",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "status": "VERIFIED",
+      "exit_code": 0,
+      "seconds": 1.127,
+      "log": "python.log"
+    },
+    {
+      "name": "javascript",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "status": "VERIFIED",
+      "exit_code": 0,
+      "seconds": 1.373,
+      "log": "javascript.log"
+    },
+    {
+      "name": "browser",
+      "command": [
+        "npm",
+        "run",
+        "test:browser"
+      ],
+      "status": "VERIFIED",
+      "exit_code": 0,
+      "seconds": 11.778,
+      "log": "browser.log"
+    }
+  ],
+  "status": "VERIFIED"
+}

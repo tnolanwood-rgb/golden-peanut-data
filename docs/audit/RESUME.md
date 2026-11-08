@@ -1,22 +1,27 @@
 # Resume — competitive acquisition repair
 
-Read AGENTS.md and STATE.md. Repository tnolanwood-rgb/golden-peanut-data, branch
-`audit/competitive-exposure`, draft PR https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31.
+Read AGENTS.md / STATE.md. Repo tnolanwood-rgb/golden-peanut-data, branch
+`audit/competitive-exposure`, draft PR #31 (open/unmerged at last check).
 
-1. Fetch/status; check PR #31 newest CI and merge state. Base main 0aae3f1;
-   implementation 11f556619b7da859e51ffac5610e9efb11f3d6a0. Previous 4f22f02 CI
-   42429705868 passed. Local clean full suite passed CE-002; new remote CI pending.
-2. CE-001 removes unpriced-night research overrides. CE-002 connects GitHub priced
-   cohort snapshots -> private D1 -> authenticated relay -> atomic item/day storage
-   -> detail diagnostics. Original accounting/Delivery Box/browser checks pass.
-   Replay/concurrency/rollback/migration/backup/large-read tests pass. NOT deployed.
-3. Next **CE-003a**: reproduce inactivity bias in opportunity-engine.findQuantity
-   and activeBookScenario ageScale; replace unsupported age/lot caps, preserving
-   uncertainty, independent resale and capital conservation. Do not turn sampled
-   rates into guaranteed capacity. Full 15-scenario acceptance is still incomplete.
-4. Then CE-003 maintenance scenarios/portfolio rankings and CE-004 walk-forward
-   testing/release. Actual background D1 readback remains unverified. Worker-native
-   polling is unpriced; GitHub collector path is the implemented priced source.
-5. CE-002-DEPLOY.md has exact migration/release sequence. No deployment or merge
-   during this checkpoint. Check only relevant COMPETITIVE-REPAIR/EVIDENCE sections;
-   do not repeat completed discovery audit. Preserve data and commit/push bounded work.
+1. Fetch/status and inspect latest PR CI. Main advanced to 4b8bd13: includes
+   independently deployed unpriced-night repair #32 and startup improvements #33.
+   Merged into audit branch at 01b7c86, preserving both test suites and scripts.
+2. CE-001/002, CE-003a/b1 locally verified. Implementations 2509b86 + a0d131c;
+   final full suite: 109 JS, 41 Python, source checks, desktop/mobile and
+   Python/SQLite/Worker/browser/IndexedDB pipeline. Evidence JSONs committed.
+   CE-003b1 report dirty only because prior evidence JSON was untracked, not code.
+3. Next **CE-003c**: GPExecution.forecast/plan exact-lot joint outcome rules and
+   legacy cap/researchCap/activeWeekCap consumers. Build baseline/censoring tests;
+   maintenance-policy-specific acquisition AND resale evidence must support any
+   numeric forecast. Historical lots are lower bounds, not market maxima. Current
+   evidence/wait factors and legacy quantity ceilings remain; do not claim full fix.
+4. CE-003a removes inactivity discounts, vanished old-night references and
+   inactivity-only redeployment flags; future quotes excluded. CE-003b1 permits
+   explicit bulk research beyond 250, preserves stack fees/safe arithmetic, and
+   assigns no funded forecast. Tests prove historical-only research cannot be funded.
+5. Then portfolio margin/volume/resale constraints and CE-004 walk-forward tests.
+   CE-002 priced GitHub pipeline is not deployed or live D1-verified; native Worker
+   polling still unpriced. CE-002-DEPLOY.md contains release sequence. No new release
+   request files were changed. Live three assets matched main on 2026-11-08.
+6. Commit/push bounded batches. Do not restart discovery/accounting audits or treat
+   synthetic green tests as evidence of live accuracy. Preserve financial accounting.
