@@ -135,17 +135,19 @@ async function refresh(state=current(),{force=false}={}){
  const x=getEntry(state.account);
  if(!x.enabled||x.syncing||(!force&&now()-x.checkedAt<STATUS_MINUTES*60000))return x.status;
  x.syncing=true;x.lastError=null;
+ const account=state.account,context={account,key:state.key,db:state.db};
  try{
-  const remote=await request(state,'/status');
+  const remote=await request(context,'/status');
+  if(remote.account!==account)throw Error('Monitor account mismatch');
   if(!remote.enabled)throw Error('Background monitoring has been disabled');
   x.checkedAt=now();x.status=remote;
   // Account-scoped event cursor: acknowledge a page ONLY after its trade
   // contents are safely imported into the original IndexedDB ledger.
-  let cursor=(await state.db.get('config',state.account,'cloud-monitor-cursor-v1'))?.value?.cursor||0;
+  let cursor=(await context.db.get('config',account,'cloud-monitor-cursor-v1'))?.value?.cursor||0;
   let ledgerChanged=false,eventsCaptured=0,partialBuys=0,partialSells=0;
   for(let page=0;page<25;page++){
    if(state.account!==remote.account)break;
-   const payload=await request(state,'/events?after='+encodeURIComponent(cursor));
+   const payload=await request(context,'/events?after='+encodeURIComponent(cursor));
    const rows=payload.events||[];
    const trades=[];
    for(const e of rows){
@@ -160,20 +162,36 @@ async function refresh(state=current(),{force=false}={}){
     }
    }
    if(trades.length){
-    const saved=await state.db.importLedger(state.account,trades,{source:'Verified ArenaNet background monitor'});
+    const saved=await context.db.importLedger(account,trades,{source:'Verified ArenaNet background monitor'});
     if(saved.added||saved.amended)ledgerChanged=true;
    }
    if(rows.length){
     eventsCaptured+=rows.length;
     // Store a bounded raw change feed, separately from the historical ledger.
     // This is for after-action analyses, not a duplicate source of profit.
-    const old=(await state.db.get('config',state.account,'cloud-monitor-events-v1'))?.value||[];
+    const old=(await context.db.get('config',account,'cloud-monitor-events-v1'))?.value||[];
     const next=[...old,...rows].slice(-12000);
-    await state.db.put('config',state.account,'cloud-monitor-events-v1',next);
+    await context.db.put('config',account,'cloud-monitor-events-v1',next);
     cursor=payload.nextCursor;
-    await state.db.put('config',state.account,'cloud-monitor-cursor-v1',{cursor,at:now()});
+    await context.db.put('config',account,'cloud-monitor-cursor-v1',{cursor,at:now()});
    }
    if(!payload.hasMore)break;
+  }
+  // Exposure is separate from completed trades. A failed page never advances
+  // its cursor or prevents already verified ledger imports from being retained.
+  if(root.GPCompetitive&&context.db.writeCompetitive&&state.account===account){
+   try{
+    let after=(await context.db.get('config',account,'competitive-cursor-v2'))?.value?.cursor||0;
+    for(let page=0;page<5&&state.account===account;page++){
+     const payload=await request(context,'/exposure?after='+after);
+     x.exposure={supported:payload.supported,hasMore:payload.hasMore,collector:payload.collector,checkedAt:now()};
+     if(payload.supported!==true)break;
+     after=await root.GPCompetitive.importPage(context,payload,after);
+     if(state.account===account){state.competitiveItems=new Map();state.competitiveCoverage=context.competitiveCoverage;}
+     if(!payload.hasMore)break;
+    }
+    x.exposureError=null;
+   }catch(e){x.exposureError=String(e.message||e).slice(0,180);}
   }
   if(ledgerChanged&&state.account===remote.account){
    const saved=await state.db.all('ledger',state.account);
@@ -190,7 +208,7 @@ async function refresh(state=current(),{force=false}={}){
    }
   }
   x.lastImportedEvents=eventsCaptured;x.lastObservedBuyUnits=partialBuys;x.lastObservedSellUnits=partialSells;
-  await state.db.put('config',state.account,'cloud-monitor-status-v1',{...remote,checkedAt:x.checkedAt,eventsCaptured});
+  await context.db.put('config',account,'cloud-monitor-status-v1',{...remote,checkedAt:x.checkedAt,eventsCaptured});
   return remote;
  }catch(e){
   x.lastError=String(e.message||e).slice(0,180);

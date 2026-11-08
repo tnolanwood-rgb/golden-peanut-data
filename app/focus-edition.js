@@ -1498,6 +1498,8 @@ function tradeRow(o,newMode=false){const row=h('button','focus-market-row');row.
  * research model. Exact fills, active-day history and analogues stay distinct. */
 function renderCapacityExplorer(el,item){
  const state=State(),capacity=root.GPCapacity;
+ if(state?.db?.readCompetitive&&root.GPCompetitive&&!state.competitiveItems?.has(item.id))
+  void root.GPCompetitive.loadItem(state,item.id).catch(()=>{});
  const cloud=root.GPCloudAccount;
  if(cloud?.status?.(state?.account)?.enabled&&state?.key&&!cloud.peekNights?.(state.account,item.id)){
   void cloud.fetchNights(state,item.id).then(()=>{
@@ -1531,12 +1533,16 @@ function renderCapacityExplorer(el,item){
   try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
    ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
   catch(e){note.textContent='Research calculation unavailable: '+String(e?.message||e);return;}
-  const positioning=root.GPCompetitive?.summarize?.(state.competitiveExposure,item.id,{ledger:state.ledger||[]});
+  const itemExposure=state.competitiveItems?.get(item.id);
+  const positioning=root.GPCompetitive?.summarize?.(itemExposure?.observations?itemExposure:state.competitiveExposure,item.id,{ledger:state.ledger||[]});
   const summary=h('div','focus-capacity-overview');
   if(positioning){
    metrics.append(h('p','focus-muted','Competitive acquisition and resale forecasts: unknown. Calendar time and unattended bids do not establish market capacity.'));
    const detail=h('details','focus-competitive-evidence');detail.append(h('summary','','Competitive exposure observations'));
-   detail.append(h('p','focus-muted',positioning.observations+' priced order snapshots · '+positioning.sampledCompetitiveHours.toFixed(1)+' hours between competitive endpoints · '+positioning.sampledOutbidHours.toFixed(1)+' hours between outbid endpoints · '+positioning.unobservedHours.toFixed(1)+' unobserved/gap hours.'));
+   detail.append(h('p','focus-muted',positioning.observations+' order snapshots · '+positioning.sampledCompetitiveHours.toFixed(1)+' hours between competitive endpoints · '+positioning.sampledOutbidHours.toFixed(1)+' hours between outbid endpoints · '+positioning.unobservedHours.toFixed(1)+' unobserved/gap hours. Recent 90 days shown; older evidence stays saved. Background sampling may cover only part of the order book.'));
+   const coverage=state.competitiveCoverage;
+   if(positioning.partialRead)detail.append(h('p','focus-muted','Partial detail view: latest 10,000 samples loaded. All older samples remain saved; rate estimation is unavailable for this partial view.'));
+   if(coverage)detail.append(h('p','focus-muted','Latest imported background coverage: '+coverage.sampledOrders+' of '+coverage.totalOrders+' buy orders; '+coverage.quotedOrders+' with returned quotes. Quote status: '+coverage.quotes+'.'));
    detail.append(h('p','focus-muted',positioning.limitation));
    detail.append(h('p','focus-muted','Verified acquisitions in reconciled intervals: '+positioning.lowerBoundAcquired+' (lower bound, not maximum capacity). Maintenance-specific 24h/7d income remains unknown.'));
    metrics.append(detail);

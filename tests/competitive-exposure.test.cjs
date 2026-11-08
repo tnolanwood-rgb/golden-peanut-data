@@ -55,14 +55,14 @@ test('future-known quotes are excluded from retrospective evaluation',()=>{
 });
 test('foreground integration persists priced snapshots idempotently in account config',async()=>{
  let value=null;const snapshot={at:new Date(T).toISOString(),buysVerified:true,buys:[{id:1,item:10,q:50,price:100,created:T}]};
- const s={account,snapshot,db:{get:async()=>({value}),put:async(store,acct,key,v)=>{assert.equal(acct,account);value=v;}}};
+ const s={account,snapshot,db:{get:async()=>({value}),writeCompetitive:async(acct,rows)=>{assert.equal(acct,account);value=C.merge(value,rows,acct);}}};
  // update uses wall-clock freshness; use a current snapshot for the production path.
  const now=Date.now();snapshot.at=new Date(now).toISOString();const quotes=[{id:10,buy:110,sell:200,at:snapshot.at}];
  await C.update(s,quotes);await C.update(s,quotes);assert.equal(value.observations.length,1);assert.equal(C.classify(value.observations[0]).position,'outbid');
 });
 test('account changes during persistence cannot overwrite another account live state',async()=>{
  const now=Date.now(),snapshot={at:new Date(now).toISOString(),buysVerified:true,buys:[{id:1,item:10,q:50,price:100}]};
- const s={account,snapshot,competitiveExposure:null,db:{get:async()=>null,put:async()=>{s.account='Other.5678';}}};
+ const s={account,snapshot,competitiveExposure:null,db:{get:async()=>null,writeCompetitive:async()=>{s.account='Other.5678';}}};
  await C.update(s,[]);assert.equal(s.competitiveExposure,null);
 });
 test('competitive sampled rate includes zeros with recency weighting and no lot ceiling',()=>{
@@ -75,4 +75,20 @@ test('time since the last open-order snapshot is unobserved without inventing or
  const s=sum([r(T)],[],{now:T+72*H});assert.equal(s.unobservedHours,72);
  assert.equal(s.latest.position,'unobserved');assert.equal(s.latest.observedPosition,'competitive');
  assert.equal(s.confirmedContinuousCompetitiveHours,0);
+});
+
+test('background page validates account, cursor, dates and rows before any persistence',async()=>{
+ const now=Date.now(),row={...r(now),account:undefined};let writes=0;
+ const s={account,db:{writeCompetitive:async()=>{writes++;}}};
+ const page={account,supported:true,batches:[{id:1,version:1,at:now,observations:[row]}],nextCursor:1,hasMore:false};
+ for(const bad of [{...page,account:'Other.5678'},{...page,nextCursor:2},{...page,batches:[{...page.batches[0],observations:[{...row,remaining:-1}]}]},
+  {...page,batches:[{...page.batches[0],at:now+120000}]}])await assert.rejects(C.importPage(s,bad,0));
+ assert.equal(writes,0);assert.equal(await C.importPage(s,page,0),1);assert.equal(writes,1);
+});
+test('failed background writes never acknowledge a page or publish another account cache',async()=>{
+ const now=Date.now(),page={account,supported:true,batches:[{id:2,version:1,at:now,observations:[r(now)]}],nextCursor:2,hasMore:false};
+ const cache=new Map(),s={account,competitiveItems:cache,db:{writeCompetitive:async()=>{throw Error('storage full');}}};
+ await assert.rejects(C.importPage(s,page,1),/storage full/);assert.equal(s.competitiveItems,cache);
+ s.db.writeCompetitive=async(acct,rows,options)=>{assert.equal(acct,account);assert.equal(options.cursor,2);s.account='Other.5678';};
+ await C.importPage(s,page,1);assert.equal(s.competitiveItems,cache);
 });

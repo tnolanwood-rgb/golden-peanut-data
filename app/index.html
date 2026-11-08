@@ -612,6 +612,36 @@ class Database{
  async put(store,account,key,value){this.ensure();const tx=this.db.transaction(store,'readwrite');tx.objectStore(store).put({pk:workKey(account,key),account,key,value});await transactionDone(tx);}
  async all(store,account){this.ensure();const tx=this.db.transaction(store,'readonly');return (await reqPromise(tx.objectStore(store).index('account').getAll(account))).map(x=>({key:x.key,value:x.value}));}
  async count(store,account){this.ensure();return reqPromise(this.db.transaction(store,'readonly').objectStore(store).index('account').count(account));}
+ async writeCompetitive(account,rows,{cursor=null,head=null,coverage=null}={}){
+  this.ensure();const gp=root.GPCompetitive;if(!gp)throw Error('Exposure engine unavailable');
+  const groups=new Map();for(const r of rows){const key=gp.shardKey(r);const group=groups.get(key)||[];group.push(r);groups.set(key,group);}
+  const tx=this.db.transaction('config','readwrite'),store=tx.objectStore('config');let failure=null;
+  const update=(key,merge)=>{const pk=workKey(account,key),req=store.get(pk);req.onsuccess=()=>{
+   try{store.put({pk,account,key,value:merge(req.result?.value)});}catch(e){failure=e;tx.abort();}
+  };};
+  for(const [key,items] of groups)update(key,old=>gp.merge(old,items,account));
+  if(cursor!==null)update('competitive-cursor-v2',old=>old?.cursor>cursor?old:{cursor,coverage:coverage||old?.coverage||null});
+  if(head)update('competitive-head-v2',old=>!old||head.at>=old.at?head:old);
+  try{await transactionDone(tx);}catch(e){throw failure||e;}
+ }
+ async readCompetitive(account,item,{now=Date.now(),days=90}={}){
+  this.ensure();const prefix=workKey(account,'competitive:v2:'+item+':');
+  const from=Math.floor((now-days*86400000)/86400000),to=Math.floor(now/86400000);
+  const range=this.idbRange().bound(prefix+from,prefix+to+'\uffff');
+  const observations=[],limit=10000;let truncated=false;
+  await new Promise((resolve,reject)=>{
+   const req=this.db.transaction('config','readonly').objectStore('config').openCursor(range,'prev');
+   req.onerror=()=>reject(req.error);req.onsuccess=()=>{
+    const cursor=req.result;if(!cursor)return resolve();
+    const rows=cursor.value.value.observations||[];
+    const remaining=limit-observations.length;
+    if(rows.length>remaining){if(remaining>0)observations.push(...rows.slice(-remaining));truncated=true;return resolve();}
+    observations.push(...rows);cursor.continue();
+   };
+  });
+  observations.sort((a,b)=>a.at-b.at||a.order-b.order);
+  return {account,version:1,observations,windowDays:days,truncated,olderHistoryRetained:true};
+ }
  async marketPage(afterPk='',limit=350){
   this.ensure();if(!Number.isSafeInteger(limit)||limit<1||limit>600)throw Error('Invalid market page size');
   const start=workKey('global','quote:'),end=workKey('global','quote:\uffff');
@@ -743,7 +773,8 @@ async function restoreCleanBackup(db,account,data){
     const k=workKey(scope,r.key);
     if(store==='market'){
      const req=object.get(k);req.onsuccess=()=>{const previous=req.result?.value;if(!previous||Date.parse(previous.latest?.at||0)<Date.parse(r.value?.latest?.at||0))object.put({pk:k,account:scope,key:r.key,value:r.value});};
-    }else if(store==='config'&&r.key==='execution-learning-v1'&&root.GPExecution){const req=object.get(k);req.onsuccess=()=>object.put({pk:k,account:scope,key:r.key,value:root.GPExecution.mergeLearning(req.result?.value,r.value)});}
+    }else if(store==='config'&&r.key.startsWith('competitive:v2:')&&root.GPCompetitive){const req=object.get(k);req.onsuccess=()=>object.put({pk:k,account:scope,key:r.key,value:root.GPCompetitive.merge(req.result?.value,r.value?.observations||[],scope)});}
+    else if(store==='config'&&r.key==='execution-learning-v1'&&root.GPExecution){const req=object.get(k);req.onsuccess=()=>object.put({pk:k,account:scope,key:r.key,value:root.GPExecution.mergeLearning(req.result?.value,r.value)});}
     else object.put({pk:k,account:scope,key:r.key,value:r.value});
    }await transactionDone(tx);}
  }
@@ -1276,7 +1307,8 @@ async function upsertChunk(db,account,frame){
   const found=store.get(pk);
   found.onsuccess=()=>{
    // Non-ledger restoration never overwrites existing values. Keep more recent local checks.
-   if(frame.store==='config'&&item.key==='execution-learning-v1'&&root.GPExecution){store.put({pk,account:frame.scope,key:item.key,value:root.GPExecution.mergeLearning(found.result?.value,item.value)});}
+   if(frame.store==='config'&&item.key.startsWith('competitive:v2:')&&root.GPCompetitive){store.put({pk,account:frame.scope,key:item.key,value:root.GPCompetitive.merge(found.result?.value,item.value?.observations||[],frame.scope)});}
+   else if(frame.store==='config'&&item.key==='execution-learning-v1'&&root.GPExecution){store.put({pk,account:frame.scope,key:item.key,value:root.GPExecution.mergeLearning(found.result?.value,item.value)});}
    else if(!found.result)store.put({pk,account:frame.scope,key:item.key,value:item.value});
   };
  }
@@ -3458,7 +3490,7 @@ async function selectAccount(account){
  State.account=account;invalidateAllocation();try{localStorage.setItem('gp-clean-selected-account',account);}catch{}
  const [saved,savedMeta,savedLedger]=await Promise.all([State.db.get('snapshots',account,'last'),State.db.all('metadata','global'),State.db.all('ledger',account)]);
  State.snapshot=saved?.value||null;State.meta=Object.fromEntries(savedMeta.map(x=>[Number(x.key),x.value]));State.ledger=savedLedger.map(x=>x.value);
- try{State.competitiveExposure=(await State.db.get('config',account,'competitive-exposure-v1'))?.value||null;}catch{State.competitiveExposure=null;}
+ try{await root.GPCompetitive?.restore?.(State);}catch{State.competitiveExposure=null;}
  try{State.orderEvidence=(await State.db.get('config',account,'buy-order-evidence-v1'))?.value||null;}
  catch{State.orderEvidence=null;}
  try{State.sellOrderEvidence=(await State.db.get('config',account,'sell-order-evidence-v1'))?.value||null;}

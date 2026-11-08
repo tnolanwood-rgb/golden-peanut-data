@@ -94,7 +94,8 @@ function summarize(state,item,{now=Date.now(),ledger=[],toleranceCopper=0,maxGap
  }
  result.competitiveDays=days.size;
  // Descriptive, recency-weighted sampled rate only; never a funded forecast.
- if(days.size>=5){let weight=0,total=0;for(const [day,s]of days){const w=2**(-(now/DAY-day)/30);weight+=w;total+=w*s.fills/s.hours;}result.competitiveRatePerSampledHour=total/weight;}
+ result.partialRead=state?.truncated===true;
+ if(days.size>=5&&!result.partialRead){let weight=0,total=0;for(const [day,s]of days){const w=2**(-(now/DAY-day)/30);weight+=w;total+=w*s.fills/s.hours;}result.competitiveRatePerSampledHour=total/weight;}
  const last=all.at(-1);result.latest=last?{...classify(last,{toleranceCopper}),at:last.at,remaining:last.remaining,
   original:last.original,price:last.price,bestBuy:last.bestBuy,bestSell:last.bestSell,
   fresh:now-last.at<=15*60000,ageHours:Number.isFinite(last.created)?Math.max(0,(last.at-last.created)/HOUR):null}:null;
@@ -103,12 +104,59 @@ function summarize(state,item,{now=Date.now(),ledger=[],toleranceCopper=0,maxGap
 }
 async function update(state,quotes){
  const account=state?.account,snapshot=state?.snapshot;if(!account||!state.db)return;
- const key='competitive-exposure-v1',old=(await state.db.get('config',account,key))?.value;
+ const old=(await state.db.get('config',account,'competitive-head-v2'))?.value;
  const value=observe(old,snapshot,quotes,account);
  if(state.account!==account||state.snapshot!==snapshot)return;
- await state.db.put('config',account,key,value);
- if(state.account===account&&state.snapshot===snapshot)state.competitiveExposure=value;
+ const at=Date.parse(snapshot?.at),rows=value.observations.filter(r=>r.at===at);
+ if(!rows.length)return;
+ const head={account,version:1,at,observations:rows.filter(r=>!r.absent)};
+ await state.db.writeCompetitive(account,rows,{head});
+ if(state.account===account&&state.snapshot===snapshot){state.competitiveExposure=value;state.competitiveItems=new Map();}
 }
-root.GPCompetitive={classify,merge,observe,summarize,update};
+function shardKey(row){return 'competitive:v2:'+row.item+':'+Math.floor(row.at/DAY);}
+async function restore(state){
+ const account=state.account,db=state.db;
+ state.competitiveExposure=null;state.competitiveItems=new Map();
+ const sync=(await db.get('config',account,'competitive-cursor-v2'))?.value;
+ if(state.account===account)state.competitiveCoverage=sync?.coverage||null;
+ const migrated=(await db.get('config',account,'competitive-migrated-v2'))?.value;
+ if(migrated)return;
+ const old=(await db.get('config',account,'competitive-exposure-v1'))?.value;
+ if(old?.account===account)for(let offset=0;offset<(old.observations||[]).length;offset+=400){
+  await db.writeCompetitive(account,merge(null,old.observations.slice(offset,offset+400),account).observations);
+ }
+ // Preserve the original legacy value for rollback; marker only after all writes.
+ await db.put('config',account,'competitive-migrated-v2',true);
+}
+async function loadItem(state,item){
+ const account=state.account,cache=state.competitiveItems||(state.competitiveItems=new Map());
+ if(cache.has(item))return cache.get(item);
+ const task=state.db.readCompetitive(account,item).then(value=>{
+  if(state.account===account&&state.competitiveItems===cache){cache.set(item,value);root.GPFocus?.render?.();}return value;
+ }).catch(e=>{cache.delete(item);throw e;});
+ cache.set(item,task);return task;
+}
+async function importPage(state,payload,cursor){
+ const account=state.account;
+ if(payload.account!==account||payload.supported!==true||!Array.isArray(payload.batches)||payload.batches.length>5)
+  throw Error('Invalid exposure page');
+ let last=cursor;const rows=[];
+ for(const batch of payload.batches){
+  if(!whole(batch.id,1)||batch.id<=last||batch.version!==1||!whole(batch.at,1)||batch.at>Date.now()+60000||
+     !Array.isArray(batch.observations)||batch.observations.length>400)throw Error('Invalid exposure batch');
+  for(const r of batch.observations){
+   if(!whole(r.order,1)||!whole(r.item,1)||!whole(r.price,1)||!whole(r.remaining)||r.at!==batch.at||
+      r.account&&r.account!==account)throw Error('Invalid exposure observation');
+   rows.push({...r,account});
+  }
+  last=batch.id;
+ }
+ if(payload.nextCursor!==last||typeof payload.hasMore!=='boolean'||payload.hasMore&&!payload.batches.length)
+  throw Error('Invalid exposure cursor');
+ await state.db.writeCompetitive(account,rows,{cursor:last,coverage:payload.batches.at(-1)?.coverage});
+ if(state.account===account){state.competitiveItems=new Map();state.competitiveCoverage=payload.batches.at(-1)?.coverage||null;}
+ return last;
+}
+root.GPCompetitive={classify,merge,observe,summarize,update,shardKey,restore,loadItem,importPage};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPCompetitive;
 })(typeof globalThis!=='undefined'?globalThis:this);
