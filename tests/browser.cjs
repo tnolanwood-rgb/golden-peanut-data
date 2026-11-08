@@ -277,8 +277,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  // Names are coloured from verified item rarity, not guessed from item names.
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic').count(),1);
- const namedColor=await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic')
-  .evaluate(el=>getComputedStyle(el).color);
+ // Background evidence may repaint the row between locator resolution and
+ // evaluation. Check the current attached node, never a detached old element.
+ const namedColor=await (await page.waitForFunction(()=>{
+  const el=document.querySelector('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic');
+  const color=el&&getComputedStyle(el).color;return color==='rgb(255, 164, 5)'?color:false;
+ })).jsonValue();
  assert.equal(namedColor,'rgb(255, 164, 5)');
  const rarityPalette=await page.evaluate(()=>{
   const pairs={Junk:'rgb(170, 170, 170)',Basic:'rgb(255, 255, 255)',
