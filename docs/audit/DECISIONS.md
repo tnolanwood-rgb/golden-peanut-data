@@ -45,3 +45,15 @@
   keep thin/wide quotes outside primary lists. Preserve funded execution gates.
 - D013: prioritise bounded enumeration fix discovered during rotation replay;
   prove identical IDs/order and benchmark the same fixture, not synthetic live returns.
+
+- **D014 / CE-001:** distinguish sampled endpoint positioning from continuous
+  exposure. Outbid, stale, gapped, repriced, conflicting and overlapping intervals
+  cannot support a competitive rate. An exact leading quote proves no queue rank.
+  Report near-leading tolerance separately; a positive bid difference is outbid.
+- **D015 / CE-001:** fully consumed lots provide verified acquisition lower bounds,
+  never capacity ceilings. Match actual ledger records; disappearance alone is
+  censored. Retain informative competitive zeros and deduplicate observations.
+- **D016 / staged repair:** remove unsupported unpriced-night research overrides,
+  but never promote sampled rates into acquisition/resale probabilities. Maintenance
+  scenarios stay unknown until separate supported evidence exists. A complete new
+  forecasting model and walk-forward proof are explicitly deferred to CE-003/004.

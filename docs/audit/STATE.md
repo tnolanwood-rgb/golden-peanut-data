@@ -1,46 +1,53 @@
 # Golden Peanut — authoritative engineering state
 
-Updated: 2026-11-07 UTC. Read RESUME.md next. User priority: market discovery,
-then calculation correctness/useful bids. Keep releases separate from ordinary audits.
+Updated: 2026-11-08 UTC. Read RESUME.md next. User prioritised the competitive
+exposure/acquisition/inactivity repair over remaining discovery work; allowance is
+constrained, so stop at a pushed, reproducible batch boundary.
 
-- **Current phase/batch:** P4-001c2 + P8-000 VERIFIED locally: positive-margin research with
-  watchlist cautions, fixed-catalogue rotation proof, and family-loop optimisation. Full Phase 4 remains incomplete.
-- **Branch:** `audit/discovery-category-seeds`, based on main `d3b9688`.
-  [PR #30](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/30) open/unmerged.
-  Upstream 7.30 mobile styling and D1 write reductions preserved.
-- **Latest implementation:** `d19ae759bad135e844267e86cb23cb7cecdda780`.
-  Seed category repair c09ad57 also on this branch. Checkpoint SHA resolves with
-  `git log -1 --format=%H -- docs/audit/STATE.md`.
-- **Completed:** category-aware seed budgets; positive small-margin research;
-  names and collection unlock use no longer silently block quote research.
-  The fixed 25g research ceiling is removed; above-wallet quotes remain explicitly
-  unfunded. Malformed IDs/prices/depth now fail early. Freshness, positive net
-  margin and remaining ROI/depth policies remain.
-  No public-only entry gains a funded order, execution probability or expected profit.
-- **Tests:** all four audit_baseline.py stages pass on clean implementation above.
-  Board tests 13/13, execution tests 30/30, Python 34/34; desktop 1440x1000 and mobile 390x844 prove research visibility
-  and untraded catalogue name/ID search. Prior PR head 6688d55 CI 42399490369 passed.
-  CI for the newest commit remains pending; see EVIDENCE.md.
-- **Production:** this batch NOT deployed. Last independently hash-verified audit
-  release e5d67e6 via run 42369046821 (14 assets matched). Main subsequently added
-  7.30 mobile changes and D1 write reductions; not independently deployed-verified here.
-- **In progress:** none; next bounded discovery batch not started.
-- **Exact next action:** P4-002: verify live/partial discovery coverage, tradeability,
-  freshness and persisted rotation across interrupted scans. Fixed-snapshot ID
-  coverage passed; do not claim live quote coverage. Then resume accounting oracle.
-- **Latest repairs:** positive narrow-margin quotes retained; thin/wide books kept
-  with explicit caution only in secondary watchlist. No execution forecasts added.
-  Family enumeration reduced from 1002 to 2 calls for 1000-item fixture.
-- **Session stop:** user reports 3% allowance; stop at clean checkpoint. No further
-  audit or deployment until a new continuation request. Latest remote CI pending.
-- **Outstanding:** no private D1-to-app readback proof; no live profitability or
-  calibration improvement proven; real S23 Ultra untested. P0-002 release identity
-  and P1-001 independent accounting oracle remain deferred, not complete.
-- **Authority:** push/PR permitted. No new release authority inferred from ordinary
-  “Continue”. No migrations, game orders, credential changes or private fixtures.
+- **Current phase/batch:** CE-001 VERIFIED locally. Overall competitive-exposure
+  repair PARTIAL; CE-002 next. Full Phase 5 and the wider audit are incomplete.
+- **Branch:** `audit/competitive-exposure`, base main `0aae3f1`.
+  PR #30 merged upstream (`b7aa19b`); earlier discovery code is included in main.
+  New repair PR/status: check this branch's GitHub PR; local validation below is
+  independent of pending remote CI. No merge or release has occurred for CE-001.
+- **Latest implementation:** `ef7f27c29aee7d983e46155e2fa7e0ff4332f915`.
+  Checkpoint SHA: `git log -1 --format=%H -- docs/audit/STATE.md`.
+- **Completed:** removed unpriced-night overrides of conditional research capacity
+  and rankings; persisted account-scoped foreground buy/quote observations;
+  separated sampled competitive/outbid/unknown periods, verified-fill lower bounds,
+  gaps, cancellations, overlapping orders, stale tails and duplicates. Optional
+  detail diagnostics report limits. No sampled rate becomes a funded forecast.
+- **Tests completed:** clean implementation passed `python scripts/audit_baseline.py`:
+  source/assets/workflow/credential checks (32 JS programs), 34 Python tests,
+  94 JavaScript tests (18 new exposure cases), desktop 1440x1000/mobile 390x844
+  assembled Chromium journeys, including existing accounting/Delivery Box guards.
+  See CE-001-baseline.json, CE-001-comparison.json and EVIDENCE.md.
+- **Production:** before editing, five live assets (HTML, execution, opportunity,
+  capacity, market-board) matched main `0aae3f1` byte-for-byte. CE-001 NOT deployed.
+  Mixed historical version labels remain; exact source identity is the evidence.
+- **In progress:** full critical repair; no unfinished local code changes expected
+  after checkpoint. Remote CI pending until independently checked.
+- **Exact next action:** CE-002: inspect private collector `save_orders`/night paths,
+  Worker schema/endpoints and account-monitor-client import; add bounded timestamped
+  bid/ask observations with an additive migration and authenticated, deduplicated
+  import to the exposure store. Preserve upstream D1 write reductions. Tests first.
+- **Still required:** background prices/freshness/coverage; storage growth and
+  concurrency controls; competing legacy lot/active-week caps and recency factors;
+  maintenance-specific acquisition/resale/portfolio modelling; walk-forward outcome
+  evaluation; real account integration and physical S23 checks. See
+  COMPETITIVE-REPAIR.md for the acceptance matrix. Do not label these complete.
+- **Outstanding limitations:** endpoint samples are not continuous competitiveness
+  or queue priority. Historical unpriced nights cannot be retrospectively priced.
+  Closed-app periods remain unknown without background evidence. Existing
+  conditional active-day examples are not unbiased capacity estimates. No improved
+  live profitability/calibration, new funded quantities or capital recycling proven.
+- **Merge/deploy:** CE-001 reviewable with local checks passed; check remote CI.
+  Not a complete acquisition-engine release. User authorised deployment of the
+  verified repair, but do not claim this partial batch satisfies full acceptance.
+  No destructive migrations, game orders or credential/account-data changes.
 - **Environment:** `/workspace/gp-audit`; network/local browser servers need network
-  permission. No direct private keys or Cloudflare credentials. GitHub checkpoints
-  are the recovery source; do not rely on VM or conversation history.
+  permission. No direct private keys or Cloudflare credentials. GitHub checkpoint
+  is the recovery source; no automatic continuation after allowance reset.
 
 ## Verified source inventory (not a claim of live health)
 

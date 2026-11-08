@@ -57,3 +57,18 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   positive net research, caution wide/thin books in secondary watchlist, no income claim.
 - **F016 / High, repaired d19ae75:** Object.keys(metadata) ran on each family-loop
   iteration. Cache cardinality once; 1002→2 enumerations at 1000 rows, same candidates.
+
+- **F017 / Critical, CE-001 repaired locally ef7f27c:** capacity-intelligence and
+  market-board treated unpriced monitored nights as competitive capacity. Six
+  zero nights replaced a synthetic four-unit active-day reference with zero and
+  could demote research rankings without evidence of price position. Those nights
+  are now retained as observed practice, not a competitive override.
+- **F018 / Critical, OPEN CE-002/003:** private nights store no public bid/ask;
+  opportunity findQuantity retains inactivity/active-week caps; capacity retains
+  active-day/lot analogues. They cannot establish competitive market capacity.
+  Foreground exposure is integrated, but background coverage, model and portfolio
+  repairs remain unfinished. Historical unpriced observations cannot fill the gap.
+- **F019 / High, OPEN CE-002:** new per-account foreground exposure is a config
+  array without retention/compaction or concurrent-writer transaction control.
+  Preserve all evidence while adding scalable storage/import; do not silently
+  truncate history. Local account-switch tests do not prove multi-tab safety.

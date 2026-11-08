@@ -37,3 +37,32 @@ CE-004 walk-forward evaluation with zero/censored windows, independent resale an
 capital-allocation regressions; production verification/deployment only of completed
 coherent repairs with explicit limitations. Existing accounting/Delivery Box tests
 must remain unchanged and green. Never infer cancelled orders filled.
+
+## Checkpoint — CE-001 VERIFIED locally, overall repair PARTIAL
+
+Implementation ef7f27c. Full baseline: 94 JS/34 Python plus assembled desktop/mobile
+and source checks. Foreground capture is called by execution-engine.update and
+restored from account config; detail UI shows unknown forecasts plus expandable
+sample diagnostics. A five-day recency-weighted sampled rate is descriptive only.
+Unobserved stale tails are explicit. No acquisition/resale/recycling probabilities
+are derived. No deployment in this batch. CE-002 is the exact next action.
+
+### User acceptance scenarios (foundation coverage is not full-model acceptance)
+
+| Requested cases | Evidence now | Remaining |
+|---|---|---|
+| 1–2: two of fifty outbid vs competitive | Exposure tests separate 72h sampled positioning and zeros | Integrate supported rates into policy-specific forecasts |
+| 3: four fully filled | Lower-bound test; maximum capacity unknown | Remove legacy lot/active-week quantity caps |
+| 4: inactive profitable market | History retained; unpriced nights cannot override or demote | Replace remaining inactivity/recency factors |
+| 5, 10: repricing and large moves | Changed endpoints censored | Observed pressure and maintained/unattended scenario model |
+| 6–7: closed app/gaps | Gaps and stale tails unknown, never competitive zeros | Background quote collection/import and coverage |
+| 8–9: overlaps/partial/cancel/replace | Censor overlap; actual fills required | Background-to-portfolio integrated fixtures |
+| 11–12: margin vs volume; resale limits | Existing execution/portfolio regressions still pass | New model ranking/sell-side tests NOT complete |
+| 13: accounting/Delivery Box | Existing assembled guards unchanged and passing | Independent full accounting audit still pending |
+| 14–15: uncertainty/duplicates | Unknown forecast fields, dedup/account-switch tests | Concurrent writers, background replay and storage growth |
+
+Do not mark all 15 complete based on these foundation tests. No walk-forward
+accuracy improvement measured. First inspect private save_orders/night functions,
+Worker schema/endpoints and account-monitor-client import for CE-002; preserve
+D1 write budgets and existing field semantics. Add explicit bid/ask timestamps,
+coverage, retries/checkpoints, authenticated deduplication and storage tests.

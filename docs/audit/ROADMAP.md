@@ -3,11 +3,15 @@
 Statuses: TODO / IN PROGRESS / BLOCKED / VERIFIED / FAILED. VERIFIED requires the
 specified evidence, not merely implementation. Phases proceed in order except a
 critical trust/data-integrity defect may be repaired early. User now prioritises
-market discovery, followed by calculation correctness and useful bids. Release
-identity remains TODO; next batch is P4-002 before the accounting oracle.
+competitive acquisition/inactivity repair. CE-002 is next; discovery P4-002 and the
+accounting oracle remain pending. CE-001 is a foundation, not the entire repair.
 
 | ID / subsystem | Objective | Depends on | Impact | Required evidence / acceptance | Status |
 |---|---|---|---|---|---|
+| CE-001 / competitive evidence | Stop unpriced-night overrides; preserve priced foreground exposure without fabricated forecasts | P0-001 | Critical | Reproduced 4→0 bias; 18 exposure cases, rank regression and full assembled baseline pass at ef7f27c | VERIFIED |
+| CE-002 / background exposure | Bounded bid/ask collection and authenticated persisted import with gaps/freshness | CE-001 | Critical | Additive schema, collector/Worker/client integration; D1 budgets, retries, duplicates, closed-app and write/readback proof or explicit live blocker | TODO |
+| CE-003 / capacity and capital | Replace inactivity/lot caps with supported maintenance-specific acquisition and resale scenarios | CE-002 | Critical | User cases 1–15 integrated; lot censoring, high-margin vs volume, sell constraints, wallet conservation; unsupported forecasts unknown | TODO |
+| CE-004 / evaluation/release | Chronological comparisons, full repair regression and authorised deployment | CE-003 | Critical | No leakage, failed/zero outcomes retained, live limitations explicit; green CI and independent deployed asset verification | TODO |
 | P0-001 / harness, monitoring | Establish current baseline, durable checkpoints; make collection failures visible | none | Critical | Reproduce false zero exit; real-entry-point failure/success/skip/privacy tests; reproducible baseline, GitHub checkpoint/PR; CI 42324153790 passed | VERIFIED |
 | P0-002 / release | Reconcile stale version markers, exact deployed assets and CI browser prerequisites | P0-001 | High | Old/mixed release rejected; current source accepted; independently verify production assets or classify HTTP block | TODO |
 | P1-000 / bid integrity | Bound expected profit by completed resales; share wallet; preserve uncertainty | P0-001 | High | Impossible-profit and wallet regression plus assembled mobile/desktop UI rejection | VERIFIED |

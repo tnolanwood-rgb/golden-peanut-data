@@ -1,23 +1,26 @@
-# Resume — read after STATE.md
+# Resume — competitive-exposure repair
 
-Repository `tnolanwood-rgb/golden-peanut-data`. Branch
-`audit/discovery-category-seeds`, PR #30. Read root AGENTS.md.
+Repository `tnolanwood-rgb/golden-peanut-data`; branch `audit/competitive-exposure`.
+Read AGENTS.md and STATE.md. User has limited allowance: keep bounded checkpoints.
 
-1. Fetch/status; check PR #30 merge state and newest CI. Base main d3b9688;
-   implementation d19ae759bad135e844267e86cb23cb7cecdda780. Earlier 6688d55
-   passed CI 42399490369. New code passed local assembled baseline, not deployed.
-2. Do not restart the audit. Category seed fairness and name/unlock exclusion
-   repairs are complete. Untraded catalogue name/ID search is browser-tested.
-3. P4-001c2 complete: positive-margin research retained; thin/wide quotes explicitly
-   cautioned in secondary watchlist, never promoted to funded bids. P8-000 removes
-   repeated catalogue enumeration; full fixed catalogue IDs selected in 18 scans.
-   Next **P4-002**: live/partial coverage, tradeability/freshness and persisted
-   cursor recovery. User stopped this session at 3% allowance; do not redo completed
-   tests. No unattended continuation or deployment promised.
-4. Later: independent accounting oracle, learning evidence and quantity/ranking.
-   P0-002 version cleanup still deferred by user priority: market discovery first.
-5. Verify with `python scripts/audit_baseline.py` when shared code changes. Reuse
-   existing fixtures and prior evidence. Update checkpoints, commit/push and PR.
-
-PR #20 was merged/deployed previously; do not reopen it. The later PR #30 repairs
-are NOT deployed by this session. No automatic game orders or private-data writes.
+1. Fetch/status; check this branch's PR and latest CI/merge state. Base main
+   `0aae3f1`; implementation `ef7f27c29aee7d983e46155e2fa7e0ff4332f915`.
+   PR #30 merged/deployed upstream; do not repeat its discovery audit.
+2. CE-001 passed all local baseline stages (94 JS, 34 Python, desktop/mobile).
+   It removes unpriced-night capacity/ranking overrides and integrates priced,
+   account-scoped foreground observation diagnostics. CE-001 NOT deployed here.
+3. Next **CE-002**: additive private background bid/ask collection and authenticated
+   app import, with D1 write-budget, freshness, deduplication and gap tests. Inspect
+   `services/account-monitor/github-collector.py`, `schema.sql`, `worker.js`,
+   `app/account-monitor-client.js`, `app/competitive-exposure.js`. Do not encode
+   prices into existing quantity fields. Address growing config arrays/concurrency.
+4. Then CE-003: replace competing findQuantity/capacity historical lot caps and
+   inactivity factors; maintenance-specific acquisition AND resale evidence,
+   capital conservation and rankings. CE-004: chronological evaluation/full
+   acceptance/deployment. Read COMPETITIVE-REPAIR.md's acceptance matrix.
+5. Sampled rates are descriptive only; all new expected forecasts remain unknown.
+   Do not infer continuous queue position, disappeared fills or total market volume.
+   Existing conditional scenarios remain biased by historical practice; full repair
+   is PARTIAL. No live accuracy improvement claimed. Preserve fees/Delivery Box.
+6. Only rerun prior checks if new changes justify it. Update checkpoints and push
+   before stopping. User authorised verified deployment when repair is complete.

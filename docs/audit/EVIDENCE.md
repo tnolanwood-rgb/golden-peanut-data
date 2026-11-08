@@ -224,3 +224,38 @@ using child_process git hit sandbox EPERM; shell extraction succeeded. Seven war
 runs on 1000 same-family rows: median 10.796ms before, 1.528ms after; exact same IDs
 asserted every run. Engine microbenchmark only, not a physical Android speed claim.
 User reports 3% allowance: stop here, next P4-002. No deployment or private writes.
+
+## CE-001 — competitive evidence foundation (2026-11-08)
+
+Baseline main `0aae3f1`; implementation
+`ef7f27c29aee7d983e46155e2fa7e0ff4332f915`. Clean implementation command:
+`python scripts/audit_baseline.py` — all stages VERIFIED: 32 source JS programs,
+34 Python tests, 94 JavaScript tests including 18 new exposure cases, assembled
+Chromium at 1440x1000 and 390x844. CE-001-baseline.json records exact commands,
+runtimes and conditions. Existing realised-profit/Delivery Box assertions remain
+unchanged and pass; this does not complete the independent accounting oracle.
+
+Deterministic replay (no account data):
+```sh
+git show 0aae3f1:app/capacity-intelligence.js > /tmp/ce-old.cjs
+node scripts/audit_competitive.cjs /tmp/ce-old.cjs
+node scripts/audit_competitive.cjs
+```
+CE-001-comparison.json: adding six unpriced zero-fill nights previously changed a
+four-unit conditional 24h acquisition reference to zero. Repaired source preserves
+four, while expected profit remains unknown. This is removal of an unsupported
+override, not proof that four is achievable capacity. Research ranking regression
+also proves unpriced nights do not change rank. No new funded allocation or live
+forecast calibration improvement established. Legacy quantity caps remain CE-003.
+
+New tests exercise 50-unit orders with two fills while outbid versus competitive,
+small full lots, inactivity/gaps, repricing/price moves, overlapping orders,
+cancellations/replacements, explicit unknown forecasts, deduplication/account
+isolation, future quote exclusion and foreground persistence. Details and remaining
+acceptance gaps: COMPETITIVE-REPAIR.md.
+
+Read-only production baseline before edits: HTML, execution-engine.js,
+opportunity-engine.js, capacity-intelligence.js and market-board.js matched main
+0aae3f1 bytes. PR #30 merged upstream; CE-001 is NOT deployed. Remote CI for the
+new repair branch must be checked separately; no private D1 readback, historical
+backtest calibration or physical S23 evidence obtained in this batch.

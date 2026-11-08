@@ -29,3 +29,8 @@ P8-000: same-family 1000-row engine microbenchmark, Node locally, 2 warmups + 7
 samples. Before 8e5bc43 median 10.796ms; after d19ae75 1.528ms. Exact output IDs
 asserted each run. Reproduce with scripts/benchmark_family.cjs and baseline source
 extracted using git show (see EVIDENCE). No whole-app/physical Android claim.
+
+CE-001: full synthetic baseline recorded command durations in CE-001-baseline.json.
+No controlled performance improvement claimed. Exposure arrays are unbounded and
+written as config values; CE-002 must measure growth, persistence and concurrent
+orders before treating collection as production-scale. No physical Android test.
