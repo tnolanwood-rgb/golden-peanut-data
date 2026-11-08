@@ -30,6 +30,18 @@ function parseFlipOut(body){
  if(byId.size<1000)throw Error('Flip Out tradeable index incomplete');
  return {source:'flip-out-community-items',byId,generatedAt:null,ageMs:null,usableForLiveTrades:false};
 }
+/* The public feed is re-fetched on each browser launch, but item names and
+ * types rarely change. Persist ONLY new/changed metadata; never overwrite
+ * previously saved item icons with the feed's icon-free catalogue records. */
+function missingMetadata(state,result){
+ const changed={};
+ for(const [id,r] of result.byId){
+  const old=state?.meta?.[id]||{};
+  if(old.name===r.name&&(old.type||'')===(r.type||'')&&(old.rarity||'')===(r.rarity||''))continue;
+  changed[id]={...old,id,name:r.name,type:r.type||old.type||'',rarity:r.rarity||old.rarity||''};
+ }
+ return changed;
+}
 function hydrate(state,result){
  if(!state?.meta)return;
  let additions=0;
@@ -48,8 +60,10 @@ async function load(state,{force=false,now=Date.now()}={}){
   catch(e){lastError=String(e?.message||e).slice(0,120);try{result=parseFlipOut(await request(FLIP+'tradeable_items.json',9000));}
    catch(e2){lastError+='; '+String(e2?.message||e2).slice(0,120);return null;}}
   result.loadedAt=now;loaded=result;
+  const changed=missingMetadata(state,result);
   hydrate(state,result);
-  if(state?.db?.putMetadataBatch)await state.db.putMetadataBatch(Object.fromEntries(result.byId));
+  if(state?.db?.putMetadataBatch&&Object.keys(changed).length)
+   await state.db.putMetadataBatch(changed);
   return result;
  })();
  try{return await loading;}finally{loading=null;}

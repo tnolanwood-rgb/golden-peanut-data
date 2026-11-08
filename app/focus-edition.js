@@ -1096,10 +1096,10 @@ function renderOpportunityHome(){
  if(progress){
   const scanning=!!s?.opportunityDeepBusy,paused=!!s?.opportunityDeepPaused;
   progress.textContent=scanning?(s.opportunityDeepStatus||'Expanded discovery is running. Your current trade list remains available.'):
-   (s?.opportunityDeepStatus||'First showing your account-backed markets. Independent market discovery runs separately.');
+   (s?.opportunityDeepStatus||'Your recent account-backed markets are checked first. Wider discovery is optional.');
   progress.classList.toggle('focus-deep-active',scanning);
   if(stop)stop.hidden=!scanning;
-  if(retry)retry.hidden=scanning||(!paused&&!/incomplete|failed|stopped/i.test(s?.opportunityDeepStatus||''));
+  if(retry){retry.hidden=scanning||!s?.opportunityPlan?.ok;retry.textContent=paused?'Resume wider discovery':'Run wider discovery';}
  }
  host.replaceChildren();
  const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
@@ -1366,10 +1366,10 @@ function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;con
  $('focus-trade-list-view').hidden=false;$('focus-trade-detail').hidden=true;renderGrowthContext();renderTradeForecasts(t);renderFamilyDiagnostics();
  const deepProgress=$('focus-trade-research-progress');if(deepProgress){
   deepProgress.textContent=s.opportunityDeepBusy?(s.opportunityDeepStatus||'Extended scan is working · current results are usable'):
-   (s.opportunityDeepStatus||'Wider discovery will update this shortlist separately.');
+   (s.opportunityDeepStatus||'Saved markets are checked first; run wider discovery only when you choose.');
   const stop=$('focus-trade-stop-deep'),resume=$('focus-trade-retry-deep');
   if(stop)stop.hidden=!s.opportunityDeepBusy;
-  if(resume)resume.hidden=s.opportunityDeepBusy||(!s.opportunityDeepPaused&&!/incomplete|failed|stopped/i.test(s.opportunityDeepStatus||''));
+  if(resume){resume.hidden=s.opportunityDeepBusy||!s.opportunityPlan?.ok;resume.textContent=s.opportunityDeepPaused?'Resume wider discovery':'Run wider discovery';}
  }
  const host=$('focus-trade-rows');host.replaceChildren();const more=$('focus-more-trades');more.hidden=true;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){

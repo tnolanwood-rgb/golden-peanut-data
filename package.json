@@ -3,7 +3,7 @@
   "version": "7.16.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/competitive-exposure.test.cjs tests/execution.test.cjs tests/market-board.test.cjs tests/capacity.test.cjs tests/portfolio.test.cjs tests/stress.test.cjs tests/live-data.test.cjs tests/account-monitor.test.cjs tests/rarity-and-performance.test.cjs",
+    "test": "node --test tests/competitive-exposure.test.cjs tests/execution.test.cjs tests/market-board.test.cjs tests/capacity.test.cjs tests/portfolio.test.cjs tests/stress.test.cjs tests/live-data.test.cjs tests/account-monitor.test.cjs tests/rarity-and-performance.test.cjs tests/fast-startup.test.cjs",
     "test:browser": "node tests/browser.cjs && node tests/competitive-browser.cjs",
     "check": "python scripts/check_release.py"
   },
