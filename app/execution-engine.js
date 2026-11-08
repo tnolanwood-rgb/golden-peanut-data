@@ -224,6 +224,7 @@ async function update(state,historyAt){
  const missing=ids.filter(id=>!quotes.some(r=>(r?.latest||r)?.id===id&&Date.now()-Date.parse((r.latest||r).at)<15*MINUTE));
  if(missing.length&&state.api?.pricesForIds){const fresh=await state.api.pricesForIds(missing);await state.db.upsertMarketBatch(fresh);quotes=[...quotes.filter(Boolean),...fresh];}
 
+ await root.GPCompetitive?.update?.(state,quotes.filter(Boolean));
  const learning=observe(prior,snapshot,state.ledger,quotes.filter(Boolean),{historyAt});
  if(state.account!==account||state.snapshot!==snapshot)return;
  await state.db.put('config',account,'execution-learning-v1',learning);state.executionLearning=learning;

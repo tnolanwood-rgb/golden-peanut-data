@@ -1531,7 +1531,16 @@ function renderCapacityExplorer(el,item){
   try{estimate=capacity.estimate({market:{...item,name:itemName(item.id),buy,exit},
    ledger:state.ledger||[],metadata:state.meta||{},quantity:qty,buyNights:buyEvidence,sellNights:sellEvidence});}
   catch(e){note.textContent='Research calculation unavailable: '+String(e?.message||e);return;}
+  const positioning=root.GPCompetitive?.summarize?.(state.competitiveExposure,item.id,{ledger:state.ledger||[]});
   const summary=h('div','focus-capacity-overview');
+  if(positioning){
+   metrics.append(h('p','focus-muted','Competitive acquisition and resale forecasts: unknown. Calendar time and unattended bids do not establish market capacity.'));
+   const detail=h('details','focus-competitive-evidence');detail.append(h('summary','','Competitive exposure observations'));
+   detail.append(h('p','focus-muted',positioning.observations+' priced order snapshots · '+positioning.sampledCompetitiveHours.toFixed(1)+' hours between competitive endpoints · '+positioning.sampledOutbidHours.toFixed(1)+' hours between outbid endpoints · '+positioning.unobservedHours.toFixed(1)+' unobserved/gap hours.'));
+   detail.append(h('p','focus-muted',positioning.limitation));
+   detail.append(h('p','focus-muted','Verified acquisitions in reconciled intervals: '+positioning.lowerBoundAcquired+' (lower bound, not maximum capacity). Maintenance-specific 24h/7d income remains unknown.'));
+   metrics.append(detail);
+  }
   const reserve=h('div');reserve.append(h('span','focus-muted','Gold required IF order placed'),h('strong','',cash(buy*qty)));summary.append(reserve);
   const ceiling=h('div');ceiling.append(h('span','focus-muted','NET result IF every unit buys and resells'),h('strong','',cash(estimate.oneRound||0)));summary.append(ceiling);
   metrics.append(summary);

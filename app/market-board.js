@@ -87,10 +87,10 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   if(o.openBuys>0)continue; // already committed; never present as a NEW spend
   const profit=net(o.exit,quantity)-o.buy*quantity;
   if(!finite(profit)||profit<=0)continue;
-  const measured=measuredNightCapacity(plan.privateNightEvidence?.[id],quantity,now);
-  // Never confuse old active-day executions with continuously observed
-  // nights. If the measured lower quartile is zero, do not show a positive
-  // overnight volume or earn a high confidence ranking.
+  const observedPracticeNights=measuredNightCapacity(plan.privateNightEvidence?.[id],quantity,now);
+  const measured=null; // No bid positioning was recorded for legacy night totals.
+  // Unpriced calendar-night zeros cannot demote competitive market potential.
+  // Preserve existing active-day conditional research; it is not a fill forecast.
   const nightUnits=measured?measured.units:
    whole(o.nightUnits)?Math.min(quantity,o.nightUnits):0;
   const nightProfit=nightUnits?Math.max(0,net(o.exit,nightUnits)-o.buy*nightUnits):0;
@@ -100,7 +100,7 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   history.push({id,name:o.itemName||'',kind:'history',
    tier:measured?'cloud-observed-nights':nightUnits?'observed-night-conditional':'historical-conditional',
    buy:o.buy,exit:o.exit,quantity,cost,capitalStatus:cost<=available?'wallet-covers-lot':'needs-capital',
-   scenarioProfit:profit,nightUnits,nightProfit,rankScore,measuredNights:measured,
+   scenarioProfit:profit,nightUnits,nightProfit,rankScore,measuredNights:measured,observedPracticeNights,
    buyWeeks:o.buyWeeks||0,sellWeeks:o.sellWeeks||0,
    observed24Reference:o.observed24Reference||0,observedNightBuys:o.observedNightBuys||0,
    sampleCount:o.sampleCount||0,ageDays:o.ageDays,at:o.asOf||o.at,

@@ -332,6 +332,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.locator('#focus-best-rows [data-section-id="exotic-armour"] .focus-connected-market').first().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
+ assert.equal(await page.locator('#focus-trade-detail .focus-competitive-evidence').count(),1);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Competitive acquisition and resale forecasts: unknown/);
  // History was pushed by the actual item tap; the Android-equivalent browser
  // Back must return to the in-app list, not navigate out of our app.
  assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
@@ -401,6 +403,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
  await page.evaluate(()=>GPFocus.render());
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
+ assert.equal(await page.locator('#focus-trade-detail .focus-competitive-evidence').count(),1);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Competitive acquisition and resale forecasts: unknown/);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
   s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
   GPFocus.goto('today');GPFocus.render();

@@ -3458,6 +3458,7 @@ async function selectAccount(account){
  State.account=account;invalidateAllocation();try{localStorage.setItem('gp-clean-selected-account',account);}catch{}
  const [saved,savedMeta,savedLedger]=await Promise.all([State.db.get('snapshots',account,'last'),State.db.all('metadata','global'),State.db.all('ledger',account)]);
  State.snapshot=saved?.value||null;State.meta=Object.fromEntries(savedMeta.map(x=>[Number(x.key),x.value]));State.ledger=savedLedger.map(x=>x.value);
+ try{State.competitiveExposure=(await State.db.get('config',account,'competitive-exposure-v1'))?.value||null;}catch{State.competitiveExposure=null;}
  try{State.orderEvidence=(await State.db.get('config',account,'buy-order-evidence-v1'))?.value||null;}
  catch{State.orderEvidence=null;}
  try{State.sellOrderEvidence=(await State.db.get('config',account,'sell-order-evidence-v1'))?.value||null;}
@@ -4064,6 +4065,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 <script src="./growth-intelligence.js?v=716-evidence" defer></script>
 <script src="./public-market-feed.js?v=7.16.0" defer></script>
+<script src="./competitive-exposure.js?v=ce1" defer></script>
 <script src="./execution-engine.js?v=7.16.0" defer></script>
 <script src="./opportunity-engine.js?v=721-learning-wired" defer></script>
 <script src="./capacity-intelligence.js?v=717-capacity-research" defer></script>
