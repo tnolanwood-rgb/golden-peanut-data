@@ -1486,8 +1486,14 @@ async function refresh(state,{force=true,phase='quick'}={}){
   if(deep)state.opportunityDeepStatus=state.opportunityStatus;
   throw e;
  }
- finally{busy=false;state.opportunityBusy=false;root.GPFocus?.render?.();
-  if(!deep&&state.opportunityPlan?.ok)queueExpanded(state);
+ finally{busy=false;state.opportunityBusy=false;
+  // Reopening the app must NOT automatically trigger a 28k-item full API
+  // scan, 6.5k live re-quotes or recipe indexing. The quick current-price
+  // shortlist is refreshed after account checks; wider research remains an
+  // explicit user action via resumeExpanded or Scan entire Trading Post.
+  if(!deep&&state.opportunityPlan?.ok&&!state.opportunityDeepBusy)
+   state.opportunityDeepStatus='Focused market checks complete. Wider discovery is optional; saved catalogue and trading history remain available.';
+  root.GPFocus?.render?.();
  }
 }
 root.GPOpportunity={buildId:MARKET_BUILD,validateOvernightModel,equipmentFamily,extendTradableCatalogue,observeSellOrderBook,nightlyExposure,tradingNightKey,researchPolicy,validateResearchCandidate,researchWatchLeads,history,discoveryIds,equipmentVariantSeeds,equipmentCoverageAudit,position,findQuantity,evaluate,capitalReview,activeBookScenario,rankedMarkets,historicalExperiments,earningsPace,gatherPublicSeeds,ensurePublicUniverse,researchQuoteScore,publicResearchCandidates,researchLots,observeBuyOrderBook,observedFillsByItem,ensureRecipeUniverse,craftableEquipmentSeeds,analyseCraftRoutes,craftLots,recipeByOutput,safeMetadata,safePrices,refresh,queueExpanded,stopExpanded,resumeExpanded,saleNet};
