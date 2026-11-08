@@ -275,3 +275,28 @@ per poll, up to 200 current plus 200 absent sampled orders; actual D1 write bill
 not measured. Migration absence is explicit. No private/live D1 test performed.
 Prior PR #31 head 4f22f02 CI 42429705868 completed successfully.
 CE-002b app import/storage is still IN PROGRESS; CE-002 is not yet complete.
+
+## CE-002 — integrated priced background evidence (2026-11-08)
+
+Clean implementation `11f556619b7da859e51ffac5610e9efb11f3d6a0`:
+`python scripts/audit_baseline.py` passes all four stages. Exact commands/runtime
+and conditions: CE-002-baseline.json. Python 41 tests; JavaScript includes two
+new import validation/failure tests and two private endpoint tests. Original
+assembled 1440x1000/390x844 checks pass unchanged, including accounting/Delivery Box.
+
+`node tests/competitive-browser.cjs` runs actual Python collector against synthetic
+SQLite via `tests/competitive_fixture.py`, relays generated payloads through the
+actual Worker, imports over mocked HTTP through the actual account client into real
+Chromium IndexedDB. Two snapshots produce 0.5 sampled outbid hours, zero competitive
+hours, two verified acquired units and unknown expected acquisition. Repeating the
+refresh leaves two snapshots/cursor 2. Concurrent additions retain both; injected
+transaction failure saves neither new evidence nor cursor 99. Backup restore unions
+records; legacy data survives migration; a 10,001-sample shard retains all records
+while the detail read is explicitly capped at 10,000. Tests are synthetic; external
+network is intercepted. No live D1 write/readback or improved calibration proved.
+
+Run browser/baseline commands with the environment's network permission for local
+servers and child processes; restricted execution yielded EPERM on child spawn.
+Direct Node test execution and the permitted full baseline were both checked.
+Deployment is pending; no release-request files touched. Prior remote CI at 4f22f02
+passed run 42429705868, but the latest implementation's remote CI remains unchecked.

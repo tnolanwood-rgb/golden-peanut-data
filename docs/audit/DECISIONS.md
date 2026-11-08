@@ -57,3 +57,13 @@
   but never promote sampled rates into acquisition/resale probabilities. Maintenance
   scenarios stay unknown until separate supported evidence exists. A complete new
   forecasting model and walk-forward proof are explicitly deferred to CE-003/004.
+
+- **D017 CE-002:** stable daily cohort (200 buy orders) with persisted rotation is
+  preferable to rotating every 30-minute poll, which would leave no adjacent samples
+  for large books. Coverage remains explicit; no family/name filter. Store a single
+  JSON batch per poll to avoid undoing D1 unchanged-order write reductions.
+- **D018 CE-002:** use existing account config storage in item/day shards, keeping
+  backup compatibility and avoiding an IndexedDB version migration. Atomic cursor
+  and evidence writes permit safe replay. Recent 90-day / 10,000-sample detail reads
+  are explicitly partial; no stored evidence is deleted. Model use of partial reads
+  is disabled rather than manufacturing complete exposure.

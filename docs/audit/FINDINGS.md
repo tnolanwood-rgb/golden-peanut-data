@@ -72,3 +72,15 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   array without retention/compaction or concurrent-writer transaction control.
   Preserve all evidence while adding scalable storage/import; do not silently
   truncate history. Local account-switch tests do not prove multi-tab safety.
+
+- **F018 update CE-002:** active GitHub collector now captures contemporaneous public
+  prices and explicitly partial cohort coverage; authenticated import is browser
+  tested. Legacy Worker-native polling is still unpriced and explicitly identified.
+  Quantity caps/age multipliers remain OPEN CE-003; no capacity repair claimed yet.
+- **F019 repaired locally 11f5566:** replaced growing global foreground config
+  rewrites with atomic item/day shard merges. Cursor acknowledgment shares the
+  transaction; concurrent writes and backup restore preserve union. Bounded detail
+  reads suppress rates when truncated. Real long-running device profiling remains.
+- **F020 repaired locally 11f5566:** cloud refresh used mutable state.account after
+  awaited operations. Capture account/key/db context for authenticated requests and
+  persistence; publish in-memory results only for the still-selected account.

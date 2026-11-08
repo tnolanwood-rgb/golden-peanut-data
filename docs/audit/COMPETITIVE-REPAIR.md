@@ -66,3 +66,18 @@ accuracy improvement measured. First inspect private save_orders/night functions
 Worker schema/endpoints and account-monitor-client import for CE-002; preserve
 D1 write budgets and existing field semantics. Add explicit bid/ask timestamps,
 coverage, retries/checkpoints, authenticated deduplication and storage tests.
+
+## CE-002 checkpoint — locally VERIFIED, full repair still PARTIAL
+
+11f5566 implements priced GitHub cohorts, authenticated relay, resumable atomic
+app import and item/day evidence storage. End-to-end synthetic collector/SQLite/
+Worker/Chromium pipeline passes, including backup union, migration, duplicates,
+failed-write rollback and bounded reads without erasure. Background capture is not
+yet deployed/live-verified; native Worker polling remains unpriced. Stable cohort
+covers at most 200 open buy orders each day, rotates by persisted order ID, and
+records total/sample/quote counts. Missing quotes and gaps remain unknown.
+
+Acceptance cases 6–9/14–15 now have integrated storage/import coverage, not live
+monitoring or model accuracy proof. Cases 3–4 quantity caps, 11–12 ranking/resale and
+policy-specific forecasts still require CE-003. Next reproduce identical histories
+at differing inactivity ages in findQuantity and activeBookScenario before repair.

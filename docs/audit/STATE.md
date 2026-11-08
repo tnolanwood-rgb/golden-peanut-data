@@ -1,55 +1,55 @@
 # Golden Peanut — authoritative engineering state
 
-Updated: 2026-11-08 UTC. Read RESUME.md next. User prioritised the competitive
-exposure/acquisition/inactivity repair over remaining discovery work; allowance is
-constrained, so stop at a pushed, reproducible batch boundary.
+Updated 2026-11-08 UTC. Read RESUME.md next. User prioritises competitive acquisition
+repair and allowance-conscious, pushed checkpoints. Full repair remains PARTIAL.
 
-- **Current phase/batch:** CE-001 VERIFIED locally. Overall competitive-exposure
-  repair PARTIAL; CE-002 IN PROGRESS. Full Phase 5 and the wider audit are incomplete.
-- **Branch:** `audit/competitive-exposure`, base main `0aae3f1`.
-  PR #30 merged upstream (`b7aa19b`); earlier discovery code is included in main.
-  [Draft PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
-  open; previous head 4f22f02 CI 42429705868 passed. No merge or release has occurred for CE-001.
-- **Latest implementation:** `ef7f27c29aee7d983e46155e2fa7e0ff4332f915`.
-  Checkpoint SHA: `git log -1 --format=%H -- docs/audit/STATE.md`.
-- **Completed:** removed unpriced-night overrides of conditional research capacity
-  and rankings; persisted account-scoped foreground buy/quote observations;
-  separated sampled competitive/outbid/unknown periods, verified-fill lower bounds,
-  gaps, cancellations, overlapping orders, stale tails and duplicates. Optional
-  detail diagnostics report limits. No sampled rate becomes a funded forecast.
-- **Tests completed:** clean implementation passed `python scripts/audit_baseline.py`:
-  source/assets/workflow/credential checks (32 JS programs), 34 Python tests,
-  94 JavaScript tests (18 new exposure cases), desktop 1440x1000/mobile 390x844
-  assembled Chromium journeys, including existing accounting/Delivery Box guards.
-  See CE-001-baseline.json, CE-001-comparison.json and EVIDENCE.md.
-- **Production:** before editing, five live assets (HTML, execution, opportunity,
-  capacity, market-board) matched main `0aae3f1` byte-for-byte. CE-001 NOT deployed.
-  Mixed historical version labels remain; exact source identity is the evidence.
-- **In progress:** full critical repair; no unfinished local code changes expected
-  after checkpoint. Remote CI pending until independently checked.
-- **Exact next action:** CE-002b: collector/relay foundation is committed; connect
-  authenticated exposure import with atomic item/day storage and resumable cursor.
-  Prior diagnostic action (now implemented in CE-002a): inspect private collector `save_orders`/night paths,
-  Worker schema/endpoints and account-monitor-client import; add bounded timestamped
-  bid/ask observations with an additive migration and authenticated, deduplicated
-  import to the exposure store. Preserve upstream D1 write reductions. Tests first.
-- **Still required:** background prices/freshness/coverage; storage growth and
-  concurrency controls; competing legacy lot/active-week caps and recency factors;
-  maintenance-specific acquisition/resale/portfolio modelling; walk-forward outcome
-  evaluation; real account integration and physical S23 checks. See
-  COMPETITIVE-REPAIR.md for the acceptance matrix. Do not label these complete.
-- **Outstanding limitations:** endpoint samples are not continuous competitiveness
-  or queue priority. Historical unpriced nights cannot be retrospectively priced.
-  Closed-app periods remain unknown without background evidence. Existing
-  conditional active-day examples are not unbiased capacity estimates. No improved
-  live profitability/calibration, new funded quantities or capital recycling proven.
-- **Merge/deploy:** CE-001 reviewable with local checks passed; check remote CI.
-  Not a complete acquisition-engine release. User authorised deployment of the
-  verified repair, but do not claim this partial batch satisfies full acceptance.
-  No destructive migrations, game orders or credential/account-data changes.
-- **Environment:** `/workspace/gp-audit`; network/local browser servers need network
-  permission. No direct private keys or Cloudflare credentials. GitHub checkpoint
-  is the recovery source; no automatic continuation after allowance reset.
+- **Current batch:** CE-001 and CE-002 VERIFIED locally; CE-003 next. No complete
+  phase or live forecasting accuracy improvement claimed.
+- **Branch/PR:** `audit/competitive-exposure`, base main `0aae3f1` unchanged on fetch;
+  draft [PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31).
+  PR #30 already merged/deployed upstream. Latest verified remote CI for earlier
+  head 4f22f02: run 42429705868 passed; latest new head CI must be checked.
+- **Latest implementation:** `11f556619b7da859e51ffac5610e9efb11f3d6a0`.
+  Collector/relay commit d87971a. Checkpoint SHA resolves using
+  `git log -1 --format=%H -- docs/audit/STATE.md`.
+- **Completed CE-002:** GitHub collector captures public bid/ask and remaining buy
+  quantities in a stable intraday cohort of up to 200 orders, rotating daily.
+  One private D1 JSON batch per poll; additive schema, explicit coverage/cache age,
+  missing-price states, bounded retry and authenticated paged /exposure relay.
+  Client imports at most 25 batches per refresh. Evidence and cursor commit in
+  one IndexedDB transaction. Item/day config shards preserve concurrent writes,
+  backup unions and old legacy data. Details read recent 90 days, maximum 10,000
+  observations; partial reads labelled and sampled rate suppressed.
+- **Tests:** clean implementation passed `python scripts/audit_baseline.py`: source,
+  Python (41), JavaScript and original desktop/mobile Chromium, plus actual Python
+  collector -> synthetic SQLite -> Worker -> browser HTTP -> IndexedDB integration.
+  Backup restore, interrupted writes, replay, isolation, concurrent writes, legacy
+  migration and retained 10,001-record evidence passed. CE-002-baseline.json.
+- **Production:** NOT deployed. Last live byte check: five app assets matched main
+  0aae3f1 before CE-001. No private D1 credentials/readback available locally.
+  CE-002-DEPLOY.md records the existing deployment sequence and verification.
+- **Exact next action:** CE-003a: baseline `findQuantity` in opportunity-engine.js
+  and `activeBookScenario` around its ageScale; reproduce identical markets with
+  stale personal activity versus recent activity. Replace unsupported inactivity
+  discounts/lot ceilings without assigning unsupported expected fills. Preserve
+  joint acquisition/resale and wallet guards. Follow with independently supported
+  maintenance policies, resale/capital ranking tests and CE-004 evaluation.
+- **Open limitations:** legacy quantity/active-week caps and age multipliers remain;
+  conditional examples still reflect historical practice. No new funded forecasts.
+  Worker-native encrypted-account polling still has no priced collection (relay
+  reports worker-unpriced); the active GitHub collector path is covered locally.
+  Snapshot endpoints do not prove continuous competitiveness or queue priority.
+  Cohort gaps, missing quotes and unobserved times remain unknown. Sampling 200
+  orders does not establish complete portfolio coverage. Actual D1 billing,
+  live persistence, historical calibration and physical S23 tests remain unverified.
+- **Merge/deploy safety:** reviewable tested batches, but full critical repair
+  incomplete; PR remains draft. No release-request files changed. User authorised
+  deployment when repair verified. Apply additive schema/relay before relying on
+  new collection, then Pages; verify live readback separately. No game orders,
+  credential resets, destructive migrations or private fixtures.
+- **Environment:** /workspace/gp-audit; shell network/browser servers need network
+  permission. No secret bindings/direct Cloudflare credentials. All continuation
+  must use repository checkpoints, not VM memory. No automatic future work promised.
 
 ## Verified source inventory (not a claim of live health)
 

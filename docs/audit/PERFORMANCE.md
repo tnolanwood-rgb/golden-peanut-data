@@ -34,3 +34,9 @@ CE-001: full synthetic baseline recorded command durations in CE-001-baseline.js
 No controlled performance improvement claimed. Exposure arrays are unbounded and
 written as config values; CE-002 must measure growth, persistence and concurrent
 orders before treating collection as production-scale. No physical Android test.
+
+CE-002 replaces whole-history config rewrites with item/day merges. Reads cap detail
+at 10,000 samples with explicit truncation; synthetic Chromium verifies all 10,001
+saved samples survive. Collector adds one bounded batch insert per poll (up to 400
+sample/absence rows) plus indexes; real D1 billing not measured. No claimed mobile
+latency improvement; per-day shard decoding can still be large on extreme books.
