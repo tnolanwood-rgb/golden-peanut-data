@@ -526,7 +526,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   items.push({id:6105,name:'Thin book research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:145,buyQty:1,sellQty:1,at:stamp});
   items.push({id:6106,name:'Wide spread research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:10000,buyQty:20,sellQty:20,at:stamp});
   items.push({id:6104,name:'High capital research',type:'UpgradeComponent',rarity:'Exotic',buy:300000,exit:450000,buyQty:20,sellQty:20,at:stamp});
-  items.push({id:6106,name:'Invisible Slippers fixture',type:'Armor',rarity:'Exotic',buy:17000001,exit:22490000,buyQty:70,sellQty:60,at:stamp});
+  items.push({id:6199,name:'Invisible Slippers fixture',type:'Armor',rarity:'Exotic',buy:17000001,exit:22490000,buyQty:70,sellQty:60,at:stamp});
   items.push({id:6102,name:'Mini Research Test',type:'MiniPet',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
   items.push({id:6103,name:'Research Unlock',type:'Consumable',subtype:'Unlock',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
   items.push(...['CraftingMaterial','Consumable'].map((type,i)=>({id:6100+i,name:'Low margin '+type,type,rarity:'Basic',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp})));
@@ -553,7 +553,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await otherResearch.innerText(),/not a forecast/);
  const unfunded=page.locator('#focus-best-rows [data-section-id="new-watchlist"]');
  assert.match(await unfunded.innerText(),/High capital research/);
- const slippers=unfunded.locator('[data-market-id="6106"]');
+ const slippers=unfunded.locator('[data-market-id="6199"]');
  assert.match(await slippers.innerText(),/Outside wallet/);
  assert.match(await slippers.innerText(),/Research only.*fill and resale unknown/s);
  assert.doesNotMatch(await slippers.innerText(),/250-unit|425,000|52,912|Net IF ALL/);
