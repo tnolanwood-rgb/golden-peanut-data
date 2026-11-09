@@ -36,3 +36,5 @@ identity remains TODO; next batch is P4-002 before the accounting oracle.
 Do not mark an entire phase complete because one representative test passes. Phase 0
 remains partial until P0-002 resolves baseline identity. External access blocks only
 dependent checks: continue safe local work, without inventing production evidence.
+
+QH-001 / UI quote boundary: remove globally multiplied public quote quantities/profits. Critical screenshot defect. Depends on current main; acceptance: saved250/1700g footwear browser regression and original financial tests. VERIFIED locally; deployment pending.

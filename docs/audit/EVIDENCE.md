@@ -224,3 +224,5 @@ using child_process git hit sandbox EPERM; shell extraction succeeded. Seven war
 runs on 1000 same-family rows: median 10.796ms before, 1.528ms after; exact same IDs
 asserted every run. Engine microbenchmark only, not a physical Android speed claim.
 User reports 3% allowance: stop here, next P4-002. No deployment or private writes.
+
+QH-001: python scripts/audit_baseline.py passed at 710007c (79 JS,34 Python, source/workflows, desktop1440x1000/mobile390x844). QH-001-baseline.json records exact commands. Dirty flag only node_modules symlink, removed after tests. Synthetic screenshot fixture starts saved global250;17000001-copper footwear is Outside wallet, no bulk figure or forecast. Initial test fixture reused an existing ID; corrected to6199, retaining original wide-spread fixture. No live accuracy or deployment claim.

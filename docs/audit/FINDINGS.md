@@ -57,3 +57,5 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   positive net research, caution wide/thin books in secondary watchlist, no income claim.
 - **F016 / High, repaired d19ae75:** Object.keys(metadata) ran on each family-loop
   iteration. Cache cardinality once; 1002→2 enumerations at 1000 rows, same candidates.
+
+QH-001 CONFIRMED/repaired 5cecc05: renderConnectedMarkets multiplied every public quote by ui.marketResearchLot (up to250), producing unaffordable 425,000g scenarios and attractive bulk-profit headlines. Arithmetic was conditional, but display looked actionable. Public quote view now has null quantity/cost/expectedProfit and explicit affordability; individual scenarios remain expandable.
