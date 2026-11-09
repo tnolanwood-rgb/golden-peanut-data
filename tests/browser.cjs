@@ -30,6 +30,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
+ await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));});
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
  // Never rely on an activation-less startup pushState: Android skips it.
@@ -314,24 +315,19 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(enriched,/CHEAPER EXOTIC ARMOUR/);
  assert.match(enriched,/Dire Pearl Reaver/);
  assert.match(enriched,/Magi's Exalted Coat/);
- assert.match(enriched,/Net IF ALL 10 buy AND resell/);
+ assert.match(enriched,/Quoted net spread \/ item/);
  assert.doesNotMatch(enriched,/20 units.*Dire Pearl Reaver/);
  const wideWatch=page.locator('#focus-best-rows [data-section-id="new-watchlist"]');
  assert.match(await wideWatch.innerText(),/Jormag's Claw Fragment/);
  assert.match(await wideWatch.innerText(),/Unusually wide quoted spread/);
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="67276"]').count(),0);
  assert.equal(await page.locator('#focus-best-rows .focus-connected-market').count(),3,'top candidates are not duplicated in lower research lists');
- // The quantity control MUST live on the market LIST, not only item details.
- const marketLot=page.locator('#focus-best-rows .focus-market-lot-select');
- assert.equal(await marketLot.inputValue(),'10');
- await marketLot.selectOption('50');
- const resized=await page.locator('#focus-best-rows').innerText();
- assert.match(resized,/Research 50 ×/);
- assert.match(resized,/Net IF ALL 50 buy AND resell/);
- assert.doesNotMatch(resized,/3-day comparable ACTIVE-pace: 6–10/);
+ // A saved global quantity must not fabricate lots for public quotes.
+ assert.equal(await page.locator('#focus-best-rows .focus-market-lot-select').count(),0);
+ assert.doesNotMatch(await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').allTextContents().then(x=>x.join(' ')),/Research 250 ×|250-unit what-if|Net IF ALL/);
  await page.locator('#focus-best-rows [data-section-id="exotic-armour"] .focus-connected-market').first().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
- assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
+ assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'1');
  // History was pushed by the actual item tap; the Android-equivalent browser
  // Back must return to the in-app list, not navigate out of our app.
  assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
@@ -456,6 +452,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(beforeAllocation,/Hypothetical NEW buy allocation/);
  assert.doesNotMatch(beforeAllocation,/NaN|undefined/);
  await lab.locator('.focus-deployment-input').fill('500');
+ // A background repaint between typing and blur must preserve the user's budget.
+ await page.evaluate(()=>GPFocus.render());
  await lab.locator('.focus-deployment-input').press('Tab');
  assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'500');
  const elected=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')).portfolioBudgetGold);
@@ -530,6 +528,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   items.push({id:6105,name:'Thin book research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:145,buyQty:1,sellQty:1,at:stamp});
   items.push({id:6106,name:'Wide spread research',type:'CraftingMaterial',rarity:'Basic',buy:101,exit:10000,buyQty:20,sellQty:20,at:stamp});
   items.push({id:6104,name:'High capital research',type:'UpgradeComponent',rarity:'Exotic',buy:300000,exit:450000,buyQty:20,sellQty:20,at:stamp});
+  items.push({id:6199,name:'Invisible Slippers fixture',type:'Armor',rarity:'Exotic',buy:17000001,exit:22490000,buyQty:70,sellQty:60,at:stamp});
   items.push({id:6102,name:'Mini Research Test',type:'MiniPet',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
   items.push({id:6103,name:'Research Unlock',type:'Consumable',subtype:'Unlock',rarity:'Rare',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp});
   items.push(...['CraftingMaterial','Consumable'].map((type,i)=>({id:6100+i,name:'Low margin '+type,type,rarity:'Basic',buy:101,exit:145,buyQty:100,sellQty:100,at:stamp})));
@@ -556,6 +555,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await otherResearch.innerText(),/not a forecast/);
  const unfunded=page.locator('#focus-best-rows [data-section-id="new-watchlist"]');
  assert.match(await unfunded.innerText(),/High capital research/);
+ const slippers=unfunded.locator('[data-market-id="6199"]');
+ assert.match(await slippers.innerText(),/Outside wallet/);
+ assert.match(await slippers.innerText(),/Research only.*fill and resale unknown/s);
+ assert.doesNotMatch(await slippers.innerText(),/250-unit|425,000|52,912|Net IF ALL/);
  assert.match(await unfunded.innerText(),/not covered by current wallet/);
  assert.match(await unfunded.innerText(),/Thin standing order book; completed volume unknown/);
  assert.match(await unfunded.innerText(),/Unusually wide quoted spread; verify current prices/);

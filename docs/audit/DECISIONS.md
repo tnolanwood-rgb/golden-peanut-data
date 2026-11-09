@@ -45,3 +45,5 @@
   keep thin/wide quotes outside primary lists. Preserve funded execution gates.
 - D013: prioritise bounded enumeration fix discovered during rotation replay;
   prove identical IDs/order and benchmark the same fixture, not synthetic live returns.
+
+QH-001: a public quotation does not establish a purchase quantity. Remove list-wide what-if multiplication instead of hiding expensive items or silently capping their alleged liquidity. Keep complete searchable research and explicit individual hypothetical calculations. Isolate from unfinished PR31 for safe review/release.

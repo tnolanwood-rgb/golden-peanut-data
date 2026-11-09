@@ -29,3 +29,5 @@ P8-000: same-family 1000-row engine microbenchmark, Node locally, 2 warmups + 7
 samples. Before 8e5bc43 median 10.796ms; after d19ae75 1.528ms. Exact output IDs
 asserted each run. Reproduce with scripts/benchmark_family.cjs and baseline source
 extracted using git show (see EVIDENCE). No whole-app/physical Android claim.
+
+QH-001: list evidence lookups use a single-unit reference; no extra API calls, no new timers. Existing assembled and performance regressions pass; no measured speed claim.

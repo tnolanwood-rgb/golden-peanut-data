@@ -182,3 +182,10 @@ test('expensive positive-margin quotes remain research above the current wallet'
  assert.equal(b.otherLeads.length,0);assert.equal(b.forecast.length,0);
  assert.equal(b.newMarkets[0].quantity,undefined);assert.equal(b.newMarkets[0].expectedProfit,undefined);
 });
+test('expensive public quotes never acquire bulk quantities or profit forecasts',()=>{
+ const slippers={buy:17000001,exit:22490000,quantity:250,scenarioProfit:529124112};
+ const view=Board.quoteResearch(slippers,1000000);
+ assert.equal(view.affordable,false);assert.equal(view.quantity,null);assert.equal(view.cost,null);assert.equal(view.expectedProfit,null);
+ assert.equal(view.unitMargin,Board.quoteResearch({...slippers,quantity:1},1000000).unitMargin);
+ assert.equal(Board.quoteResearch(slippers,NaN).affordable,false);
+});
