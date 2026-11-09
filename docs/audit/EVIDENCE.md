@@ -332,3 +332,7 @@ attached row instead of retaining a potentially detached element; colour coverag
 is preserved. Final full browser checks pass. No live calibration or physical
 Android claims. Legacy evidence/wait factors and quantity-cap semantics are still
 CE-003c; full requested repair remains incomplete.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.

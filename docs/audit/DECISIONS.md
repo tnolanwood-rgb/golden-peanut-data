@@ -75,3 +75,7 @@
 - **D020:** separate a user-selected hypothetical total from a TP stack and from
   maximum market capacity. Numeric research input supports multiple orders; preserve
   per-stack rounded fees and safe-integer arithmetic. Maximum capacity remains unknown.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.

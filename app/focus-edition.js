@@ -689,28 +689,12 @@ function openBoardMarket(m){
 function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=null}={}){
  const board=prebuilt||marketBoard(s);
  if(!board?.ready)return {count:0,board:null};
- const q=query.toLowerCase().trim(),shown=new Set(excludeIds),lot=Number(ui.marketResearchLot)||10;
+ const q=query.toLowerCase().trim(),shown=new Set(excludeIds);
  const name=m=>m.name||m.itemName||itemName(m.id);
  const match=m=>!q||(name(m)+' '+m.id).toLowerCase().includes(q);
- // One shared research size; scroll positions and page stay put on changes.
- const controls=h('div','focus-market-lot-controls');
- const lotLabel=h('label','focus-market-lot-label','Research order size (not an order)');
- const lotSelect=h('select','focus-capacity-select focus-market-lot-select');
- lotSelect.setAttribute('aria-label','Research lot size for market list');
- for(const qty of [1,3,5,10,20,50,100,250]){
-  const option=h('option','',num(qty)+' units');option.value=String(qty);lotSelect.append(option);
- }
- lotSelect.value=String(lot);lotLabel.append(lotSelect);controls.append(lotLabel);
- controls.append(h('small','focus-muted',
-  'Choose any research lot, even above wallet balance. Returns require ALL proposed purchases and resales to complete; they are not fill forecasts.'));
- host.append(controls);
- lotSelect.addEventListener('change',()=>{
-  ui.marketResearchLot=Number(lotSelect.value);save();
-  const y=window.scrollY;
-  if(ui.tab==='today')renderOpportunityHome();else renderTrades();
-  window.requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}));
- });
- const hypotheticalNet=m=>root.GPCapacity?.feeNet?.(m.exit,lot)-m.buy*lot;
+ // Public quotes carry no defensible purchase quantity. Bulk scenarios belong
+ // in the selected item's explicit research controls, never every browse row.
+ const publicView=m=>root.GPMarketBoard.quoteResearch(m,Number(userSnapshot()?.wallet));
  const group=(id,title,desc,items,metric,label,subtitle)=>{
   const rows=items.filter(m=>!shown.has(m.id)&&match(m));
   if(!rows.length)return 0;
@@ -725,7 +709,7 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
     const middle=h('span','focus-market-title');middle.append(itemTitle(m.id,name(m),'strong',m.rarity));
     middle.append(h('small','',subtitle(m)));
     if(m.kind==='new'&&root.GPCapacity){
-     const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:lot});
+     const v=root.GPCapacity.estimate({market:{...m,name:name(m)},ledger:s?.ledger||[],metadata:s?.meta||{},quantity:1});
      if(v.status==='research'&&(v.source==='own-market-active-days'||v.source==='observed-order-nights')){
       const ref=v.scenarios.find(x=>x.days===3);
       middle.append(h('small','focus-muted','YOUR completed fills · 3 active days: '+num(ref.acquiredTypical)+'–'+num(ref.acquiredHigh)+' acquired · '+
@@ -735,7 +719,9 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
      }else middle.append(h('small','focus-muted','No measured acquisition or resale pace for this item.'));
     }
     row.append(middle);
-    const side=h('span','focus-market-values'),value=h('strong','');value.append(money(metric(m)));
+    const side=h('span','focus-market-values'),value=h('strong','');
+    if(m.kind==='new'&&!publicView(m).affordable)value.textContent='Outside wallet';
+    else value.append(money(metric(m)));
     side.append(value,h('small','',label(m)));row.append(side,h('span','focus-chevron','›'));
     row.setAttribute('aria-label',name(m)+' · '+label(m)+' · inspect evidence');
     row.addEventListener('click',()=>openBoardMarket(m));
@@ -761,24 +747,22 @@ function renderConnectedMarkets(host,s,{query='',limit=7,excludeIds=[],prebuilt=
   board.historyEquipment||[],m=>m.nightUnits?m.nightProfit:m.scenarioProfit,
   m=>m.nightUnits?'Conditional observed-night reference':'Net IF historical trial lot buys and resells',
   m=>num(m.quantity)+' × '+cash(m.buy)+' · '+(m.capitalStatus==='wallet-covers-lot'?'wallet covers lot':'more gold needed'));
- const unitSubtitle=m=>'Research '+num(lot)+' × '+cash(m.buy)+' · capital '+cash(m.buy*lot)+
-  ' · ROI '+(m.roi*100).toFixed(1)+'% per unit at quoted prices'+(m.craftableSupply?' · craftable':'');
- const unitLabel=()=> 'Net IF ALL '+num(lot)+' buy AND resell · not a forecast';
+ const unitSubtitle=m=>'Bid '+cash(m.buy)+' · sell listing '+cash(m.exit)+
+  ' · '+(publicView(m).affordable?'single unit affordable':'not covered by current wallet')+
+  ((m.researchWarnings||[]).length?' · '+m.researchWarnings.join(' · '):'');
+ const unitLabel=()=> 'Quoted net spread / item · not a forecast';
  count+=group('pearl-weapons','CHEAPER PEARL WEAPONS · NEW MARKETS',
   'Exotic Pearl candidates across stat prefixes. Scroll for the full list; there is no measured market-wide bulk-fill rate.',
-  board.pearlLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
+  board.pearlLeads,m=>publicView(m).unitMargin,unitLabel,unitSubtitle);
  count+=group('exotic-armour','CHEAPER EXOTIC ARMOUR · NEW MARKETS',
   'Exotic armour across stat families. Public quotes show conditional margins, not completed turnover.',
-  board.armorLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
+  board.armorLeads,m=>publicView(m).unitMargin,unitLabel,unitSubtitle);
  count+=group('other-affordable','OTHER AFFORDABLE NEW MARKETS',
   'More affordable public-market ideas. Verify acquisition and resale before committing to large lots.',
-  board.otherLeads,m=>hypotheticalNet(m),unitLabel,unitSubtitle);
+  board.otherLeads,m=>publicView(m).unitMargin,unitLabel,unitSubtitle);
  count+=group('new-watchlist','MORE UNVERIFIED MARKET QUOTES',
   'Remaining researched price spreads, including items above your current wallet. Scroll to browse; these are NOT proven liquid markets or recommended bulk buys.',
-  board.newMarkets,m=>hypotheticalNet(m),()=> 'Conditional quoted round only · turnover UNKNOWN',
-  m=>'Bid '+cash(m.buy)+' · '+(m.buy>Number(userSnapshot()?.wallet||0)?'not covered by current wallet':'single unit affordable')+
-   ' · '+num(lot)+'-unit what-if '+cash(m.buy*lot)+
-   ((m.researchWarnings||[]).length?' · '+m.researchWarnings.join(' · '):''));
+  board.newMarkets,m=>publicView(m).unitMargin,()=> 'Research only · fill and resale unknown',unitSubtitle);
  return {count,board};
 }
 /* A capital choice is a WHAT-IF allocation across real currently quoted
@@ -861,6 +845,12 @@ function renderDeploymentPlanner(host,state){
   output.append(h('p','focus-muted',result.caveat));
  };
  function fmtResearch(x){return x.research?'Personal trade history · research only':'Public quote · execution unknown';}
+ // Persist valid edits before blur: an unrelated asynchronous render can replace
+ // this input while focused. Calculations still refresh on change/panel render.
+ input.addEventListener('input',()=>{
+  const n=Number(input.value);
+  if(input.value!==''&&Number.isFinite(n)&&n>=0&&n<=50000){ui.portfolioBudgetGold=n;save();}
+ });
  input.addEventListener('change',()=>{const n=Number(input.value);
   if(Number.isFinite(n)&&n>=0&&n<=50000){ui.portfolioBudgetGold=n;save();calculate();}
   else calculate();
@@ -1513,7 +1503,8 @@ function renderCapacityExplorer(el,item){
   h('p','focus-muted','Choose your own test quantity, regardless of your wallet. The scenarios show historic trading pace on ACTIVE days or comparable markets, not guaranteed fills or market-wide sales.'));
  const controls=h('div','focus-capacity-controls'),label=h('label','','Hypothetical total quantity (across orders)');
  const picker=h('input','focus-capacity-select');picker.type='number';picker.min='1';picker.step='1';picker.inputMode='numeric';picker.setAttribute('aria-label','Hypothetical order size');
- const initial=Number(ui.capacitySelections?.[item.id]||ui.marketResearchLot||item.quantity)||10;picker.value=String(Number.isSafeInteger(initial)&&initial>0?initial:10);
+ const initial=Number(ui.capacitySelections?.[item.id]||item.quantity||1)||10;picker.value=String(Number.isSafeInteger(initial)&&initial>0?initial:10);
+
  label.append(picker);controls.append(label);
  section.append(controls);
  const metrics=h('div','focus-capacity-grid');const note=h('p','focus-muted focus-capacity-limitation');

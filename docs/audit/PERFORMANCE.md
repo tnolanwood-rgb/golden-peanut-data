@@ -44,3 +44,7 @@ latency improvement; per-day shard decoding can still be large on extreme books.
 CE-003b1 fee computation uses full-stack multiplication plus a residual stack rather
 than looping over every stack. Independent fee oracle verifies parity. No timed
 performance improvement claimed; upstream fast-startup fixes/test preserved on merge.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.

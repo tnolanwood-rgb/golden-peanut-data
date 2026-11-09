@@ -95,3 +95,7 @@ Android defect has been proved in this batch. Those remain tests to perform, not
   over 250; single-order stack size was incorrectly used as a whole research limit.
   Explicit total quantities now accepted; overflow rejected and fees preserved by
   an integer per-stack oracle. No bulk execution probability inferred.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.
