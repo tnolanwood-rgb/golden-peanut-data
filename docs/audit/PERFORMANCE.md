@@ -30,4 +30,23 @@ samples. Before 8e5bc43 median 10.796ms; after d19ae75 1.528ms. Exact output IDs
 asserted each run. Reproduce with scripts/benchmark_family.cjs and baseline source
 extracted using git show (see EVIDENCE). No whole-app/physical Android claim.
 
-QH-001: list evidence lookups use a single-unit reference; no extra API calls, no new timers. Existing assembled and performance regressions pass; no measured speed claim.
+CE-001: full synthetic baseline recorded command durations in CE-001-baseline.json.
+No controlled performance improvement claimed. Exposure arrays are unbounded and
+written as config values; CE-002 must measure growth, persistence and concurrent
+orders before treating collection as production-scale. No physical Android test.
+
+CE-002 replaces whole-history config rewrites with item/day merges. Reads cap detail
+at 10,000 samples with explicit truncation; synthetic Chromium verifies all 10,001
+saved samples survive. Collector adds one bounded batch insert per poll (up to 400
+sample/absence rows) plus indexes; real D1 billing not measured. No claimed mobile
+latency improvement; per-day shard decoding can still be large on extreme books.
+
+CE-003b1 fee computation uses full-stack multiplication plus a residual stack rather
+than looping over every stack. Independent fee oracle verifies parity. No timed
+performance improvement claimed; upstream fast-startup fixes/test preserved on merge.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+CE-003c1 conflict detection/dedup uses maps/sets. Full regression timings recorded; no controlled performance improvement claim. No user-history truncation.

@@ -86,7 +86,7 @@ function history(ledger=[],now=Date.now()){
  for(const r of ledger){if(!valid(r?.item)||!valid(r?.q)||!valid(r?.price)||!finite(r.purchased)||r.purchased<=0||r.purchased>now||!['buy','sell'].includes(r.side))continue;
   const x=take(r.item),w=weekKey(r.purchased),day=Math.floor(r.purchased/DAY),buy=r.side==='buy';
   mapAdd(buy?x.buyWeeks:x.sellWeeks,w,r.q);mapAdd(buy?x.buyDays:x.sellDays,day,r.q);
-  if(r.purchased>=now-120*DAY&&isOvernightTrade(r.purchased))mapAdd(buy?x.buyNights:x.sellNights,tradingNightKey(r.purchased),r.q);
+  if(isOvernightTrade(r.purchased))mapAdd(buy?x.buyNights:x.sellNights,tradingNightKey(r.purchased),r.q);
   if(buy){x.buyCount++;x.buyUnits+=r.q;x.lastBuy=Math.max(x.lastBuy,r.purchased);}else{x.sellCount++;x.sellUnits+=r.q;x.lastSale=Math.max(x.lastSale,r.purchased);}
   if(finite(r.created)&&r.created>0&&r.created<=r.purchased){const wait=(r.purchased-r.created)/HOUR;if(buy)x.createdBuyRows++;else x.createdSellRows++;
    const target=buy?x.buyFillHours:x.sellFillHours;if(target.length<1200&&wait>=0&&wait<24*365)target.push(wait);}
@@ -117,8 +117,9 @@ function history(ledger=[],now=Date.now()){
   // Every old market is discoverable; no inactivity cutoff here.
   const oldProfit=Math.max(0,a.profitP100/100),repeat=Math.sqrt(1+Math.min(12,periods));
   const historyScore=Math.log1p(oldProfit/10000)*repeat*x.strength;
-  const recency=.75+.25*Math.exp(-x.ageDays/45); // older results downweighted, never discarded
-  x.discoveryScore=historyScore*recency+(x.lastSale>now-21*DAY?Math.log1p(x.recentSell7)*.08:0);
+  // Inactivity is not failed execution. Retain the same historical discovery
+  // reference; fresh quotes and execution evidence qualify actual forecasts.
+  x.discoveryScore=historyScore;
   // finished-order waits suffer survivor bias; do not expose as P(fill).
   delete x.buyFillHours;delete x.sellFillHours;delete x.buyDays;delete x.sellDays;delete x.buyWeeks;delete x.sellWeeks;delete x.buyNights;delete x.sellNights;
  }
@@ -209,7 +210,7 @@ function findQuantity(x,quote,exposure,budget,options={}){
  // Public order-book size is not evidence of market turnover. A new, untraded
  // item must have at least two independent quotes before earning even 1 test unit.
  if(!sampled){const independent=(options.recent||[]).filter(r=>Date.parse(r.at)>=now-5*DAY&&
-   finite(Date.parse(r.at))&&Number.isInteger(r.b)&&Number.isInteger(r.s)&&r.s>r.b)
+   finite(Date.parse(r.at))&&Date.parse(r.at)<=now&&Number.isInteger(r.b)&&Number.isInteger(r.s)&&r.s>r.b)
    .sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
   if(independent.length<2||Date.parse(last(independent).at)-Date.parse(independent[0].at)<90*60000)
    return {blocked:'new-market-needs-second-observation',tier:'unverified'};
@@ -227,12 +228,11 @@ function findQuantity(x,quote,exposure,budget,options={}){
  const histBuy=x?.buyWeekP25||0,histSell=x?.sellWeekP25||0;
  let activeWeekCap=Math.floor(Math.min(histBuy,histSell));
  if(!activeWeekCap&&sampled)activeWeekCap=Math.floor(Math.min(x.buyWeekMedian||0,x.sellWeekMedian||0));
- // Discount older records and limited observations; still allow rediscovery with 5+ when warranted.
- const recency=age<=14?1:age<=45?.88:age<=120?.72:age<=365?.65:.32;
+ // Historical-practice reference only. Time since trading cannot establish
+ // lost capacity; keep age as a warning, not a quantity multiplier.
  const evidence=strong?.85:repeat?.70:sparse?.28:.13;
- let capacity=Math.floor(activeWeekCap*recency*evidence);
- const recently=Math.max(0,Math.min(x?.recentBuy7||0,x?.recentSell7||0));
- if(recently>0)capacity=Math.max(capacity,Math.floor(recently*.65));
+ let capacity=Math.floor(activeWeekCap*evidence);
+
  // Past completed quantities are LOWER BOUNDS on what the user could have
  // acquired, not proof of a maximum. Their historical orders may have been
  // placed for only three or four units. The API's completed entries do not
@@ -243,14 +243,14 @@ function findQuantity(x,quote,exposure,budget,options={}){
  const fastRepeat=repeat&&(((x?.buyWeeksCount||0)>=3&&(x?.sellWeeksCount||0)>=3&&
    (x?.bothWeeks||0)>=2)||repeatedDays)&&(x?.createdBuyRows||0)>=3&&
    Number.isFinite(x?.buyWaitP75)&&x.buyWaitP75<=24&&
-   Number.isFinite(x?.sellWaitP75)&&x.sellWaitP75<=72&&age<=365;
+   Number.isFinite(x?.sellWaitP75)&&x.sellWaitP75<=72;
  // An active-WEEK throughput model is a research ceiling, not an overnight order.
  // Keep the exploratory amount visible in research without ever funding it
  // or calling it a supported 24-hour acquisition quantity.
  const demonstratedCap=capacity;
- const probeMultiplier=age<=45?1.75:age<=120?1.5:1.25;
- const probeCeiling=fastRepeat?Math.floor(activeWeekCap*probeMultiplier*recency):0;
- const weeklyResearchCeiling=Math.max(capacity,probeCeiling);
+ // Historical small lots do not identify an expansion multiplier. Expansion
+ // needs a user-selected experiment or separately measured execution evidence.
+ const weeklyResearchCeiling=capacity;
  // Completed records do NOT reveal the unfilled remainder of historic orders.
  // Small fills could have been deliberately small orders (right censoring).
  const waiting=exposure?.buyUnits||0,unlisted=(exposure?.sellUnits||0)+(exposure?.deliveryUnits||0);
@@ -272,13 +272,12 @@ function findQuantity(x,quote,exposure,budget,options={}){
  // A finished order's wait time is survivor-biased. We use it only as a
  // downward adjustment, never to imply a P(fill) or a guaranteed night.
  const overnightWaitScale=waitBuy===null?.65:clamp(24/Math.max(24,waitBuy),.2,1);
- const ageScale=age<=30?1:age<=90?.78:age<=180?.55:age<=365?.40:.25;
+
  // Overnight purchase evidence is required. A trade at 2pm does not establish
  // how many buy orders will fill overnight. Sale capacity can occur later.
- const recentBothSides=(x?.recentBuy30||0)>0&&(x?.recentSell30||0)>0;
- const nightAgeFactor=recentBothSides?1:age<=60?.5:0;
+ // Absence of recent personal trades cannot turn historical fills into zeros.
  const observedDayTrial=overnightReference>0?
-   Math.max(0,Math.floor(overnightReference*overnightWaitScale*ageScale*nightAgeFactor)):0;
+   Math.max(0,Math.floor(overnightReference*overnightWaitScale)):0;
  // If repeated buying/selling history exists but no comparable daily sample,
  // allow ONE explicitly cautious validation unit, not a 50/90-unit order.
  const conservativeOrderCap=Math.min(afterExposure,Math.max(1,observedDayTrial));
@@ -286,7 +285,7 @@ function findQuantity(x,quote,exposure,budget,options={}){
  const projectedWeeklyUnits=Math.min(activeWeekCap,conservativeOrderCap);
  // Asks are quotes, not guaranteed exits. Bound the cautious quote exit by recent sampled low, when present.
  let exit=quote.sell;
- const sampledAsks=(options.recent||[]).filter(q=>Date.parse(q.at)>=now-7*DAY&&Number.isInteger(q.s)&&q.s>0).map(q=>q.s);
+ const sampledAsks=(options.recent||[]).filter(q=>Date.parse(q.at)>=now-7*DAY&&Date.parse(q.at)<=now&&Number.isInteger(q.s)&&q.s>0).map(q=>q.s);
  if(sampledAsks.length>=3){const low=quantile(sampledAsks,.25);if(finite(low)&&low>0)exit=Math.min(exit,low);}
  // Default 3% concession on current ask; helps avoid turning a transient ask into implied guaranteed profit.
  exit=Math.floor(exit*.97);
@@ -328,7 +327,7 @@ function findQuantity(x,quote,exposure,budget,options={}){
   researchCap:Math.min(afterExposure,budgetCap,2500),conservativeOrderCap:baseCap,
   observed24Reference,overnightReference,observedNightBuys:x?.buyActiveNights||0,independentActiveDays:independentDays,
   historicalWeeklyResearchCap:weeklyResearchCeiling,
-  overnightEvidence:observedDayTrial>0?'Completed overnight buy observations and completed resale-day pace; not P(fill)':'No sufficiently recent comparable overnight buys AND subsequent resale pace',
+  overnightEvidence:observedDayTrial>0?'Completed overnight buy observations and completed resale-day pace; not P(fill)':'No historical overnight-buy AND resale-day reference; competitive capacity unknown',
   demonstratedCap,exploratoryExtra,fastRepeat,projectedWeeklyUnits,
   capacityLabel:exploratoryExtra>0?'Unverified expansion beyond personal 24h trade pace':'Conservative personal completed-trade 24h trial',
   matched:h?.matchedAll||0,unknown:h?.unknownAll||0,
@@ -542,9 +541,8 @@ function activeBookScenario({ledger=[],quotes=[],snapshot=null,now=Date.now()}={
   // Historical active-week volume (only weeks in which the user placed and
   // completed trades). Never infer the world's rate from public book quantity.
   const weekBuy=x.buyWeekP25||x.buyWeekMedian||0,weekSell=x.sellWeekP25||x.sellWeekMedian||0;
-  const recent=Math.max(0,Math.min(x.recentBuy7||0,x.recentSell7||0));
-  const ageScale=x.ageDays<=30?1:x.ageDays<=120?.65:.35;
-  const activeCap=Math.max(recent*.55,Math.min(weekBuy,weekSell)*ageScale);
+  // A conditional replay of recorded active weeks, not competitive capacity.
+  const activeCap=Math.min(weekBuy,weekSell);
   const openSales=(snapshot.sells||[]).filter(o=>o.item===g.id).reduce((n,o)=>n+Math.max(0,o.q||0),0);
   const delivery=(snapshot.delivery?.items||[]).filter(o=>o.id===g.id).reduce((n,o)=>n+Math.max(0,o.count||0),0);
   const qty=Math.max(0,Math.min(priceSafeUnits,Math.floor(activeCap-openSales-delivery)));
@@ -553,7 +551,7 @@ function activeBookScenario({ledger=[],quotes=[],snapshot=null,now=Date.now()}={
   covered+=g.gold;
   if(qty&&profit>0){conditionalWeek+=profit;eligible++;entries.push({id:g.id,units:g.units,scenarioUnits:qty,capital:g.gold,conditionalWeek:profit,netUnit:Math.round(profit/qty),historicalBuyWeeks:x.buyWeeksCount,historicalSellWeeks:x.sellWeeksCount,
     historicalBuyWeek:weekBuy,historicalSellWeek:weekSell,observedBuyDays:x.buyActiveDays,observedSellDays:x.sellActiveDays,
-    nightReferenceUnits:(x.buyActiveNights>=2&&x.sellActiveDays>=2&&x.recentBuy30>0&&x.recentSell30>0)?
+    nightReferenceUnits:(x.buyActiveNights>=2&&x.sellActiveDays>=2)?
       Math.max(0,Math.min(qty,Math.floor(Math.min(x.buyNightP25||0,x.sellDayP25||0)))):0,
     overnightNetPerUnit:Math.floor(profit/Math.max(1,qty)),
     observedBuyMedian:x.buyDayMedian||0,observedSellMedian:x.sellDayMedian||0,ageDays:x.ageDays||0,
@@ -593,8 +591,9 @@ function capitalReview({ledger=[],quotes=[],metadata={},snapshot=null,learning={
   if(marginProblem)flags.push('Current cautious resale reference is below these bid costs after fees');
   if(excess)flags.push('Standing buy units exceed historical active-week buy/sell throughput');
   if(stockPressure)flags.push('Unfinished resale inventory already occupies historical throughput');
-  if(idle)flags.push('No completed acquisitions in seven days; oldest buy at least three days');
-  const review=marginProblem||excess||((idle||stockPressure)&&group.gold>=100000);
+  if(idle)flags.push('No completed acquisitions in seven days; bid competitiveness and missed exposure remain unknown');
+  // Inactivity alone cannot justify redeploying committed capital.
+  const review=marginProblem||excess||(stockPressure&&group.gold>=100000);
   reviews.push({...group,name:metadata[group.id]?.name||'Item #'+group.id,typicalWeek:typical,
    recentBought:h?.recentBuy7||0,recentSold:h?.recentSell7||0,flags,
    status:review?'review':'retain-or-check',review,quoteVerified:!!q,

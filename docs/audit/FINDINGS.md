@@ -58,4 +58,56 @@ Android defect has been proved in this batch. Those remain tests to perform, not
 - **F016 / High, repaired d19ae75:** Object.keys(metadata) ran on each family-loop
   iteration. Cache cardinality once; 1002→2 enumerations at 1000 rows, same candidates.
 
-QH-001 CONFIRMED/repaired 5cecc05: renderConnectedMarkets multiplied every public quote by ui.marketResearchLot (up to250), producing unaffordable 425,000g scenarios and attractive bulk-profit headlines. Arithmetic was conditional, but display looked actionable. Public quote view now has null quantity/cost/expectedProfit and explicit affordability; individual scenarios remain expandable.
+- **F017 / Critical, CE-001 repaired locally ef7f27c:** capacity-intelligence and
+  market-board treated unpriced monitored nights as competitive capacity. Six
+  zero nights replaced a synthetic four-unit active-day reference with zero and
+  could demote research rankings without evidence of price position. Those nights
+  are now retained as observed practice, not a competitive override.
+- **F018 / Critical, OPEN CE-002/003:** private nights store no public bid/ask;
+  opportunity findQuantity retains inactivity/active-week caps; capacity retains
+  active-day/lot analogues. They cannot establish competitive market capacity.
+  Foreground exposure is integrated, but background coverage, model and portfolio
+  repairs remain unfinished. Historical unpriced observations cannot fill the gap.
+- **F019 / High, OPEN CE-002:** new per-account foreground exposure is a config
+  array without retention/compaction or concurrent-writer transaction control.
+  Preserve all evidence while adding scalable storage/import; do not silently
+  truncate history. Local account-switch tests do not prove multi-tab safety.
+
+- **F018 update CE-002:** active GitHub collector now captures contemporaneous public
+  prices and explicitly partial cohort coverage; authenticated import is browser
+  tested. Legacy Worker-native polling is still unpriced and explicitly identified.
+  Quantity caps/age multipliers remain OPEN CE-003; no capacity repair claimed yet.
+- **F019 repaired locally 11f5566:** replaced growing global foreground config
+  rewrites with atomic item/day shard merges. Cursor acknowledgment shares the
+  transaction; concurrent writes and backup restore preserve union. Bounded detail
+  reads suppress rates when truncated. Real long-running device profiling remains.
+- **F020 repaired locally 11f5566:** cloud refresh used mutable state.account after
+  awaited operations. Capture account/key/db context for authenticated requests and
+  persistence; publish in-memory results only for the still-selected account.
+
+- **F021 / High, repaired 2509b86:** inactivity age coefficients reduced otherwise
+  identical conditional quantities (4→1); 120-day night cutoff discarded saved
+  overnight examples (6→0). Historic references now persist, age remains explicit,
+  and inactivity alone cannot flag capital redeployment. No competitive rate inferred.
+- **F022 / High, repaired 2509b86:** future-dated prices could qualify as independent
+  research observations or lower the sampled exit; exclude them at both checks.
+- **F023 / Medium, repaired a0d131c:** hypothetical quantity rejected every value
+  over 250; single-order stack size was incorrectly used as a whole research limit.
+  Explicit total quantities now accepted; overflow rejected and fees preserved by
+  an integer per-stack oracle. No bulk execution probability inferred.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+- F024 repaired86c55ae: roundProbability counted sold>0, overstating full-cycle
+  success for partial sales. Now all proposed units must be resold; any-sale and
+  acquisition-completion probabilities separate. Observed-practice baseline only.
+- F025 repaired86c55ae: contradictory duplicate outcomes selected the first record;
+  duplicate held-out samples inflated evaluation counts. Forecasts reject conflict,
+  holdouts deduplicate, same-version ambiguous backups censor rather than pick winner.
+- QH-002 repaired064e273/main2669ed5: capital input saved only on change, allowing
+  asynchronous repaint before blur to restore819g after typing500g. Save valid input
+  edits immediately. Original CI failure details unavailable; local race reproduced.
+- CI logs now uploaded as synthetic artifacts. Deploy failure42591098367 identifies
+  detached-row colour assertion; PR35 preserves exact assertion using attached row.

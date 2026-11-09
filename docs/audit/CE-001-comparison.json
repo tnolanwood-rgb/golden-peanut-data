@@ -1,0 +1,67 @@
+{
+  "baseline_commit": "0aae3f1",
+  "implementation_commit": "ef7f27c29aee7d983e46155e2fa7e0ff4332f915",
+  "before": {
+    "conditions": "Synthetic six active days: four buys and four sales per day; six unpriced zero-fill nights",
+    "history": {
+      "source": "own-market-active-days",
+      "conditional24h": {
+        "days": 1,
+        "acquiredTypical": 4,
+        "acquiredHigh": 4,
+        "resaleTypical": 3,
+        "resaleHigh": 4,
+        "profitTypical": 210,
+        "profitHigh": 280,
+        "conditional": true
+      },
+      "expectedProfit": null
+    },
+    "withUnpricedNights": {
+      "source": "observed-order-nights",
+      "conditional24h": {
+        "days": 1,
+        "acquiredTypical": 0,
+        "acquiredHigh": 0,
+        "resaleTypical": 0,
+        "resaleHigh": 0,
+        "profitTypical": 0,
+        "profitHigh": 0,
+        "conditional": true
+      },
+      "expectedProfit": null
+    }
+  },
+  "after": {
+    "conditions": "Synthetic six active days: four buys and four sales per day; six unpriced zero-fill nights",
+    "history": {
+      "source": "own-market-active-days",
+      "conditional24h": {
+        "days": 1,
+        "acquiredTypical": 4,
+        "acquiredHigh": 4,
+        "resaleTypical": 3,
+        "resaleHigh": 4,
+        "profitTypical": 210,
+        "profitHigh": 280,
+        "conditional": true
+      },
+      "expectedProfit": null
+    },
+    "withUnpricedNights": {
+      "source": "own-market-active-days",
+      "conditional24h": {
+        "days": 1,
+        "acquiredTypical": 4,
+        "acquiredHigh": 4,
+        "resaleTypical": 3,
+        "resaleHigh": 4,
+        "profitTypical": 210,
+        "profitHigh": 280,
+        "conditional": true
+      },
+      "expectedProfit": null
+    }
+  },
+  "limitations": "Conditional active-day research only; no expected profit, funded quantity or live accuracy improvement established."
+}
