@@ -94,10 +94,20 @@ function comparable(samples,item,quantity,buy,exit,now){
   .sort((a,b)=>a.start-b.start||a.order-b.order).filter(s=>{const key=s.order+':'+s.start;
    if(seen.has(key)||s.start<lastEnd)return false;seen.add(key);lastEnd=s.end;return true;});
 }
+const outcomeKey=s=>s.order+':'+s.start;
+const outcomeSignature=s=>JSON.stringify([s.item,s.offered,s.buy,s.exit,s.end,s.status,s.acquired,s.sold,s.listed,s.profit]);
+function conflictingKeys(samples){
+ const signatures=new Map(),conflicts=new Set();
+ for(const s of samples){const key=outcomeKey(s),sig=outcomeSignature(s);
+  if(signatures.has(key)&&signatures.get(key)!==sig)conflicts.add(key);else signatures.set(key,sig);
+ }return conflicts;
+}
 function forecast({samples=[],cohorts=[],item,quantity,buy,exit,now=Date.now(),stable=false}={}){
  const research=reason=>({status:'research',reason,expectedProfit:null,item,quantity});
  if(!integer(item,1)||!integer(quantity,1)||quantity>250||!integer(buy,1)||!integer(exit,1)||exit<=buy)return research('Invalid price or size');
  if(!stable)return research('Insufficient stable public price history');
+ const known=samples.filter(s=>validSample(s)&&s.item===item&&s.knownAt<=now&&s.end<=now&&now-s.end<=90*DAY);
+ if(conflictingKeys(known).size)return research('Conflicting duplicate execution outcomes require reconciliation');
  const rows=comparable(samples,item,quantity,buy,exit,now);
  // Excluding censored outcomes creates survivor bias. With this simple baseline,
  // any comparable unresolved window prevents promotion; no fitted censor weights.
@@ -109,13 +119,16 @@ function forecast({samples=[],cohorts=[],item,quantity,buy,exit,now=Date.now(),s
  const profits=rows.map(s=>net(exit,s.sold)-buy*s.sold-fee(exit,s.listed-s.sold));
  const expectedProfit=mean(profits),acquired=mean(rows.map(s=>s.acquired)),sold=mean(rows.map(s=>s.sold));
  return {status:'estimated',item,quantity,buy,exit,expectedProfit,expectedAcquired:acquired,expectedSold:sold,
-  buyProbability:mean(rows.map(s=>Number(s.acquired>0))),roundProbability:mean(rows.map(s=>Number(s.sold>0))),
+  buyProbability:mean(rows.map(s=>Number(s.acquired>0))),saleProbability:mean(rows.map(s=>Number(s.sold>0))),
+  acquisitionCompletionProbability:mean(rows.map(s=>Number(s.acquired===quantity))),
+  roundProbability:mean(rows.map(s=>Number(s.sold===quantity))),maximumMarketCapacity:null,
   resaleFraction:acquired?sold/acquired:0,expectedCapitalAt24:(quantity-sold)*buy,
   acquisitionCost:quantity*buy,cost:quantity*buy+fee(exit,quantity),feeReserve:fee(exit,quantity),
   sampleCount:rows.length,zeroFillWindows:rows.filter(s=>s.acquired===0).length,
   historicalRange:[quantile(profits,.1),quantile(profits,.9)],worstCaseLoss:quantity*buy+fee(exit,quantity),
   model:'empirical-joint-24h-v1',calibrated:false,
-  limitation:'Historical comparable outcomes, including zero fills. Range is empirical, not a calibrated prediction interval. No capital recycling assumed.'};
+  maintenancePolicy:'observed-practice',competitiveCapacityKnown:false,
+  limitation:'Historical comparable outcomes under observed trading practice, including zero fills; not capacity under maintained competitive bids. Full-round probability means all proposed units were resold. Range is empirical, not a calibrated prediction interval. No capital recycling assumed.'};
 }
 function validateRecommendation(o){
  return o?.status==='estimated'&&integer(o.id||o.item,1)&&integer(o.quantity,1)&&o.quantity<=250&&
@@ -180,8 +193,12 @@ function ranked(plan){
  * claim follows from fixture tests. Do not automatically promote complex models.
  */
 function backtest(learning,now=Date.now()){
- const complete=(learning.samples||[]).filter(s=>validSample(s)&&s.knownAt<=now).sort((a,b)=>a.start-b.start),tests=[];
- for(const s of complete){const prior=complete.filter(p=>p.knownAt<s.start);
+ const raw=(learning.samples||[]).filter(s=>validSample(s)&&s.knownAt<=now),conflicts=conflictingKeys(raw);
+ const unique=new Map();for(const s of raw){const key=outcomeKey(s),old=unique.get(key);
+  if(!conflicts.has(key)&&(!old||s.knownAt<old.knownAt))unique.set(key,s);
+ }
+ const complete=[...unique.values()].sort((a,b)=>a.start-b.start),tests=[];
+ for(const s of complete){const prior=raw.filter(p=>p.knownAt<s.start);
   const f=forecast({samples:prior,cohorts:(learning.cohorts||[]).filter(c=>c.knownAt<s.start),item:s.item,quantity:s.offered,buy:s.buy,exit:s.exit,now:s.start,stable:true});
   if(f.status!=='estimated')continue;
   const train=comparable(prior,s.item,s.offered,s.buy,s.exit,s.start),last=train.at(-1);
@@ -200,7 +217,8 @@ function backtest(learning,now=Date.now()){
   empiricalRangeCoverage:rows.length?mean(rows.map(t=>Number(t.profit.actual>=t.range[0]&&t.profit.actual<=t.range[1]))):null});
  const grouped=key=>Object.fromEntries([...new Set(tests.map(t=>t[key]))].map(k=>[k,metrics(tests.filter(t=>t[key]===k))]));
  return {model:'empirical-joint-24h-v1',...metrics(tests),tests,byItem:grouped('item'),byCategory:grouped('category'),
-  completeWindows:complete.length,censoredWindows:(learning.cohorts||[]).filter(c=>c.status==='censored').length,
+  completeWindows:complete.length,conflictingWindows:conflicts.size,
+  censoredWindows:new Set((learning.cohorts||[]).filter(c=>c.status==='censored'&&c.knownAt<=now).map(outcomeKey)).size,
   skippedStarts:learning.skipped||0,promotionAllowed:false,
   limitation:'Observed user-selected markets only; no counterfactual accuracy on markets never traded. No automatic model promotion.'};
 }
@@ -209,6 +227,9 @@ function mergeLearning(local,backup){
  for(const c of [...(backup?.cohorts||[]),...(backup?.samples||[]),...(local?.cohorts||[]),...(local?.samples||[])]){
   if(!integer(c?.order,1)||!integer(c.item,1)||!Number.isFinite(c.start))continue;
   const key=c.order+':'+c.start,prev=entries.get(key);
+  if(prev&&(c.knownAt||c.start)===(prev.knownAt||prev.start)&&outcomeSignature(c)!==outcomeSignature(prev)){
+   entries.set(key,{...prev,status:'censored',reason:'Conflicting same-version backup outcomes; reconciliation required'});continue;
+  }
   if(!prev||(c.knownAt||c.start)>(prev.knownAt||prev.start))entries.set(key,structuredClone(c));
  }
  const cohorts=[...entries.values()].sort((a,b)=>a.start-b.start);
