@@ -172,6 +172,12 @@ function build(plan,{wallet=null,now=Date.now(),metadata={}}={}){
   recipes:plan.craftResearch?.status?.recipesIndexed||0};
  return {ready:true,...categories,counts,available,publicCoverage,disclaimer:'24h estimates use observed outcomes; predictive calibration is not established. Other figures are historical or hypothetical conditional margins. No orders are placed automatically.'};
 }
-root.GPMarketBoard={buildId:'7.16.0-evidence',build};
+// Presentation boundary: quotes alone authorize no lot, capital or profit forecast.
+function quoteResearch(m,wallet){
+ const valid=whole(m?.buy,1)&&whole(m?.exit,1)&&m.exit>m.buy;
+ return {quantity:null,cost:null,expectedProfit:null,affordable:valid&&whole(wallet)&&m.buy<=wallet,
+  unitMargin:valid?net(m.exit,1)-m.buy:null};
+}
+root.GPMarketBoard={quoteResearch,buildId:'7.16.0-evidence',build};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketBoard;
 })(typeof globalThis!=='undefined'?globalThis:this);
