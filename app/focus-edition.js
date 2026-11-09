@@ -845,6 +845,12 @@ function renderDeploymentPlanner(host,state){
   output.append(h('p','focus-muted',result.caveat));
  };
  function fmtResearch(x){return x.research?'Personal trade history · research only':'Public quote · execution unknown';}
+ // Persist valid edits before blur: an unrelated asynchronous render can replace
+ // this input while focused. Calculations still refresh on change/panel render.
+ input.addEventListener('input',()=>{
+  const n=Number(input.value);
+  if(input.value!==''&&Number.isFinite(n)&&n>=0&&n<=50000){ui.portfolioBudgetGold=n;save();}
+ });
  input.addEventListener('change',()=>{const n=Number(input.value);
   if(Number.isFinite(n)&&n>=0&&n<=50000){ui.portfolioBudgetGold=n;save();calculate();}
   else calculate();

@@ -452,6 +452,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(beforeAllocation,/Hypothetical NEW buy allocation/);
  assert.doesNotMatch(beforeAllocation,/NaN|undefined/);
  await lab.locator('.focus-deployment-input').fill('500');
+ // A background repaint between typing and blur must preserve the user's budget.
+ await page.evaluate(()=>GPFocus.render());
  await lab.locator('.focus-deployment-input').press('Tab');
  assert.equal(await lab.locator('.focus-deployment-input').inputValue(),'500');
  const elected=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')).portfolioBudgetGold);
