@@ -1,15 +1,15 @@
 # Golden Peanut — authoritative engineering state
 
-Updated 2026-11-08 UTC. Read RESUME.md next. User prioritises competitive acquisition
+Updated 2026-11-09 UTC. Read RESUME.md next. User prioritises competitive acquisition
 repair and allowance-conscious, pushed checkpoints. Full repair remains PARTIAL.
 
-- **Current batch:** CE-001, CE-002, CE-003a and CE-003b1 VERIFIED locally; CE-003c next. No complete
+- **Current batch:** CE-001, CE-002, CE-003a and CE-003b1 VERIFIED locally; CE-003c1 VERIFIED locally; CE-003c2 next. No complete
   phase or live forecasting accuracy improvement claimed.
-- **Branch/PR:** `audit/competitive-exposure`, main `4b8bd13` merged in commit 01b7c86;
+- **Branch/PR:** `audit/competitive-exposure`, main `2669ed5` merged in commit 63d68a3;
   draft [PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31).
   PR #30 already merged/deployed upstream. Latest verified remote CI for earlier
   head 4f22f02: run 42429705868 passed; latest new head CI must be checked.
-- **Latest implementation:** `a0d131c` (bulk research); `2509b86` (inactivity repair).
+- **Latest implementation:** `86c55ae` (outcome integrity); assembled merge `63d68a3`.
   Collector/relay commit d87971a. Checkpoint SHA resolves using
   `git log -1 --format=%H -- docs/audit/STATE.md`.
 - **Completed CE-003a/b1:** removed inactivity quantity discounts and discovery
@@ -26,22 +26,25 @@ repair and allowance-conscious, pushed checkpoints. Full repair remains PARTIAL.
   one IndexedDB transaction. Item/day config shards preserve concurrent writes,
   backup unions and old legacy data. Details read recent 90 days, maximum 10,000
   observations; partial reads labelled and sampled rate suppressed.
-- **Tests:** final implementation passed all baseline stages: 109 JavaScript,
-  41 Python, source/workflow validation, desktop/mobile assembled app, and separate
-  collector-to-browser evidence pipeline. Six inactivity and three quantity/fee
-  regressions added. CE-003a-baseline.json / CE-003b1-baseline.json. The latter's
-  dirty flag is solely the untracked CE-003a evidence JSON; implementation committed.
-- **Production:** current main HTML/opportunity/focus assets independently matched
-  live bytes on 2026-11-08. Main already deployed unpriced-night repair (#32) and
-  startup performance changes (#33). CE-002 and this session's CE-003 changes are
-  NOT deployed. PR #31 remains draft/open/unmerged; newest CI pending.
-- **Exact next action:** CE-003c: trace GPExecution.forecast/plan and legacy research
-  consumers of cap/researchCap/activeWeekCap. Baseline fixed-lot joint outcome
-  estimates against priced exposure, censored full lots, outbid periods and separate
-  resale. Define identifiable maintenance policies before producing any numeric
-  forecast. Remaining legacy evidence/volume caps must not be labelled maximum
-  market capacity. Add high-margin/low-volume versus high-volume/resale-limited
-  portfolio tests; then CE-004 walk-forward evaluation and verified release.
+- **Completed CE-003c1:** full-round probability now means all proposed units
+  resold; separate any-sale and full-acquisition probabilities. Conflicting duplicate
+  outcomes block forecasts; ambiguous backup versions become censored. Walk-forward
+  holdouts are deduplicated, conflicting truths counted explicitly. Market maximum
+  remains unknown and forecasts describe observed practice, not maintained bids.
+- **Tests:** clean 63d68a3 full baseline passed, including original financial/browser
+  guards and collector-to-browser integration. CE-003c1-baseline.json. Five new
+  execution cases cover partial rounds, contradictory outcomes, high-margin vs
+  high-volume, resale bottlenecks/shared wallet, duplicate evaluation/backup evidence.
+- **Release:** PR34 merged at2669ed5 after CI42590825903 passed. Production run
+  42591098367 FAILED before deployment on detached-row rarity assertion. PR35
+  fixes that exact assertion and triggers the already-authorised isolated release
+  through existing release-request gate after CI. No draft31 deployment. Production
+  verification pending; previous live assets still differ from2669ed5.
+- **Exact next action:** complete PR35 CI/release/live-byte verification, then
+  CE-003c2: attach priced exposure to joint outcome cohorts and distinguish observed
+  trading practice from maintenance-specific forecasts. Remaining legacy caps,
+  evidence/wait multipliers and policy-specific resale models are unfinished.
+  Do not fabricate numeric competitiveness/queue probabilities from endpoints.
 - **Open limitations:** legacy quantity/active-week caps, evidence factors and survivor-wait adjustments remain;
   conditional examples still reflect historical practice. Inactivity age discounts targeted in CE-003a are removed. No new funded forecasts.
   Worker-native encrypted-account polling still has no priced collection (relay

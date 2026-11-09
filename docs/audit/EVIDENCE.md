@@ -336,3 +336,22 @@ CE-003c; full requested repair remains incomplete.
 QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
 in public research lists, outside-wallet labels and budget edits saved on input.
 CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+## CE-003c1 and release reconciliation — 2026-11-09
+
+Before: new partial-round and contradictory-duplicate forecast cases failed in
+`node tests/execution.test.cjs`; raw outputs local /tmp/ce003c-before.log.
+After86c55ae:35 execution cases pass; merged63d68a3 passes all stages of
+`python scripts/audit_baseline.py` (CE-003c1-baseline.json). High-volume/lower-margin
+fixture outranks high-unit-margin item when actual resales support it; constraining
+resales removes that advantage. One wallet covers both exactly. Duplicate holdout
+replay produces identical evaluation metrics; conflicting backups retain censorship.
+Synthetic correctness evidence only, not improved live calibration.
+
+PR31 previous CI42462455222 passed at4d1511e. PR34 first CI42584830152 failed
+browser; missing log artifacts prevented exact diagnosis. Repeated local browser
+run reproduced500g input reverting819g;064e273 saves edits on input and uploads
+synthetic logs. CI42590825903 then passed; PR34 merged2669ed5. Production dispatch
+42591098367 failed on exact rarity-colour assertion reading empty computed style
+from detached row. No deployment occurred; three live byte checks did not match
+2669ed5. PR35 fixes attached-row polling and uses existing authorised release gate.

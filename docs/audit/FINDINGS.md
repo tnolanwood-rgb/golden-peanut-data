@@ -99,3 +99,15 @@ Android defect has been proved in this batch. Those remain tests to perform, not
 QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
 in public research lists, outside-wallet labels and budget edits saved on input.
 CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+- F024 repaired86c55ae: roundProbability counted sold>0, overstating full-cycle
+  success for partial sales. Now all proposed units must be resold; any-sale and
+  acquisition-completion probabilities separate. Observed-practice baseline only.
+- F025 repaired86c55ae: contradictory duplicate outcomes selected the first record;
+  duplicate held-out samples inflated evaluation counts. Forecasts reject conflict,
+  holdouts deduplicate, same-version ambiguous backups censor rather than pick winner.
+- QH-002 repaired064e273/main2669ed5: capital input saved only on change, allowing
+  asynchronous repaint before blur to restore819g after typing500g. Save valid input
+  edits immediately. Original CI failure details unavailable; local race reproduced.
+- CI logs now uploaded as synthetic artifacts. Deploy failure42591098367 identifies
+  detached-row colour assertion; PR35 preserves exact assertion using attached row.

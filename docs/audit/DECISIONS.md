@@ -79,3 +79,5 @@
 QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
 in public research lists, outside-wallet labels and budget edits saved on input.
 CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+D021: any sale is distinct from full round completion. Preserve exact-lot observed-practice baseline and unknown maximum capacity. Conflicting same-version outcomes are censored; never choose profitable first record. Deduplicate evaluation units independently of training deduplication.

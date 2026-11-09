@@ -44,3 +44,5 @@ remains partial until P0-002 resolves baseline identity. External access blocks 
 dependent checks: continue safe local work, without inventing production evidence.
 
 QH-001 / UI quote boundary: remove globally multiplied public quote quantities/profits. Critical screenshot defect. Depends on current main; acceptance: saved250/1700g footwear browser regression and original financial tests. VERIFIED locally; deployment pending.
+
+CE-003c1 / forecast & evaluation integrity: distinguish any sale from full round; reject conflicting outcomes and duplicate holdouts. Depends CE-003a; critical. Five regressions and full assembled suite pass at63d68a3. VERIFIED locally; model release pending. CE-003c2 maintenance-specific cohorts remains TODO.
