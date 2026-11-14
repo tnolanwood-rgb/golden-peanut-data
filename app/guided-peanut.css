@@ -72,3 +72,18 @@
 body.focus-edition.gp-guided-active{background:#0e1914!important}
 .focus-edition.gp-guided-active .app{max-width:780px;padding:0 12px 60px}
 @media(max-width:390px){.focus-edition.gp-guided-active .app{padding:0 9px 55px}}
+
+/* First-class GW2 money: never collapse the official coin art into naked digits.
+ * Keep explicit g/s/c text as a visual and accessible fallback on small phones. */
+.gp-guide-number .gp-guide-coinset{display:inline-flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:4px;white-space:normal;max-width:100%;line-height:1.35;font-size:inherit}
+.gp-guide-number .gp-guide-denom,.gp-guide-number .focus-money-part.gp-guide-denom{display:inline-flex;align-items:center;white-space:nowrap;gap:2px;min-width:0;line-height:1.35;font-variant-numeric:tabular-nums}
+.gp-guide-number .gp-guide-denom-g{color:#fbd164!important}
+.gp-guide-number .gp-guide-denom-s{color:#d8e7ed!important}
+.gp-guide-number .gp-guide-denom-c{color:#e5a37c!important}
+.gp-guide-number .gp-guide-denom img,.gp-guide-number .focus-money-big .gp-guide-denom img{width:17px;height:17px;object-fit:contain;flex:0 0 17px;vertical-align:middle}
+.gp-guide-number .gp-guide-denom img[hidden]{display:none}
+.gp-guide-number .gp-guide-unit{font-size:.68em;font-weight:820;letter-spacing:0;opacity:.88;margin-left:1px}
+.gp-guide-number .gp-guide-negative{color:#f0afa3}
+.gp-guide-number .gp-guide-unverified{font-size:17px;color:#b9c9bd}
+.gp-guide-nav-note{margin:1px 0 0;color:#aebfab;font-size:12px;line-height:1.5}
+@media(max-width:390px){.gp-guide-number .gp-guide-coinset{column-gap:5px;row-gap:3px}.gp-guide-number .gp-guide-denom img,.gp-guide-number .focus-money-big .gp-guide-denom img{width:15px;height:15px;flex-basis:15px}}
