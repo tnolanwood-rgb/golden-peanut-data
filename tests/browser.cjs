@@ -30,7 +30,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
- await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));localStorage.setItem('gp-guided-mode-v1','advanced');});
+ await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));localStorage.setItem('gp-guided-mode-v1','advanced');localStorage.setItem('gp-guided-skips-v1','[1,2,999]');});
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
  // Never rely on an activation-less startup pushState: Android skips it.
@@ -61,19 +61,47 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const counter=page.locator('.gp-guide-position');
  const firstProgress=await counter.innerText();
  const total=Number(firstProgress.match(/^1 of (\d+)$/)?.[1]);
- assert.ok(total>=2,'fixture offers at least two ideas');
- await page.getByRole('button',{name:'Skip · next →'}).click();
- assert.equal(await counter.innerText(),'2 of '+total,'skipping advances position without shrinking denominator');
- assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true,'Previous works immediately after Skip');
- assert.equal(await page.getByRole('button',{name:/Review skipped/}).count(),1,'skipped ideas stay available');
+ assert.ok(total>=2,'synthetic fixtures provide at least two guided ideas');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
+   'obsolete cross-reload skipped bin is removed on startup');
+ assert.equal(await page.locator('.gp-guide-idea').getByRole('button',{name:/Review skipped/}).count(),0,
+   'never create a persistent skipped-items bin');
+ await page.getByRole('button',{name:'Skip for now →'}).click();
+ assert.equal(await counter.innerText(),'2 of '+total,'Skip moves to second item; denominator stays fixed');
+ assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true);
+ const secondIdea=await page.locator('.gp-guide-item-name').innerText();
+ await page.evaluate(()=>{
+  window.__gpOriginalBoard=GPMarketBoard.build;
+  GPMarketBoard.build=(...args)=>{
+   const b=window.__gpOriginalBoard(...args);
+   return {...b,forecast:[...b.forecast].reverse(),history:[...b.history].reverse(),newMarkets:[...b.newMarkets].reverse()};
+  };
+  GPGuided.render();
+ });
+ assert.equal(await counter.innerText(),'2 of '+total,'new priority ordering must not move the viewed card');
+ assert.equal(await page.locator('.gp-guide-item-name').innerText(),secondIdea,'the viewed item ID is stable');
+ // A disappearing quote must never show its previously calculated trading values.
+ await page.evaluate(()=>{
+  const selected=GPGuided.navigation().id;
+  GPMarketBoard.build=(...args)=>{
+   const b=window.__gpOriginalBoard(...args);
+   return {...b,forecast:b.forecast.filter(x=>x.id!==selected),history:b.history.filter(x=>x.id!==selected),
+    newMarkets:b.newMarkets.filter(x=>x.id!==selected)};
+  };
+  GPGuided.render();
+ });
+ assert.equal(await counter.innerText(),'2 of '+total,'expired quote leaves original deck position intact');
+ assert.match(await page.locator('.gp-guide-idea h2').innerText(),/needs a new quote/);
+ assert.equal(await page.locator('.gp-guide-instructions').count(),0,'stale buy/sell prices are withheld');
+ await page.evaluate(()=>{GPMarketBoard.build=window.__gpOriginalBoard;delete window.__gpOriginalBoard;GPGuided.render();});
  await page.getByRole('button',{name:'← Previous'}).click();
- assert.equal(await counter.innerText(),'1 of '+total,'Previous returns to the same numbered position');
+ assert.equal(await counter.innerText(),'1 of '+total,'Previous always returns to first numbered idea');
  assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea);
+ assert.equal(await page.locator('.gp-guide-nav-note').count(),1,'session-only skipped marker is visible on revisit');
+ assert.equal(await page.getByRole('button',{name:/Review skipped/}).count(),0);
  await page.getByRole('button',{name:'Next idea →'}).click();
- assert.equal(await counter.innerText(),'2 of '+total,'Next advances without changing total');
- await page.getByRole('button',{name:/Review skipped/}).click();
- assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea,'skipped idea is recoverable');
- assert.equal(await counter.innerText(),'1 of '+total,'returning to skipped restores its original position');
+ assert.equal(await counter.innerText(),'2 of '+total);
+ await page.getByRole('button',{name:'← Previous'}).click();
  await page.getByRole('button',{name:'View price chart'}).click();
  await page.waitForSelector('#gp-guide-chart-body svg',{timeout:15000});
  await page.getByRole('button',{name:'+ Zoom in'}).click();
@@ -711,7 +739,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
  assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
- assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; detail/search/legendary/backup/invalid recommendation guards`);
+ // Fresh page/navigation session MUST reset to the first market and clear obsolete skips.
+ await page.evaluate(()=>localStorage.setItem('gp-guided-skips-v1','[1,2,999]'));
+ await page.reload();
+ await page.waitForFunction(()=>window.GPGuided?.navigation&&window.GoldenPeanutClean?.State?.db?.db);
+ assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
+   'reload clears any migrated legacy skip-bin state without touching account storage');
+ const freshlyOpened=await page.evaluate(()=>GPGuided.navigation());
+ assert.equal(freshlyOpened.position,freshlyOpened.total?1:0,'reload starts at first idea, not prior rank 18');
+ assert.equal(freshlyOpened.started,false,'new document must not inherit a browsing session');
+ assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; stable guided deck, reload, detail/search/legendary/backup guards`);
  await context.close();
 }}finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
