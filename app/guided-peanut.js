@@ -1,17 +1,17 @@
 /* Guided Peanut — a calm, single-screen alternative to Focus Edition.
- * Only presentation state (mode/skipped IDs) is stored here. It does not alter
- * trading evidence, wallet data, API keys, buy/sell orders or forecasts.
+ * The session-only deck is fixed on first navigation. No market data, keys,
+ * item skips or account history are persisted by this UI.
  */
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
-const KEY='gp-guided-mode-v1', SKIPS='gp-guided-skips-v1';
+const KEY='gp-guided-mode-v1', LEGACY_SKIPS='gp-guided-skips-v1';
 const DAY=86400000;
-let installed=false, current=null, history=[], skipped=[], priceChart=null, chartOpen=false;
+const deck=root.GPGuidedDeck?.create?.();
+let installed=false, current=null, priceChart=null, chartOpen=false;
 let chartDays=21, chartOffset=0, fingerprint='', renderTimer=0;
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
 const save=(k,v)=>{try{localStorage.setItem(k,v);}catch{}};
-try{skipped=JSON.parse(read(SKIPS,'[]')).filter(x=>Number.isSafeInteger(x)&&x>0).slice(-100);}catch{skipped=[];}
 const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
 const add=(parent,...children)=>{for(const x of children)if(x)parent.append(x);return parent;};
 const button=(label,fn,cls='gp-guide-button')=>{const b=el('button',cls,label);b.type='button';b.addEventListener('click',fn);return b;};
@@ -47,42 +47,12 @@ function ideas(s){
  append(b.newMarkets,'research');
  return out;
 }
-function getCurrent(rows){
- // Skipping defers an idea; it must not remove a numbered position from the deck.
- // The full list defines the stable "1 of N" count for this review session.
- return rows.find(r=>r.id===current)||rows[0]||null;
-}
 function setCurrent(id){current=id;priceChart=null;chartOpen=false;chartDays=21;chartOffset=0;}
-function next(){
- const rows=ideas(root.GoldenPeanutClean?.State);
- if(!rows.length){setCurrent(null);render(true);return;}
- const index=rows.findIndex(r=>r.id===current);
- if(index>=0){history.push(current);if(history.length>150)history.shift();}
- // Explicit wrap: the final card offers "Start again", not a shrinking queue.
- setCurrent(rows[(index+1)%rows.length].id);
+function navigate(action){
+ const state=root.GoldenPeanutClean?.State,rows=ideas(state);
+ const view=deck.move(rows,state?.account,action);
+ if(view.id!==current)setCurrent(view.id);
  render(true);
-}
-function previous(){
- while(history.length){const id=history.pop();if(ideas(root.GoldenPeanutClean?.State).some(x=>x.id===id)){setCurrent(id);render(true);return;}}
-}
-function skip(){
- if(current!==null&&!skipped.includes(current)){
-  skipped.push(current);skipped=skipped.slice(-100);save(SKIPS,JSON.stringify(skipped));
- }
- // Take the exact same navigation path as Next; Previous must work after Skip.
- next();
-}
-function returnSkipped(){
- const rows=ideas(root.GoldenPeanutClean?.State);
- while(skipped.length){
-  const id=skipped.pop();
-  if(rows.some(x=>x.id===id)){
-   if(current!==null&&current!==id){history.push(current);if(history.length>150)history.shift();}
-   save(SKIPS,JSON.stringify(skipped));
-   setCurrent(id);render(true);return;
-  }
- }
- save(SKIPS,'[]');render(true);
 }
 function guided(enabled){
  if(!installed)return;
@@ -177,15 +147,19 @@ function renderTop(host,s){
  const note=el('p','gp-guide-update',snap?'Account values are from the latest verified snapshot. Tap Check account for newer values.':'Connect your GW2 account in Details to load your wallet, Delivery Box and history.');
  host.append(note);
 }
-function buildIdea(host,s,rows,choice){
+function buildIdea(host,s,view){
+ const choice=view.item;
  const section=el('section','gp-guide-idea');
  const upper=el('div','gp-guide-idea-top');
- const position=choice?rows.findIndex(r=>r.id===choice.id):-1;
- add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',position>=0?String(position+1)+' of '+rows.length:'No eligible ideas'));
+ add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',view.total?String(view.position)+' of '+view.total:'No eligible ideas'));
  section.append(upper);
  if(!choice){
-  add(section,el('h2','','Nothing reliable to recommend yet'),el('p','gp-guide-muted',rows.length&&skipped.length?'You have skipped the available ideas. Return to one when you are ready.':'The app is waiting for current account data and market evidence. It will not invent a trade to fill this card.'));
-  section.append(button('↻ Refresh research',()=>$('focus-refresh')?.click(),'gp-guide-primary'));
+  add(section,el('h2','',view.unavailable?'This market needs a new quote':'No verified trade ideas yet'),
+   el('p','gp-guide-muted',view.unavailable?
+    'This idea is no longer in the current qualified research. Its old buy/sell prices are hidden. Update the idea list or move to another item.':
+    'Check your account or market research. The app will not invent a trade just to fill this card.'));
+  section.append(button(view.unavailable?'↻ Update idea list':'↻ Check account',
+   view.unavailable?()=>navigate('restart'):()=>$('focus-refresh')?.click(),'gp-guide-primary'));
  }else{
   const tier=choice.tier;
   const state=tier==='forecast'?'Evidence-backed 24h estimate':tier==='history'?'History-backed · conditional':'Public quote · research only';
@@ -218,15 +192,16 @@ function buildIdea(host,s,rows,choice){
   section.append(primary);
  }
  const controls=el('div','gp-guide-controls');
- add(controls,button('← Previous',previous,'gp-guide-light'),button('Skip · next →',skip,'gp-guide-light'));
- controls.firstChild.disabled=!history.length;
+ add(controls,button('← Previous',()=>navigate('previous'),'gp-guide-light'),
+  button(view.canNext?'Next idea →':'Start again ↻',()=>navigate(view.canNext?'next':'restart'),'gp-guide-light'));
+ controls.firstChild.disabled=!view.canPrevious;
+ if(!view.total)controls.lastChild.disabled=true;
  section.append(controls);
  const second=el('div','gp-guide-secondary-row');
- second.append(button(position===rows.length-1&&rows.length>0?'Start again ↻':'Next idea →',next,'gp-guide-text'));
- const skippedCount=skipped.filter(id=>rows.some(x=>x.id===id)).length;
- if(skippedCount)second.append(button('Review skipped ('+skippedCount+')',returnSkipped,'gp-guide-text'));
- section.append(second);
- section.append(el('p','gp-guide-nav-note','Skip saves an idea for later. Previous still takes you back; the total number of ideas does not shrink.'));
+ if(view.canNext)second.append(button('Skip for now →',()=>navigate('skip'),'gp-guide-text'));
+ if(view.newIdeas)second.append(button('Update idea list · '+view.newIdeas+' new',()=>navigate('restart'),'gp-guide-text'));
+ if(second.childNodes.length)section.append(second);
+ if(view.skipped)section.append(el('p','gp-guide-nav-note','You skipped this idea earlier in this visit. It is still available using Previous and Next.'));
  host.append(section);
 }
 function renderChartArea(host){
@@ -280,18 +255,25 @@ function drawChart(){
 }
 function render(force=false){
  if(!installed||!document.body.classList.contains('gp-guided-active'))return;
- const s=root.GoldenPeanutClean?.State;
- const sig=JSON.stringify([s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,s?.opportunityAt,
-  s?.opportunityPlan?.orders?.length,s?.opportunityPlan?.marketChoices?.length,s?.opportunityPlan?.publicResearch?.length,
-  $('focus-delivery-total')?.textContent||'',current,skipped,chartOpen,chartDays,chartOffset]);
+ const s=root.GoldenPeanutClean?.State,rows=ideas(s),view=deck.view(rows,s?.account);
+ if(view.id!==current)setCurrent(view.id);
+ // Compare the active quote, not merely array lengths; rankings can be rebuilt
+ // or repriced without changing their counts.
+ const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
+  s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,view.skipped,
+  view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
+  s?.meta?.[view.id]?.icon,$('focus-delivery-total')?.textContent||'',chartOpen,chartDays,chartOffset]);
  if(!force&&sig===fingerprint)return;fingerprint=sig;
  const host=$('gp-guided-root');if(!host)return;
- const oldY=window.scrollY;host.replaceChildren();
+ const oldY=window.scrollY;
+ const openDelivery=host.querySelector('.gp-guide-delivery-drawer')?.open||false;
+ const deliveryScroll=host.querySelector('.gp-guide-delivery-list')?.scrollTop||0;
+ host.replaceChildren();
  const content=el('div','gp-guide-content');host.append(content);
  renderTop(content,s);
- const rows=ideas(s),choice=getCurrent(rows);
- if(choice&&choice.id!==current){current=choice.id;priceChart=null;chartOpen=false;}
- buildIdea(content,s,rows,choice);
+ const drawer=host.querySelector('.gp-guide-delivery-drawer');
+ if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
+ buildIdea(content,s,view);
  renderChartArea(content);
  const footer=el('footer','gp-guide-foot');
  add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
@@ -301,7 +283,10 @@ function render(force=false){
 }
 function schedule(force=false){clearTimeout(renderTimer);renderTimer=setTimeout(()=>render(force),250);}
 function install(){
- if(installed||!$('focus-today')||!document.querySelector('.app'))return false;
+ if(installed||!deck||!$('focus-today')||!document.querySelector('.app'))return false;
+ // Legacy versions persisted skipped IDs across reloads and accounts.
+ // Remove ONLY this obsolete UI-only key: never touch account/ledger storage.
+ try{localStorage.removeItem(LEGACY_SKIPS);}catch{}
  const app=document.querySelector('.app');
  const host=el('div','gp-guided-root');host.id='gp-guided-root';host.hidden=true;app.prepend(host);
  const back=button('← Return to simple view',()=>guided(true),'gp-return-guided');back.id='gp-return-guided';back.hidden=true;app.prepend(back);
@@ -313,7 +298,8 @@ function install(){
  for(const node of [source,delivery])if(node)observer.observe(node,{childList:true,subtree:true,characterData:true});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule(true);});
  setInterval(()=>schedule(),20000);
- root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false)};
+ root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
+  navigation:()=>deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account)};
  return true;
 }
 function ready(){
