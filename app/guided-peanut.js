@@ -48,28 +48,40 @@ function ideas(s){
  return out;
 }
 function getCurrent(rows){
- const available=rows.filter(r=>!skipped.includes(r.id));
- if(!available.length)return null;
- return available.find(r=>r.id===current)||available[0];
+ // Skipping defers an idea; it must not remove a numbered position from the deck.
+ // The full list defines the stable "1 of N" count for this review session.
+ return rows.find(r=>r.id===current)||rows[0]||null;
 }
 function setCurrent(id){current=id;priceChart=null;chartOpen=false;chartDays=21;chartOffset=0;}
 function next(){
- const rows=ideas(root.GoldenPeanutClean?.State),available=rows.filter(r=>!skipped.includes(r.id));
- if(!available.length){setCurrent(null);render(true);return;}
- const index=available.findIndex(r=>r.id===current);
- if(index>=0)history.push(current);
- setCurrent(available[(index+1)%available.length].id);render(true);
+ const rows=ideas(root.GoldenPeanutClean?.State);
+ if(!rows.length){setCurrent(null);render(true);return;}
+ const index=rows.findIndex(r=>r.id===current);
+ if(index>=0){history.push(current);if(history.length>150)history.shift();}
+ // Explicit wrap: the final card offers "Start again", not a shrinking queue.
+ setCurrent(rows[(index+1)%rows.length].id);
+ render(true);
 }
 function previous(){
  while(history.length){const id=history.pop();if(ideas(root.GoldenPeanutClean?.State).some(x=>x.id===id)){setCurrent(id);render(true);return;}}
 }
 function skip(){
- if(current!==null&&!skipped.includes(current)){skipped.push(current);skipped=skipped.slice(-100);save(SKIPS,JSON.stringify(skipped));}
- setCurrent(null);render(true);
+ if(current!==null&&!skipped.includes(current)){
+  skipped.push(current);skipped=skipped.slice(-100);save(SKIPS,JSON.stringify(skipped));
+ }
+ // Take the exact same navigation path as Next; Previous must work after Skip.
+ next();
 }
 function returnSkipped(){
  const rows=ideas(root.GoldenPeanutClean?.State);
- while(skipped.length){const id=skipped.pop();if(rows.some(x=>x.id===id)){save(SKIPS,JSON.stringify(skipped));setCurrent(id);render(true);return;}}
+ while(skipped.length){
+  const id=skipped.pop();
+  if(rows.some(x=>x.id===id)){
+   if(current!==null&&current!==id){history.push(current);if(history.length>150)history.shift();}
+   save(SKIPS,JSON.stringify(skipped));
+   setCurrent(id);render(true);return;
+  }
+ }
  save(SKIPS,'[]');render(true);
 }
 function guided(enabled){
@@ -85,9 +97,51 @@ function advanced(toTrades=false){
  if(toTrades)document.querySelector('[data-focus-nav="trades"]')?.click();
  window.scrollTo({top:0,behavior:'instant'});
 }
+/* These are the existing GW2 coin assets already used by Focus Edition.
+ * Explicit g/s/c letters remain visible, even if an image cannot load. */
+function coinArtwork(value){
+ if(!Number.isFinite(value))return el('span','gp-guide-unverified','—');
+ const coins=Math.round(Math.abs(value));
+ const wrap=el('span','gp-guide-coinset');
+ wrap.setAttribute('aria-label',coin(value));
+ if(value<0)wrap.append(el('span','gp-guide-negative','−'));
+ const units=[
+  ['g','gold',Math.floor(coins/10000).toLocaleString('en-GB')],
+  ['s','silver',String(Math.floor(coins%10000/100)).padStart(2,'0')],
+  ['c','copper',String(coins%100).padStart(2,'0')]];
+ for(const [unit,metal,number] of units){
+  const part=el('span','gp-guide-denom gp-guide-denom-'+unit);
+  const icon=el('img');icon.src='./assets/gw2-'+metal+'-coin.png';
+  icon.alt='';icon.setAttribute('aria-hidden','true');icon.width=17;icon.height=17;
+  icon.decoding='async';icon.onerror=()=>{icon.hidden=true;};
+  add(part,el('span','gp-guide-coin-quantity',number),icon,el('span','gp-guide-unit',unit));
+  wrap.append(part);
+ }
+ return wrap;
+}
+function deliveryArtwork(){
+ // Use the verified Focus Edition total (coins + ALL current item asks).
+ // Never substitute the coin-only balance when an item quote is missing.
+ const source=$('focus-delivery-total')?.querySelector('.focus-money');
+ if(!source||!source.querySelector('.focus-money-part'))
+  return el('span','gp-guide-unverified','—');
+ const node=source.cloneNode(true);
+ node.classList.add('gp-guide-coinset');
+ node.setAttribute('aria-label',source.title||'Verified Delivery Box gross listing value');
+ for(const [i,part] of [...node.querySelectorAll('.focus-money-part')].entries()){
+  const unit=['g','s','c'][i];if(!unit)continue;
+  part.classList.add('gp-guide-denom','gp-guide-denom-'+unit);
+  const img=part.querySelector('img');
+  if(img){img.alt='';img.setAttribute('aria-hidden','true');img.onerror=()=>{img.hidden=true;};}
+  part.append(el('span','gp-guide-unit',unit));
+ }
+ return node;
+}
 function moneyMetric(title,value,detail){
- const item=el('div','gp-guide-metric');
- add(item,el('span','gp-guide-label',title),el('strong','gp-guide-number',value),el('small','gp-guide-muted',detail));
+ const item=el('div','gp-guide-metric'),number=el('strong','gp-guide-number');
+ if(value&&typeof value.nodeType==='number')number.append(value);
+ else number.textContent=String(value);
+ add(item,el('span','gp-guide-label',title),number,el('small','gp-guide-muted',detail));
  return item;
 }
 function renderTop(host,s){
@@ -101,15 +155,14 @@ function renderTop(host,s){
  const snap=snapshot(s),summary=s?.summary||{},day=root.PeanutCore?.ukDay?.(Date.now());
  const actual=day&&summary.days?.[day];
  const hasLedger=Number.isFinite(summary.totalRecords)||Number.isFinite(summary.weekP100);
- const today=hasLedger?coin(Number(actual?.p100||0)/100):'Not verified';
+ const today=hasLedger?coinArtwork(Number(actual?.p100||0)/100):coinArtwork(NaN);
  const grid=el('section','gp-guide-metrics');
- const value=$('focus-delivery-total')?.textContent?.trim()||coin(snap?.delivery?.coins);
- const delivery=moneyMetric('Delivery Box · combined value',value,'Coins and item sale references, not all spendable now');
+ const delivery=moneyMetric('Delivery Box · gross listing value',deliveryArtwork(),
+  'Coins + all item lowest sell asks · BEFORE Trading Post fees; not spendable gold');
  delivery.classList.add('gp-guide-delivery-summary');
- delivery.addEventListener('click',()=>advanced(false));
  add(grid,delivery,moneyMetric('Today · realised trading profit',today,'Completed, cost-matched trades only'),
-  moneyMetric('Wallet · available now',coin(snap?.wallet),'Excludes coins waiting in the Delivery Box'),
-  moneyMetric('Last 7 days · realised',Number.isFinite(summary.weekP100)?coin(summary.weekP100/100):'Not verified','Not projected future income'));
+  moneyMetric('Wallet · available now',coinArtwork(snap?.wallet),'Excludes coins waiting in the Delivery Box'),
+  moneyMetric('Last 7 days · realised',coinArtwork(Number.isFinite(summary.weekP100)?summary.weekP100/100:NaN),'Not projected future income'));
  host.append(grid);
  // Reuse the validated, item-specific valuation already rendered by Focus;
  // never recompute purchase cost or claim missing prices are known.
@@ -127,7 +180,8 @@ function renderTop(host,s){
 function buildIdea(host,s,rows,choice){
  const section=el('section','gp-guide-idea');
  const upper=el('div','gp-guide-idea-top');
- add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',choice?String(rows.filter(r=>!skipped.includes(r.id)).findIndex(r=>r.id===choice.id)+1)+' of '+rows.filter(r=>!skipped.includes(r.id)).length:'No eligible ideas'));
+ const position=choice?rows.findIndex(r=>r.id===choice.id):-1;
+ add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',position>=0?String(position+1)+' of '+rows.length:'No eligible ideas'));
  section.append(upper);
  if(!choice){
   add(section,el('h2','','Nothing reliable to recommend yet'),el('p','gp-guide-muted',rows.length&&skipped.length?'You have skipped the available ideas. Return to one when you are ready.':'The app is waiting for current account data and market evidence. It will not invent a trade to fill this card.'));
@@ -151,8 +205,8 @@ function buildIdea(host,s,rows,choice){
   }
   section.append(instructions);
   const totals=el('div','gp-guide-totals');
-  add(totals,moneyMetric(tier==='research'?'Net spread per item, if filled':tier==='forecast'?'Modelled 24h profit, uncertain':'Net profit if entire lot resells',coin(choice.profit),tier==='research'?'No quantity or future fill rate established':tier==='forecast'?'Not guaranteed or live-tested for accuracy':'Not an overnight profit prediction'),
-   moneyMetric(tier==='research'?'One-unit buy reference':'Gold needed',tier==='research'?coin(choice.buy):coin(choice.cost),tier==='forecast'?'Includes modelled fees/reserves':'Only consider buying with wallet funds'));
+  add(totals,moneyMetric(tier==='research'?'Net spread per item, if filled':tier==='forecast'?'Modelled 24h profit, uncertain':'Net profit if entire lot resells',coinArtwork(choice.profit),tier==='research'?'No quantity or future fill rate established':tier==='forecast'?'Not guaranteed or live-tested for accuracy':'Not an overnight profit prediction'),
+   moneyMetric(tier==='research'?'One-unit buy reference':'Gold needed',coinArtwork(tier==='research'?choice.buy:choice.cost),tier==='forecast'?'Includes modelled fees/reserves':'Only consider buying with wallet funds'));
   section.append(totals);
   let caution=tier==='research'?'Public bids/asks do not establish completed volume, fill speed or profitability.':
    tier==='history'?'Personal past completed buys and sells do not prove this lot will fill or resell tonight.':
@@ -168,9 +222,11 @@ function buildIdea(host,s,rows,choice){
  controls.firstChild.disabled=!history.length;
  section.append(controls);
  const second=el('div','gp-guide-secondary-row');
- add(second,button('Next idea →',next,'gp-guide-text'),button('Return to skipped ('+skipped.filter(id=>rows.some(x=>x.id===id)).length+')',returnSkipped,'gp-guide-text'));
- second.lastChild.disabled=!skipped.some(id=>rows.some(x=>x.id===id));
+ second.append(button(position===rows.length-1&&rows.length>0?'Start again ↻':'Next idea →',next,'gp-guide-text'));
+ const skippedCount=skipped.filter(id=>rows.some(x=>x.id===id)).length;
+ if(skippedCount)second.append(button('Review skipped ('+skippedCount+')',returnSkipped,'gp-guide-text'));
  section.append(second);
+ section.append(el('p','gp-guide-nav-note','Skip saves an idea for later. Previous still takes you back; the total number of ideas does not shrink.'));
  host.append(section);
 }
 function renderChartArea(host){

@@ -1730,7 +1730,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* Guided Peanut is an optional presentation-only layer. */
 (function(){
  const script=document.createElement('script');
- script.src='./guided-peanut.js?v=20261114-release';
+ script.src='./guided-peanut.js?v=20261114-nav-currency';
  script.async=true;
  document.head.append(script);
 })();
