@@ -34,7 +34,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
       GP_PROJECT_NAME: ${{ inputs.project_name }}
       GP_OPERATION: ${{ inputs.operation }}
-      GP_PREVIEW_BRANCH: golden-peanut-7-16-review
+      GP_PREVIEW_BRANCH: golden-peanut-guided-review
     steps:
       - name: Verify credentials and inspect existing Pages projects
         shell: bash
@@ -92,7 +92,7 @@ jobs:
         if: inputs.operation == 'preview'
         uses: actions/checkout@v4
         with:
-          ref: development/7.16-evidence-engine
+          ref: feat/guided-single-screen-exchange-ui
           persist-credentials: false
       - name: Validate application before preview
         if: inputs.operation == 'preview'

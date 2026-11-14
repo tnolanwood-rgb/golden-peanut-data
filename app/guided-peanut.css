@@ -1,0 +1,69 @@
+/* The Golden Exchange's calm one-screen interaction pattern, adapted to GW2. */
+.gp-guided-active{background:#0e1914!important;color:#f8f4e7!important}
+.gp-guided-active .app{max-width:780px;padding:0 12px 60px}
+.gp-guided-active .app>header.hero,.gp-guided-active .app>main,.gp-guided-active .focus-top,.gp-guided-active .focus-primary-nav,.gp-guided-active .app>.foot{display:none!important}
+.gp-guided-root[hidden],.gp-return-guided[hidden]{display:none!important}
+.gp-guided-root{display:block;margin:0 auto;max-width:760px;color:#f7f5e8;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+.gp-guide-content{display:flex;flex-direction:column;gap:16px;padding-bottom:40px}
+.gp-guide-header{padding:18px 14px 20px;background:linear-gradient(150deg,#1d382b,#14271e);border:1px solid #58705a;border-radius:0 0 18px 18px;display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px 12px;align-items:center}
+.gp-guide-logo{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;border:1px solid #b89c5a;background:#22392d;font-size:26px}
+.gp-guide-title h1{font:800 clamp(21px,4.6vw,30px)/1.2 system-ui,sans-serif;letter-spacing:-.035em;margin:0;color:#f2d593}
+.gp-guide-title p{margin:3px 0 0;font-size:13px}
+.gp-guide-head-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.gp-guide-head-actions button{flex:1;min-width:120px}
+.gp-guide-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.gp-guide-metric{min-width:0;min-height:100px;border:1px solid #46614d;background:#172a20;border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:8px}
+.gp-guide-label{color:#edce90;font-size:12px;font-weight:780;letter-spacing:.02em}
+.gp-guide-number{font-size:clamp(16px,3.8vw,23px);font-weight:800;overflow-wrap:anywhere;line-height:1.25;font-variant-numeric:tabular-nums;color:#f6efe0}
+.gp-guide-muted{font-size:12px;color:#bbd0c0;line-height:1.45}
+.gp-guide-metric small{font-size:11px;color:#abc1b0}
+.gp-guide-delivery-summary{grid-column:1/-1;min-height:90px;background:#1e3627;border-color:#86a16a}
+.gp-guide-update{margin:-5px 2px 0;color:#aebfac;font-size:12px;line-height:1.5}
+.gp-guide-idea{padding:22px 20px 18px;border:1px solid #5d765d;border-radius:17px;background:#172a20;box-shadow:0 12px 30px #0003;display:flex;flex-direction:column;gap:13px}
+.gp-guide-idea-top{display:flex;justify-content:space-between;gap:10px}
+.gp-guide-position{font-size:12px;color:#b7cbb9}
+.gp-guide-tier{color:#d7dbaa;background:#2a3b29;border-radius:8px;padding:7px 10px;font-size:12px;margin:0;align-self:start}
+.gp-guide-idea h2{font-size:clamp(25px,5.8vw,35px);margin:0;line-height:1.2;overflow-wrap:anywhere;font-weight:820;letter-spacing:-.03em}
+.gp-guide-item-icon{width:54px;height:54px;display:grid;place-items:center;background:#20392b;color:#eacb8e;border:1px solid #77926c;border-radius:12px;font-weight:800;font-size:26px}
+.gp-guide-item-icon img{width:100%;height:100%;object-fit:contain}
+.gp-guide-instructions{margin-top:4px}
+.gp-guide-instruction{font-size:clamp(21px,5vw,29px);font-weight:800;line-height:1.45;margin:0;color:#f8f0df}
+.gp-guide-instruction-sub{font-size:clamp(17px,4vw,22px);line-height:1.45;color:#e5d4ac;margin:9px 0 0}
+.gp-guide-totals{border-top:1px solid #506b53;border-bottom:1px solid #506b53;padding:14px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gp-guide-totals .gp-guide-metric{border:0;background:transparent;padding:6px 0;min-height:unset}
+.gp-guide-totals .gp-guide-number{color:#b6e6bc}
+.gp-guide-caution{font-size:13px;color:#d2c7a7;line-height:1.55;margin:0}
+.gp-guide-primary-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gp-guide-controls,.gp-guide-secondary-row{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.gp-guide-controls>*{flex:1}
+.gp-guide-button,.gp-guide-primary,.gp-guide-secondary,.gp-guide-light,.gp-guide-text,.gp-return-guided{min-height:46px;padding:12px 14px;border-radius:10px;font:740 14px/1.3 system-ui,sans-serif;cursor:pointer}
+.gp-guide-primary{border:1px solid #e8d5a2;background:#e5c580;color:#14281c}
+.gp-guide-secondary{border:1px solid #8b9d71;background:#274134;color:#f8f0de}
+.gp-guide-light{border:1px solid #56765a;background:#1e3428;color:#f3ebda}
+.gp-guide-text{border:1px solid transparent;background:transparent;color:#eacc8b;padding:8px}
+.gp-guide-primary:focus-visible,.gp-guide-secondary:focus-visible,.gp-guide-light:focus-visible,.gp-guide-text:focus-visible,.gp-return-guided:focus-visible{outline:3px solid #f4dbac;outline-offset:3px}
+.gp-guide-primary:disabled,.gp-guide-secondary:disabled,.gp-guide-light:disabled,.gp-guide-text:disabled{opacity:.43;cursor:default}
+.gp-guide-chart-section{background:#192c21;border:1px solid #55715b;border-radius:16px;padding:15px 13px}
+.gp-guide-chart-section[hidden]{display:none!important}
+.gp-guide-chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gp-guide-chart-head h2{margin:0;font-size:20px}
+.gp-guide-chart-controls{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.gp-guide-chart-controls button{min-height:42px;font-size:13px;padding:8px 10px}
+.gp-guide-chart-body{margin-top:14px;border-radius:12px;background:#112219;padding:8px;overflow-x:auto}
+.gp-guide-chart{width:100%;min-width:320px;height:auto;display:block}
+.gp-guide-chart-key{color:#d5ddb7;font-size:12px;white-space:pre-wrap;margin-top:6px}
+.gp-guide-foot{border-top:1px solid #3b5740;padding:12px 2px;text-align:center}
+.gp-guide-foot button{width:100%;margin-top:10px}
+.gp-return-guided{position:sticky;z-index:51;top:0;width:100%;background:#e8c783;border:2px solid #18291d;color:#14251b;box-shadow:0 5px 25px #0005}
+@media(max-width:390px){.gp-guided-active .app{padding:0 9px 55px}.gp-guide-header{padding:13px 12px}.gp-guide-idea{padding:18px 14px}.gp-guide-primary-row{grid-template-columns:1fr}.gp-guide-metrics{gap:7px}.gp-guide-metric{padding:11px}.gp-guide-number{font-size:16px}.gp-guide-controls button{font-size:13px;padding:10px 8px}}
+@media(prefers-reduced-motion:reduce){.gp-guided-root *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Collapsed, read-only Delivery Box item detail: matches existing verified value labels. */
+.gp-guide-delivery-drawer{border:1px solid #58745d;border-radius:13px;background:#172a20;margin-top:-6px;overflow:hidden}
+.gp-guide-delivery-drawer summary{padding:13px 15px;cursor:pointer;color:#f2d39a;font-size:14px;font-weight:750;min-height:47px}
+.gp-guide-delivery-drawer[open] summary{border-bottom:1px solid #3e6248}
+.gp-guide-delivery-list{padding:9px 14px;max-height:350px;overflow-y:auto;overscroll-behavior:contain}
+.gp-guide-delivery-list .focus-delivery-row{padding:9px 2px}
+.gp-guide-delivery-list .focus-delivery-label strong{font-size:13px;line-height:1.4}
+.gp-guide-delivery-list .focus-delivery-net,.gp-guide-delivery-list .focus-delivery-unpriced{font-size:12px}
+.gp-guide-delivery-list .focus-delivery-quantity{font-size:12px}
