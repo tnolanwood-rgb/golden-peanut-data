@@ -1,35 +1,32 @@
-# Golden Peanut Guided View — Exchange layout adaptation
+# Golden Peanut guided UI — source, defects and guarantees
 
-## Design intent
+## Confirmed root causes of the "18 of 35 / Review skipped (17)" screenshot
 
-This work adapts the user-tested single-screen pattern from the supplied *The Golden Exchange v4.0* source, **not** OSRS market calculations. It is a calmer, opt-out-by-choice presentation over the existing GW2 engine.
+1. Old `app/guided-peanut.js` saved skipped IDs in the unscoped browser key `gp-guided-skips-v1`, loaded them at startup, and displayed the count on every reload. Thus "Review skipped" was not necessarily work the user did that session.
+2. Live market research recomputed, filtered and sorted up to 35 suggestions repeatedly. The old view preserved only `current` item ID and then calculated `rows.findIndex(current)` in a newly ranked array. A card that was originally first could become "18 of 35" without any navigation click.
+3. The first repair corrected the Skip counter arithmetic, but not the live ranking race, persisted skip state, or browser-reload behaviour. Initial tests asserted only immediate button transitions.
 
-- One primary market idea visible at a time; large "Buy" and "Then sell" language.
-- Explicit cost and profit labels in GW2 gold/silver/copper, never OSRS GP.
-- Previous, Next and Skip (for this visit only). Previous revisits skipped ideas naturally; no separate skipped-bin or skipped IDs are stored. The deck starts at 1 of N after each page load.
-- A compact Delivery Box value, realised today/7-day profit, and wallet at the top.
-- An item-specific *public daily bid/ask snapshot* graph with zoom in/out, earlier/later and reset. Gaps in days are not interpolated. Missing chart data is disclosed, not synthesised.
-- One-tap return to the full Focus Edition (orders, broader discovery, legendaries, account configuration). The legacy UI and history stay intact.
-- System fonts, high contrast, generous line spacing, 44px+ tap targets, no animation required, narrow-phone wrapping.
+## Replacement navigation contract
 
-## Safety and semantics
+- `app/guided-deck.js` is a small pure state machine. There is no persistent skipped-item bin, nor any stored per-item progress.
+- On a fresh page load, the first visible idea is **1 of N**. Once displayed, its ID stays first while background discoveries are appended *behind* it, capped at 35. Background repricing does not silently replace the first idea.
+- The first explicit Next/Skip/Previous freezes the entire order and denominator for that page visit. Next goes to the next numbered idea; Previous goes to the immediately preceding numbered idea; Skip marks the current item only in memory and moves forward. Previous can always revisit it.
+- A final-card **Start again** or a clearly requested **Update idea list** adopts the current market ranking and resets to 1. Otherwise, new research cannot alter a browsing session's position or total.
+- If a formerly qualified item's current quote is missing or expired, the same numbered card shows a verification warning, not stale buy/sell prices. The user can use Next or Update idea list.
+- A reload starts a fresh deck. Account change resets the deck. The obsolete `gp-guided-skips-v1` UI key is deleted on startup; account keys, market ledgers, orders and IndexedDB are untouched.
+- Expanded Delivery Box details are preserved through background redraws. Guided values reuse the existing independently validated value and GW2 coin artwork.
+- Advanced mode remains available. No GW2 Trading Post orders are placed automatically.
 
-**Never combine evidence categories.** The guidance list orders: (1) execution-qualified forecasts with observed outcomes, (2) history-backed conditional lots *within verified wallet*, (3) single-unit public spread research with no proposed batch size. Unfunded or watch-only research is not framed as a buy order. Forecasts remain uncalibrated and are explicitly labelled. Every trade must be executed manually within Guild Wars 2. The guide does not write account keys, orders, learning evidence, ledger or IndexedDB.
+## Source and checks
 
-**Delivery Box** uses the same Focus Edition verified display. A combined quoted value is *not* spendable balance and never becomes realised profit. See the detailed view for the valuation coverage, line items and fees.
+- `app/guided-deck.js` — deterministic deck ordering, session navigation, explicit refresh.
+- `app/guided-peanut.js` — display controls, verified quote presentation and charts.
+- `app/guided-peanut.css` — responsive, high-contrast UI.
+- `tests/guided-deck.test.cjs` — pure state tests: late discovery, reordered research, expiry, account switch, reload, reset and skipped navigation.
+- `tests/browser.cjs` — assembled app with synthetic account/quote fixtures; assert ranking/reload behaviour, stale quote handling, charts, currency icons and advanced mode.
 
-Local browser preferences: \`gp-guided-mode-v1\` and \`gp-guided-skips-v1\` only. Mode defaults to guided unless explicitly set to advanced. The mode switch never changes app origin or account storage.
+Validation: `npm ci --ignore-scripts`, `python scripts/check_release.py`, `npm test`, `npm run test:browser` (Chromium required). Browser tests are not a substitute for physical Android WebView testing and do not establish real trading-profit accuracy.
 
-## Source
+## Evidence labelling
 
-- \`app/guided-peanut.js\`: guided navigation, evidence-aware presentation, public history chart
-- \`app/guided-peanut.css\`: mobile-first, responsive guided visual system
-- \`app/focus-edition.css\`: imports isolated guided CSS
-- \`app/focus-edition.js\`: loads isolated guided script after Focus Edition initialization
-- \`tests/browser.cjs\`: synthetic fixture assertions for skip/return, chart zoom and advanced escape
-
-## Validation and rollout
-
-Suggested local checks: \`npm ci --ignore-scripts\`, \`npm run check\`, \`npm test\`, \`npm run test:browser\` with Chromium installed. This branch's tests are additions, not proof of real financial returns or Android WebView behavior. Browser/device QA should test portrait, narrow 320px and landscape, stale/missing market history, cold startup, Android Back, account disconnection, chart fetch failure, skipped-items persistence, and old data restoration.
-
-Branch is intentionally based on \`fix/research-quote-headlines\` to retain the separate QH-001 quote safety fix. Do not merge, deploy or overwrite the active release simply to preview this UI. Its behavior must be independently reviewed in CI and on a test device.
+Forecasts with observed execution outcomes, historical conditional lot margins, and unverified public bid/ask spread research remain distinct. No public quoted spread is presented as guaranteed completed trade volume or guaranteed overnight profit. The existing GW2 trading intelligence, collector and account data are unmodified.
