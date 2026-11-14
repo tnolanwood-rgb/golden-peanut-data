@@ -58,9 +58,22 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
  assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
+ const counter=page.locator('.gp-guide-position');
+ const firstProgress=await counter.innerText();
+ const total=Number(firstProgress.match(/^1 of (\\d+)$/)?.[1]);
+ assert.ok(total>=2,'fixture offers at least two ideas');
  await page.getByRole('button',{name:'Skip · next →'}).click();
- await page.getByRole('button',{name:/Return to skipped/}).click();
+ assert.equal(await counter.innerText(),'2 of '+total,'skipping advances position without shrinking denominator');
+ assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true,'Previous works immediately after Skip');
+ assert.equal(await page.getByRole('button',{name:/Review skipped/}).count(),1,'skipped ideas stay available');
+ await page.getByRole('button',{name:'← Previous'}).click();
+ assert.equal(await counter.innerText(),'1 of '+total,'Previous returns to the same numbered position');
  assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea);
+ await page.getByRole('button',{name:'Next idea →'}).click();
+ assert.equal(await counter.innerText(),'2 of '+total,'Next advances without changing total');
+ await page.getByRole('button',{name:/Review skipped/}).click();
+ assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea,'skipped idea is recoverable');
+ assert.equal(await counter.innerText(),'1 of '+total,'returning to skipped restores its original position');
  await page.getByRole('button',{name:'View price chart'}).click();
  await page.waitForSelector('#gp-guide-chart-body svg',{timeout:15000});
  await page.getByRole('button',{name:'+ Zoom in'}).click();
@@ -119,6 +132,20 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    cost:v.rows.find(x=>x.id===301)?.purchaseCost,
    row302:v.rows.find(x=>x.id===302)?.profit};
  });
+ // Simple view must retain the official GW2 currency artwork, colours and explicit denomination letters.
+ await page.evaluate(()=>GPGuided.open());
+ const hero=page.locator('.gp-guide-delivery-summary .gp-guide-number');
+ assert.equal(await hero.locator('.gp-guide-denom').count(),3);
+ for(const [unit,metal] of [['g','gold'],['s','silver'],['c','copper']]){
+  const part=hero.locator('.gp-guide-denom-'+unit);
+  assert.equal(await part.locator('img[src*="gw2-'+metal+'-coin.png"]').count(),1,'official GW2 '+metal+' coin icon');
+  assert.equal(await part.locator('.gp-guide-unit').innerText(),unit,'visible '+unit+' denomination');
+ }
+ assert.deepEqual(await hero.locator('.gp-guide-denom').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).color)),
+  ['rgb(251, 209, 100)','rgb(216, 231, 237)','rgb(229, 163, 124)'],'use native GW2 gold, silver and copper colours');
+ assert.equal(await hero.locator('.gp-guide-coinset').getAttribute('aria-label'),expectedDelivery.label,
+  'simple view uses the existing verified gross Delivery Box total, not unverified coin-only balance');
+ await page.getByRole('button',{name:'⚙ Details'}).click();
  assert.equal(expectedDelivery.full,true,'all public sell listings should be valued');
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'coins plus full gross ask value, BEFORE listing and exchange fees');
