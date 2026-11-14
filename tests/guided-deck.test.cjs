@@ -3,12 +3,15 @@ const assert=require('node:assert/strict');
 const {create}=require('../app/guided-deck.js');
 const ids=(...numbers)=>numbers.map(id=>({id,buy:100,exit:200}));
 
-test('new page always starts at 1, even if the ranking arrives in multiple updates',()=>{
+test('initial card is never silently replaced by a newly ranked candidate',()=>{
  const d=create();
  assert.equal(d.view(ids(7,8),'acct').position,1);
- assert.equal(d.view(ids(6,7,8),'acct').position,1);
- assert.equal(d.view(ids(2,6,7,8),'acct').id,2);
+ assert.equal(d.view(ids(6,7,8),'acct').id,7);
+ assert.equal(d.view(ids(2,6,7,8),'acct').id,7);
  assert.equal(d.view(ids(2,6,7,8),'acct').total,4);
+ assert.equal(d.view(ids(2,6,8),'acct').id,7,'disappeared top idea does not silently jump to another name');
+ assert.equal(d.view(ids(2,6,8),'acct').unavailable,true,'missing quotes are withheld');
+ assert.equal(d.move(ids(2,6,8),'acct','restart').id,2,'explicit restart takes the latest ranked first result');
 });
 
 test('Next and Skip progress through one immutable deck; Previous goes to the immediately preceding item',()=>{
@@ -76,4 +79,15 @@ test('invalid and duplicate market IDs cannot corrupt the deck',()=>{
  const rows=[...ids(1,2,2,3),{id:NaN},{id:-1},{id:0},{id:1.5},null];
  assert.deepEqual([d.view(rows,'a').position,d.view(rows,'a').total],[1,3]);
  assert.equal(d.move(rows,'a','next').id,2);
+});
+
+test('unattended list growth is capped and never reorders the first visible idea',()=>{
+ const d=create();d.view(ids(5),'a');
+ const all=Array.from({length:500},(_,i)=>({id:i+1}));
+ const v=d.view(all,'a');
+ assert.equal(v.id,5);
+ assert.equal(v.total,35);
+ assert.ok(v.newIdeas>0,'extra discoveries wait for explicit refresh');
+ assert.equal(d.move(all,'a','next').total,35);
+ assert.equal(d.move(all,'a','previous').id,5);
 });
