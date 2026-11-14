@@ -60,7 +60,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  const counter=page.locator('.gp-guide-position');
  const firstProgress=await counter.innerText();
- const total=Number(firstProgress.match(/^1 of (\\d+)$/)?.[1]);
+ const total=Number(firstProgress.match(/^1 of (\d+)$/)?.[1]);
  assert.ok(total>=2,'fixture offers at least two ideas');
  await page.getByRole('button',{name:'Skip · next →'}).click();
  assert.equal(await counter.innerText(),'2 of '+total,'skipping advances position without shrinking denominator');
