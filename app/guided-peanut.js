@@ -206,6 +206,7 @@ function drawChart(){
  if(sample.length<2){mount.append(el('p','gp-guide-muted','Not enough observations at this zoom level.'));return;}
  const minimum=Math.min(...sample.map(r=>Math.min(r[1],r[2]))),maximum=Math.max(...sample.map(r=>Math.max(r[1],r[2])));
  const pad=Math.max(1,(maximum-minimum)*.07),low=Math.max(0,minimum-pad),high=maximum+pad,span=Math.max(1,high-low);
+ const chartPrice=v=>v>=10000?(v/10000).toFixed(v>=100000?0:2)+'g':v>=100?(v/100).toFixed(1)+'s':Math.round(v)+'c';
  const start=sample[0][0],end=sample[sample.length-1][0],x=r=>58+(r[0]-start)/Math.max(1,end-start)*544;
  const y=v=>155-(v-low)/span*132;
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 640 210');svg.setAttribute('class','gp-guide-chart');svg.setAttribute('role','img');svg.setAttribute('aria-label','Historical daily public bid and ask snapshots. Use zoom and earlier or later buttons to move around.');
@@ -215,7 +216,7 @@ function drawChart(){
  for(let i=0;i<3;i++){const yy=28+i*63;line('M58 '+yy+' H602','#345344',1);}
  const path=index=>sample.map((r,i)=>((i&&r[0]-sample[i-1][0]>1)?'M':i?'L':'M')+x(r).toFixed(2)+' '+y(r[index]).toFixed(2)).join(' ');
  line(path(1),'#9ce1b4',3);line(path(2),'#eac77e',3);
- svgText(6,35,coin(high).split(' ')[0]);svgText(6,165,coin(low).split(' ')[0]);
+ svgText(5,35,chartPrice(high));svgText(5,165,chartPrice(low));
  svgText(58,199,new Date(start*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}));
  svgText(602,199,new Date(end*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}),'end');
  mount.append(svg,el('div','gp-guide-chart-key','● Bid reference (green)     ● Ask reference (gold)'));
