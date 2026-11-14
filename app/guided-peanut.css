@@ -57,3 +57,13 @@
 .gp-return-guided{position:sticky;z-index:51;top:0;width:100%;background:#e8c783;border:2px solid #18291d;color:#14251b;box-shadow:0 5px 25px #0005}
 @media(max-width:390px){.gp-guided-active .app{padding:0 9px 55px}.gp-guide-header{padding:13px 12px}.gp-guide-idea{padding:18px 14px}.gp-guide-primary-row{grid-template-columns:1fr}.gp-guide-metrics{gap:7px}.gp-guide-metric{padding:11px}.gp-guide-number{font-size:16px}.gp-guide-controls button{font-size:13px;padding:10px 8px}}
 @media(prefers-reduced-motion:reduce){.gp-guided-root *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Collapsed, read-only Delivery Box item detail: matches existing verified value labels. */
+.gp-guide-delivery-drawer{border:1px solid #58745d;border-radius:13px;background:#172a20;margin-top:-6px;overflow:hidden}
+.gp-guide-delivery-drawer summary{padding:13px 15px;cursor:pointer;color:#f2d39a;font-size:14px;font-weight:750;min-height:47px}
+.gp-guide-delivery-drawer[open] summary{border-bottom:1px solid #3e6248}
+.gp-guide-delivery-list{padding:9px 14px;max-height:350px;overflow-y:auto;overscroll-behavior:contain}
+.gp-guide-delivery-list .focus-delivery-row{padding:9px 2px}
+.gp-guide-delivery-list .focus-delivery-label strong{font-size:13px;line-height:1.4}
+.gp-guide-delivery-list .focus-delivery-net,.gp-guide-delivery-list .focus-delivery-unpriced{font-size:12px}
+.gp-guide-delivery-list .focus-delivery-quantity{font-size:12px}
