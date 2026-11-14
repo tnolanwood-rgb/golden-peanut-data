@@ -48,28 +48,40 @@ function ideas(s){
  return out;
 }
 function getCurrent(rows){
- const available=rows.filter(r=>!skipped.includes(r.id));
- if(!available.length)return null;
- return available.find(r=>r.id===current)||available[0];
+ // Skipping defers an idea; it must not remove a numbered position from the deck.
+ // The full list defines the stable "1 of N" count for this review session.
+ return rows.find(r=>r.id===current)||rows[0]||null;
 }
 function setCurrent(id){current=id;priceChart=null;chartOpen=false;chartDays=21;chartOffset=0;}
 function next(){
- const rows=ideas(root.GoldenPeanutClean?.State),available=rows.filter(r=>!skipped.includes(r.id));
- if(!available.length){setCurrent(null);render(true);return;}
- const index=available.findIndex(r=>r.id===current);
- if(index>=0)history.push(current);
- setCurrent(available[(index+1)%available.length].id);render(true);
+ const rows=ideas(root.GoldenPeanutClean?.State);
+ if(!rows.length){setCurrent(null);render(true);return;}
+ const index=rows.findIndex(r=>r.id===current);
+ if(index>=0){history.push(current);if(history.length>150)history.shift();}
+ // Explicit wrap: the final card offers "Start again", not a shrinking queue.
+ setCurrent(rows[(index+1)%rows.length].id);
+ render(true);
 }
 function previous(){
  while(history.length){const id=history.pop();if(ideas(root.GoldenPeanutClean?.State).some(x=>x.id===id)){setCurrent(id);render(true);return;}}
 }
 function skip(){
- if(current!==null&&!skipped.includes(current)){skipped.push(current);skipped=skipped.slice(-100);save(SKIPS,JSON.stringify(skipped));}
- setCurrent(null);render(true);
+ if(current!==null&&!skipped.includes(current)){
+  skipped.push(current);skipped=skipped.slice(-100);save(SKIPS,JSON.stringify(skipped));
+ }
+ // Take the exact same navigation path as Next; Previous must work after Skip.
+ next();
 }
 function returnSkipped(){
  const rows=ideas(root.GoldenPeanutClean?.State);
- while(skipped.length){const id=skipped.pop();if(rows.some(x=>x.id===id)){save(SKIPS,JSON.stringify(skipped));setCurrent(id);render(true);return;}}
+ while(skipped.length){
+  const id=skipped.pop();
+  if(rows.some(x=>x.id===id)){
+   if(current!==null&&current!==id){history.push(current);if(history.length>150)history.shift();}
+   save(SKIPS,JSON.stringify(skipped));
+   setCurrent(id);render(true);return;
+  }
+ }
  save(SKIPS,'[]');render(true);
 }
 function guided(enabled){
@@ -127,7 +139,8 @@ function renderTop(host,s){
 function buildIdea(host,s,rows,choice){
  const section=el('section','gp-guide-idea');
  const upper=el('div','gp-guide-idea-top');
- add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',choice?String(rows.filter(r=>!skipped.includes(r.id)).findIndex(r=>r.id===choice.id)+1)+' of '+rows.filter(r=>!skipped.includes(r.id)).length:'No eligible ideas'));
+ const position=choice?rows.findIndex(r=>r.id===choice.id):-1;
+ add(upper,el('span','gp-guide-label','NEXT TRADE IDEA'),el('span','gp-guide-position',position>=0?String(position+1)+' of '+rows.length:'No eligible ideas'));
  section.append(upper);
  if(!choice){
   add(section,el('h2','','Nothing reliable to recommend yet'),el('p','gp-guide-muted',rows.length&&skipped.length?'You have skipped the available ideas. Return to one when you are ready.':'The app is waiting for current account data and market evidence. It will not invent a trade to fill this card.'));
@@ -168,7 +181,7 @@ function buildIdea(host,s,rows,choice){
  controls.firstChild.disabled=!history.length;
  section.append(controls);
  const second=el('div','gp-guide-secondary-row');
- add(second,button('Next idea →',next,'gp-guide-text'),button('Return to skipped ('+skipped.filter(id=>rows.some(x=>x.id===id)).length+')',returnSkipped,'gp-guide-text'));
+ add(second,button(position===rows.length-1&&rows.length>0?'Start again ↻':'Next idea →',next,'gp-guide-text'),button('Return to skipped ('+skipped.filter(id=>rows.some(x=>x.id===id)).length+')',returnSkipped,'gp-guide-text'));
  second.lastChild.disabled=!skipped.some(id=>rows.some(x=>x.id===id));
  section.append(second);
  host.append(section);
