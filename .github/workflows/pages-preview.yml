@@ -92,7 +92,7 @@ jobs:
         if: inputs.operation == 'preview'
         uses: actions/checkout@v4
         with:
-          ref: development/7.16-evidence-engine
+          ref: feat/guided-single-screen-exchange-ui
           persist-credentials: false
       - name: Validate application before preview
         if: inputs.operation == 'preview'
