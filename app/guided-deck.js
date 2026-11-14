@@ -24,11 +24,24 @@ function create(){
   const accountValue=String(accountId||'');
   if(account!==accountValue){account=accountValue;reset();}
   const latest=uniqueIds(rows);
-  if(!started){deck=latest;position=0;skipped.clear();}
+  if(!started){
+   // Keep the first idea the user actually saw, even when the background
+   // researcher changes its top-ranked candidate before any taps.
+   // Append newcomers in discovery order; never silently reorder or remove.
+   if(!deck.length)deck=latest.slice(0,35);
+   else{
+    const seen=new Set(deck);
+    for(const id of latest){
+     if(deck.length>=35)break;
+     if(!seen.has(id)){deck.push(id);seen.add(id);}
+    }
+   }
+   position=0;skipped.clear();
+  }
   if(position>=deck.length)position=Math.max(0,deck.length-1);
   const id=deck[position]??null;
   const item=(Array.isArray(rows)?rows:[]).find(r=>r?.id===id)||null;
-  const additions=started?latest.filter(id=>!deck.includes(id)).length:0;
+  const additions=latest.filter(id=>!deck.includes(id)).length;
   return Object.freeze({id,position:id?position+1:0,total:deck.length,
    item,unavailable:id!==null&&!item,started,skipped:skipped.has(id),
    newIdeas:additions,canPrevious:position>0,canNext:deck.length>0&&position<deck.length-1});
