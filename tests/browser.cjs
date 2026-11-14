@@ -58,6 +58,19 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
  assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
+ // The first visible card must not change while the researcher asynchronously
+ // swaps priorities, even before the user presses Next or Skip.
+ await page.evaluate(()=>{
+  const original=GPMarketBoard.build;
+  GPMarketBoard.build=(...args)=>{
+   const b=original(...args);
+   return {...b,forecast:[...b.forecast].reverse(),history:[...b.history].reverse(),newMarkets:[...b.newMarkets].reverse()};
+  };
+  GPGuided.render();
+  GPMarketBoard.build=original;
+ });
+ assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea,
+  'background ranking must not silently change the initial visible item');
  const counter=page.locator('.gp-guide-position');
  const firstProgress=await counter.innerText();
  const total=Number(firstProgress.match(/^1 of (\d+)$/)?.[1]);
