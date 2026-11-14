@@ -1726,3 +1726,11 @@ function schedule(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })(typeof globalThis!=='undefined'?globalThis:this);
+
+/* Load the optional guided interface after Focus Edition has initialised. */
+(function(){
+ const script=document.createElement('script');
+ script.src='./guided-peanut.js?v=20261114-guided';
+ script.async=true;
+ document.head.append(script);
+})();
