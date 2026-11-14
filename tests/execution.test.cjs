@@ -115,3 +115,37 @@ test('family exploration enumerates catalogue keys a bounded number of times wit
  assert.ok(enumerations<=3,'catalogue enumerated '+enumerations+' times');
  assert.deepEqual(Array.from(c.GPOpportunity.equipmentVariantSeeds({markets:new Map()},metadata,3,1)),[4,5,6]);
 });
+test('one partial resale is not completion of the proposed round',()=>{
+ const partial=samples.map(s=>({...s,acquired:5,sold:1,listed:5}));
+ const f=E.forecast({...args,samples:partial});
+ assert.equal(f.saleProbability,1);assert.equal(f.buyProbability,1);
+ assert.equal(f.acquisitionCompletionProbability,1);assert.equal(f.roundProbability,0);
+ assert.equal(f.maximumMarketCapacity,null);
+});
+test('conflicting duplicate outcomes cannot choose the first winner or inflate confidence',()=>{
+ const bad={...samples[1],acquired:0,sold:0,listed:0,profit:0};
+ for(const rows of [[...samples,bad],[bad,...samples]]){
+  const f=E.forecast({...args,samples:rows});assert.equal(f.status,'research');assert.match(f.reason,/conflicting/i);
+ }
+});
+test('absolute net profit ranking respects resale bottlenecks and one wallet',()=>{
+ const market=(item,quantity,sold,buy,exit)=>E.forecast({item,quantity,buy,exit,now:NOW,stable:true,
+  samples:samples.map(s=>({...s,item,offered:quantity,acquired:quantity,sold,listed:quantity,buy,exit}))});
+ const high=market(1,1,1,1000,2000),volume=market(2,100,100,100,130),bottleneck=market(3,100,1,100,130);
+ assert.ok(volume.expectedProfit>high.expectedProfit);assert.ok(bottleneck.expectedProfit<high.expectedProfit);
+ const p=E.allocate([high,volume,bottleneck],volume.cost+high.cost);
+ assert.deepEqual(p.orders.map(o=>o.item),[2,1]);assert.equal(p.spent,volume.cost+high.cost);
+ assert.equal(p.unallocated,0);
+});
+test('duplicate held-out windows cannot inflate evaluation counts or metrics',()=>{
+ const rows=Array.from({length:20},(_,i)=>sample(i,{start:NOW-(23-i)*DAY,end:NOW-(22-i)*DAY,knownAt:NOW-(22-i)*DAY+1000}));
+ const a=E.backtest({samples:rows},NOW),b=E.backtest({samples:[...rows,...rows]},NOW);
+ assert.deepEqual(b,a);
+});
+test('conflicting backup outcomes are censored rather than picking an arbitrary winner',()=>{
+ const a=sample(1),b={...a,acquired:0,sold:0,listed:0,profit:0};
+ for(const [local,backup] of [[a,b],[b,a]]){
+  const merged=E.mergeLearning({samples:[local]},{samples:[backup]});
+  assert.equal(merged.samples.length,0);assert.equal(merged.cohorts[0].status,'censored');
+ }
+});

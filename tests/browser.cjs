@@ -278,6 +278,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  // Names are coloured from verified item rarity, not guessed from item names.
  assert.equal(await page.locator('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic').count(),1);
+ // Background evidence may repaint the row between locator resolution and
+ // evaluation. Check the current attached node, never a detached old element.
  const namedColor=await (await page.waitForFunction(()=>{
   const el=document.querySelector('#focus-best-rows .focus-top-research-row[data-market-id="301"] .gp-rarity-exotic');
   const color=el&&getComputedStyle(el).color;return color==='rgb(255, 164, 5)'?color:false;
@@ -330,6 +332,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.locator('#focus-best-rows [data-section-id="exotic-armour"] .focus-connected-market').first().click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/Bid reference/);
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'1');
+ assert.equal(await page.locator('#focus-trade-detail .focus-competitive-evidence').count(),1);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Competitive acquisition and resale forecasts: unknown/);
+
  // History was pushed by the actual item tap; the Android-equivalent browser
  // Back must return to the in-app list, not navigate out of our app.
  assert.ok((await page.evaluate(()=>history.state?.gpIndex))>0);
@@ -380,7 +385,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.locator('#focus-best-rows .focus-connected-market[data-market-tier="public-unverified"]').filter({hasText:'Dire Pearl Reaver'}).click();
  assert.match(await page.locator('#focus-trade-detail').innerText(),/HOW MUCH COULD FILL & RESELL/);
  const qtyPicker=page.locator('#focus-trade-detail .focus-capacity-select');
- await qtyPicker.selectOption('50');
+ await qtyPicker.fill('10000');await qtyPicker.dispatchEvent('change');
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-overview').innerText(),/Gold required IF order placed/);
+ assert.match(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/forecasts: unknown/);
+ await qtyPicker.fill('50');await qtyPicker.dispatchEvent('change');
  assert.match(await page.locator('#focus-trade-detail .focus-capacity-overview').innerText(),/Gold required IF order placed/);
  const capacityDiagnostic=await page.evaluate(()=>{
   const st=GoldenPeanutClean.State;
@@ -399,6 +407,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.doesNotMatch(await page.locator('#focus-trade-detail .focus-capacity-explorer').innerText(),/NaN|undefined/);
  await page.evaluate(()=>GPFocus.render());
  assert.equal(await page.locator('#focus-trade-detail .focus-capacity-select').inputValue(),'50');
+ assert.equal(await page.locator('#focus-trade-detail .focus-competitive-evidence').count(),1);
+ assert.match(await page.locator('#focus-trade-detail').innerText(),/Competitive acquisition and resale forecasts: unknown/);
  await page.evaluate(()=>{const s=GoldenPeanutClean.State;
   s.opportunityPlan.marketChoices=[];s.opportunityPlan.publicResearch=[];
   GPFocus.goto('today');GPFocus.render();

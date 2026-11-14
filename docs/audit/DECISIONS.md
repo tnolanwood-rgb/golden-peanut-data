@@ -46,4 +46,38 @@
 - D013: prioritise bounded enumeration fix discovered during rotation replay;
   prove identical IDs/order and benchmark the same fixture, not synthetic live returns.
 
-QH-001: a public quotation does not establish a purchase quantity. Remove list-wide what-if multiplication instead of hiding expensive items or silently capping their alleged liquidity. Keep complete searchable research and explicit individual hypothetical calculations. Isolate from unfinished PR31 for safe review/release.
+- **D014 / CE-001:** distinguish sampled endpoint positioning from continuous
+  exposure. Outbid, stale, gapped, repriced, conflicting and overlapping intervals
+  cannot support a competitive rate. An exact leading quote proves no queue rank.
+  Report near-leading tolerance separately; a positive bid difference is outbid.
+- **D015 / CE-001:** fully consumed lots provide verified acquisition lower bounds,
+  never capacity ceilings. Match actual ledger records; disappearance alone is
+  censored. Retain informative competitive zeros and deduplicate observations.
+- **D016 / staged repair:** remove unsupported unpriced-night research overrides,
+  but never promote sampled rates into acquisition/resale probabilities. Maintenance
+  scenarios stay unknown until separate supported evidence exists. A complete new
+  forecasting model and walk-forward proof are explicitly deferred to CE-003/004.
+
+- **D017 CE-002:** stable daily cohort (200 buy orders) with persisted rotation is
+  preferable to rotating every 30-minute poll, which would leave no adjacent samples
+  for large books. Coverage remains explicit; no family/name filter. Store a single
+  JSON batch per poll to avoid undoing D1 unchanged-order write reductions.
+- **D018 CE-002:** use existing account config storage in item/day shards, keeping
+  backup compatibility and avoiding an IndexedDB version migration. Atomic cursor
+  and evidence writes permit safe replay. Recent 90-day / 10,000-sample detail reads
+  are explicitly partial; no stored evidence is deleted. Model use of partial reads
+  is disabled rather than manufacturing complete exposure.
+
+- **D019:** historical-practice references should be invariant to inactivity alone.
+  Keep age warnings and fresh-quote requirements; no arbitrary shrinking or expansion
+  based on time away. Fresh execution outcomes, not login assumptions, must change
+  competitive forecasts. Exact-lot funded engine remains unchanged pending CE-003c.
+- **D020:** separate a user-selected hypothetical total from a TP stack and from
+  maximum market capacity. Numeric research input supports multiple orders; preserve
+  per-stack rounded fees and safe-integer arithmetic. Maximum capacity remains unknown.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+D021: any sale is distinct from full round completion. Preserve exact-lot observed-practice baseline and unknown maximum capacity. Conflicting same-version outcomes are censored; never choose profitable first record. Deduplicate evaluation units independently of training deduplication.

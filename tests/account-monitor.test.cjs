@@ -42,7 +42,7 @@ test('private monitor diagnostics probes only public GW2 API without credentials
 });
 test('private account endpoints cannot be read or enrolled without a GW2 credential',async()=>{
  const {default:worker}=await moduleTask;
- for(const [route,method] of [['/events','GET'],['/status','GET'],['/nights?item=902','GET'],['/enroll','POST'],['/disable','POST']]){
+ for(const [route,method] of [['/events','GET'],['/exposure','GET'],['/status','GET'],['/nights?item=902','GET'],['/enroll','POST'],['/disable','POST']]){
   const r=await worker.fetch(req(route,method),{},{});
   assert.equal(r.status,401,'unguarded private route: '+route);
   assert.equal(r.headers.get('cache-control'),'no-store');
@@ -199,4 +199,24 @@ test('monitor reload recovers server connection only when earlier opt-in evidenc
  assert.equal(writes,1);
  assert.equal(ctx.GPCloudAccount.status(state.account).enabled,true);
  assert.equal(ctx.GPCloudAccount.status(state.account).status.backend,'github-actions');
+});
+
+test('priced exposure relay scopes authenticated reads and preserves bounded cursor pages',async()=>{
+ const {default:worker}=await moduleTask,queries=[];
+ const batch={version:1,observations:[{order:1,item:101,at:10,remaining:50,price:100,bestBuy:110,bestSell:200,quoteAt:10}],coverage:{completeOrders:false}};
+ const env={DB:{prepare(sql){return {bind(...params){this.params=params;return this;},
+  async first(){return sql.includes('sqlite_master')?{name:'gp_monitor_exposure'}:{account_id:'private-a',account_name:'Fixture.1234',enabled:1,encrypted:null};},
+  async all(){queries.push({sql,params:this.params});return {results:[{id:11,observed_at:10,payload:JSON.stringify(batch)}]};}};}}};
+ const headers={Origin:origin,Authorization:'Bearer '+key};
+ const r=await worker.fetch(req('/exposure?after=10','GET',headers),env,{}),v=await r.json();
+ assert.equal(r.status,200);assert.equal(v.account,'Fixture.1234');assert.equal(v.nextCursor,11);assert.equal(v.hasMore,false);
+ assert.equal(v.batches[0].observations[0].bestBuy,110);assert.equal(v.batches[0].coverage.completeOrders,false);
+ assert.deepEqual(queries[0].params,['private-a',10]);assert.match(queries[0].sql,/account_id=\? AND id>\?.*LIMIT 5/);
+ for(const bad of ['-1','NaN','1.5','9007199254740992'])assert.equal((await worker.fetch(req('/exposure?after='+bad,'GET',headers),env,{})).status,400);
+});
+test('missing exposure migration is explicitly unsupported without losing existing monitoring',async()=>{
+ const {default:worker}=await moduleTask;
+ const env={DB:{prepare(sql){return {bind(){return this;},async first(){return sql.includes('sqlite_master')?null:{account_id:'a',account_name:'Fixture.1234',enabled:1};}};}}};
+ const r=await worker.fetch(req('/exposure','GET',{Origin:origin,Authorization:'Bearer '+key}),env,{}),v=await r.json();
+ assert.equal(r.status,200);assert.equal(v.supported,false);assert.equal(v.reason,'schema-migration-required');assert.equal(v.nextCursor,0);
 });

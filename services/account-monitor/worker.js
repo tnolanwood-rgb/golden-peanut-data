@@ -253,7 +253,7 @@ async function handle(request,env,ctx){
   return response(request,200,{ok:true,dbReady:health.dbReady,keyReady:health.keyReady,
    guildWars2ApiReachable:gw2Ready,gw2Status});
  }
- if(!['/enroll','/status','/events','/nights','/disable'].includes(pathname))return response(request,404,{ok:false});
+ if(!['/enroll','/status','/events','/nights','/exposure','/disable'].includes(pathname))return response(request,404,{ok:false});
  const key=accessKey(request);if(!key)return response(request,401,{ok:false,error:'A connected tradingpost API key is required'});
  if(pathname==='/enroll'&&request.method==='POST'){
   const requestBody=await request.json().catch(()=>null);
@@ -298,6 +298,19 @@ async function handle(request,env,ctx){
  const credentials=await env.DB.prepare('SELECT account_id,account_name,last_polled_at,last_success_at,last_error,consecutive_failures,enabled,encrypted FROM gp_monitor_credentials WHERE token_digest=?')
   .bind(tokenDigest).first();
  if(!credentials||credentials.enabled!==1)return response(request,404,{ok:false,error:'Background monitoring is not enrolled'});
+ if(pathname==='/exposure'&&request.method==='GET'){
+  const cursor=Number(url.searchParams.get('after')||0);
+  if(!Number.isSafeInteger(cursor)||cursor<0)return response(request,400,{ok:false,error:'Invalid exposure cursor'});
+  const exists=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gp_monitor_exposure'").first();
+  if(!exists)return response(request,200,{ok:true,account:credentials.account_name,supported:false,reason:'schema-migration-required',batches:[],nextCursor:cursor,hasMore:false});
+  const result=await env.DB.prepare('SELECT id,observed_at,payload FROM gp_monitor_exposure WHERE account_id=? AND id>? ORDER BY id LIMIT 5')
+   .bind(credentials.account_id,cursor).all();
+  const rows=result.results||[];
+  return response(request,200,{ok:true,account:credentials.account_name,supported:true,
+   collector:credentials.encrypted===null?'github-actions':'worker-unpriced',
+   batches:rows.map(x=>({id:x.id,at:x.observed_at,...JSON.parse(x.payload)})),
+   nextCursor:rows.at(-1)?.id||cursor,hasMore:rows.length===5});
+ }
  if(pathname==='/status'&&request.method==='GET'){
   const [buys,sells,trades,nights]=await Promise.all([
    env.DB.prepare("SELECT COUNT(*) as n FROM gp_monitor_orders WHERE account_id=? AND side='buys' AND closed_at IS NULL").bind(credentials.account_id).first(),
@@ -315,6 +328,7 @@ async function handle(request,env,ctx){
   // Explicit user's erasure request: remove credential AND all private cloud
   // observations, without touching browser IndexedDB or public market tables.
   const account=credentials.account_id;
+  const exposureExists=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gp_monitor_exposure'").first();
   await env.DB.batch([
    env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_events WHERE account_id=?').bind(account),
@@ -322,6 +336,7 @@ async function handle(request,env,ctx){
    env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=?').bind(account),
+   ...(exposureExists?[env.DB.prepare('DELETE FROM gp_monitor_exposure WHERE account_id=?').bind(account)]:[]),
    // GitHub Actions must retain only an inactive salted-key digest tombstone
    // so the scheduler NEVER recreates a user-deleted account next time. This
    // is not the API key and cannot be used to access ArenaNet.

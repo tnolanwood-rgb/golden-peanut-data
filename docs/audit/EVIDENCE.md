@@ -225,4 +225,133 @@ runs on 1000 same-family rows: median 10.796ms before, 1.528ms after; exact same
 asserted every run. Engine microbenchmark only, not a physical Android speed claim.
 User reports 3% allowance: stop here, next P4-002. No deployment or private writes.
 
-QH-001: python scripts/audit_baseline.py passed at 710007c (79 JS,34 Python, source/workflows, desktop1440x1000/mobile390x844). QH-001-baseline.json records exact commands. Dirty flag only node_modules symlink, removed after tests. Synthetic screenshot fixture starts saved global250;17000001-copper footwear is Outside wallet, no bulk figure or forecast. Initial test fixture reused an existing ID; corrected to6199, retaining original wide-spread fixture. No live accuracy or deployment claim.
+## CE-001 — competitive evidence foundation (2026-11-08)
+
+Baseline main `0aae3f1`; implementation
+`ef7f27c29aee7d983e46155e2fa7e0ff4332f915`. Clean implementation command:
+`python scripts/audit_baseline.py` — all stages VERIFIED: 32 source JS programs,
+34 Python tests, 94 JavaScript tests including 18 new exposure cases, assembled
+Chromium at 1440x1000 and 390x844. CE-001-baseline.json records exact commands,
+runtimes and conditions. Existing realised-profit/Delivery Box assertions remain
+unchanged and pass; this does not complete the independent accounting oracle.
+
+Deterministic replay (no account data):
+```sh
+git show 0aae3f1:app/capacity-intelligence.js > /tmp/ce-old.cjs
+node scripts/audit_competitive.cjs /tmp/ce-old.cjs
+node scripts/audit_competitive.cjs
+```
+CE-001-comparison.json: adding six unpriced zero-fill nights previously changed a
+four-unit conditional 24h acquisition reference to zero. Repaired source preserves
+four, while expected profit remains unknown. This is removal of an unsupported
+override, not proof that four is achievable capacity. Research ranking regression
+also proves unpriced nights do not change rank. No new funded allocation or live
+forecast calibration improvement established. Legacy quantity caps remain CE-003.
+
+New tests exercise 50-unit orders with two fills while outbid versus competitive,
+small full lots, inactivity/gaps, repricing/price moves, overlapping orders,
+cancellations/replacements, explicit unknown forecasts, deduplication/account
+isolation, future quote exclusion and foreground persistence. Details and remaining
+acceptance gaps: COMPETITIVE-REPAIR.md.
+
+Read-only production baseline before edits: HTML, execution-engine.js,
+opportunity-engine.js, capacity-intelligence.js and market-board.js matched main
+0aae3f1 bytes. PR #30 merged upstream; CE-001 is NOT deployed. Remote CI for the
+new repair branch must be checked separately; no private D1 readback, historical
+backtest calibration or physical S23 evidence obtained in this batch.
+
+Delivery: draft [PR #31](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/31)
+opened from pushed branch audit/competitive-exposure. Checkpoint dfc2db1 plus this
+PR-reference documentation update. Remote CI is pending, not reported as passed.
+
+CE-002a (2026-11-08): bounded priced background collector and authenticated relay
+implemented. Synthetic SQLite/HTTP tests: `python -m unittest discover -s tests
+-p 'test_*collector.py' -q` passed 37 tests. `node --test
+tests/account-monitor.test.cjs` and `python scripts/check_release.py` passed.
+Coverage includes 401-order rotation, stable intraday cohorts, partial/missing
+quotes, idempotency, cancellation uncertainty, cache age, D1 write failure,
+public 503 retry bounds and authenticated account/cursor scoping. One JSON insert
+per poll, up to 200 current plus 200 absent sampled orders; actual D1 write billing
+not measured. Migration absence is explicit. No private/live D1 test performed.
+Prior PR #31 head 4f22f02 CI 42429705868 completed successfully.
+CE-002b app import/storage is still IN PROGRESS; CE-002 is not yet complete.
+
+## CE-002 — integrated priced background evidence (2026-11-08)
+
+Clean implementation `11f556619b7da859e51ffac5610e9efb11f3d6a0`:
+`python scripts/audit_baseline.py` passes all four stages. Exact commands/runtime
+and conditions: CE-002-baseline.json. Python 41 tests; JavaScript includes two
+new import validation/failure tests and two private endpoint tests. Original
+assembled 1440x1000/390x844 checks pass unchanged, including accounting/Delivery Box.
+
+`node tests/competitive-browser.cjs` runs actual Python collector against synthetic
+SQLite via `tests/competitive_fixture.py`, relays generated payloads through the
+actual Worker, imports over mocked HTTP through the actual account client into real
+Chromium IndexedDB. Two snapshots produce 0.5 sampled outbid hours, zero competitive
+hours, two verified acquired units and unknown expected acquisition. Repeating the
+refresh leaves two snapshots/cursor 2. Concurrent additions retain both; injected
+transaction failure saves neither new evidence nor cursor 99. Backup restore unions
+records; legacy data survives migration; a 10,001-sample shard retains all records
+while the detail read is explicitly capped at 10,000. Tests are synthetic; external
+network is intercepted. No live D1 write/readback or improved calibration proved.
+
+Run browser/baseline commands with the environment's network permission for local
+servers and child processes; restricted execution yielded EPERM on child spawn.
+Direct Node test execution and the permitted full baseline were both checked.
+Deployment is pending; no release-request files touched. Prior remote CI at 4f22f02
+passed run 42429705868, but the latest implementation's remote CI remains unchecked.
+
+## CE-003a and CE-003b1 (2026-11-08)
+
+Main advanced to 4b8bd13; merge 01b7c86 resolved only HTML script list and npm test
+list conflicts by retaining both upstream startup changes and exposure work.
+Read-only live HTML/opportunity-engine/focus-edition bytes matched origin/main.
+PR #31 is draft/open/unmerged. New repair changes were not deployed.
+
+Before CE-003a, `node tests/inactivity.test.cjs` failed all four initial cases:
+identical history cap 4→1 with inactivity; overnight reference count 6→0;
+open-book scenario 4→1; future quotes admitted as independent observations.
+At 2509b86 all six cases pass, including inactivity-only capital review and
+historical-only research never becoming funded. `python scripts/audit_baseline.py`
+passes at clean 2509b86; CE-003a-baseline.json. Removing unidentifiable 1.25–1.75x
+expansion multipliers also reduces the fresh fixture research ceiling (21→10),
+while stale and fresh references agree. This is conditional research, not an
+increase in proven acquisition capacity or a calibrated forecast.
+
+CE-003b1: two new capacity cases first failed (quantity >250 rejected and unsafe
+integer gold accepted). a0d131c passes these plus an independent BigInt fee oracle
+across full/residual stacks. Browser explicitly enters 10,000 units, checks unknown
+forecasts and returns to the saved 50-unit choice. Full baseline: 109 JS / 41 Python,
+source checks, desktop/mobile and collector-to-browser tests all pass. Report
+CE-003b1-baseline.json's dirty flag reflects only the prior CE-003a evidence JSON,
+which was untracked; implementation code was committed at the reported SHA.
+
+An assembled rarity assertion initially read an empty computed style during an
+asynchronous repaint. It now waits for the exact expected colour on the current
+attached row instead of retaining a potentially detached element; colour coverage
+is preserved. Final full browser checks pass. No live calibration or physical
+Android claims. Legacy evidence/wait factors and quantity-cap semantics are still
+CE-003c; full requested repair remains incomplete.
+
+QH-001 integration: main PR #34 merged at2669ed5; no global bulk multiplication
+in public research lists, outside-wallet labels and budget edits saved on input.
+CI42590825903 passed; production workflow42591098367 started, verification pending.
+
+## CE-003c1 and release reconciliation — 2026-11-09
+
+Before: new partial-round and contradictory-duplicate forecast cases failed in
+`node tests/execution.test.cjs`; raw outputs local /tmp/ce003c-before.log.
+After86c55ae:35 execution cases pass; merged63d68a3 passes all stages of
+`python scripts/audit_baseline.py` (CE-003c1-baseline.json). High-volume/lower-margin
+fixture outranks high-unit-margin item when actual resales support it; constraining
+resales removes that advantage. One wallet covers both exactly. Duplicate holdout
+replay produces identical evaluation metrics; conflicting backups retain censorship.
+Synthetic correctness evidence only, not improved live calibration.
+
+PR31 previous CI42462455222 passed at4d1511e. PR34 first CI42584830152 failed
+browser; missing log artifacts prevented exact diagnosis. Repeated local browser
+run reproduced500g input reverting819g;064e273 saves edits on input and uploads
+synthetic logs. CI42590825903 then passed; PR34 merged2669ed5. Production dispatch
+42591098367 failed on exact rarity-colour assertion reading empty computed style
+from detached row. No deployment occurred; three live byte checks did not match
+2669ed5. PR35 fixes attached-row polling and uses existing authorised release gate.

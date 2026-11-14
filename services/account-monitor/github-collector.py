@@ -9,6 +9,7 @@ No key or response bodies containing private data are printed. The key is
 used in runner memory, not committed or uploaded as an artifact.
 """
 import datetime
+import email.utils
 import hashlib
 import json
 import os
@@ -27,13 +28,14 @@ QUERY_BATCH = 30
 MAX_D1_PARAMS = 100  # Cloudflare D1 hard limit, not SQLite's usual 999+
 D1_ROWS_WRITTEN = 0
 NOW = lambda: int(time.time() * 1000)
+EXPOSURE_ORDERS = 200
 
 
 class MonitorProblem(RuntimeError):
     pass
 
 
-def request_json(url, *, headers=None, payload=None, max_retries=2):
+def request_json(url, *, headers=None, payload=None, max_retries=2, retry_server_errors=False):
     meta = {'Accept': 'application/json', 'User-Agent': AGENT, **(headers or {})}
     body = None if payload is None else json.dumps(payload, separators=(',', ':')).encode()
     req = urllib.request.Request(url, headers=meta, data=body, method='POST' if body else 'GET')
@@ -42,7 +44,7 @@ def request_json(url, *, headers=None, payload=None, max_retries=2):
             with urllib.request.urlopen(req, timeout=30) as response:
                 return json.loads(response.read(5_000_000).decode()), dict(response.headers)
         except urllib.error.HTTPError as error:
-            if error.code == 429 and attempt < max_retries:
+            if (error.code == 429 or retry_server_errors and error.code in (500, 502, 503, 504)) and attempt < max_retries:
                 delay = error.headers.get('Retry-After', '') if error.headers else ''
                 try:
                     seconds = max(2, min(60, int(delay)))
@@ -260,6 +262,69 @@ def validate_current(x):
     return order_id, item, qty, price, created
 
 
+def collect_exposure(account_id, current, stamp):
+    """Bounded daily cohort; endpoint samples never prove continuous exposure.
+
+    Keep up to 200 orders through a UTC day to observe repeated endpoints.
+    Rotate by ID on the next day; publish partial coverage rather than silently
+    calling the entire book monitored. One immutable D1 batch per poll.
+    """
+    if not db("SELECT name FROM sqlite_master WHERE type='table' AND name='gp_monitor_exposure'"):
+        return {'supported': False, 'reason': 'schema-migration-required'}
+    prior = db('SELECT payload FROM gp_monitor_exposure WHERE account_id=? ORDER BY id DESC LIMIT 1', [account_id])
+    previous = json.loads(prior[0]['payload']) if prior else {}
+    live = {}
+    for entry in current:
+        order, item, qty, price, created = validate_current(entry)
+        live[order] = dict(order=order, item=item, at=stamp, remaining=qty,
+                           price=price, created=created, original=None,
+                           bestBuy=None, bestSell=None, quoteAt=None, source='github-actions')
+    day = stamp // 86400000
+    old_rows = [x for x in previous.get('observations', []) if not x.get('absent')]
+    kept = [x['order'] for x in old_rows if x['order'] in live] if previous.get('day') == day else []
+    cursor = previous.get('selectionCursor', 0)
+    candidates = sorted(set(live) - set(kept))
+    candidates = [x for x in candidates if x > cursor] + [x for x in candidates if x <= cursor]
+    selected = (kept + candidates)[:EXPOSURE_ORDERS]
+    rows = [live[x] for x in selected]
+    missing = [dict(x, at=stamp, remaining=0, absent=True, bestBuy=None, bestSell=None, quoteAt=None)
+               for x in old_rows if x['order'] not in live]
+    quote_status = 'no-orders'
+    if selected:
+        # Public request: never attach the account API key to this endpoint.
+        ids = sorted({x['item'] for x in rows})
+        try:
+            data, headers = request_json(API + '/commerce/prices?ids=' + ','.join(map(str, ids)), retry_server_errors=True)
+            if not isinstance(data, list):
+                raise MonitorProblem('Invalid public prices response')
+            meta = {k.lower(): v for k, v in headers.items()}
+            quote_at = min(stamp, NOW() - max(0, int(meta.get('age', 0))) * 1000)
+            if meta.get('date'):
+                quote_at = min(quote_at, int(email.utils.parsedate_to_datetime(meta['date']).timestamp() * 1000))
+            prices = {}
+            for q in data:
+                item = q.get('id') if isinstance(q, dict) else None
+                buy, sell = (q.get('buys') or {}).get('unit_price'), (q.get('sells') or {}).get('unit_price')
+                if all(type(v) is int and 0 < v < 2**48 for v in (item, buy, sell)):
+                    prices[item] = (buy, sell)
+            for row in rows:
+                if row['item'] in prices:
+                    row['bestBuy'], row['bestSell'] = prices[row['item']]
+                    row['quoteAt'] = quote_at
+            quote_status = 'complete' if all(x['quoteAt'] is not None for x in rows) else 'partial'
+        except (MonitorProblem, ValueError, TypeError, AttributeError, OverflowError):
+            quote_status = 'unavailable'
+    payload = dict(version=1, day=day, selectionCursor=selected[-1] if selected else cursor,
+                   observations=rows + missing,
+                   coverage=dict(totalOrders=len(live), sampledOrders=len(rows),
+                                 completeOrders=len(rows) == len(live), quotes=quote_status,
+                                 quotedOrders=sum(x['quoteAt'] is not None for x in rows),
+                                 policy='stable-UTC-day-cohort-200; rotate-by-order-id'))
+    db('INSERT OR IGNORE INTO gp_monitor_exposure(account_id,observed_at,payload) VALUES(?,?,?)',
+       [account_id, stamp, json.dumps(payload, separators=(',', ':'))])
+    return dict(supported=True, **payload['coverage'])
+
+
 def poll(account):
     account_id = account['id']
     previous = db('''SELECT side,order_id,item_id,price,remaining,first_seen_at FROM gp_monitor_orders
@@ -267,6 +332,9 @@ def poll(account):
     open_map = {(x['side'], int(x['order_id'])): x for x in previous}
     # Fetch both books fully BEFORE considering a missing order closed.
     current = {side: current_side(side) for side in ('buys', 'sells')}
+    # Price observations are captured immediately after the complete current
+    # order response, before slower history recovery. They never create fills.
+    exposure = collect_exposure(account_id, current['buys'], NOW())
     recorded = {}
     for side in ('buys', 'sells'):
         past = db('''SELECT trade_id,quantity FROM gp_monitor_trades
@@ -336,6 +404,7 @@ def poll(account):
     db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=NULL,consecutive_failures=0
           WHERE account_id=? AND enabled=1''', [stamp,stamp,account_id])
     counts['observedNights'] = finalize_nights(account_id,stamp)
+    counts['competitiveExposure'] = exposure
     return counts, len(current['buys']),len(current['sells'])
 
 
@@ -419,6 +488,9 @@ def run():
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
         print('D1 rows written by private collector this run: %d' % D1_ROWS_WRITTEN)
+        exposure = metrics['competitiveExposure']
+        print('Competitive exposure: %s' % ('priced coverage %d/%d sampled orders' %
+              (exposure['quotedOrders'], exposure['sampledOrders']) if exposure['supported'] else exposure['reason']))
         return 0
     except Exception as e:
         # No API keys, account names, API response bodies, raw SQL parameters
