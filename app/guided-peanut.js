@@ -111,6 +111,16 @@ function renderTop(host,s){
   moneyMetric('Wallet · available now',coin(snap?.wallet),'Excludes coins waiting in the Delivery Box'),
   moneyMetric('Last 7 days · realised',Number.isFinite(summary.weekP100)?coin(summary.weekP100/100):'Not verified','Not projected future income'));
  host.append(grid);
+ // Reuse the validated, item-specific valuation already rendered by Focus;
+ // never recompute purchase cost or claim missing prices are known.
+ const source=$('focus-delivery-items');
+ const drawer=el('details','gp-guide-delivery-drawer');
+ const summaryLine=el('summary','','Delivery Box items & sale-profit details');
+ const drawerBody=el('div','gp-guide-delivery-list');
+ const rows=source?.querySelectorAll('.focus-delivery-row')||[];
+ if(rows.length){for(const row of rows)drawerBody.append(row.cloneNode(true));}
+ else drawerBody.append(el('p','gp-guide-muted',source?.textContent?.trim()||'No verified delivery items yet.'));
+ add(drawer,summaryLine,drawerBody);host.append(drawer);
  const note=el('p','gp-guide-update',snap?'Account values are from the latest verified snapshot. Tap Check account for newer values.':'Connect your GW2 account in Details to load your wallet, Delivery Box and history.');
  host.append(note);
 }
