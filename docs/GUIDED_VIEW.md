@@ -6,7 +6,7 @@ This work adapts the user-tested single-screen pattern from the supplied *The Go
 
 - One primary market idea visible at a time; large "Buy" and "Then sell" language.
 - Explicit cost and profit labels in GW2 gold/silver/copper, never OSRS GP.
-- Previous, Next, Skip and Return to skipped. Skipped ID preferences are browser-local and do not affect the trade engine.
+- Previous, Next and Skip (for this visit only). Previous revisits skipped ideas naturally; no separate skipped-bin or skipped IDs are stored. The deck starts at 1 of N after each page load.
 - A compact Delivery Box value, realised today/7-day profit, and wallet at the top.
 - An item-specific *public daily bid/ask snapshot* graph with zoom in/out, earlier/later and reset. Gaps in days are not interpolated. Missing chart data is disclosed, not synthesised.
 - One-tap return to the full Focus Edition (orders, broader discovery, legendaries, account configuration). The legacy UI and history stay intact.
