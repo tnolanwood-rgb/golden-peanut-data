@@ -30,7 +30,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
- await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));});
+ await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));localStorage.setItem('gp-guided-mode-v1','advanced');});
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
  // Never rely on an activation-less startup pushState: Android skips it.
@@ -49,6 +49,27 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
  });
  assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
+ // Guided mode preserves advanced workflows but provides one trade idea at a time.
+ await page.waitForFunction(()=>window.GPGuided?.open);
+ await page.evaluate(()=>GPGuided.open());
+ await page.waitForSelector('#gp-guided-root:not([hidden])');
+ assert.match(await page.locator('.gp-guide-header h1').innerText(),/The Golden Peanut/);
+ assert.equal(await page.locator('.gp-guide-idea').count(),1);
+ assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
+ assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ const firstIdea=await page.locator('.gp-guide-item-name').innerText();
+ await page.getByRole('button',{name:'Skip · next →'}).click();
+ await page.getByRole('button',{name:/Return to skipped/}).click();
+ assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea);
+ await page.getByRole('button',{name:'View price chart'}).click();
+ await page.waitForSelector('#gp-guide-chart-body svg',{timeout:15000});
+ await page.getByRole('button',{name:'+ Zoom in'}).click();
+ assert.equal(await page.locator('#gp-guide-chart-body svg').count(),1);
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('button',{name:'Explore all trade research'}).click();
+ assert.equal(await page.locator('#gp-guided-root').isVisible(),false);
+ assert.equal(await page.locator('#gp-return-guided').isVisible(),true);
+ await page.evaluate(()=>GPFocus.goto('today'));
  // The top-left card is the real Delivery Box; seven-day matched profits remain on the right.
  assert.equal(await page.locator('#focus-today .focus-today-profit').count(),1);
  assert.equal(await page.locator('#focus-today .focus-summary-grid').count(),1);

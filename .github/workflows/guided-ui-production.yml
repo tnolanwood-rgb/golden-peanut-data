@@ -1,0 +1,75 @@
+name: Golden Peanut — Ship Guided UI to Existing Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - '.github/workflows/guided-ui-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-peanut-pages-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    name: Verify and deploy current GW2 site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate release and browser behaviour
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          python -m pip install --disable-pip-version-check PyYAML==6.0.3
+          python scripts/check_release.py
+          python -m unittest discover -s tests -p 'test_*.py'
+          npm test
+          if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
+          npm run test:browser
+      - name: Confirm the existing Cloudflare project and release credentials
+        shell: bash
+        env:
+          GP_PROJECT_NAME: thegoldenpeanut
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          token=os.environ.get('CLOUDFLARE_API_TOKEN','')
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          project=os.environ.get('GP_PROJECT_NAME','')
+          if not token or not account:
+              raise SystemExit('Cloudflare account variable or API token secret missing; no deployment performed.')
+          req=urllib.request.Request(
+              f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects/{project}',
+              headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+          try:
+              with urllib.request.urlopen(req,timeout=25) as res: data=json.load(res)
+          except Exception as err:
+              raise SystemExit('Cloudflare project verification failed: '+type(err).__name__)
+          if not data.get('success') or data.get('result',{}).get('name')!=project:
+              raise SystemExit('Expected production Pages project could not be verified')
+          if data['result'].get('production_branch')!='main':
+              raise SystemExit('Unexpected production branch; refusing to deploy')
+          print('Verified Cloudflare Pages project and main production branch.')
+          PY
+      - name: Deploy reviewed UI to existing production Pages project
+        shell: bash
+        run: |
+          npx --yes wrangler@4 pages deploy app --project-name thegoldenpeanut --branch main
