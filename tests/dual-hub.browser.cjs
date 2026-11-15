@@ -71,11 +71,13 @@ const server=http.createServer((req,res)=>{
   assert.equal(beforeImport,2);
   const bad={format:'golden-hub-osrs-v1',records:[{id:1,name:'Copper sword',side:'sell',qty:99,price:160,when:new Date(now*1000).toISOString()}]};
   await page.locator('#gh-import-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});
+  await page.waitForFunction(()=>document.querySelector('#gh-backup-status')?.textContent?.includes('Import not applied'));
   assert.match(await page.locator('#gh-backup-status').innerText(),/Import not applied/);
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,2,'invalid backup cannot mutate OSRS ledger');
   page.once('dialog',dialog=>dialog.accept());
   const addition={format:'golden-hub-osrs-v1',records:[{id:1,name:'Copper sword',side:'buy',qty:2,price:105,when:new Date(now*1000+1000).toISOString()}]};
   await page.locator('#gh-import-file').setInputFiles({name:'valid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(addition))});
+  await page.waitForFunction(()=>document.querySelector('#gh-backup-status')?.textContent?.includes('Imported 1 OSRS records'));
   assert.match(await page.locator('#gh-backup-status').innerText(),/Imported 1 OSRS records/);
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
   assert.match(await page.locator('#gh-today').innerText(),/304 gp/,'OSRS import must preserve earlier profits');
