@@ -60,7 +60,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await fs.promises.mkdir('artifacts',{recursive:true});
-  await page.screenshot({path:'artifacts/dual-hub-osrs-mobile.png',fullPage:true});
+  await page.screenshot({path:'artifacts/browser-osrs-390.png',fullPage:true});
   assert.deepEqual(errors,[],'dual game interface must be free of JS page errors');
   await context.close();
   console.log('Private dual-game hub: synthetic OSRS API, FIFO ledger, game switch and chart passed');
