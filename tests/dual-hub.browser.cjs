@@ -263,8 +263,8 @@ const server=http.createServer((req,res)=>{
   const back=await trace('gw2','#gh-panel-gw2 .app',325,[170,303]);
   assert.equal(back[0].sideBySide,true);
   assert.equal(Number(back[1].out.match(/translate3d\((-?[\d.]+)px/)?.[1]),-22);
-  // On release, the remaining movement should glide rather than finish
-  // inside the old jarring 140–320ms window; both pages and height settle.
+  // On release, finger tracking ends in a short compositor glide.
+  // A full 390–650ms multi-keyframe spring previously made switching laggy.
   const gentle=await page.evaluate(()=>{
    const stage=document.querySelector('#gh-game-stage'),panel=document.querySelector('#gh-panel-gw2');
    const shift=panel.getAnimations().find(a=>a.effect?.getKeyframes?.().some(k=>String(k.transform||'').includes('translate3d')));
@@ -274,9 +274,9 @@ const server=http.createServer((req,res)=>{
      heightAnimated:!!grow,frames:shift?.effect?.getKeyframes?.().length||0};
   });
   assert.ok(gentle.stillMoving,'settling should visibly continue after release');
-  assert.ok(gentle.duration>=390&&gentle.duration<=650,'settling should glide softly rather than snap');
-  assert.ok(gentle.frames>=45,'damped glide should use smooth sampled positions');
-  assert.ok(gentle.heightAnimated,'different page heights should transition instead of suddenly jumping');
+  assert.ok(gentle.duration>=145&&gentle.duration<=315,'release must settle promptly, not lock input for 650ms');
+  assert.equal(gentle.frames,2,'release must use compositor-friendly easing, not a sampled 48-frame spring');
+  assert.equal(gentle.heightAnimated,false,'height animation would force layout/reflow on every swipe frame');
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
   // Complete GW2 -> OSRS from the whole page and then OSRS -> GW2 over a
@@ -293,6 +293,50 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-osrs-root').isVisible(),false);
   await page.locator('#gh-tab-osrs').click();
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
+  assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
+
+  // The vertically scrollable OSRS recommendation card must ALSO support
+  // horizontal GW2 switching. Simulate WebView cancelling Pointer Events:
+  // Touch Events alone must recover a deliberate horizontal gesture, while
+  // vertical card scrolling must not be consumed by the game switcher.
+  const cardTouches=await page.evaluate(()=>{
+    const node=document.querySelector('#gh-panel-osrs .gh-trade-scroll .gp-guide-idea-top');
+    if(!node)throw Error('Recommendation scroll content not found');
+    const fire=(type,x,y)=>{
+      const finger=new Touch({identifier:72,target:node,clientX:x,clientY:y});
+      const touches=type==='touchend'?[]:[finger];
+      const event=new TouchEvent(type,{bubbles:true,cancelable:true,touches,
+       targetTouches:touches,changedTouches:[finger]});
+      node.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    fire('touchstart',70,160);
+    const verticalConsumed=fire('touchmove',72,260);
+    fire('touchend',72,260);
+    const untouched=window.GoldenDualHub.diagnostics().game==='osrs' &&
+     !window.GoldenDualHub.diagnostics().dragging;
+    fire('touchstart',75,160);
+    const horizontalConsumed=fire('touchmove',275,162);
+    const stageMoving=document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving');
+    fire('touchend',275,162);
+    const afterRelease=window.GoldenDualHub.diagnostics();
+    return {verticalConsumed,untouched,horizontalConsumed,stageMoving,afterRelease,
+      activeAnimations:document.querySelector('#gh-game-stage').getAnimations().map(a=>a.playState)};
+  });
+  assert.equal(cardTouches.verticalConsumed,false,'vertical OSRS card scrolling must stay native');
+  assert.equal(cardTouches.untouched,true,'vertical touch must not switch games');
+  assert.equal(cardTouches.horizontalConsumed,true,'horizontal OSRS card touch must be claimed by game navigation');
+  assert.equal(cardTouches.stageMoving,true,'horizontal swipe in nested OSRS card must move the two full desks');
+  console.log('Nested card touch release diagnostics:',JSON.stringify(cardTouches));
+  await page.waitForTimeout(800);
+  console.log('Nested card settle diagnostics:',JSON.stringify(await page.evaluate(()=>({
+   ...GoldenDualHub.diagnostics(),stageMoving:document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving')
+  }))));
+  await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().game==='gw2' &&
+   !window.GoldenDualHub.diagnostics().transitioning);
+  await page.locator('#gh-tab-osrs').click();
+  await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().game==='osrs' &&
+   !window.GoldenDualHub.diagnostics().transitioning);
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await page.reload();
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');

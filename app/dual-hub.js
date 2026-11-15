@@ -270,6 +270,14 @@ function install(){
  doc.addEventListener("pointermove",moveGesture,{passive:false,capture:true});
  doc.addEventListener("pointerup",endGesture,{passive:true,capture:true});
  doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
+ // Android WebView may let a nested overflow:auto list consume the pointer
+ // stream before it reaches the outer panel. Keep the list's native VERTICAL
+ // scroll, while explicitly recovering HORIZONTAL drags from touch events.
+ // Event listeners do not run on ordinary content outside the suggestion box.
+ doc.addEventListener("touchstart",startScrollTouch,{passive:true,capture:true});
+ doc.addEventListener("touchmove",moveScrollTouch,{passive:false,capture:true});
+ doc.addEventListener("touchend",endScrollTouch,{passive:true,capture:true});
+ doc.addEventListener("touchcancel",cancelScrollTouch,{passive:true,capture:true});
  doc.addEventListener("click",guardDragClick,true);
  win.addEventListener("resize",cancelOnResize,{passive:true});
  doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
@@ -299,6 +307,14 @@ function install(){
  switchGame(initial==="osrs"?"osrs":"gw2",false);
  if(state.game==="osrs")render();
  restoreView();
+ // Construct the other desk during idle time, rather than freezing the FIRST
+ // horizontal swipe while hundreds of OSRS nodes and handlers are created.
+ // This does not fetch markets, alter ledgers, or start account requests.
+ if(state.game==='gw2'){
+  const prepare=()=>{if(state.game==='gw2'&&!get('gh-refresh'))activateOsrs();};
+  if(typeof win.requestIdleCallback==='function')win.requestIdleCallback(prepare,{timeout:1800});
+  else win.setTimeout(prepare,650);
+ }
 }
 function activateOsrs(){
  if(get("gh-refresh"))return;
@@ -431,7 +447,9 @@ function ensureGameReady(next){
 function createScene(from,next){
  const stage=get("gh-game-stage"),out=get("gh-panel-"+from),incoming=get("gh-panel-"+next);
  if(!stage||!out||!incoming)return null;
- ensureGameReady(next);
+ // Do not run parsing/ranking, synchronous render or network-start work
+ // inside a pointermove; that stalls finger tracking on real Android phones.
+ if(next==='osrs')activateOsrs();
  // The receiving panel is prepared off-screen before the first drag frame.
  const width=Math.max(1,stage.getBoundingClientRect().width);
  const height=Math.max(1,out.getBoundingClientRect().height);
@@ -454,7 +472,8 @@ function finishScene(scene,commit){
  if(!scene||scene.closed)return;
  scene.closed=true;
  if(activeAnimation?.scene===scene){
-  const {a,b,height}=activeAnimation;activeAnimation=null;
+  const {a,b,height,watchdog}=activeAnimation;activeAnimation=null;
+  win.clearTimeout(watchdog);
   // Clear compositor fill-forwards before removing the drag transforms.
   try{a.cancel();b.cancel();height?.cancel();}catch{}
  }
@@ -469,13 +488,21 @@ function finishScene(scene,commit){
  if(commit){
   // Preserve each game's document scroll instead of losing the user's place.
   win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
+  if(next==='osrs')win.requestAnimationFrame(()=>{
+   // First visible frame completes before a potentially expensive market scan.
+   if(state.game!=='osrs'||transitioning)return;
+   ensureGameReady('osrs');
+   render();
+   win.__gpReleaseBoot?.();
+  });
  }
  saveView();
 }
-/* Critically damped easing for the release only. Finger tracking remains 1:1.
- * A short eased tail prevents the sudden speed change and hard stop caused
- * by the old 140–320ms ease-out. Motion does not overshoot or bounce.
- * Native Web Animations keep the page transforms on the compositor. */
+/* Compositor-only two-keyframe settling: the old 48-frame sampled spring
+ * created three animations and took up to 650ms after finger release.
+ * A short velocity-sensitive glide preserves 1:1 finger tracking and
+ * lets users switch repeatedly without a long input lock.
+ */
 function settleScene(scene,commit,releaseVelocity=0){
  if(!scene)return;
  transitioning=true;
@@ -483,32 +510,26 @@ function settleScene(scene,commit,releaseVelocity=0){
  const fromX=scene.offset,delta=finalX-fromX,distance=Math.abs(delta);
  const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
  if(reduced||distance<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
- // A slightly longer, more gently damped release preserves direct 1:1
- // finger tracking and lets the final movement arrive without a hard stop.
- const duration=clamp(Math.round(390+260*distance/scene.width),390,650);
- const k=5.35,steps=48;
- const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-1.3,1.3));
- const velocityFactor=clamp(vToward*duration/Math.max(distance,1),0,1.0);
- const spring=t=>1-(1+k*t)*Math.exp(-k*t)+velocityFactor*t*Math.exp(-k*t);
- const end=spring(1);
- const framesOut=[],framesIn=[],framesHeight=[];
- const oldHeight=Math.max(1,scene.stage.getBoundingClientRect().height);
- // The next panel is already present and off-screen, so its height can be
- // measured without showing it. Smooth the document height as well as X.
- const nextHeight=Math.max(1,scene.incoming.scrollHeight);
- for(let i=0;i<=steps;i++){
-  const t=i/steps,p=i===steps?1:clamp(spring(t)/end,0,1);
-  const dx=fromX+delta*p;
-  framesOut.push({offset:t,transform:"translate3d("+dx+"px,0,0)"});
-  framesIn.push({offset:t,transform:"translate3d("+(scene.direction*scene.width+dx)+"px,0,0)"});
-  framesHeight.push({offset:t,height:(oldHeight+(nextHeight-oldHeight)*p)+"px"});
- }
- const options={duration,easing:"linear",fill:"both"};
+ // Short, non-bouncy easing with a faster tail for decisive finger flicks.
+ const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-2,2));
+ const duration=clamp(Math.round(145+170*distance/scene.width-40*vToward),145,315);
+ // Don't animate 'height': that forces repeated layout/reflow and makes
+ // a swipe hitch on phones even when the panels use compositor transforms.
+ const framesOut=[
+  {transform:"translate3d("+fromX+"px,0,0)"},
+  {transform:"translate3d("+finalX+"px,0,0)"}
+ ];
+ const framesIn=[
+  {transform:"translate3d("+(scene.direction*scene.width+fromX)+"px,0,0)"},
+  {transform:"translate3d("+(scene.direction*scene.width+finalX)+"px,0,0)"}
+ ];
+ const options={duration,easing:"cubic-bezier(.22,.72,.2,1)",fill:"both"};
  const a=scene.out.animate(framesOut,options);
  const b=scene.incoming.animate(framesIn,options);
- const height=scene.stage.animate(framesHeight,options);
- activeAnimation={a,b,height,scene,duration,commit};
- Promise.all([a.finished,b.finished,height.finished])
+ // If a hidden-tab WebView stalls a.finished, don't leave the UI locked.
+ const watchdog=win.setTimeout(()=>finishScene(scene,commit),duration+100);
+ activeAnimation={a,b,height:null,watchdog,scene,duration,commit};
+ Promise.all([a.finished,b.finished])
   .then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
 }
 function switchGame(game,userAction){
@@ -526,10 +547,67 @@ function switchGame(game,userAction){
  scrollPositions[from]=win.scrollY||0;
  const scene=createScene(from,next);
  if(!scene)return;
- // Standard tab buttons use the same adjacent-page movement, but start from 0.
- // Touch dragging instead updates the position continuously before release.
- setActiveGame(next);
+ // Keep the old game logically active until the animation completes, so
+ // account/view/scroll handlers cannot save the destination's state mid-slide.
+ // Touch dragging continues to track the finger continuously before release.
  settleScene(scene,true);
+}
+let scrollTouch=null;
+function scrollTouchPoint(event){
+ const touch=scrollTouch;
+ if(!touch)return null;
+ return [...(event.changedTouches||[]),...(event.touches||[])].find(t=>t.identifier===touch.id)||null;
+}
+function startScrollTouch(event){
+ if(transitioning||event.touches?.length!==1||scrollTouch)return;
+ const node=event.target?.nodeType===1?event.target:event.target?.parentElement;
+ if(!node?.closest?.("#gh-osrs-root .gh-trade-scroll"))return;
+ // Scrollable suggestion text is a swipe target, but form inputs/charts
+ // retain their own native gestures.
+ if(node.closest("input,textarea,select,svg,canvas,video,iframe,[contenteditable],[role=slider],.gh-chart-card,[data-no-game-swipe]"))return;
+ const point=event.touches[0];
+ scrollTouch={id:point.identifier,node,startX:point.clientX,startY:point.clientY,vertical:false,horizontal:false};
+}
+function moveScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point||event.touches?.length!==1||transitioning)return;
+ const dx=point.clientX-t.startX,dy=point.clientY-t.startY;
+ if(!t.horizontal){
+  if(t.vertical)return;
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){t.vertical=true;return;}
+  if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
+  if((dx<0&&state.game!=='gw2')||(dx>0&&state.game!=='osrs'))return;
+  t.horizontal=true;
+ }
+ // Pointer Events normally provide the same gesture. When WebView cancels
+ // pointer capture within a scroller, recreate it with the stored touch start.
+ if(!gesture){
+  startGesture({target:t.node,pointerId:'scroll-touch-'+t.id,pointerType:'touch',
+   isPrimary:true,clientX:t.startX,clientY:t.startY});
+ }
+ if(gesture){
+  moveGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY,
+   cancelable:false});
+  // Only horizontal navigation blocks the native stream. Vertical card
+  // scrolling stays untouched, including when the finger begins on text.
+  if(gesture.scene&&event.cancelable)event.preventDefault();
+ }
+}
+function endScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point)return;
+ scrollTouch=null;
+ if(t.horizontal&&gesture&&gesture.scene){
+  endGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY});
+ }else if(gesture?.pointerId==='scroll-touch-'+t.id){
+  gesture=null;
+ }
+}
+function cancelScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point)return;
+ scrollTouch=null;
+ if(gesture?.scene)cancelGesture({pointerId:gesture.pointerId});
 }
 function startGesture(ev){
  if(transitioning||gesture||!ev.isPrimary||!["touch","pen"].includes(ev.pointerType)||doc.querySelector("dialog[open]"))return;
@@ -582,13 +660,18 @@ function endGesture(ev){
 function cancelGesture(ev){
  const g=gesture;
  if(!g||(ev&&ev.pointerId!==g.pointerId))return;
+ // WebView can cancel the pointer stream for a nested scroller even as
+ // touchmove/touchend continue. Let the touch fallback complete the swipe.
+ if(ev&&scrollTouch?.horizontal&&g.scene)return;
  gesture=null;
  if(g.scene)settleScene(g.scene,false);
 }
 function cancelOnResize(){
+ scrollTouch=null;
  if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
  if(activeAnimation){
-  const {a,b,height,scene,commit}=activeAnimation;activeAnimation=null;
+  const {a,b,height,watchdog,scene,commit}=activeAnimation;activeAnimation=null;
+  win.clearTimeout(watchdog);
   // Cancelling animations rejects .finished; guard the stale callback.
   try{a.cancel();b.cancel();height?.cancel();}catch{}
   finishScene(scene,commit);
