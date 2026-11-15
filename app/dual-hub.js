@@ -299,6 +299,14 @@ function install(){
  switchGame(initial==="osrs"?"osrs":"gw2",false);
  if(state.game==="osrs")render();
  restoreView();
+ // Construct the other desk during idle time, rather than freezing the FIRST
+ // horizontal swipe while hundreds of OSRS nodes and handlers are created.
+ // This does not fetch markets, alter ledgers, or start account requests.
+ if(state.game==='gw2'){
+  const prepare=()=>{if(state.game==='gw2'&&!get('gh-refresh'))activateOsrs();};
+  if(typeof win.requestIdleCallback==='function')win.requestIdleCallback(prepare,{timeout:1800});
+  else win.setTimeout(prepare,650);
+ }
 }
 function activateOsrs(){
  if(get("gh-refresh"))return;
@@ -431,7 +439,9 @@ function ensureGameReady(next){
 function createScene(from,next){
  const stage=get("gh-game-stage"),out=get("gh-panel-"+from),incoming=get("gh-panel-"+next);
  if(!stage||!out||!incoming)return null;
- ensureGameReady(next);
+ // Do not run parsing/ranking, synchronous render or network-start work
+ // inside a pointermove; that stalls finger tracking on real Android phones.
+ if(next==='osrs')activateOsrs();
  // The receiving panel is prepared off-screen before the first drag frame.
  const width=Math.max(1,stage.getBoundingClientRect().width);
  const height=Math.max(1,out.getBoundingClientRect().height);
@@ -469,13 +479,21 @@ function finishScene(scene,commit){
  if(commit){
   // Preserve each game's document scroll instead of losing the user's place.
   win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
+  if(next==='osrs')win.requestAnimationFrame(()=>{
+   // First visible frame completes before a potentially expensive market scan.
+   if(state.game!=='osrs'||transitioning)return;
+   ensureGameReady('osrs');
+   render();
+   win.__gpReleaseBoot?.();
+  });
  }
  saveView();
 }
-/* Critically damped easing for the release only. Finger tracking remains 1:1.
- * A short eased tail prevents the sudden speed change and hard stop caused
- * by the old 140–320ms ease-out. Motion does not overshoot or bounce.
- * Native Web Animations keep the page transforms on the compositor. */
+/* Compositor-only two-keyframe settling: the old 48-frame sampled spring
+ * created three animations and took up to 650ms after finger release.
+ * A short velocity-sensitive glide preserves 1:1 finger tracking and
+ * lets users switch repeatedly without a long input lock.
+ */
 function settleScene(scene,commit,releaseVelocity=0){
  if(!scene)return;
  transitioning=true;
@@ -483,27 +501,21 @@ function settleScene(scene,commit,releaseVelocity=0){
  const fromX=scene.offset,delta=finalX-fromX,distance=Math.abs(delta);
  const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
  if(reduced||distance<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
- // A slightly longer, more gently damped release preserves direct 1:1
- // finger tracking and lets the final movement arrive without a hard stop.
- const duration=clamp(Math.round(390+260*distance/scene.width),390,650);
- const k=5.35,steps=48;
- const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-1.3,1.3));
- const velocityFactor=clamp(vToward*duration/Math.max(distance,1),0,1.0);
- const spring=t=>1-(1+k*t)*Math.exp(-k*t)+velocityFactor*t*Math.exp(-k*t);
- const end=spring(1);
- const framesOut=[],framesIn=[],framesHeight=[];
+ // Short, non-bouncy easing with a faster tail for decisive finger flicks.
+ const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-2,2));
+ const duration=clamp(Math.round(145+170*distance/scene.width-40*vToward),145,315);
  const oldHeight=Math.max(1,scene.stage.getBoundingClientRect().height);
- // The next panel is already present and off-screen, so its height can be
- // measured without showing it. Smooth the document height as well as X.
  const nextHeight=Math.max(1,scene.incoming.scrollHeight);
- for(let i=0;i<=steps;i++){
-  const t=i/steps,p=i===steps?1:clamp(spring(t)/end,0,1);
-  const dx=fromX+delta*p;
-  framesOut.push({offset:t,transform:"translate3d("+dx+"px,0,0)"});
-  framesIn.push({offset:t,transform:"translate3d("+(scene.direction*scene.width+dx)+"px,0,0)"});
-  framesHeight.push({offset:t,height:(oldHeight+(nextHeight-oldHeight)*p)+"px"});
- }
- const options={duration,easing:"linear",fill:"both"};
+ const framesOut=[
+  {transform:"translate3d("+fromX+"px,0,0)"},
+  {transform:"translate3d("+finalX+"px,0,0)"}
+ ];
+ const framesIn=[
+  {transform:"translate3d("+(scene.direction*scene.width+fromX)+"px,0,0)"},
+  {transform:"translate3d("+(scene.direction*scene.width+finalX)+"px,0,0)"}
+ ];
+ const framesHeight=[{height:oldHeight+"px"},{height:nextHeight+"px"}];
+ const options={duration,easing:"cubic-bezier(.22,.72,.2,1)",fill:"both"};
  const a=scene.out.animate(framesOut,options);
  const b=scene.incoming.animate(framesIn,options);
  const height=scene.stage.animate(framesHeight,options);
@@ -526,9 +538,9 @@ function switchGame(game,userAction){
  scrollPositions[from]=win.scrollY||0;
  const scene=createScene(from,next);
  if(!scene)return;
- // Standard tab buttons use the same adjacent-page movement, but start from 0.
- // Touch dragging instead updates the position continuously before release.
- setActiveGame(next);
+ // Keep the old game logically active until the animation completes, so
+ // account/view/scroll handlers cannot save the destination's state mid-slide.
+ // Touch dragging continues to track the finger continuously before release.
  settleScene(scene,true);
 }
 function startGesture(ev){
