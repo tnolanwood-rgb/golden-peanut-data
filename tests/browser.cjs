@@ -123,10 +123,62 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await counter.innerText(),'2 of '+total);
  await page.getByRole('button',{name:'← Previous'}).click();
  await page.getByRole('button',{name:'View price chart'}).click();
- await page.waitForSelector('#gp-guide-chart-body svg',{timeout:15000});
- await page.getByRole('button',{name:'+ Zoom in'}).click();
- assert.equal(await page.locator('#gp-guide-chart-body svg').count(),1);
- await page.getByRole('button',{name:'Close',exact:true}).click();
+ const modal=page.locator('#gp-price-dialog');
+ await modal.locator('.gp-price-svg').waitFor({timeout:15000});
+ assert.equal(await modal.isVisible(),true);
+ assert.equal(await page.locator('#gp-guide-chart-body').count(),0,'obsolete inline chart controls removed');
+ assert.equal(await modal.getByRole('button',{name:'7 days'}).getAttribute('aria-pressed'),'true');
+ assert.match(await modal.locator('.gp-price-muted').innerText(),/daily.*not|hourly.*volume|snapshots/i);
+ assert.equal(await modal.locator('.gp-price-svg path').count(),2,'exactly two actual quoted reference series');
+ const stateBefore=await page.evaluate(()=>GPGuidedPriceChart.state());
+ assert.equal(stateBefore.status,'ready');
+ assert.equal(stateBefore.rows,8);
+ assert.equal(stateBefore.viewSize,7,'a 7-day tab shows actual seven recent observations');
+ // The modal is a sibling of the repeatedly replaced home root. No account,
+ // delivery, or quote refresh may silently close or reset a user's chart.
+ await page.evaluate(()=>{for(let i=0;i<5;i++){GPGuided.render();GPFocus.render();}});
+ assert.equal(await modal.isVisible(),true,'home redraw must not close the price chart');
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,7);
+ await modal.getByRole('button',{name:'All recorded'}).click();
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,8);
+ await modal.getByRole('button',{name:'7 days'}).click();
+ // Native touch handlers stay bound to the persistent dialog even after the
+ // SVG is redrawn. Exercise a full drag and two-pointer pinch using synthetic
+ // pointer events, on both desktop and 390px-width Chromium layouts.
+ const gestures=await page.evaluate(()=>{
+  const dialog=document.querySelector('#gp-price-dialog');
+  const ptr=(type,id,x,target)=>target.dispatchEvent(new PointerEvent(type,{
+   bubbles:true,pointerId:id,pointerType:'touch',clientX:x,clientY:200,isPrimary:id===31
+  }));
+  let svg=dialog.querySelector('.gp-price-svg');
+  ptr('pointerdown',31,100,svg);
+  ptr('pointermove',31,330,dialog);
+  ptr('pointerup',31,330,dialog);
+  const dragged=GPGuidedPriceChart.state();
+  svg=dialog.querySelector('.gp-price-svg');
+  ptr('pointerdown',31,100,svg);
+  ptr('pointerdown',32,140,svg);
+  ptr('pointermove',32,350,dialog);
+  ptr('pointerup',32,350,dialog);
+  ptr('pointerup',31,100,dialog);
+  return {dragged,pinched:GPGuidedPriceChart.state(),visible:dialog.open};
+ });
+ assert.equal(gestures.visible,true);
+ assert.equal(gestures.dragged.offset,1,'dragging to an earlier day must move the visible time window');
+ assert.ok(gestures.pinched.viewSize<7,'pinching outward must increase chart detail');
+ await modal.getByRole('button',{name:'All recorded'}).click();
+ await modal.locator('.gp-price-slider').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));});
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2);
+ assert.equal(await modal.locator('.gp-price-quote').count(),2);
+ assert.equal(await modal.locator('.gp-price-money img').count(),6,'both quotes show official GW2 gold/silver/copper icons');
+ await modal.getByRole('button',{name:'Expand chart'}).click();
+ assert.equal(await modal.evaluate(el=>el.classList.contains('is-expanded')),true);
+ assert.equal(await modal.getByRole('button',{name:/Zoom in|Earlier|Later/i}).count(),0,'no opaque button-step controls');
+ await page.evaluate(()=>GPGuided.render());
+ assert.equal(await modal.isVisible(),true);
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2,'selected inspection persists through refresh');
+ await modal.getByRole('button',{name:'Close price chart'}).click();
+ assert.equal(await modal.isVisible(),false);
  await page.getByRole('button',{name:'Explore all trade research'}).click();
  assert.equal(await page.locator('#gp-guided-root').isVisible(),false);
  assert.equal(await page.locator('#gp-return-guided').isVisible(),true);

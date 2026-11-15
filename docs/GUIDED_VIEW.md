@@ -30,3 +30,15 @@ Validation: `npm ci --ignore-scripts`, `python scripts/check_release.py`, `npm t
 ## Evidence labelling
 
 Forecasts with observed execution outcomes, historical conditional lot margins, and unverified public bid/ask spread research remain distinct. No public quoted spread is presented as guaranteed completed trade volume or guaranteed overnight profit. The existing GW2 trading intelligence, collector and account data are unmodified.
+
+## 15 November — persistent OSRS-style price inspector
+
+The old chart was a child of `gp-guided-root`. Every snapshot/deck refresh rebuilt that root; `setCurrent` also explicitly set `chartOpen=false`. Its buttons were misleading with sparse 10-day data: Zoom in changed the internally requested 21→14→7→5 recorded observations, Zoom out increased by seven, and Earlier/Later moved by three observations, not a stated calendar duration. At 10 observations, the first zoom tap had no visible effect.
+
+`guided-price-chart.js` instead creates one native `<dialog>` outside `gp-guided-root`. The guided card calls `GPGuidedPriceChart.open({id,name})` and no longer owns chart state or repaints the chart. Account/quote/Delivery Box refresh cannot close a selected price chart. Explicit Close, Escape/system native dialog close or intentionally navigating to another idea may close it. The dialog can reopen the same item without fetching a second time while already open.
+
+The layout copies the OSRS *interaction pattern*, not OSRS data: large teal observed bid and gold observed ask lines, **7 real calendar days** and **All recorded**, larger chart, observed-date slider, accessible actual GW2 gold/silver/copper icon values, touch tap-to-inspect and drag-to-pan/pinch-to-zoom. Native modal and slider targets are mobile-sized; the chart's gesture handlers live on the persistent dialog rather than SVG nodes replaced on redraw. `dialog.showModal()` handles focus and native Escape. The range slider remains mounted throughout an input drag. No opaque Zoom/Earlier/Later step buttons remain. Normal page scroll still works outside the chart; Ctrl+wheel zooms only inside it.
+
+**Evidence boundary:** GW2 feed contains daily public *quoted bid/ask* snapshots (one per recorded day when available), not the OSRS app's hourly instant-trade buckets with completed transaction volumes. The chart must never imply GW2 daily standing quantity represents completed trades or invent 166 hourly points from ten daily snapshots. Gaps in calendar dates are not bridged by SVG line segments. Individual prices are inspectable per recorded date. Source stays public and read-only.
+
+**Regression:** Synthetic assembled Chromium 390px and 1440px tests validate opening, selected-day slider, correct 7-day window, 8-day all-history window, coin icons, expanded layout, and persistence across repeated `GPGuided.render()` and `GPFocus.render()` calls. No production deployment or physical-device proof follows automatically from these tests.

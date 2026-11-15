@@ -43,15 +43,6 @@
 .gp-guide-text{border:1px solid transparent;background:transparent;color:#eacc8b;padding:8px}
 .gp-guide-primary:focus-visible,.gp-guide-secondary:focus-visible,.gp-guide-light:focus-visible,.gp-guide-text:focus-visible,.gp-return-guided:focus-visible{outline:3px solid #f4dbac;outline-offset:3px}
 .gp-guide-primary:disabled,.gp-guide-secondary:disabled,.gp-guide-light:disabled,.gp-guide-text:disabled{opacity:.43;cursor:default}
-.gp-guide-chart-section{background:#192c21;border:1px solid #55715b;border-radius:16px;padding:15px 13px}
-.gp-guide-chart-section[hidden]{display:none!important}
-.gp-guide-chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.gp-guide-chart-head h2{margin:0;font-size:20px}
-.gp-guide-chart-controls{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.gp-guide-chart-controls button{min-height:42px;font-size:13px;padding:8px 10px}
-.gp-guide-chart-body{margin-top:14px;border-radius:12px;background:#112219;padding:8px;overflow-x:auto}
-.gp-guide-chart{width:100%;min-width:320px;height:auto;display:block}
-.gp-guide-chart-key{color:#d5ddb7;font-size:12px;white-space:pre-wrap;margin-top:6px}
 .gp-guide-foot{border-top:1px solid #3b5740;padding:12px 2px;text-align:center}
 .gp-guide-foot button{width:100%;margin-top:10px}
 .gp-return-guided{position:sticky;z-index:51;top:0;width:100%;background:#e8c783;border:2px solid #18291d;color:#14251b;box-shadow:0 5px 25px #0005}
