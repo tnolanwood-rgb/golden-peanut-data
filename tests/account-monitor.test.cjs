@@ -200,3 +200,39 @@ test('monitor reload recovers server connection only when earlier opt-in evidenc
  assert.equal(ctx.GPCloudAccount.status(state.account).enabled,true);
  assert.equal(ctx.GPCloudAccount.status(state.account).status.backend,'github-actions');
 });
+
+test('disable always preserves an inactive digest tombstone, even for Worker-enrolled credentials',async()=>{
+ const {default:worker}=await moduleTask;
+ for(const encryption of ['ciphertext',null]){
+  const statements=[],batches=[];
+  const env={DB:{
+   prepare(sql){
+    const query={sql,params:[],bind(...params){this.params=params;return this;},
+     async first(){
+      assert.match(sql,/FROM gp_monitor_credentials WHERE token_digest/);
+      return {account_id:'acct-fixture',account_name:'Fixture.1234',enabled:1,encrypted:encryption};
+     }};
+    statements.push(query);return query;
+   },
+   async batch(q){batches.push(q);return q.map(()=>({success:true}));}
+  }};
+  const response=await worker.fetch(req('/disable','POST',{Origin:origin,Authorization:'Bearer '+key}),env,{});
+  assert.equal(response.status,200);
+  const payload=await response.json();
+  assert.equal(payload.enabled,false);
+  assert.equal(payload.cloudRecordsErased,true);
+  assert.equal(payload.requiresGithubSecretRemoval,true);
+  assert.equal(batches.length,1);
+  const sql=batches[0].map(q=>q.sql).join('\n');
+  assert.match(sql,/UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL/);
+  assert.doesNotMatch(sql,/DELETE FROM gp_monitor_credentials/,'no token digest deletion: GitHub scheduler must honour opt-out');
+  assert.match(sql,/DELETE FROM gp_monitor_events/);
+  assert.match(sql,/DELETE FROM gp_monitor_nights/);
+  assert.match(sql,/DELETE FROM gp_monitor_trades/);
+  assert.match(sql,/DELETE FROM gp_monitor_orders/);
+  assert.match(sql,/DELETE FROM gp_monitor_polls/);
+  const final=batches[0].at(-1);
+  assert.equal(final.params[0],'[Monitoring stopped]');
+  assert.equal(final.params[1],'acct-fixture');
+ }
+});
