@@ -1,6 +1,6 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
-const VERSION="osrs-integrity-3.0-2026-11-15";
+const VERSION="hub-performance-1.0-2026-11-15";
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1",VIEW="gh-view-session-v1",RECOVERY="gh-osrs-ledger-recovery-v1",ORIGINAL="gh-osrs-ledger-original-v1";
@@ -13,7 +13,18 @@ const n=(v)=>Number(v);
 const good=(v)=>Number.isFinite(v)&&v>0&&Number.isSafeInteger(Math.round(v));
 const safe=(v)=>String(v==null?"":v);
 const el=(tag,cls,text)=>{const x=doc.createElement(tag);if(cls)x.className=cls;if(text!=null)x.textContent=safe(text);return x};
-const txt=(id,v)=>{const a=doc.getElementById(id);if(a)a.textContent=safe(v)};
+// Text updates are frequent; avoid knocking a decoded coin image out of
+// the DOM when the value has not changed.
+const txt=(id,v)=>{
+ const a=doc.getElementById(id);if(!a)return;
+ const value=safe(v);
+ if(a.classList?.contains('gh-coin-amount')){
+  if(!/[0-9]/.test(value)){a.classList.remove('gh-coin-amount');a.textContent=value;return;}
+  const span=a.querySelector('span');
+  if(span){if(span.textContent!==value)span.textContent=value;return;}
+ }
+ if(a.textContent!==value)a.textContent=value;
+};
 const get=(id)=>doc.getElementById(id);
 const tax=(price,name)=>{const sell=Math.floor(n(price));const key=safe(name).trim().toLowerCase();if(EXEMPT.has(key)||/^energy potion\([1-4]\)$/.test(key)||/^old school bonds?( \(untradeable\))?$/.test(key))return 0;return Math.min(5000000,Math.floor(Math.max(0,sell)/50))};
 /* Actual official OSRS Mobile / Steam ground-items overlay defaults.
@@ -87,10 +98,16 @@ function iconUrl(name){
 }
 function decorateGP(id){
  const target=get(id),value=target?.textContent;
- if(!target||!value||value==='—'||!/\d/.test(value))return;
+ if(!target||!value||value==='—'||!/[0-9]/.test(value))return;
+ const existing=target.querySelector('img'),oldText=target.querySelector('span');
+ if(existing&&oldText&&target.classList.contains('gh-coin-amount')){
+  if(oldText.textContent!==value)oldText.textContent=value;
+  return;
+ }
  const icon=el('img');icon.src='https://oldschool.runescape.wiki/images/Coins_10000.png';
- icon.alt='OSRS gold coins';icon.width=22;icon.height=22;icon.loading='lazy';
- icon.referrerPolicy='no-referrer';icon.onerror=()=>{icon.remove()};
+ icon.alt='OSRS gold coins';icon.width=22;icon.height=22;
+ icon.loading='eager';icon.decoding='async';icon.referrerPolicy='no-referrer';
+ icon.onerror=()=>{icon.remove()};
  target.replaceChildren(icon,el('span','',value));target.classList.add('gh-coin-amount');
 }
 function blank(){
@@ -255,8 +272,8 @@ function install(){
  doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
  doc.addEventListener("click",guardDragClick,true);
  win.addEventListener("resize",cancelOnResize,{passive:true});
- doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
- win.addEventListener('pagehide',()=>{saveView();saveUser()});
+ doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
+ win.addEventListener('pagehide',()=>{saveView();saveUser();flushMarketCache()});
  doc.addEventListener('input',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
  doc.addEventListener('change',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
  doc.addEventListener('toggle',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()},true);
@@ -268,7 +285,7 @@ function install(){
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
   game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
   selectedId:state.selectedId,feedIssues:[...state.feedIssues],ledgerError:state.ledgerError,
-  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning
+  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning,cacheWrites:cacheWriteCount,iconWarmCount:warmedOsrsIcons.size
  })};
  win.GoldenDualHub.back=()=>{
   if(state.game!=='osrs')return false;
@@ -332,6 +349,7 @@ function activateOsrs(){
  get("gh-chart-svg").addEventListener("wheel",zoomChart,{passive:false});
  get("gh-chart-svg").addEventListener("pointerdown",chartStart);
  get("gh-chart-svg").addEventListener("pointerup",chartEnd);
+ restoreCachedMarkets();
 
 }
 /* Two-page interactive swipe controller.
@@ -591,8 +609,52 @@ function applySettings(){
  state.index=0;saveUser();buildIdeas();render();
  get("gh-settings").open=false;
 }
-let marketCache=null;
-function cacheLoad(){if(marketCache)return marketCache;const c=read(CACHE,{});return marketCache=c&&typeof c==="object"&&!Array.isArray(c)?c:{}}
+let marketCache=null,marketCacheDiskBaseline=null,marketCacheDirty=false,marketCacheTimer=0,cacheWriteCount=0;
+function cacheLoad(){
+ if(marketCache)return marketCache;
+ let raw=null;try{raw=win.localStorage.getItem(CACHE)}catch{}
+ marketCacheDiskBaseline=raw;
+ let parsed={};try{parsed=raw?JSON.parse(raw):{}}catch{}
+ return marketCache=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{};
+}
+function flushMarketCache(){
+ if(marketCacheTimer){win.clearTimeout(marketCacheTimer);marketCacheTimer=0;}
+ if(!marketCacheDirty)return;
+ marketCacheDirty=false;
+ // Optimistic storage safety: a user/other tab intentionally cleared or
+ // replaced the cache while our network requests ran. Do not resurrect old
+ // values or overwrite a newer independent writer on pagehide.
+ let current=null;try{current=win.localStorage.getItem(CACHE)}catch{return}
+ if(current!==marketCacheDiskBaseline){
+  marketCache=null;marketCacheDiskBaseline=current;return;
+ }
+ // One batched stringify for all four routes, not four serialized writes.
+ const next=JSON.stringify(cacheLoad());
+ try{
+  win.localStorage.setItem(CACHE,next);
+  marketCacheDiskBaseline=next;cacheWriteCount++;
+ }catch{/* Quota/private mode: previous persisted data are untouched. */}
+}
+function scheduleMarketCacheSave(){
+ marketCacheDirty=true;
+ if(!marketCacheTimer)marketCacheTimer=win.setTimeout(flushMarketCache,200);
+}
+function restoreCachedMarkets(){
+ if(state.snap||state.loading)return false;
+ const cache=cacheLoad(),keys=['mapping','latest','5m','1h'];
+ const entries=keys.map(k=>cache[k]),stamp=Date.now();
+ if(entries.some((r,i)=>!r||!validate(keys[i],r.data)||!Number.isFinite(r.at)||
+    stamp-r.at<0||stamp-r.at>86400000))return false;
+ state.snap={mapping:entries[0].data,latest:entries[1].data,
+  five:entries[2].data,hour:entries[3].data};
+ state.mappingById=new Map(state.snap.mapping.map(row=>[row.id,row]));
+ state.builtAt=Math.min(...entries.map(r=>r.at));
+ state.stale=entries.some((r,i)=>stamp-r.at>[86400000,60000,300000,3600000][i]||
+   !aggregateFresh(keys[i],r.data));
+ state.feedIssues=state.stale?['Locally saved prices awaiting fresh verification']:[];
+ buildIdeas();
+ return true;
+}
 function validate(route,data){
  if(route==="mapping")return Array.isArray(data)&&data.every((x)=>Number.isSafeInteger(x?.id)&&x.id>0&&typeof x.name==="string");
  return !!(data&&typeof data.data==="object"&&!Array.isArray(data.data)&&data.data!==null);
@@ -608,7 +670,7 @@ async function getPrices(route,ttl,force){
   fresh=await response.json();
   if(!validate(route,fresh))throw Error("Unexpected Wiki API response for "+route);
   const mergedCache=cacheLoad();mergedCache[route]={data:fresh,at:Date.now()};
-  if(!store(CACHE,mergedCache)&&route==="mapping"){/* No persistence is acceptable when device storage is full. */}
+  scheduleMarketCacheSave();
   return {data:fresh,at:Date.now(),stale:false};
  }catch(err){
   if(rec&&age>=0&&age<86400000&&validate(route,rec.data))return {data:rec.data,at:rec.at,stale:true,error:String(err.message)};
@@ -658,6 +720,7 @@ async function refresh(force){
   state.loading=false;
   if(get("gh-refresh"))get("gh-refresh").disabled=false;
   render();
+  if(marketCacheDirty)scheduleMarketCacheSave();
  }
 }
 /* Explore all markets once from the Wiki bulk endpoints.
@@ -932,13 +995,21 @@ async function importOsrsBackup(event){
   render();
  }catch(e){txt("gh-backup-status","Import not applied: "+safe(e.message));}
 }
+let ledgerTotalsCache=null;
 function ledgerTotals(){
  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
+ // Today/weekly totals only change on a new recorded fill, a day rollover,
+ // or a new minute. Never rescan a 100k-row ledger on every Next swipe.
+ if(ledgerTotalsCache?.records===state.records&&ledgerTotalsCache.day===+day&&
+    now-ledgerTotalsCache.at>=0&&now-ledgerTotalsCache.at<60000)
+  return ledgerTotalsCache.result;
  const weekDate=new Date(day);weekDate.setDate(weekDate.getDate()-6);
  const week=+weekDate;let today=0n,lastWeek=0n;
  for(const r of state.records)if(r.side==="sell"&&Number.isSafeInteger(r.gain)){const t=Date.parse(r.when);if(t>=week&&t<=now)lastWeek+=BigInt(r.gain);if(t>=+day&&t<=now)today+=BigInt(r.gain)}
  const exact=value=>Number.isSafeInteger(Number(value))?Number(value):null;
- return {today:exact(today),lastWeek:exact(lastWeek)};
+ const result={today:exact(today),lastWeek:exact(lastWeek)};
+ ledgerTotalsCache={records:state.records,day:+day,at:now,result};
+ return result;
 }
 function render(){
  if(!get("gh-budget-metric"))return;
@@ -1033,10 +1104,17 @@ function render(){
    get("gh-add-fill").disabled=false;
   }
   const icon=get("gh-item-icon"),meta=state.mappingById.get(current.id);
-  icon.replaceChildren();const url=iconUrl(meta?.icon);
-  if(url){const image=el("img");image.src=url;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
-   image.onerror=()=>{icon.textContent="▥"};icon.append(image)}
-  else icon.textContent="▥";
+  const url=iconUrl(meta?.icon),existing=icon.firstElementChild;
+  if(url){
+   // Preserve the same decoded image between repeated paints of this item.
+   if(existing?.tagName!=='IMG'||existing.getAttribute('src')!==url){
+    const image=el('img');image.src=url;image.alt='';image.loading='eager';
+    image.decoding='async';image.fetchPriority='high';image.referrerPolicy='no-referrer';
+    image.onerror=()=>{if(icon.contains(image))icon.textContent='▥'};
+    icon.replaceChildren(image);
+   }
+  }else if(icon.textContent!=='▥')icon.textContent='▥';
+  prefetchNearbyOsrsIcons();
   get("gh-previous").disabled=state.index===0;get("gh-next").disabled=state.index===state.ideas.length-1;
   get("gh-show-chart").disabled=false;
  }
@@ -1044,6 +1122,25 @@ function render(){
  if(state.ledgerError){txt('gh-today','Unverified');txt('gh-week','Unverified');txt('gh-backup-status',state.ledgerError+' · Export the original for recovery.');get('gh-add-fill').disabled=true;}
  renderLedger();
  restoreScrolls();
+}
+// Predecode the nearest three icons only (not an entire market catalogue).
+const warmedOsrsIcons=new Map();
+let osrsPrefetchTimer=0;
+function prefetchNearbyOsrsIcons(){
+ if(osrsPrefetchTimer)win.clearTimeout(osrsPrefetchTimer);
+ osrsPrefetchTimer=win.setTimeout(()=>{
+  osrsPrefetchTimer=0;
+  if(!win.Image||doc.hidden||state.game!=='osrs')return;
+  for(const i of [state.index+1,state.index+2,state.index-1]){
+   const row=state.ideas[i];if(!row)continue;
+   const src=iconUrl(state.mappingById.get(row.id)?.icon);
+   if(!src||warmedOsrsIcons.has(src))continue;
+   const image=new win.Image();image.decoding='async';image.src=src;
+   warmedOsrsIcons.set(src,image);
+   while(warmedOsrsIcons.size>12)warmedOsrsIcons.delete(warmedOsrsIcons.keys().next().value);
+   if(typeof image.decode==='function')void image.decode().catch(()=>{});
+  }
+ },90);
 }
 function navigate(dir){
  if(!state.ideas.length)return;

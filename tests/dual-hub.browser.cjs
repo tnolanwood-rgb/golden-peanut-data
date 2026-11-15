@@ -43,6 +43,10 @@ const server=http.createServer((req,res)=>{
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
    if(u.origin===url)return route.continue();
+   // Images must remain valid during repeated repaint/node-identity tests.
+   if(u.hostname==='oldschool.runescape.wiki')
+    return route.fulfill({status:200,contentType:'image/png',body:Buffer.from(
+     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64')});
    if(u.hostname==='prices.runescape.wiki'){
     const end=u.pathname.split('/').pop();
     if(end==='timeseries')assert.ok(['6h','24h','7d','30d'].includes(u.searchParams.get('lookback')),'v2 API requires lookback; timestep is not supported');
@@ -66,6 +70,23 @@ const server=http.createServer((req,res)=>{
    db.close();
   });
   await page.waitForFunction(()=>document.getElementById('gh-item-name')?.textContent==='Copper sword',{timeout:15000});
+  await page.waitForFunction(()=>GoldenDualHub.diagnostics().cacheWrites>=1);
+  assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).cacheWrites,1,
+    'four parallel Wiki responses must be persisted once, not four times');
+  const retained=await page.evaluate(()=>{
+   window.__perfIcon=document.querySelector('#gh-item-icon img');
+   window.__perfCoin=document.querySelector('#gh-budget-metric img');
+   return !!window.__perfIcon&&!!window.__perfCoin;
+  });
+  assert.equal(retained,true,'OSRS has official item and coin images');
+  await page.evaluate(()=>window.dispatchEvent(new Event('pageshow')));
+  assert.equal(await page.evaluate(()=>window.__perfIcon===document.querySelector('#gh-item-icon img')),
+    true,'background resume must not recreate the selected item icon');
+  assert.equal(await page.evaluate(()=>window.__perfCoin===document.querySelector('#gh-budget-metric img')),
+    true,'background resume must not recreate the currency image');
+  await page.waitForFunction(()=>GoldenDualHub.diagnostics().iconWarmCount>=1);
+  assert.ok((await page.evaluate(()=>GoldenDualHub.diagnostics())).iconWarmCount<=12,
+    'prefetch is bounded, not a whole-catalogue background download');
   // Official OSRS mobile/Steam value colour thresholds, not GW2 rarity.
   const tierCases=await page.evaluate(()=>{
     const classify=window.GoldenOSRSValueTiers.classify;

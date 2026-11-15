@@ -7,7 +7,7 @@ function hub(saved={}){
  const storage=new Map(Object.entries(saved)),nodes=new Map();
  const window={localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},performance:{now:()=>0}};
  const document={readyState:'loading',addEventListener(){},getElementById:id=>nodes.get(id)||null};
- vm.runInNewContext(source.replace('})(window,document);','window.audit={state,loadUser,saveUser,saveLedger,validate,buildIdeas,applyIdeasView,validateOsrsRows,recordFill,inventory,ledgerTotals,tax,importOsrsBackup,purchaseUsage};})(window,document);'),{window,document,Date,Map,Set,Number,Math,Array,JSON,Error,AbortSignal});
+ vm.runInNewContext(source.replace('})(window,document);','window.audit={state,loadUser,saveUser,saveLedger,validate,buildIdeas,applyIdeasView,validateOsrsRows,recordFill,inventory,ledgerTotals,tax,importOsrsBackup,purchaseUsage,cacheLoad,getPrices,flushMarketCache,restoreCachedMarkets};})(window,document);'),{window,document,Date,Map,Set,Number,Math,Array,JSON,Error,AbortSignal});
  return {api:window.audit,storage,nodes,window};
 }
 function snapshot(){return {mapping:[{id:1,name:'Expensive research item',limit:8,members:false}],latest:{data:{1:{low:1000000,high:1200000,lowTime:sec-30,highTime:sec-60}}},five:{timestamp:sec-300,data:{1:{avgLowPrice:1000000,avgHighPrice:1200000,lowPriceVolume:100,highPriceVolume:100}}},hour:{timestamp:sec-3600,data:{1:{avgLowPrice:1000000,avgHighPrice:1200000,lowPriceVolume:100,highPriceVolume:100}}}};}
@@ -87,4 +87,56 @@ test('discovery scans a long ledger once rather than once per mapped market',()=
 test('aggregate profit refuses unsafe display instead of rounding a large preserved ledger',()=>{
  const {api}=hub();api.state.records=Array.from({length:1002},()=>({side:'sell',gain:9000000000000,when:new Date(now-1000).toISOString()}));
  assert.equal(api.ledgerTotals().lastWeek,null);
+});
+
+test('OSRS cached market can appear immediately without network and never promotes old research as verified',()=>{
+ const snap=snapshot(),stamp=Date.now();
+ const old={
+  mapping:{data:snap.mapping,at:stamp-600000},
+  latest:{data:snap.latest,at:stamp-600000},
+  '5m':{data:snap.five,at:stamp-600000},
+  '1h':{data:snap.hour,at:stamp-600000}
+ };
+ const {api}=hub({'gh-osrs-v1-cache':JSON.stringify(old)});
+ assert.equal(api.restoreCachedMarkets(),true);
+ assert.equal(api.state.stale,true);
+ assert.equal(api.state.liquidIdeas.length,0);
+ assert.equal(api.state.valueIdeas.length,1,'research observations are retained, not hidden');
+ assert.match(api.state.valueIdeas[0].warnings.join(' '),/awaiting fresh verification/);
+ assert.equal(api.state.records.length,0);
+});
+test('one cache write persists all four market routes, without losing an existing cache on quota errors',async()=>{
+ const {api,window,storage}=hub();
+ let saves=0;const original=window.localStorage.setItem;
+ window.localStorage.setItem=(key,val)=>{if(key==='gh-osrs-v1-cache')saves++;original(key,val)};
+ let timer=0;window.setTimeout=()=>++timer;window.clearTimeout=()=>{};
+ const values={mapping:[{id:123,name:'Fixture item'}],latest:{data:{123:{low:100,high:200}}},
+  '5m':{data:{},timestamp:sec-120},'1h':{data:{},timestamp:sec-120}};
+ window.fetch=async url=>({ok:true,json:async()=>values[url.split('/').pop()]});
+ await Promise.all(Object.keys(values).map(route=>api.getPrices(route,0,true)));
+ assert.equal(saves,0,'avoid four synchronous multi-megabyte serializations during fetch completion');
+ api.flushMarketCache();
+ assert.equal(saves,1);
+ assert.deepEqual(Object.keys(JSON.parse(storage.get('gh-osrs-v1-cache'))).sort(),Object.keys(values).sort());
+});
+test('realised ledger metrics are cached across item navigation but recompute after a new fill',()=>{
+ const {api}=hub();
+ api.state.records=[{side:'sell',gain:250,when:new Date(now-10000).toISOString()}];
+ const first=api.ledgerTotals(),again=api.ledgerTotals();
+ assert.strictEqual(first,again,'repeated Next/Previous must reuse the exact totals object');
+ api.state.records=[...api.state.records,{side:'sell',gain:30,when:new Date(now-1000).toISOString()}];
+ const changed=api.ledgerTotals();
+ assert.notStrictEqual(changed,first);
+ assert.equal(changed.today,280);
+});
+
+test('explicitly deleted market cache is not silently resurrected on pagehide flush',async()=>{
+ const existing={'mapping':{data:[{id:123,name:'Existing item'}],at:Date.now()}};
+ const {api,window,storage}=hub({'gh-osrs-v1-cache':JSON.stringify(existing)});
+ let timer=0;window.setTimeout=()=>++timer;window.clearTimeout=()=>{};
+ window.fetch=async()=>({ok:true,json:async()=>[{id:124,name:'New mapping'}]});
+ await api.getPrices('mapping',0,true);
+ storage.delete('gh-osrs-v1-cache');
+ api.flushMarketCache();
+ assert.equal(storage.has('gh-osrs-v1-cache'),false,'user deletion must win over a buffered write');
 });
