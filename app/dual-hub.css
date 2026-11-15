@@ -1,0 +1,87 @@
+/* Golden Hub: one shared game selector and one visual grammar.
+ * Keep each game's data model and storage separate.
+ */
+:root{
+  --gh-radius:17px;
+  --gh-space:16px;
+  --gh-border:#536c59;
+  --gh-bg:#0e1914;
+  --gh-panel:#172a20;
+  --gh-accent:#f2d593;
+  --gh-text:#f7f5e8;
+  --gh-muted:#b7cbb9;
+}
+#gh-game-nav{
+  position:sticky;top:0;z-index:80;background:#102018ed;
+  border-bottom:1px solid #45604c;backdrop-filter:blur(14px);
+  padding:calc(8px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 9px;
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+#gh-game-nav .gh-nav-inner{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:760px;margin:0 auto;padding:4px;background:#14261c;border:1px solid #4a624e;border-radius:13px}
+#gh-game-nav button{
+  min-width:0;min-height:45px;border:1px solid transparent;background:transparent;
+  color:#b4c5b8;border-radius:10px;padding:9px 10px;font-size:14px;
+  font-family:inherit;line-height:1.3;font-weight:760;
+}
+#gh-game-nav button[aria-selected="true"]{
+  background:#e5c580;border-color:#f0d4a2;color:#17281c;box-shadow:0 2px 8px #0003;
+}
+#gh-game-nav button:focus-visible{outline:3px solid #f4dba0;outline-offset:2px}
+#gh-osrs-root[hidden]{display:none!important}
+body.gh-show-osrs>.app{display:none!important}
+body.gh-show-osrs #gp-build-integrity{display:none!important}
+body.gh-show-osrs{background:#101910;color:#f8f3e3}
+body.gh-show-osrs #gh-osrs-root{display:block}
+#gh-osrs-root{max-width:780px;margin:0 auto;padding:0 12px 65px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8f3e3}
+#gh-osrs-root .gp-guide-content{padding-bottom:16px}
+#gh-osrs-root .gp-guide-header{background:linear-gradient(150deg,#2c3221,#1a251a);border-color:#777459}
+#gh-osrs-root .gp-guide-logo{background:#363822;border-color:#c5a86a;color:#f1cf83;font-size:29px}
+#gh-osrs-root .gp-guide-title h1{color:#f5cf82}
+#gh-osrs-root .gp-guide-title p{color:#c8c5ad}
+#gh-osrs-root .gp-guide-metric{background:#232d21;border-color:#666950}
+#gh-osrs-root .gp-guide-delivery-summary{background:#2b3623;border-color:#a28b61}
+#gh-osrs-root .gp-guide-label{color:#e9ca91}
+#gh-osrs-root .gp-guide-muted,#gh-osrs-root .gp-guide-update,#gh-osrs-root .gp-guide-position{color:#c5c7b5}
+#gh-osrs-root .gp-guide-idea{background:#222d21;border-color:#697054}
+#gh-osrs-root .gp-guide-primary{background:#e5c580;border-color:#efdaa5;color:#1d291b}
+#gh-osrs-root .gp-guide-secondary,#gh-osrs-root .gp-guide-light{background:#354632;border-color:#8c9472}
+#gh-osrs-root .gp-guide-totals{border-color:#606c4c}
+#gh-osrs-root .gp-guide-totals .gp-guide-number{color:#bed4ae}
+#gh-osrs-root .gp-guide-idea h2{font-family:system-ui,sans-serif}
+#gh-osrs-root .gp-guide-head-actions{grid-column:1/-1}
+#gh-osrs-root .gp-guide-idea-top{align-items:center}
+#gh-osrs-root .gp-guide-item-icon{font-size:19px;letter-spacing:-.02em;background:#38432b}
+#gh-osrs-root .gp-guide-item-icon img{width:100%;height:100%;object-fit:contain}
+.gh-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0}
+.gh-field-grid label{display:grid;gap:5px;color:#d9dfcc;font-size:13px;font-weight:650}
+#gh-osrs-root input,#gh-osrs-root select{width:100%;min-height:46px;border:1px solid #68785e;border-radius:10px;background:#0e1c15;padding:9px 12px;color:#f8f1df;font:500 16px/1.4 system-ui,sans-serif}
+#gh-osrs-root input:focus-visible,#gh-osrs-root select:focus-visible{outline:3px solid #ebca81;outline-offset:2px}
+.gh-osrs-settings,.gh-osrs-ledger{border:1px solid #627251;border-radius:14px;background:#1a281d;margin:12px 0;overflow:hidden}
+.gh-osrs-settings>summary,.gh-osrs-ledger>summary{padding:14px 16px;cursor:pointer;font-size:14px;font-weight:750;color:#ecd49c}
+.gh-osrs-settings>.gh-settings-body,.gh-osrs-ledger>.gh-settings-body{padding:3px 15px 15px}
+.gh-osrs-settings p,.gh-osrs-ledger p{font-size:12px;color:#c0cab6}
+#gh-osrs-root .gh-trade-row{margin-top:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#gh-osrs-root .gh-inline-error{color:#ffc1b9;font-size:13px}
+#gh-osrs-root .gh-inline-status{color:#c2d8ba;font-size:13px;line-height:1.5}
+#gh-osrs-root .gh-ledger-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:8px;padding:11px 0;border-bottom:1px solid #4c5b42;font-size:13px}
+#gh-osrs-root .gh-ledger-row strong{font-weight:730}
+#gh-osrs-root .gh-ledger-row small{font-size:11px;color:#bdc8b6}
+#gh-osrs-root .gh-empty{color:#c4cab7;text-align:center;padding:16px 10px;font-size:14px}
+#gh-osrs-root .gh-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#gh-osrs-root .gh-actions>*{min-width:0}
+#gh-osrs-root .gh-chart-card{padding:13px;border:1px solid #687859;border-radius:12px;background:#17271d}
+#gh-osrs-root .gh-chart-card[hidden]{display:none!important}
+#gh-osrs-root .gh-chart-card svg{width:100%;height:190px;display:block;touch-action:pan-y}
+#gh-osrs-root .gh-chart-range{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:10px}
+#gh-osrs-root .gh-chart-range button{flex:1;min-width:54px;min-height:40px;font-size:12px}
+#gh-osrs-root .gh-meta{font-size:12px;color:#bfcbb2;line-height:1.5}
+#gh-osrs-root .gh-trade-note{font-size:12px;color:#cfc8b1;line-height:1.5}
+#gh-osrs-root button:disabled{opacity:.43;cursor:not-allowed}
+#gh-osrs-root .gh-result-summary{margin:5px 0 0}
+@media(max-width:390px){
+  #gh-osrs-root{padding:0 9px 55px}
+  #gh-osrs-root .gp-guide-header{padding:13px 12px}
+  #gh-osrs-root .gp-guide-idea{padding:18px 14px}
+  #gh-game-nav button{font-size:12px;padding-inline:4px;min-height:44px}
+  .gh-field-grid{grid-template-columns:1fr}
+}
