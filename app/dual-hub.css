@@ -225,3 +225,38 @@ body.gh-show-osrs #gh-osrs-root{display:block}
  #gh-osrs-root .gh-market-tabs button{font-size:12px}
  #gh-osrs-root .gh-market-controls{grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:7px}
 }
+
+/* Order-reference explainer: OSRS does not publish outstanding bids/asks.
+ * Every data point here is labelled as a completed transaction. */
+#gh-osrs-root .gh-order-guide{
+ margin:17px 0 8px;padding:13px 12px;border-radius:13px;
+ border:1px solid #607e66;background:#14281d;display:grid;gap:11px
+}
+#gh-osrs-root .gh-order-guide[hidden]{display:none!important}
+#gh-osrs-root .gh-order-guide h3{font-size:16px;color:#efcf91;margin:0}
+#gh-osrs-root .gh-quote-intro,#gh-osrs-root .gh-quote-warning,
+#gh-osrs-root .gh-quote-meta{font-size:12px;line-height:1.55;color:#c1d0be;margin:0}
+#gh-osrs-root .gh-quote-grid,#gh-osrs-root .gh-quote-targets{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px
+}
+#gh-osrs-root .gh-quote-grid>div,#gh-osrs-root .gh-quote-targets>div{
+ display:flex;flex-direction:column;gap:5px;min-width:0;
+ border:1px solid #536e52;background:#233c2a;border-radius:10px;padding:12px 9px
+}
+#gh-osrs-root .gh-quote-grid span,#gh-osrs-root .gh-quote-targets span{
+ font-size:12px;line-height:1.4;color:#c8d9c7
+}
+#gh-osrs-root .gh-quote-grid strong,#gh-osrs-root .gh-quote-targets strong{
+ font-size:clamp(14px,3.7vw,19px);font-weight:800;line-height:1.4;
+ font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:#f4efdf
+}
+#gh-osrs-root .gh-quote-targets strong{color:#ead08e}
+#gh-osrs-root .gh-quote-grid small{font-size:10px;color:#b0c4b4;line-height:1.5}
+#gh-osrs-root .gh-quote-margin{
+ font-size:13px;font-weight:780;color:#a8daba;margin:0
+}
+#gh-osrs-root .gh-quote-warning{
+ background:#3a3021;color:#e7d3b1;border:1px solid #75684d;
+ border-radius:10px;padding:10px
+}
+@media(max-width:375px){#gh-osrs-root .gh-order-guide{padding:10px 8px}#gh-osrs-root .gh-quote-grid strong,#gh-osrs-root .gh-quote-targets strong{font-size:13px}}
