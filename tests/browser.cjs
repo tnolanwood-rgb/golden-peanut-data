@@ -137,7 +137,58 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
    'obsolete cross-reload skipped bin is removed on startup');
  assert.equal(await page.getByRole('button',{name:/Skip|Review skipped/i}).count(),0,'no Skip or skipped-items controls exist');
- await page.getByRole('button',{name:'Next idea →'}).click();
+ // Exact user regression: Next shows the next idea; ~0.4s later its missing
+ // ArenaNet icon arrives. Nothing above the card may be rebuilt or scroll
+ // the user back to the top. The next few item IDs are prefetched.
+ const delayedArt=await page.evaluate(async()=>{
+  const state=GoldenPeanutClean.State,before=GPGuided.navigation();
+  const nextId=GPGuidedDeck.create?GPGuidedVisit.create(localStorage).load(state.account)?.deck?.ids?.[before.position]:null;
+  const root=document.querySelector('#gp-guided-root');
+  const header=root.querySelector('.gp-guide-header'),metrics=root.querySelector('.gp-guide-metrics'),
+   drawer=root.querySelector('.gp-guide-delivery-drawer');
+  const scroller=document.scrollingElement||document.documentElement;
+  window.scrollTo({top:Math.min(240,Math.max(0,scroller.scrollHeight-innerHeight-15)),behavior:'instant'});
+  const requested=[],original=GPFocus.ensureItemArtwork;
+  GPFocus.ensureItemArtwork=ids=>{requested.push(...ids);return original(ids);};
+  let afterClick,afterLate;
+  try{
+   const tappedNext=document.querySelector('.gp-guide-controls button:last-child');
+   tappedNext.focus({preventScroll:true});
+   tappedNext.click();
+   const now=GPGuided.navigation(),id=now.id;
+   afterClick={id,y:scrollY,card:root.querySelector('.gp-guide-idea'),
+    keptFocus:document.activeElement===root.querySelector('.gp-guide-controls button:last-child'),
+    sameHeader:header===root.querySelector('.gp-guide-header'),
+    sameMetrics:metrics===root.querySelector('.gp-guide-metrics'),
+    sameDrawer:drawer===root.querySelector('.gp-guide-delivery-drawer'),
+    builds:GPGuided.diagnostics().cardBuilds};
+   await new Promise(resolve=>setTimeout(resolve,420));
+   const icon='https://render.guildwars2.com/file/aabbcc/'+id+'.png';
+   state.meta[id]={...(state.meta[id]||{}),id,rarity:'Exotic',icon};
+   dispatchEvent(new CustomEvent('gp-item-metadata-updated',{detail:{account:state.account,ids:[id]}}));
+   afterLate={y:scrollY,icon:root.querySelector('.gp-guide-item-icon img')?.getAttribute('src'),
+    sameCard:afterClick.card===root.querySelector('.gp-guide-idea'),
+    sameHeader:header===root.querySelector('.gp-guide-header'),
+    sameMetrics:metrics===root.querySelector('.gp-guide-metrics'),
+    sameDrawer:drawer===root.querySelector('.gp-guide-delivery-drawer'),
+    builds:GPGuided.diagnostics().cardBuilds,
+    itemColor:getComputedStyle(root.querySelector('.gp-guide-item-name')).color};
+   return {before:before.position,afterClick:{...afterClick,card:undefined},
+    afterLate,requested,nextId,scrollable:scroller.scrollHeight>innerHeight+30};
+  }finally{GPFocus.ensureItemArtwork=original;}
+ });
+ assert.equal(delayedArt.afterClick.keptFocus,true,'Next preserves keyboard/touch focus without scrolling body');
+ assert.equal(delayedArt.afterClick.sameHeader,true,'Next must not reconstruct the page header');
+ assert.equal(delayedArt.afterClick.sameMetrics,true,'Next must not reconstruct wallet/delivery metrics');
+ assert.equal(delayedArt.afterClick.sameDrawer,true,'Next must preserve the existing Delivery Box drawer');
+ assert.equal(delayedArt.afterLate.sameCard,true,'late item artwork is inserted without replacing the trade card');
+ assert.equal(delayedArt.afterLate.sameHeader,true);
+ assert.equal(delayedArt.afterLate.sameMetrics,true);
+ assert.equal(delayedArt.afterLate.sameDrawer,true);
+ assert.equal(delayedArt.afterLate.builds,delayedArt.afterClick.builds,'late artwork must not rerender the whole page');
+ assert.ok(Math.abs(delayedArt.afterLate.y-delayedArt.afterClick.y)<=2,'late image must not move document scroll');
+ assert.equal(delayedArt.afterLate.icon,'https://render.guildwars2.com/file/aabbcc/'+delayedArt.afterClick.id+'.png');
+ assert.equal(delayedArt.afterLate.itemColor,'rgb(255, 164, 5)','late rarity gets patched in place');
  assert.equal(await counter.innerText(),'2 of '+total,'Next advances; denominator stays fixed');
  assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true);
  const secondIdea=await page.locator('.gp-guide-item-name').innerText();

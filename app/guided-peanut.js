@@ -10,6 +10,8 @@ const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, fingerprint='', renderTimer=0;
 let ideasCache=null,restoredAccount=null,restoredScroll=null,restoredChart=null,saveScrollTimer=0;
+let renderedAccount=null,topFingerprint='',lastPrefetch='',renderCount=0;
+const warmedImages=new Map();
 let visit=null;
 try{visit=root.GPGuidedVisit?.create?.(root.localStorage);}catch{/* Private browsing/storage denial must never break UI. */}
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
@@ -213,22 +215,19 @@ function buildIdea(host,s,view){
  }else{
   const tier=choice.tier;
   const state=tier==='forecast'?'Evidence-backed 24h estimate':tier==='history'?'History-backed · conditional':'Public quote · research only';
-  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',choice.label);
+  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',m?.name||choice.label);
+  heading.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(heading,m?.rarity);
   add(section,el('p','gp-guide-tier',state),heading);
   const art=el('div','gp-guide-item-icon');
+  art.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(art,m?.rarity);
   if(root.GPFocus?.validItemIcon?.(m)){
-   const img=el('img');img.src=m.icon;img.alt='';img.loading='eager';img.decoding='async';
-   img.onerror=()=>{art.textContent=choice.label.slice(0,1).toUpperCase();};
+   const img=el('img');img.src=m.icon;img.alt='';img.width=54;img.height=54;
+   img.loading='eager';img.decoding='async';
+   img.onerror=()=>{if(art.contains(img))art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();};
    art.append(img);
-  }else{
-   art.textContent=choice.label.slice(0,1).toUpperCase();
-   // The compact startup feed intentionally contains names/rarities but no
-   // icons. Request the REAL ArenaNet item artwork on the visible card,
-   // even while Focus Edition's own market rows are hidden.
-   root.GPFocus?.ensureItemArtwork?.([choice.id]);
-  }
+  }else art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();
   heading.before(art);
   const instructions=el('div','gp-guide-instructions');
   const buyLine=el('p','gp-guide-instruction'),sellLine=el('p','gp-guide-instruction-sub');
@@ -271,6 +270,70 @@ function buildIdea(host,s,view){
  }
  host.append(section);
 }
+/* The lightweight index deliberately excludes icon URLs. Prefetch art for
+ * the visible idea and the next four deck positions so Next is usually
+ * instant. Keep only a handful of decoded public images in memory. */
+function prewarmIcon(src){
+ if(!root.Image||typeof src!=='string'||!/^https:\/\/render\.guildwars2\.com\/file\/[a-f0-9]+\/\d+\.(png|jpe?g|webp)$/i.test(src)||
+    warmedImages.has(src))return;
+ const img=new root.Image();img.decoding='async';img.src=src;
+ warmedImages.set(src,img);
+ while(warmedImages.size>12)warmedImages.delete(warmedImages.keys().next().value);
+ if(typeof img.decode==='function')void img.decode().catch(()=>{});
+}
+function prefetchNearbyArtwork(s,view){
+ if(!s?.account||!view?.id)return;
+ const snapshot=deck?.snapshot?.(s.account);
+ if(!snapshot)return;
+ const ids=snapshot.ids.slice(snapshot.position,Math.min(snapshot.position+5,snapshot.ids.length));
+ const missing=ids.filter(id=>!root.GPFocus?.validItemIcon?.(s.meta?.[id]));
+ const srcs=ids.map(id=>s.meta?.[id]?.icon).filter(Boolean);
+ const key=s.account+'|'+ids.join(',')+'|'+srcs.join(',');
+ // Current missing artwork may be retried on an explicit repaint, while
+ // Focus itself deduplicates in-flight requests and caps failed attempts.
+ // Nearby prefetched items are requested only when their list changes.
+ const needsVisible=missing.includes(view.id);
+ if(key===lastPrefetch&&!needsVisible)return;
+ lastPrefetch=key;
+ if(missing.length)root.GPFocus?.ensureItemArtwork?.(missing);
+ for(const src of srcs)prewarmIcon(src);
+}
+/* Metadata arrives asynchronously, often one second AFTER the user clicks
+ * Next. Patching just the fixed-size artwork/title avoids rebuilding the
+ * whole card, moving the navigation controls, or resetting page scroll. */
+function updateActiveArtwork(event){
+ if(!installed||!document.body.classList.contains('gp-guided-active'))return;
+ const s=root.GoldenPeanutClean?.State;
+ if(!s?.account||event?.detail?.account&&event.detail.account!==s.account)return;
+ const view=deck?.view?.(ideas(s),s.account),id=view?.id;
+ if(!id)return;
+ const changed=event?.detail?.ids;
+ if(Array.isArray(changed)&&!changed.some(x=>Number(x)===id)){
+  prefetchNearbyArtwork(s,view);
+  return;
+ }
+ const host=$('gp-guided-root'),art=host?.querySelector('.gp-guide-item-icon'),
+  heading=host?.querySelector('.gp-guide-item-name');
+ if(!art||!heading||art.dataset.itemId!==String(id)||heading.dataset.itemId!==String(id))return;
+ const m=s.meta?.[id];
+ if(m?.name&&heading.textContent!==m.name)heading.textContent=m.name;
+ // GPRarity.apply resets its own classes but appends to title, so clear any
+ // old hint first when upgrading fallback metadata in place.
+ heading.title='';art.title='';
+ root.GPRarity?.apply?.(heading,m?.rarity);
+ root.GPRarity?.apply?.(art,m?.rarity);
+ if(root.GPFocus?.validItemIcon?.(m)){
+  const old=art.querySelector('img');
+  if(old?.getAttribute('src')!==m.icon){
+   const img=el('img');img.src=m.icon;img.alt='';img.width=54;img.height=54;
+   img.loading='eager';img.decoding='async';
+   img.onerror=()=>{if(art.contains(img))art.textContent=(m?.name||'◇').slice(0,1).toUpperCase();};
+   art.replaceChildren(img);
+  }
+  prewarmIcon(m.icon);
+ }
+ prefetchNearbyArtwork(s,view);
+}
 /* The chart lives outside the guided home renderer so background refreshes
  * cannot replace or close a user's active inspection. */
 function showChart(choice){
@@ -282,29 +345,67 @@ function render(force=false){
  maybeRestoreView(s,rows);
  const view=deck.view(rows,s?.account);
  if(view.id!==current)setCurrent(view.id);
- // Compare the active quote, not merely array lengths; rankings can be rebuilt
- // or repriced without changing their counts.
- const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
+ const host=$('gp-guided-root');if(!host)return;
+ const snap=snapshot(s),day=root.PeanutCore?.ukDay?.(Date.now()),summary=s?.summary||{};
+ const topSig=JSON.stringify([s?.account,snap?.at,snap?.wallet,snap?.deliveryAt,
+  summary.totalRecords,summary.weekP100,summary.days?.[day]?.p100,
+  $('focus-delivery-total')?.textContent||'',
+  $('focus-delivery-items')?.textContent||'']);
+ // Item icon/rarity are explicitly absent from this render fingerprint:
+ // these are patched in place when ArenaNet metadata arrives. A late image
+ // must never tear down the content or reset Android scroll position.
+ const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,
   s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,
   view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
-  s?.meta?.[view.id]?.icon,s?.meta?.[view.id]?.rarity,$('focus-delivery-total')?.textContent||'']);
- if(!force&&sig===fingerprint)return;fingerprint=sig;
- const host=$('gp-guided-root');if(!host)return;
+  topSig]);
+ if(sig===fingerprint&&topSig===topFingerprint&&host.querySelector('.gp-guide-idea')){
+  updateActiveArtwork();
+  restoreVisiblePosition();
+  return;
+ }
  const oldY=window.scrollY;
- const openDelivery=host.querySelector('.gp-guide-delivery-drawer')?.open||false;
- const deliveryScroll=host.querySelector('.gp-guide-delivery-list')?.scrollTop||0;
- host.replaceChildren();
- const content=el('div','gp-guide-content');host.append(content);
- renderTop(content,s);
- const drawer=host.querySelector('.gp-guide-delivery-drawer');
- if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
- buildIdea(content,s,view);
- 
- const footer=el('footer','gp-guide-foot');
- add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
-  button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
- content.append(footer);
- if(force)window.scrollTo({top:oldY,behavior:'instant'});
+ const oldCard=host.querySelector('.gp-guide-idea');
+ const sameTop=renderedAccount===s?.account&&topFingerprint===topSig&&oldCard;
+ if(sameTop){
+  // The user clicked Next/Previous: only replace the *one card*. Keeping the
+  // header, metric panels, Delivery Box and footer mounted prevents layout
+  // reflow at the top of the document and preserves their scroll positions.
+  const staging=el('div');
+  buildIdea(staging,s,view);
+  const focused=document.activeElement,oldControls=oldCard.querySelector('.gp-guide-controls');
+  const focusedIndex=oldControls?.contains(focused)?[...oldControls.children].indexOf(focused):-1;
+  const newCard=staging.firstElementChild;
+  oldCard.replaceWith(newCard);
+  // Android may move focus to BODY when the tapped Next button is removed.
+  // Give focus to its replacement without implicit browser scroll.
+  if(focusedIndex>=0){
+   const nextControl=newCard.querySelector('.gp-guide-controls')?.children[focusedIndex];
+   if(nextControl&&!nextControl.disabled)nextControl.focus({preventScroll:true});
+  }
+ }else{
+  const oldDrawer=host.querySelector('.gp-guide-delivery-drawer');
+  const openDelivery=oldDrawer?.open||false;
+  const deliveryScroll=host.querySelector('.gp-guide-delivery-list')?.scrollTop||0;
+  // Build the replacement OFF-DOM, then swap once. Clearing the mounted
+  // root before rebuilding caused the browser to clamp scrollY to zero.
+  const content=el('div','gp-guide-content');
+  renderTop(content,s);
+  buildIdea(content,s,view);
+  const footer=el('footer','gp-guide-foot');
+  add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
+   button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
+  content.append(footer);
+  host.replaceChildren(content);
+  const drawer=host.querySelector('.gp-guide-delivery-drawer');
+  if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
+ }
+ fingerprint=sig;topFingerprint=topSig;renderedAccount=s?.account;renderCount++;
+ // Only correct an actual displacement. Never forcibly call scrollTo on
+ // every background repaint or after each delayed image load.
+ if(Math.abs(window.scrollY-oldY)>1)
+  window.scrollTo({top:oldY,behavior:'instant'});
+ updateActiveArtwork();
+ prefetchNearbyArtwork(s,view);
  restoreVisiblePosition();
 }
 function schedule(force=false){clearTimeout(renderTimer);renderTimer=setTimeout(()=>render(force),250);}
@@ -327,7 +428,7 @@ function install(){
   else schedule(); // Avoid needless full card reconstruction on every Android app switch.
  });
  window.addEventListener('pagehide',rememberView);
- window.addEventListener('gp-item-metadata-updated',()=>schedule(true));
+ window.addEventListener('gp-item-metadata-updated',updateActiveArtwork);
  window.addEventListener('gp-account-changed',()=>schedule(true));
  window.addEventListener('scroll',()=>{
   if(!document.body.classList.contains('gp-guided-active'))return;
@@ -338,6 +439,7 @@ function install(){
  setInterval(()=>{if(!document.hidden)schedule();},20000);
  root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
   remember:rememberView,
+  diagnostics:()=>({cardBuilds:renderCount,position:deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account).position}),
   navigation:()=>deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account)};
  return true;
 }

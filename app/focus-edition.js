@@ -107,10 +107,13 @@ async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();i
    if(!validIcon(item)&&validIcon(s.meta[Number(key)]))
     found[key]={...item,icon:s.meta[Number(key)].icon};
   }
-  Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});
-  // The guided screen does not render Focus item rows, so its icon/title
-  // must be told when verified API artwork arrives.
-  window.dispatchEvent(new Event('gp-item-metadata-updated'));
+  Object.assign(s.meta,found);metaRevision++;
+  // Metadata came from ArenaNet: show its verified art immediately. The
+  // IndexedDB persistence round trip must not delay the visible icon.
+  window.dispatchEvent(new CustomEvent('gp-item-metadata-updated',{
+   detail:{account:s.account,ids:Object.keys(found).map(Number)}
+  }));
+  await s.db.putMetadataBatch(found).catch(()=>{});
  }for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
 /* Persist navigation and visible research during Android WebView Activity
