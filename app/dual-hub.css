@@ -130,3 +130,33 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-osrs-root .gh-backup-actions button{min-width:0;min-height:46px;padding:9px 8px;white-space:normal}
 #gh-osrs-root #gh-backup-status{margin:8px 0 13px;min-height:1.4em}
 @media(max-width:360px){#gh-osrs-root .gh-backup-actions{grid-template-columns:1fr}}
+
+/* OSRS ground-item value colours: official OSRS Mobile/Steam defaults.
+ * These are NOT GW2-like fixed rarity classes. Never colour a missing price.
+ * Applies only to OSRS headings, chart titles and the explanatory legend. */
+#gh-osrs-root #gh-item-name[data-osrs-value-tier="1"],
+#gh-research-item[data-osrs-value-tier="1"],
+#gh-osrs-root .gh-tier-key [data-osrs-value-tier="1"]{color:#ffffff!important}
+#gh-osrs-root #gh-item-name[data-osrs-value-tier="2"],
+#gh-research-item[data-osrs-value-tier="2"],
+#gh-osrs-root .gh-tier-key [data-osrs-value-tier="2"]{color:#66b2ff!important}
+#gh-osrs-root #gh-item-name[data-osrs-value-tier="3"],
+#gh-research-item[data-osrs-value-tier="3"],
+#gh-osrs-root .gh-tier-key [data-osrs-value-tier="3"]{color:#99ff99!important}
+#gh-osrs-root #gh-item-name[data-osrs-value-tier="4"],
+#gh-research-item[data-osrs-value-tier="4"],
+#gh-osrs-root .gh-tier-key [data-osrs-value-tier="4"]{color:#ff9600!important}
+#gh-osrs-root #gh-item-name[data-osrs-value-tier="5"],
+#gh-research-item[data-osrs-value-tier="5"],
+#gh-osrs-root .gh-tier-key [data-osrs-value-tier="5"]{color:#ff66b2!important}
+#gh-osrs-root .gh-value-tier-caption{
+  margin:4px 0 10px;color:#c0cbb8;font-size:12px;line-height:1.45;
+  font-variant-numeric:tabular-nums
+}
+#gh-osrs-root .gh-tier-key{
+  border-top:1px solid #647158;margin-top:16px;padding-top:14px
+}
+#gh-osrs-root .gh-tier-key>strong{display:block;font-size:13px;color:#ead096;margin-bottom:9px}
+#gh-osrs-root .gh-tier-key-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+#gh-osrs-root .gh-tier-key-grid span{font-size:12px;font-weight:750;line-height:1.45}
+#gh-osrs-root .gh-tier-key small{display:block;color:#aebfae;line-height:1.55;margin-top:10px;font-size:11px}
