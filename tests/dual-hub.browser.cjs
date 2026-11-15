@@ -257,6 +257,46 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(preservedGW2,{local:'original-account-data-sentinel',indexed:'untouched'},
     'moving between OSRS and GW2 must not erase same-origin GW2 browser history or settings');
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
+
+  // Regression: do not leave "Checking markets..." stuck after an API failure.
+  // Force 1h to fail on a fresh (uncached) page; other API mocks stay valid.
+  await page.evaluate(()=>localStorage.removeItem('gh-osrs-v1-cache'));
+  await page.route('**/api/v2/osrs/1h',route=>route.fulfill({
+    status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+    body:JSON.stringify({error:'temporary upstream outage'})
+  }));
+  await page.reload();
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs' &&
+    window.GoldenDualHub?.diagnostics().priceError && !window.GoldenDualHub?.diagnostics().loading);
+  assert.match(await page.locator('#gh-item-name').innerText(),/Market feed unavailable/,
+    'a failed Wiki endpoint must not leave the trade card stuck checking markets');
+  assert.doesNotMatch(await page.locator('#gh-item-name').innerText(),/Checking markets/);
+  assert.match(await page.locator('#gh-instruction-extra').innerText(),/Wiki API 503/);
+  assert.equal(await page.locator('#gh-empty-retry').isVisible(),true);
+  assert.equal(await page.locator('#gh-refresh').isEnabled(),true);
+  assert.equal(await page.locator('#gh-next').isEnabled(),false);
+  assert.equal(await page.locator('#gh-show-chart').isEnabled(),false);
+  // The failure must not alter existing manual trades or GW2 data.
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
+  await page.unroute('**/api/v2/osrs/1h');
+  await page.locator('#gh-empty-retry').click();
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().ideas>=1 &&
+    !window.GoldenDualHub?.diagnostics().loading);
+  assert.equal(await page.locator('#gh-empty-retry').isVisible(),false,
+    'retry button should disappear when verified trading candidates return');
+  // Even a successful 0-candidate response must render a genuine no-trade state.
+  await page.locator('#gh-budget-input').fill('0');
+  await page.locator('#gh-apply').click();
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas,0);
+  assert.match(await page.locator('#gh-item-name').innerText(),/No trades meet the safety checks right now/);
+  assert.equal(await page.locator('#gh-empty-retry').isVisible(),true);
+  assert.equal(await page.locator('#gh-next').isEnabled(),false);
+  assert.equal(await page.locator('#gh-show-chart').isEnabled(),false);
+  // Return to the user's previous budget in this synthetic fixture.
+  await page.locator('#gh-budget-input').fill('100000000');
+  await page.locator('#gh-apply').click();
+  assert.ok((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas>0);
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
   await fs.promises.mkdir('artifacts',{recursive:true});
   await page.screenshot({path:'artifacts/browser-osrs-390.png',fullPage:true});
   assert.deepEqual(errors,[],'dual game interface must be free of JS page errors');
