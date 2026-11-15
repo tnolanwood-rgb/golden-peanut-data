@@ -22,11 +22,12 @@ function loadUser(){
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
  state.mode=c.mode==="members"?"members":"f2p";
  state.restricted=c.restricted==="clear"?"clear":"unknown";
+ state.index=Number.isSafeInteger(n(c.position))&&n(c.position)>=0?n(c.position):0;
  const records=read(LEDGER,[]);
  state.records=Array.isArray(records)?records.filter(r=>r&&Number.isSafeInteger(r.id)&&r.id>0&&["buy","sell"].includes(r.side)&&good(r.qty)&&good(r.price)&&Number.isFinite(Date.parse(r.when))).slice(-1000):[];
 }
 function saveUser(){
- return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted})&&store(LEDGER,state.records);
+ return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index})&&store(LEDGER,state.records);
 }
 function blank(){
  const h=el("div","gp-guide-content");
@@ -194,8 +195,8 @@ async function getPrices(route,ttl,force){
   if(!response.ok)throw Error("Wiki API "+response.status);
   fresh=await response.json();
   if(!validate(route,fresh))throw Error("Unexpected Wiki API response for "+route);
-  cache[route]={data:fresh,at:Date.now()};
-  if(!store(CACHE,cache)&&route==="mapping"){/* No persistence is acceptable when device storage is full. */}
+  const mergedCache=cacheLoad();mergedCache[route]={data:fresh,at:Date.now()};
+  if(!store(CACHE,mergedCache)&&route==="mapping"){/* No persistence is acceptable when device storage is full. */}
   return {data:fresh,at:Date.now(),stale:false};
  }catch(err){
   if(rec&&age>=0&&age<86400000&&validate(route,rec.data))return {data:rec.data,at:rec.at,stale:true,error:String(err.message)};
@@ -293,7 +294,7 @@ function navigate(dir){
  if(!state.ideas.length)return;
  const index=Math.max(0,Math.min(state.ideas.length-1,state.index+dir));
  if(index===state.index)return;
- state.index=index;state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;get("gh-fill-form").hidden=true;
+ state.index=index;saveUser();state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;get("gh-fill-form").hidden=true;
  render();
 }
 function toggleFill(){
