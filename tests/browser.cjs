@@ -57,6 +57,15 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('.gp-guide-idea').count(),1);
  assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
  assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ // Repeated guided repaints and navigation must reuse the same opportunity
+ // evaluation instead of rescreening thousands of markets for every tap.
+ const guideBuilds=await page.evaluate(()=>{
+  const before=GPMarketBoard.build;let count=0;
+  GPMarketBoard.build=(...args)=>{count++;return before(...args);};
+  try{for(let i=0;i<6;i++)GPGuided.render();return count;}
+  finally{GPMarketBoard.build=before;}
+ });
+ assert.ok(guideBuilds<=1,'six unchanged guided repaints should not rebuild the opportunity board six times');
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
  // swaps priorities, even before the user presses Next.
