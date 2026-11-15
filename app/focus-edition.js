@@ -1103,7 +1103,11 @@ function renderOpportunityHome(){
  }
  const capitalHost=$('focus-deployment-research');
  if(capitalHost&&$('focus-capital-settings')?.open&&$('focus-research')?.hidden===false){
-  capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);
+  // Avoid expensive what-if recalculation and replacing the keyboard-focused
+  // draft whenever a background quote or account update repaints Today.
+  const editing=capitalHost.contains(document.activeElement)&&
+   document.activeElement?.matches?.('.focus-deployment-input');
+  if(!editing){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
  }
  // Alert only if a previously connected collector has truly missed several
  // scheduled checks, never while restoring local session state.
@@ -1713,7 +1717,9 @@ function renderVisible({background=false}={}){
   }
   if($('focus-capital-settings')?.open){
    const host=$('focus-deployment-research');
-   if(host){host.replaceChildren();if(tradeData('wallet').valid)renderDeploymentPlanner(host,s);}
+   const editing=host?.contains(document.activeElement)&&
+    document.activeElement?.matches?.('.focus-deployment-input');
+   if(host&&!editing){host.replaceChildren();if(tradeData('wallet').valid)renderDeploymentPlanner(host,s);}
   }
  }
  const s=State(),busy=s?.busy||s?.allocationBusy;
