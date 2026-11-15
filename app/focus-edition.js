@@ -99,7 +99,15 @@ function artwork(id,large=false){const wrap=h('span','focus-item-art '+(large?'f
 function queueMeta(ids,retry=false){const s=State();if(!s?.api||!s?.db)return;for(const x of ids){const id=Number(x);if(!Number.isInteger(id)||id<=0||metaInFlight.has(id))continue;const until=iconMissing.get(id)||0;if(!retry&&until===-1)continue;if(until>3)continue;metaQueue.add(id);}if(!metaBusy&&metaQueue.size)window.setTimeout(flushMeta,100);}
 async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();if(!s?.api||!s?.db)return;const batch=[...metaQueue].slice(0,35);for(const id of batch){metaQueue.delete(id);metaInFlight.add(id);}metaBusy=true;
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
- try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});
+ try{await fetchPart(batch);if(Object.keys(found).length){
+  // An older metadata request can finish after a newer, verified icon was
+  // loaded into State. Never downgrade official artwork to an empty icon
+  // while an Android screen is returning or a batch is in flight.
+  for(const [key,item] of Object.entries(found)){
+   if(!validIcon(item)&&validIcon(s.meta[Number(key)]))
+    found[key]={...item,icon:s.meta[Number(key)].icon};
+  }
+  Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});
   // The guided screen does not render Focus item rows, so its icon/title
   // must be told when verified API artwork arrives.
   window.dispatchEvent(new Event('gp-item-metadata-updated'));
