@@ -49,7 +49,25 @@ const server=http.createServer((req,res)=>{
   await page.locator('#gh-fill-qty').fill('8');
   await page.locator('#gh-fill-price').fill('145');
   await page.locator('#gh-fill-form button[type="submit"]').click();
-  assert.match(await page.locator('#gh-today').innerText(),/304 gp/);
+  assert.match(await page.locator('#gh-today').innerText(),/304 gp/); 
+  await page.locator('#gh-ledger').evaluate(el=>el.open=true);
+  const backupDownload=page.waitForEvent('download');
+  await page.locator('#gh-export-ledger').click();
+  const downloaded=await backupDownload;
+  assert.match(downloaded.suggestedFilename(),/Golden-Hub-OSRS-.*\.json/);
+  const beforeImport=await page.evaluate(()=>window.GoldenDualHub.diagnostics().ledgerRows);
+  assert.equal(beforeImport,2);
+  const bad={format:'golden-hub-osrs-v1',records:[{id:1,name:'Copper sword',side:'sell',qty:99,price:160,when:new Date(now*1000).toISOString()}]};
+  await page.locator('#gh-import-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bad))});
+  assert.match(await page.locator('#gh-backup-status').innerText(),/Import not applied/);
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,2,'invalid backup cannot mutate OSRS ledger');
+  page.once('dialog',dialog=>dialog.accept());
+  const addition={format:'golden-hub-osrs-v1',records:[{id:1,name:'Copper sword',side:'buy',qty:2,price:105,when:new Date(now*1000+1000).toISOString()}]};
+  await page.locator('#gh-import-file').setInputFiles({name:'valid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(addition))});
+  assert.match(await page.locator('#gh-backup-status').innerText(),/Imported 1 OSRS records/);
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
+  assert.match(await page.locator('#gh-today').innerText(),/304 gp/,'OSRS import must preserve earlier profits');
+
   const dockBefore=await page.locator('#gh-next').evaluate(n=>Math.round(n.getBoundingClientRect().top-n.closest('.gp-guide-idea').getBoundingClientRect().top));
   await page.locator('#gh-next').click();
   assert.match(await page.locator('#gh-item-name').innerText(),/extremely long item/);
