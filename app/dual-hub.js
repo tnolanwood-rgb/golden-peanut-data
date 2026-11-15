@@ -753,6 +753,19 @@ function render(){
  const totals=ledgerTotals();txt("gh-today",gp(totals.today));txt("gh-week",gp(totals.lastWeek));
  get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;
  const current=state.ideas[state.index];
+ get("gh-mode-liquid").setAttribute("aria-pressed",String(state.researchMode==="liquid"));
+ get("gh-mode-value").setAttribute("aria-pressed",String(state.researchMode==="value"));
+ get("gh-floor-label").hidden=state.researchMode!=="value";
+ txt("gh-research-counts",state.loading?"Scanning price and volume evidence…":
+  state.priceError?"Market feed unavailable · retry below":
+  state.stale?"Unverified cache · retry for fresh observations":
+  state.snap?state.liquidIdeas.length+" liquid ideas · "+state.valueIdeas.length+
+   " higher-value markets · "+state.positiveSpreads.toLocaleString("en-GB")+" positive observed spreads":
+  "Markets not yet checked");
+ const note=get("gh-research-evidence");if(note)note.hidden=true;
+ const watch=get("gh-watch-toggle");if(watch)watch.hidden=!current;
+ txt("gh-total-label",state.researchMode==="value"?"Capital needed for one unit":"Illustrative total");
+ txt("gh-margin-label",state.researchMode==="value"?"Observed after-tax spread per unit":"Potential after-tax margin");
  renderValueTier(current);
  if(!current){
   const failure=!!state.priceError,uncertain=!!state.stale;
@@ -763,16 +776,16 @@ function render(){
   txt("gh-item-name",state.loading?"Checking markets…":
     failure?"Market feed unavailable":
     uncertain?"Market prices need verification":
-    state.snap?"No trades meet the safety checks right now":"Market prices not loaded");
+    state.snap?(state.researchMode==="value"?"No matching high-value markets":"No trades meet the safety checks right now"):"Market prices not loaded");
   txt("gh-risk",state.loading?"Checking":failure?"Unavailable":uncertain?"Stale data":"No qualifying trades");
   txt("gh-instruction",state.loading?"Fetching prices and observed volume…":
     failure?"The RuneScape Wiki feed could not be verified.":
     uncertain?"Cached observations are not reliable enough for new trade advice.":
-    state.snap?"No opportunities currently pass the price, volume and risk filters.":"Use Retry market check to load today's prices.");
+    state.snap?(state.researchMode==="value"?"No price pairs match your value floor, watchlist and search filters.":"No opportunities currently pass the price, volume and risk filters."):"Use Retry market check to load today's prices.");
   txt("gh-instruction-extra",state.loading?"":
     failure?"Details: "+state.priceError+" · Retry below when you're connected.":
     uncertain?"Retry to verify fresh prices before placing an order.":
-    state.snap?"You can retry later or adjust your budget and account settings.":"Your recorded trades and GW2 account data remain saved.");
+    state.snap?(state.researchMode==="value"?"Try a lower value threshold, clear search, or disable Watched only.":"Switch to High-value research to inspect less liquid markets, or adjust your account settings."):"Your recorded trades and GW2 account data remain saved.");
   txt("gh-margin","—");txt("gh-total","—");
   txt("gh-caution",state.loading?"Checking current market evidence…":
     "No eligible trade has been verified. The app will not invent prices or profit forecasts.");
@@ -782,21 +795,55 @@ function render(){
   const retry=get("gh-empty-retry");if(retry)retry.hidden=state.loading;
  }else{
   const retry=get("gh-empty-retry");if(retry)retry.hidden=true;
-  txt("gh-position","Trade idea "+(state.index+1)+" of "+state.ideas.length);
+  txt("gh-position",(current.research?"Research market ":"Trade idea ")+(state.index+1)+" of "+state.ideas.length);
   txt("gh-item-name",current.name);
-  txt("gh-risk",current.stressedMargin>0?"Stronger evidence":"Small test only");
-  txt("gh-instruction","Try buying "+current.qty.toLocaleString("en-GB")+" × at "+gp(current.buy)+" each");
-  txt("gh-instruction-extra","Then list at "+gp(current.sell)+" each · not guaranteed to fill");
-  txt("gh-margin",gp(current.profit)+" / item");
-  txt("gh-total",gp(current.total));
-  txt("gh-caution","Four-hour GE limit: "+current.limit.toLocaleString("en-GB")+" · recent two-way volume: "+current.flow.toLocaleString("en-GB")+"/hr · "+(current.stressedMargin>0?"margin survives a 2% lower sell price":"a 2% lower sell price could erase the margin")+". Illustrative only.");
+  const watch=get("gh-watch-toggle");watch.hidden=false;
+  watch.setAttribute("aria-pressed",String(state.watchlist.has(current.id)));
+  watch.textContent=state.watchlist.has(current.id)?"★ Watching this market":"☆ Watch this market";
+  const note=get("gh-research-evidence");note.hidden=false;
+  if(current.research){
+   txt("gh-risk",current.warnings.length?"Research · caution":"Research · stronger evidence");
+   txt("gh-instruction","Observed instant-sell (low) "+gp(current.buy)+
+    " · observed instant-buy (high) "+gp(current.sell));
+   txt("gh-instruction-extra","Historical transaction references, not standing GE offers. Never assume you can buy at the low and sell at the high.");
+   txt("gh-margin",gp(current.profit)+" / item");
+   txt("gh-total",gp(current.buy));
+   const warnings=current.warnings.length?current.warnings.join(" · "):
+    "No major filter flags; a fill is still not guaranteed";
+   txt("gh-research-evidence","Evidence score "+current.evidence+"/100 (not a fill probability) · "+
+     "Last observed "+Math.round(current.age/60)+" min ago · "+
+     (current.flow>0?current.flow.toLocaleString("en-GB")+" matched two-way units in last hour":
+       "No verified two-way hourly volume")+
+     " · "+(current.limit?current.limit.toLocaleString("en-GB"):"unknown")+" four-hour GE limit");
+   txt("gh-caution",warnings+
+    " · After-tax spread "+gp(current.profit)+
+    " · 2% sell-price stress: "+(current.stressedMargin>0?gp(current.stressedMargin)+" remains":
+      "margin erased")+
+    ". These are research observations, NOT a forecast or an executable flip.");
+   get("gh-add-fill").disabled=!!(current.capitalGap>0||
+     current.members&&state.mode==="f2p");
+  }else{
+   txt("gh-risk",current.stressedMargin>0?"Stronger evidence":"Small test only");
+   txt("gh-instruction","Try buying "+current.qty.toLocaleString("en-GB")+" × at "+gp(current.buy)+" each");
+   txt("gh-instruction-extra","Then list at "+gp(current.sell)+" each · not guaranteed to fill");
+   txt("gh-margin",gp(current.profit)+" / item");
+   txt("gh-total",gp(current.total));
+   txt("gh-research-evidence","Evidence score "+current.evidence+
+      "/100 (not fill probability) · "+Math.round(current.age/60)+
+      " min quote age · "+current.flow.toLocaleString("en-GB")+" hourly two-way units");
+   txt("gh-caution","Four-hour GE limit: "+current.limit.toLocaleString("en-GB")+
+    " · recent two-way volume: "+current.flow.toLocaleString("en-GB")+"/hr · "+
+    (current.stressedMargin>0?"margin survives a 2% lower sell price":
+      "a 2% lower sell price could erase the margin")+". Illustrative only.");
+   get("gh-add-fill").disabled=false;
+  }
   const icon=get("gh-item-icon"),meta=state.mappingById.get(current.id);
   icon.replaceChildren();const url=iconUrl(meta?.icon);
   if(url){const image=el("img");image.src=url;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
    image.onerror=()=>{icon.textContent="▥"};icon.append(image)}
   else icon.textContent="▥";
   get("gh-previous").disabled=state.index===0;get("gh-next").disabled=state.index===state.ideas.length-1;
-  get("gh-show-chart").disabled=false;get("gh-add-fill").disabled=false;
+  get("gh-show-chart").disabled=false;
  }
  for(const id of ["gh-budget-metric","gh-today","gh-week","gh-margin","gh-total"])decorateGP(id);
  renderLedger();
