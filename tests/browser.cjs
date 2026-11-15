@@ -152,9 +152,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.ensureItemArtwork=ids=>{requested.push(...ids);return original(ids);};
   let afterClick,afterLate;
   try{
-   document.querySelector('.gp-guide-controls button:last-child').click();
+   const tappedNext=document.querySelector('.gp-guide-controls button:last-child');
+   tappedNext.focus({preventScroll:true});
+   tappedNext.click();
    const now=GPGuided.navigation(),id=now.id;
    afterClick={id,y:scrollY,card:root.querySelector('.gp-guide-idea'),
+    keptFocus:document.activeElement===root.querySelector('.gp-guide-controls button:last-child'),
     sameHeader:header===root.querySelector('.gp-guide-header'),
     sameMetrics:metrics===root.querySelector('.gp-guide-metrics'),
     sameDrawer:drawer===root.querySelector('.gp-guide-delivery-drawer'),
@@ -174,6 +177,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     afterLate,requested,nextId,scrollable:scroller.scrollHeight>innerHeight+30};
   }finally{GPFocus.ensureItemArtwork=original;}
  });
+ assert.equal(delayedArt.afterClick.keptFocus,true,'Next preserves keyboard/touch focus without scrolling body');
  assert.equal(delayedArt.afterClick.sameHeader,true,'Next must not reconstruct the page header');
  assert.equal(delayedArt.afterClick.sameMetrics,true,'Next must not reconstruct wallet/delivery metrics');
  assert.equal(delayedArt.afterClick.sameDrawer,true,'Next must preserve the existing Delivery Box drawer');
