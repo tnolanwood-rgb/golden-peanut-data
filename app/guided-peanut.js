@@ -341,29 +341,58 @@ function render(force=false){
  maybeRestoreView(s,rows);
  const view=deck.view(rows,s?.account);
  if(view.id!==current)setCurrent(view.id);
- // Compare the active quote, not merely array lengths; rankings can be rebuilt
- // or repriced without changing their counts.
- const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
+ const host=$('gp-guided-root');if(!host)return;
+ const snap=snapshot(s),day=root.PeanutCore?.ukDay?.(Date.now()),summary=s?.summary||{};
+ const topSig=JSON.stringify([s?.account,snap?.at,snap?.wallet,snap?.deliveryAt,
+  summary.totalRecords,summary.weekP100,summary.days?.[day]?.p100,
+  $('focus-delivery-total')?.textContent||'',
+  $('focus-delivery-items')?.textContent||'']);
+ // Item icon/rarity are explicitly absent from this render fingerprint:
+ // these are patched in place when ArenaNet metadata arrives. A late image
+ // must never tear down the content or reset Android scroll position.
+ const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,
   s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,
   view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
-  s?.meta?.[view.id]?.icon,s?.meta?.[view.id]?.rarity,$('focus-delivery-total')?.textContent||'']);
- if(!force&&sig===fingerprint)return;fingerprint=sig;
- const host=$('gp-guided-root');if(!host)return;
+  topSig]);
+ if(sig===fingerprint&&topSig===topFingerprint&&host.querySelector('.gp-guide-idea')){
+  updateActiveArtwork();
+  restoreVisiblePosition();
+  return;
+ }
  const oldY=window.scrollY;
- const openDelivery=host.querySelector('.gp-guide-delivery-drawer')?.open||false;
- const deliveryScroll=host.querySelector('.gp-guide-delivery-list')?.scrollTop||0;
- host.replaceChildren();
- const content=el('div','gp-guide-content');host.append(content);
- renderTop(content,s);
- const drawer=host.querySelector('.gp-guide-delivery-drawer');
- if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
- buildIdea(content,s,view);
- 
- const footer=el('footer','gp-guide-foot');
- add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
-  button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
- content.append(footer);
- if(force)window.scrollTo({top:oldY,behavior:'instant'});
+ const oldCard=host.querySelector('.gp-guide-idea');
+ const sameTop=renderedAccount===s?.account&&topFingerprint===topSig&&oldCard;
+ if(sameTop){
+  // The user clicked Next/Previous: only replace the *one card*. Keeping the
+  // header, metric panels, Delivery Box and footer mounted prevents layout
+  // reflow at the top of the document and preserves their scroll positions.
+  const staging=el('div');
+  buildIdea(staging,s,view);
+  oldCard.replaceWith(staging.firstElementChild);
+ }else{
+  const oldDrawer=host.querySelector('.gp-guide-delivery-drawer');
+  const openDelivery=oldDrawer?.open||false;
+  const deliveryScroll=host.querySelector('.gp-guide-delivery-list')?.scrollTop||0;
+  // Build the replacement OFF-DOM, then swap once. Clearing the mounted
+  // root before rebuilding caused the browser to clamp scrollY to zero.
+  const content=el('div','gp-guide-content');
+  renderTop(content,s);
+  buildIdea(content,s,view);
+  const footer=el('footer','gp-guide-foot');
+  add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
+   button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
+  content.append(footer);
+  host.replaceChildren(content);
+  const drawer=host.querySelector('.gp-guide-delivery-drawer');
+  if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
+ }
+ fingerprint=sig;topFingerprint=topSig;renderedAccount=s?.account;renderCount++;
+ // Only correct an actual displacement. Never forcibly call scrollTo on
+ // every background repaint or after each delayed image load.
+ if(Math.abs(window.scrollY-oldY)>1)
+  window.scrollTo({top:oldY,behavior:'instant'});
+ updateActiveArtwork();
+ prefetchNearbyArtwork(s,view);
  restoreVisiblePosition();
 }
 function schedule(force=false){clearTimeout(renderTimer);renderTimer=setTimeout(()=>render(force),250);}
@@ -386,7 +415,7 @@ function install(){
   else schedule(); // Avoid needless full card reconstruction on every Android app switch.
  });
  window.addEventListener('pagehide',rememberView);
- window.addEventListener('gp-item-metadata-updated',()=>schedule(true));
+ window.addEventListener('gp-item-metadata-updated',updateActiveArtwork);
  window.addEventListener('gp-account-changed',()=>schedule(true));
  window.addEventListener('scroll',()=>{
   if(!document.body.classList.contains('gp-guided-active'))return;
@@ -397,6 +426,7 @@ function install(){
  setInterval(()=>{if(!document.hidden)schedule();},20000);
  root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
   remember:rememberView,
+  diagnostics:()=>({cardBuilds:renderCount,position:deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account).position}),
   navigation:()=>deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account)};
  return true;
 }
