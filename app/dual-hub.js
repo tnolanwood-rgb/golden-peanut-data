@@ -472,7 +472,8 @@ function finishScene(scene,commit){
  if(!scene||scene.closed)return;
  scene.closed=true;
  if(activeAnimation?.scene===scene){
-  const {a,b,height}=activeAnimation;activeAnimation=null;
+  const {a,b,height,watchdog}=activeAnimation;activeAnimation=null;
+  win.clearTimeout(watchdog);
   // Clear compositor fill-forwards before removing the drag transforms.
   try{a.cancel();b.cancel();height?.cancel();}catch{}
  }
@@ -512,8 +513,8 @@ function settleScene(scene,commit,releaseVelocity=0){
  // Short, non-bouncy easing with a faster tail for decisive finger flicks.
  const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-2,2));
  const duration=clamp(Math.round(145+170*distance/scene.width-40*vToward),145,315);
- const oldHeight=Math.max(1,scene.stage.getBoundingClientRect().height);
- const nextHeight=Math.max(1,scene.incoming.scrollHeight);
+ // Don't animate 'height': that forces repeated layout/reflow and makes
+ // a swipe hitch on phones even when the panels use compositor transforms.
  const framesOut=[
   {transform:"translate3d("+fromX+"px,0,0)"},
   {transform:"translate3d("+finalX+"px,0,0)"}
@@ -522,13 +523,13 @@ function settleScene(scene,commit,releaseVelocity=0){
   {transform:"translate3d("+(scene.direction*scene.width+fromX)+"px,0,0)"},
   {transform:"translate3d("+(scene.direction*scene.width+finalX)+"px,0,0)"}
  ];
- const framesHeight=[{height:oldHeight+"px"},{height:nextHeight+"px"}];
  const options={duration,easing:"cubic-bezier(.22,.72,.2,1)",fill:"both"};
  const a=scene.out.animate(framesOut,options);
  const b=scene.incoming.animate(framesIn,options);
- const height=scene.stage.animate(framesHeight,options);
- activeAnimation={a,b,height,scene,duration,commit};
- Promise.all([a.finished,b.finished,height.finished])
+ // If a hidden-tab WebView stalls a.finished, don't leave the UI locked.
+ const watchdog=win.setTimeout(()=>finishScene(scene,commit),duration+100);
+ activeAnimation={a,b,height:null,watchdog,scene,duration,commit};
+ Promise.all([a.finished,b.finished])
   .then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
 }
 function switchGame(game,userAction){
@@ -669,7 +670,8 @@ function cancelOnResize(){
  scrollTouch=null;
  if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
  if(activeAnimation){
-  const {a,b,height,scene,commit}=activeAnimation;activeAnimation=null;
+  const {a,b,height,watchdog,scene,commit}=activeAnimation;activeAnimation=null;
+  win.clearTimeout(watchdog);
   // Cancelling animations rejects .finished; guard the stale callback.
   try{a.cancel();b.cancel();height?.cancel();}catch{}
   finishScene(scene,commit);
