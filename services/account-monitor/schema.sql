@@ -76,3 +76,11 @@ CREATE TABLE IF NOT EXISTS gp_monitor_nights (
  PRIMARY KEY(account_id,night,side,order_id)
 );
 CREATE INDEX IF NOT EXISTS idx_gp_monitor_nights_item ON gp_monitor_nights(account_id,item_id,night);
+
+-- One account may be polled by only one collector at a time.
+-- A crashed collector's lease expires; no account records are removed.
+CREATE TABLE IF NOT EXISTS gp_monitor_leases (
+ account_id TEXT PRIMARY KEY,
+ owner TEXT NOT NULL,
+ expires_at INTEGER NOT NULL
+);

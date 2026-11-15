@@ -321,3 +321,41 @@ test('Worker overlapping recent pages cannot erase a prior historical coverage g
   assert.match(update.params[2],/history_backfill_incomplete/);
  }finally{global.fetch=old;}
 });
+
+test('GitHub fallback Worker never runs a second scheduled account poll',async()=>{
+ const {default:worker}=await moduleTask;
+ let dbTouched=false,backgroundStarted=false;
+ const env={MONITOR_BACKEND:'github-actions-fallback',
+  DB:{prepare(){dbTouched=true;throw Error('Worker should not touch D1 during fallback cron')}}};
+ await worker.scheduled({},env,{waitUntil(){backgroundStarted=true;}});
+ assert.equal(dbTouched,false);
+ assert.equal(backgroundStarted,false);
+ const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/account-monitor-deploy.yml'),'utf8');
+ assert.match(workflow,/MONITOR_BACKEND = "github-actions-fallback"/);
+});
+
+test('GitHub fallback enrollment verifies explicit consent without starting competing Worker poll',async()=>{
+ const {default:worker}=await moduleTask;
+ const old=global.fetch, background=[];
+ const queries=[];
+ const env={MONITOR_BACKEND:'github-actions-fallback',
+  MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),
+  DB:{prepare(sql){queries.push(sql);return {bind(){return this;},async run(){return {success:true}}};}}};
+ global.fetch=async url=>{
+  if(String(url).endsWith('/tokeninfo'))return Response.json({permissions:['account','tradingpost']});
+  if(String(url).endsWith('/account'))return Response.json({id:'4a182def-fdc4-4de3-9ab5-067987aaaaab',name:'Fixture.1234'});
+  throw Error('Unexpected private trading fetch');
+ };
+ try{
+  const r=await worker.fetch(new Request(site+'/enroll',{method:'POST',headers:{
+   Origin:origin,Authorization:'Bearer '+key,'X-GP-Account':'Fixture.1234',
+   'Content-Type':'application/json'
+  },body:'{"consent":true}'}),env,{waitUntil(x){background.push(x);}});
+  assert.equal(r.status,200);
+  const data=await r.json();
+  assert.equal(data.mode,'github-actions-fallback');
+  assert.equal(data.intervalMinutes,30);
+  assert.equal(background.length,0);
+  assert.ok(queries.some(x=>x.includes('INSERT INTO gp_monitor_credentials')));
+ }finally{global.fetch=old;}
+});

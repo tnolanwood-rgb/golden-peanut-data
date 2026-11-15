@@ -235,9 +235,9 @@ def bootstrap(account, digest):
       iv=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.iv ELSE NULL END,
       encrypted=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.encrypted ELSE NULL END,
       enabled=1
-      WHERE gp_monitor_credentials.account_name IS NOT excluded.account_name
-         OR gp_monitor_credentials.token_digest IS NOT excluded.token_digest
-         OR gp_monitor_credentials.enabled<>1''',
+      WHERE gp_monitor_credentials.enabled=1
+        AND (gp_monitor_credentials.account_name IS NOT excluded.account_name
+         OR gp_monitor_credentials.token_digest IS NOT excluded.token_digest)''',
       [account['id'], account['name'], digest, NOW()])
     return True
 
