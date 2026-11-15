@@ -29,3 +29,5 @@ Merged PR #17, commit 7bc951c8c3e2df0c06ae1a1df8f02a6db63f1d2f.
 Deploy authenticated, account-scoped /nights?items= with maximum 40 item IDs and fail-closed complete nightly samples. Do not modify existing D1 rows, keys, public quote collector, or Trading Post orders. Respect 30-minute private GitHub collector and existing data.
 
 2026-11-15: Deploy reviewed PR #43 monitor privacy fixes: opt-out tombstone, private history coverage warning and account isolation. Preserve the existing AES key and D1 schema; keep all private records and user consent. No account key transmitted by this approval marker. Require Worker health/preflight success.
+
+2026-11-15 22:52 GMT — Owner-requested tested privacy repair #56, merge 247dab5cc78c370027e578954c1f4559c1a23a7e. Approve isolated Worker deployment with additive private SQLite consent triggers and GitHub-only scheduled collector fallback. Existing private monitor key, orders, trades, public collector, D1 data and original Android apps must be preserved. Fail closed on schema or health checks. No in-game trades.
