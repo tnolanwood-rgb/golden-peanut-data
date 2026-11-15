@@ -249,7 +249,6 @@ function render(){
  heading.append(node('span','gp-price-heading-icon','◇'));
  const closeButton=btn('×',close,'gp-price-close');closeButton.setAttribute('aria-label','Close price chart');
  heading.append(headingText,closeButton);
- updateArtwork();
  const controls=node('div','gp-price-controls');
  const week=btn('7 days',()=>chooseRange('week'),'gp-price-button'+(range==='week'?' is-selected':''));
  const all=btn('All recorded',()=>chooseRange('all'),'gp-price-button'+(range==='all'?' is-selected':''));
@@ -260,6 +259,7 @@ function render(){
  legend.append(node('span','gp-price-buy-label','━  Buying reference · observed bid'),node('span','gp-price-sell-label','┄  Selling reference · observed ask'));
  const caption=node('p','gp-price-muted','Daily public bid/ask snapshots · missing dates are left blank. No hourly completed-trade or volume feed is available.');
  dialog.append(heading,controls,legend,caption);
+ updateArtwork();
  if(active.status==='loading'){
   dialog.append(node('p','gp-price-wait','Loading recorded GW2 price snapshots…'));return;
  }
