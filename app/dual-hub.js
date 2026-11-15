@@ -49,7 +49,7 @@ function renderValueTier(idea){
  if(t)heading.dataset.osrsValueTier=String(t.tier);
 }
 win.GoldenOSRSValueTiers=Object.freeze({classify:classifyValueTier});
-const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false};
+const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false,priceError:null};
 function loadUser(){
  const c=read(CFG,{});
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
@@ -103,6 +103,7 @@ function blank(){
     <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
     <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
   </div>
+  <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
   <div class="gp-guide-totals">
    <div class="gp-guide-metric"><span class="gp-guide-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
    <div class="gp-guide-metric"><span class="gp-guide-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
@@ -202,7 +203,7 @@ function install(){
  doc.addEventListener("visibilitychange",()=>{if(doc.hidden)cancelOnResize()});
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
-  game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,
+  game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,
   dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning
  })};
  const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
@@ -215,6 +216,7 @@ function activateOsrs(){
  if(!root)return;
  root.append(blank());
  get("gh-refresh").addEventListener("click",()=>refresh(true));
+ get("gh-empty-retry").addEventListener("click",()=>refresh(true));
  get("gh-settings-toggle").addEventListener("click",()=>{const x=get("gh-settings");x.open=!x.open;if(x.open)x.scrollIntoView({block:"nearest",behavior:"smooth"})});
  get("gh-apply").addEventListener("click",applySettings);
  get("gh-previous").addEventListener("click",()=>navigate(-1));
@@ -472,19 +474,45 @@ async function getPrices(route,ttl,force){
 }
 async function refresh(force){
  if(state.loading)return;
- state.loading=true;txt("gh-status","Checking RuneScape Wiki price observations…");
+ state.loading=true;
+ state.priceError=null;
+ txt("gh-status","Checking RuneScape Wiki price observations…");
  if(get("gh-refresh"))get("gh-refresh").disabled=true;
+ if(get("gh-empty-retry"))get("gh-empty-retry").hidden=true;
+ render();
  try{
-  const result=await Promise.all([getPrices("mapping",86400000,force),getPrices("latest",60000,force),getPrices("5m",300000,force),getPrices("1h",3600000,force)]);
+  const result=await Promise.all([
+   getPrices("mapping",86400000,force),
+   getPrices("latest",60000,force),
+   getPrices("5m",300000,force),
+   getPrices("1h",3600000,force)
+  ]);
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
   state.mappingById=new Map(state.snap.mapping.map(row=>[row.id,row]));
   state.stale=result.some(x=>x.stale);
-  state.builtAt=Date.now();buildIdeas();render();
-  txt("gh-status",(state.stale?"Using cached evidence; some updates failed · ":"Price evidence checked · ")+new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+" · "+state.ideas.length+" candidates");
+  state.builtAt=Date.now();
+  buildIdeas();
+  txt("gh-status",(state.stale?
+   "Some API requests failed; using cached market observations. No new recommendations until every feed is verified · ":
+   "Price evidence checked · ")+
+   new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+
+   " · "+state.ideas.length+" eligible candidates");
  }catch(err){
-  txt("gh-status","Could not load market observations: "+safe(err.message)+". Use Update prices to retry.");
-  state.ideas=[];render();
- }finally{state.loading=false;if(get("gh-refresh"))get("gh-refresh").disabled=false}
+  // Don't leave the card stuck in the loading state when even one endpoint
+  // fails. Never manufacture trades from missing or unverified observations.
+  state.priceError=safe(err?.message||"Network request failed");
+  state.stale=true;
+  state.ideas=[];
+  txt("gh-status","RuneScape Wiki market feed unavailable: "+state.priceError+
+   ". Check connection, or retry the price check.");
+ }finally{
+  // IMPORTANT: render only AFTER clearing the loading flag. Previously the
+  // card was painted while loading=true and never painted again on empty
+  // results, giving a permanent "Checking markets…" screen.
+  state.loading=false;
+  if(get("gh-refresh"))get("gh-refresh").disabled=false;
+  render();
+ }
 }
 function buildIdeas(){
  if(!state.snap){state.ideas=[];return}
@@ -606,14 +634,33 @@ function render(){
  const current=state.ideas[state.index];
  renderValueTier(current);
  if(!current){
-  txt("gh-position",state.snap?"0 eligible verified candidates":"Market data not loaded");
-  txt("gh-item-name",state.loading?"Checking markets…":"No verified trade ideas yet");
-  txt("gh-risk","Unverified");
-  txt("gh-instruction",state.loading?"Fetching prices and observed volume…":"Refresh prices or adjust your budget and account filters.");
-  txt("gh-instruction-extra","The app will not invent opportunities to fill this card.");
-  txt("gh-margin","—");txt("gh-total","—");txt("gh-caution","Only recent, corroborated two-way markets are eligible.");
-  get("gh-previous").disabled=true;get("gh-next").disabled=true;get("gh-show-chart").disabled=true;get("gh-add-fill").disabled=true;
+  const failure=!!state.priceError,uncertain=!!state.stale;
+  txt("gh-position",state.loading?"Checking market evidence":
+    failure?"Market feed error":
+    uncertain?"Market evidence not verified":
+    state.snap?"0 eligible verified candidates":"Market prices not checked");
+  txt("gh-item-name",state.loading?"Checking markets…":
+    failure?"Market feed unavailable":
+    uncertain?"Market prices need verification":
+    state.snap?"No trades meet the safety checks right now":"Market prices not loaded");
+  txt("gh-risk",state.loading?"Checking":failure?"Unavailable":uncertain?"Stale data":"No qualifying trades");
+  txt("gh-instruction",state.loading?"Fetching prices and observed volume…":
+    failure?"The RuneScape Wiki feed could not be verified.":
+    uncertain?"Cached observations are not reliable enough for new trade advice.":
+    state.snap?"No opportunities currently pass the price, volume and risk filters.":"Use Retry market check to load today's prices.");
+  txt("gh-instruction-extra",state.loading?"":
+    failure?"Details: "+state.priceError+" · Retry below when you're connected.":
+    uncertain?"Retry to verify fresh prices before placing an order.":
+    state.snap?"You can retry later or adjust your budget and account settings.":"Your recorded trades and GW2 account data remain saved.");
+  txt("gh-margin","—");txt("gh-total","—");
+  txt("gh-caution",state.loading?"Checking current market evidence…":
+    "No eligible trade has been verified. The app will not invent prices or profit forecasts.");
+  const icon=get("gh-item-icon");if(icon)icon.textContent="▥";
+  get("gh-previous").disabled=true;get("gh-next").disabled=true;
+  get("gh-show-chart").disabled=true;get("gh-add-fill").disabled=true;
+  const retry=get("gh-empty-retry");if(retry)retry.hidden=state.loading;
  }else{
+  const retry=get("gh-empty-retry");if(retry)retry.hidden=true;
   txt("gh-position","Trade idea "+(state.index+1)+" of "+state.ideas.length);
   txt("gh-item-name",current.name);
   txt("gh-risk",current.stressedMargin>0?"Stronger evidence":"Small test only");
