@@ -34,6 +34,7 @@ const server=http.createServer((req,res)=>{
   });
   await page.goto(url+'/?game=osrs');
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
+  await page.waitForFunction(()=>window.GoldenPeanutClean?.State?.db?.db && window.PeanutStorage?.DB_NAME==='golden-peanut-clean-v1');
   // Preserve the original same-origin GW2 storage while switching games.
   // Test-only synthetic marker in the real GW2 IndexedDB store, not an OSRS store.
   await page.evaluate(async()=>{
