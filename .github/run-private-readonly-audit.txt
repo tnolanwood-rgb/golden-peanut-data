@@ -1,3 +1,5 @@
 2026-11-15: Run aggregate-only private D1 health readback. Strictly SELECT-only, no account IDs or trades in logs. Verify recent polls, monitor warnings, and completeness gates. This does not enrol monitoring.
 
 2026-11-15 22:26 GMT: Owner requested completion; rerun SELECT-only aggregate private-monitor verification after latest merged Hub changes. Do not print account identifiers, credentials or trade rows.
+
+2026-11-15 after PR #56 Worker deployment: perform fresh counts-only D1 check to verify existing collector data survived consent-fence migration. No account identifiers, keys, trade rows or mutations.
