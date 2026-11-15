@@ -1,3 +1,13 @@
+# Live repair checkpoint — 15 November 2026, 22:53 UTC (PR #56)
+
+**PR #56 MERGED AND PRIVATE WORKER DEPLOYED:** Source merge `247dab5cc78c370027e578954c1f4559c1a23a7e`; exact-head CI `43771445550` completed successfully. Isolated Worker/D1 deployment `43771653374` completed successfully, including schema deployment, encryption checks and health/preflight verification. Post-deployment aggregate-only D1 audit `43771726600` completed successfully with `RECENT_WRITES_VERIFIED`, 1 active/fresh monitor, 49 recent polls, 197 recent trade records, 299 recent events, zero warned monitors, and 0 observed complete nights (not equivalent to no partial fills). No user account IDs, trade rows, keys or private logs were output.
+
+**FIXED:** Opt-out write fences on all five private observation tables; no GitHub bootstrap reactivation of disabled enrollment; delayed Worker status writes are conditional on enabled=1. Deployed Worker now advertises and obeys GitHub-only collector fallback (no competing Worker cron/initial snapshot) while the GitHub private collector remains active. Existing personal records survived migration. The public Pages app's latest checksum-verified release remains `bbb4c958f9f2ba5b38531875cfb239e91acfce69`, run `43768703959`; latest performance fixes #53–#55 are on the live web app.
+
+**STILL NOT FULLY VERIFIED:** Real Android hardware and original APK signing/upgrade, complete standalone OSRS v4 state parity/migration, a complete zero-inclusive 24h personal execution cohort (0 observed nights as of readback), external real-world fill/forecast calibration, 90-day/prehistory coverage and all remaining audit roadmap phases. Do not call the entire application or audit complete based only on green CI. No original app package/IndexedDB was deleted, replaced or migrated, and no Trading Post orders were modified.
+
+---
+
 # Current release / Codex resume — 15 November 2026, 21:00 UTC
 
 **PR #52 MERGED AND PRODUCTION PAGES VERIFIED.** It merged as `441c528f30bb033cb7c2623888540ffb3026f107` into `main`.
