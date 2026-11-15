@@ -237,9 +237,9 @@ function finishScene(scene,commit){
  if(!scene||scene.closed)return;
  scene.closed=true;
  if(activeAnimation?.scene===scene){
-  const {a,b}=activeAnimation;activeAnimation=null;
-  // Remove Web Animation fill-forwards before clearing inline drag transforms.
-  try{a.cancel();b.cancel();}catch{}
+  const {a,b,height}=activeAnimation;activeAnimation=null;
+  // Clear compositor fill-forwards before removing the drag transforms.
+  try{a.cancel();b.cancel();height?.cancel();}catch{}
  }
  const next=commit?scene.next:scene.from;
  scene.out.style.transform="";scene.incoming.style.transform="";
@@ -254,23 +254,44 @@ function finishScene(scene,commit){
   win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
  }
 }
-function settleScene(scene,commit){
+/* Critically damped easing for the release only. Finger tracking remains 1:1.
+ * A short eased tail prevents the sudden speed change and hard stop caused
+ * by the old 140–320ms ease-out. Motion does not overshoot or bounce.
+ * Native Web Animations keep the page transforms on the compositor. */
+function settleScene(scene,commit,releaseVelocity=0){
  if(!scene)return;
  transitioning=true;
  const finalX=commit?-scene.direction*scene.width:0;
- const fromX=scene.offset,delta=Math.abs(finalX-fromX);
- // Reduced-motion users still drag pages, but the release is immediate.
+ const fromX=scene.offset,delta=finalX-fromX,distance=Math.abs(delta);
  const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
- if(reduced||delta<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
- const duration=clamp(Math.round(delta/scene.width*350),140,320);
- const options={duration,easing:"cubic-bezier(.21,.8,.22,1)",fill:"forwards"};
- const a=scene.out.animate([{transform:"translate3d("+fromX+"px,0,0)"},{transform:"translate3d("+finalX+"px,0,0)"}],options);
- const b=scene.incoming.animate([
-  {transform:"translate3d("+(scene.direction*scene.width+fromX)+"px,0,0)"},
-  {transform:"translate3d("+(scene.direction*scene.width+finalX)+"px,0,0)"}
- ],options);
- activeAnimation={a,b,scene};
- Promise.all([a.finished,b.finished]).then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
+ if(reduced||distance<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
+ // Even a tiny release has room to slow down, while full-width navigation
+ // remains brisk. Unlike a fixed 140ms snap, no segment teleports to rest.
+ const duration=clamp(Math.round(340+220*distance/scene.width),340,560);
+ const k=6.6,steps=40;
+ const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-1.3,1.3));
+ const velocityFactor=clamp(vToward*duration/Math.max(distance,1),0,1.6);
+ const spring=t=>1-(1+k*t)*Math.exp(-k*t)+velocityFactor*t*Math.exp(-k*t);
+ const end=spring(1);
+ const framesOut=[],framesIn=[],framesHeight=[];
+ const oldHeight=Math.max(1,scene.stage.getBoundingClientRect().height);
+ // The next panel is already present and off-screen, so its height can be
+ // measured without showing it. Smooth the document height as well as X.
+ const nextHeight=Math.max(1,scene.incoming.scrollHeight);
+ for(let i=0;i<=steps;i++){
+  const t=i/steps,p=i===steps?1:clamp(spring(t)/end,0,1);
+  const dx=fromX+delta*p;
+  framesOut.push({offset:t,transform:"translate3d("+dx+"px,0,0)"});
+  framesIn.push({offset:t,transform:"translate3d("+(scene.direction*scene.width+dx)+"px,0,0)"});
+  framesHeight.push({offset:t,height:(oldHeight+(nextHeight-oldHeight)*p)+"px"});
+ }
+ const options={duration,easing:"linear",fill:"both"};
+ const a=scene.out.animate(framesOut,options);
+ const b=scene.incoming.animate(framesIn,options);
+ const height=scene.stage.animate(framesHeight,options);
+ activeAnimation={a,b,height,scene,duration};
+ Promise.all([a.finished,b.finished,height.finished])
+  .then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
 }
 function switchGame(game,userAction){
  const next=game==="osrs"?"osrs":"gw2";
@@ -338,7 +359,7 @@ function endGesture(ev){
  const commit=towardNew&&(Math.abs(dx)>g.scene.width*.32||
   (Math.abs(dx)>48&&Math.sign(speed)===Math.sign(dx)&&Math.abs(speed)>.65));
  ignoreClickBefore=Date.now()+350;
- settleScene(g.scene,commit);
+ settleScene(g.scene,commit,speed);
 }
 function cancelGesture(ev){
  const g=gesture;
@@ -349,9 +370,9 @@ function cancelGesture(ev){
 function cancelOnResize(){
  if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
  if(activeAnimation){
-  const {a,b,scene}=activeAnimation;activeAnimation=null;
+  const {a,b,height,scene}=activeAnimation;activeAnimation=null;
   // Cancelling animations rejects .finished; guard the stale callback.
-  try{a.cancel();b.cancel();}catch{}
+  try{a.cancel();b.cancel();height?.cancel();}catch{}
   finishScene(scene,state.game===scene.next);
  }
 }
