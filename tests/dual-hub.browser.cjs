@@ -107,8 +107,8 @@ const server=http.createServer((req,res)=>{
   const half=await trace('osrs','#gh-panel-osrs .gp-guide-header',65,[125,215],false);
   assert.equal(half[1].moving,true,'touch drag should open adjacent game while finger is DOWN');
   assert.equal(half[1].sideBySide,true,'both complete pages remain mounted halfway through');
-  assert.match(half[1].out,/translate3d\(150px,0,0\)/);
-  assert.match(half[1].other,/translate3d\(-240px,0,0\)/);
+  assert.equal(Number(half[1].out.match(/translate3d\((-?[\d.]+)px/)?.[1]),150);
+  assert.equal(Number(half[1].other.match(/translate3d\((-?[\d.]+)px/)?.[1]),-240);
   assert.equal(half[1].state.game,'osrs','selected game must not change before finger release');
   const paused=await page.locator('#gh-panel-osrs').evaluate(n=>n.style.transform);
   await page.waitForTimeout(120);
@@ -124,7 +124,7 @@ const server=http.createServer((req,res)=>{
     dispatch('pointerup',270);
     return {transform};
   });
-  assert.match(reverse.transform,/translate3d\(60px,0,0\)/,'dragging backward must reverse the page live');
+  assert.equal(Number(reverse.transform.match(/translate3d\((-?[\d.]+)px/)?.[1]),60,'dragging backward must reverse the page live');
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='gw2' &&
    !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal(await page.locator('#gh-panel-gw2').isVisible(),true);
@@ -141,7 +141,7 @@ const server=http.createServer((req,res)=>{
   // Reversed short swipe: should settle back, not change games.
   const back=await trace('gw2','#gh-panel-gw2 .app',325,[170,303]);
   assert.equal(back[0].sideBySide,true);
-  assert.match(back[1].out,/translate3d\(-22px,0,0\)/);
+  assert.equal(Number(back[1].out.match(/translate3d\((-?[\d.]+)px/)?.[1]),-22);
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
   // Complete GW2 -> OSRS from the whole page and then OSRS -> GW2 over a
