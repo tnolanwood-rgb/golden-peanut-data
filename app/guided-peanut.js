@@ -324,7 +324,7 @@ function install(){
  for(const node of [source,delivery])if(node)observer.observe(node,{childList:true,subtree:true,characterData:true});
  document.addEventListener('visibilitychange',()=>{
   if(document.hidden)rememberView();
-  else schedule(true); // Repaint references, not a navigation reset.
+  else schedule(); // Avoid needless full card reconstruction on every Android app switch.
  });
  window.addEventListener('pagehide',rememberView);
  window.addEventListener('gp-item-metadata-updated',()=>schedule(true));
