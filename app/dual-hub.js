@@ -16,7 +16,7 @@ const el=(tag,cls,text)=>{const x=doc.createElement(tag);if(cls)x.className=cls;
 const txt=(id,v)=>{const a=doc.getElementById(id);if(a)a.textContent=safe(v)};
 const get=(id)=>doc.getElementById(id);
 const tax=(price,name)=>{const sell=Math.floor(n(price));const key=safe(name).trim().toLowerCase();if(EXEMPT.has(key)||/^energy potion\([1-4]\)$/.test(key)||/^old school bonds?( \(untradeable\))?$/.test(key))return 0;return Math.min(5000000,Math.floor(Math.max(0,sell)/50))};
-const state={game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false};
+const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false};
 function loadUser(){
  const c=read(CFG,{});
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
@@ -28,6 +28,20 @@ function loadUser(){
 }
 function saveUser(){
  return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index})&&store(LEDGER,state.records);
+}
+/* OSRS Wiki mapping contains original in-game inventory-icon filenames. */
+function iconUrl(name){
+ const file=String(name||'');
+ return /^[A-Za-z0-9 _().,'+!-]{2,140}\.(png|gif|webp)$/i.test(file)?
+  'https://oldschool.runescape.wiki/images/'+encodeURIComponent(file.replace(/ /g,'_')):'';
+}
+function decorateGP(id){
+ const target=get(id),value=target?.textContent;
+ if(!target||!value||value==='—'||!/\d/.test(value))return;
+ const icon=el('img');icon.src='https://oldschool.runescape.wiki/images/Coins_10000.png';
+ icon.alt='OSRS gold coins';icon.width=22;icon.height=22;icon.loading='lazy';
+ icon.referrerPolicy='no-referrer';icon.onerror=()=>{icon.remove()};
+ target.replaceChildren(icon,el('span','',value));target.classList.add('gh-coin-amount');
 }
 function blank(){
  const h=el("div","gp-guide-content");
@@ -47,6 +61,7 @@ function blank(){
  </div>
  <p class="gp-guide-update" id="gh-status" role="status" aria-live="polite">Loading OSRS market prices…</p>
  <section class="gp-guide-idea" aria-label="Next OSRS trade idea">
+  <div class="gh-trade-shell"><div class="gh-trade-scroll">
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
@@ -59,7 +74,7 @@ function blank(){
    <div class="gp-guide-metric"><span class="gp-guide-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
   </div>
   <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
-  <div class="gp-guide-controls">
+  </div><div class="gh-action-dock"><div class="gp-guide-controls">
     <button type="button" id="gh-previous" class="gp-guide-secondary" disabled>← Previous</button>
     <button type="button" id="gh-next" class="gp-guide-primary" disabled>Next →</button>
   </div>
@@ -67,6 +82,7 @@ function blank(){
     <button id="gh-show-chart" class="gp-guide-light" type="button" disabled>Price chart</button>
     <button id="gh-add-fill" class="gp-guide-light" type="button" disabled>Record a fill</button>
   </div>
+  </div></div>
   <div id="gh-chart" class="gh-chart-card" hidden>
     <div class="gh-chart-range" aria-label="Historical range">
       <button type="button" data-gh-range="24h" class="gp-guide-secondary">24h</button>
@@ -137,7 +153,11 @@ function activateOsrs(){
  get("gh-apply").addEventListener("click",applySettings);
  get("gh-previous").addEventListener("click",()=>navigate(-1));
  get("gh-next").addEventListener("click",()=>navigate(1));
- get("gh-show-chart").addEventListener("click",()=>{get("gh-chart").hidden=!get("gh-chart").hidden;state.chartOpen=!get("gh-chart").hidden;if(state.chartOpen)loadChart()});
+ get("gh-show-chart").addEventListener("click",()=>{
+  const current=state.ideas[state.index],meta=state.mappingById.get(current?.id);
+  if(current&&win.GoldenOSRSChart?.open){win.GoldenOSRSChart.open({id:current.id,name:current.name,icon:meta?.icon});return}
+  get("gh-chart").hidden=!get("gh-chart").hidden;state.chartOpen=!get("gh-chart").hidden;if(state.chartOpen)loadChart();
+ });
  for(const b of root.querySelectorAll("[data-gh-range]"))b.addEventListener("click",()=>{state.chartRange=b.dataset.ghRange;state.chartVisible=null;loadChart()});
  get("gh-chart-reset").addEventListener("click",()=>{state.chartVisible=null;drawChart()});
  get("gh-add-fill").addEventListener("click",toggleFill);
@@ -210,6 +230,7 @@ async function refresh(force){
  try{
   const result=await Promise.all([getPrices("mapping",86400000,force),getPrices("latest",60000,force),getPrices("5m",300000,force),getPrices("1h",3600000,force)]);
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
+  state.mappingById=new Map(state.snap.mapping.map(row=>[row.id,row]));
   state.stale=result.some(x=>x.stale);
   state.builtAt=Date.now();buildIdeas();render();
   txt("gh-status",(state.stale?"Using cached evidence; some updates failed · ":"Price evidence checked · ")+new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+" · "+state.ideas.length+" candidates");
@@ -226,6 +247,8 @@ function buildIdeas(){
  const list=[];
  if(!hourFresh||!fiveFresh||state.stale){state.ideas=[];return}
  for(const m of s.mapping){
+  // Bonds require conversion/re-tradeability handling not represented by normal GE spread math.
+  if(String(m.name).toLowerCase()==="old school bond")continue;
   if(state.mode==="f2p"&&m.members)continue;
   if(state.mode==="f2p"&&state.restricted!=="clear"&&RESTRICTED.has(m.name))continue;
   const p=latest[m.id],f=five[m.id],h=hour[m.id];
@@ -284,10 +307,15 @@ function render(){
   txt("gh-margin",gp(current.profit)+" / item");
   txt("gh-total",gp(current.total));
   txt("gh-caution","Four-hour GE limit: "+current.limit.toLocaleString("en-GB")+" · recent two-way volume: "+current.flow.toLocaleString("en-GB")+"/hr · "+(current.stressedMargin>0?"margin survives a 2% lower sell price":"a 2% lower sell price could erase the margin")+". Illustrative only.");
-  const icon=get("gh-item-icon");icon.textContent="▥";
+  const icon=get("gh-item-icon"),meta=state.mappingById.get(current.id);
+  icon.replaceChildren();const url=iconUrl(meta?.icon);
+  if(url){const image=el("img");image.src=url;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
+   image.onerror=()=>{icon.textContent="▥"};icon.append(image)}
+  else icon.textContent="▥";
   get("gh-previous").disabled=state.index===0;get("gh-next").disabled=state.index===state.ideas.length-1;
   get("gh-show-chart").disabled=false;get("gh-add-fill").disabled=false;
  }
+ for(const id of ["gh-budget-metric","gh-today","gh-week","gh-margin","gh-total"])decorateGP(id);
  renderLedger();
 }
 function navigate(dir){
