@@ -319,12 +319,19 @@ const server=http.createServer((req,res)=>{
     const horizontalConsumed=fire('touchmove',275,162);
     const stageMoving=document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving');
     fire('touchend',275,162);
-    return {verticalConsumed,untouched,horizontalConsumed,stageMoving};
+    const afterRelease=window.GoldenDualHub.diagnostics();
+    return {verticalConsumed,untouched,horizontalConsumed,stageMoving,afterRelease,
+      activeAnimations:document.querySelector('#gh-game-stage').getAnimations().map(a=>a.playState)};
   });
   assert.equal(cardTouches.verticalConsumed,false,'vertical OSRS card scrolling must stay native');
   assert.equal(cardTouches.untouched,true,'vertical touch must not switch games');
   assert.equal(cardTouches.horizontalConsumed,true,'horizontal OSRS card touch must be claimed by game navigation');
   assert.equal(cardTouches.stageMoving,true,'horizontal swipe in nested OSRS card must move the two full desks');
+  console.log('Nested card touch release diagnostics:',JSON.stringify(cardTouches));
+  await page.waitForTimeout(800);
+  console.log('Nested card settle diagnostics:',JSON.stringify(await page.evaluate(()=>({
+   ...GoldenDualHub.diagnostics(),stageMoving:document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving')
+  }))));
   await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().game==='gw2' &&
    !window.GoldenDualHub.diagnostics().transitioning);
   await page.locator('#gh-tab-osrs').click();
