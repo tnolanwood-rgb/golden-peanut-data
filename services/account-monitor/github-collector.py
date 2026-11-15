@@ -354,8 +354,13 @@ def poll(account):
                   WHERE account_id=? AND side=? AND order_id=? AND closed_at IS NULL''', list(item))
     db('INSERT OR IGNORE INTO gp_monitor_polls(account_id,polled_at,buy_count,sell_count) VALUES(?,?,?,?)',
        [account_id,stamp,len(current['buys']),len(current['sells'])])
-    db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0
-          WHERE account_id=? AND enabled=1''', [stamp,stamp,history_warning,account_id])
+    if history_warning is None:
+        # Cloudflare's D1 REST API does not accept JSON null bind values.
+        db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=NULL,consecutive_failures=0
+              WHERE account_id=? AND enabled=1''', [stamp,stamp,account_id])
+    else:
+        db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0
+              WHERE account_id=? AND enabled=1''', [stamp,stamp,history_warning,account_id])
     counts['historyComplete'] = history_warning is None
     counts['historyCoverage'] = {side: getattr(recent[side], 'coverage', 'api-end') for side in ('buys','sells')}
     counts['observedNights'] = finalize_nights(account_id,stamp)
