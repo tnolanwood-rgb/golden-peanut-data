@@ -1,3 +1,11 @@
+# Latest tested UI delivery — 15 November 2026, 23:27 UTC
+
+PR #57 merge `ec01fea4725ae53534429811f950867561622025`; exact-head regression `43774621881` succeeded; native preview `43774621875` succeeded; exact hash verified production Pages `43774776938` succeeded. New UI: smoother 145–315ms compositor-only game switching, idle OSRS prewarm, native vertical scroll retained inside OSRS idea box, horizontal swipe from the nested scroll area recovered via Touch Events, no DOM or ledger reset. No original native APK is required for a Cloudflare update. Still request real-phone gesture confirmation before closing physical UX gate.
+
+Original Golden Exchange v4.0 source is available in the user's ChatGPT Library archive `The-Golden-Exchange-v4.0-complete-delivery.zip`; nested `The-Golden-Exchange-v4.0-source.zip` inspected and confirmed 167 project entries with original OSRS modules/tests. Not committed to this repository. Current `app/dual-hub.js` OSRS importer still accepts only `golden-hub-osrs-v1` backups. Original `golden-exchange-backup-v3` contains richer corrections, tickets, owned, settings, audit; NEVER discard these on import. Full v4 parity/migration is still OPEN, as are physical Android proof and prospective model calibration. Don't imply full audit completion.
+
+---
+
 # Latest verified delivery — 15 November 2026, 22:53 UTC
 
 PR #56 merge `247dab5cc78c370027e578954c1f4559c1a23a7e`; full exact-head regression check `43771445550` successful. Approved Worker/D1 release `43771653374` successful. Private read-only follow-up `43771726600` successful, `RECENT_WRITES_VERIFIED`: 1 active/fresh monitor, 49 recent polls, 197 recent trade records, 299 recent events, 0 monitor warnings, 0 observed complete order nights. Private D1 opt-out SQL triggers and GitHub-only fallback Worker mode are now deployed. Existing user trading history remains; no live order actions.
