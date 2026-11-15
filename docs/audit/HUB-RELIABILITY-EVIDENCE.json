@@ -1,0 +1,143 @@
+{
+  "base": "12c09d9a85e3236f177fec8eedb6c2237eb34d03",
+  "branch": "audit/hub-reliability-20261115",
+  "conditions": "Local synthetic tests and read-only public HTTP capture; no real GW2 account, D1 readback, installation or deployment.",
+  "checks": {
+    "javascript": {
+      "pass": 123,
+      "fail": 0
+    },
+    "python": {
+      "pass": 52,
+      "fail": 0
+    },
+    "browser": [
+      "existing assembled GW2 at 1440 and 390 widths",
+      "existing dual Hub mobile",
+      "new repeated rotations/recreation/background notifications/chart race/empty+outage/data continuity"
+    ],
+    "nativeUnit": {
+      "pass": 3,
+      "fail": 0
+    },
+    "androidLint": {
+      "errors": 0,
+      "warnings": 5
+    },
+    "workflowActionlint": "pass; shellcheck/pyflakes not installed locally; CI runs its normal configuration"
+  },
+  "osrsPublicReplay": {
+    "condition": "Same real public payload frozen at capture time; the stale aggregate case is an explicit counterfactual, not a claim the captured live feed was stale.",
+    "capturedAt": "2026-11-15T18:17:29.000Z",
+    "original": {
+      "mapped": 4681,
+      "pricePairs": 3883,
+      "positiveSpreads": 3322,
+      "valueMarkets": 561,
+      "liquid": 46,
+      "milliseconds": 65,
+      "savedSearchMismatch": 0,
+      "feedIssues": []
+    },
+    "repaired": {
+      "mapped": 4681,
+      "pricePairs": 3883,
+      "positiveSpreads": 3322,
+      "valueMarkets": 561,
+      "liquid": 46,
+      "milliseconds": 53.4,
+      "savedSearchMismatch": 0,
+      "feedIssues": []
+    },
+    "originalWithStaleHour": {
+      "mapped": 4681,
+      "pricePairs": 0,
+      "positiveSpreads": 0,
+      "valueMarkets": 0,
+      "liquid": 0,
+      "milliseconds": 0.07,
+      "savedSearchMismatch": 0,
+      "feedIssues": []
+    },
+    "repairedWithStaleHour": {
+      "mapped": 4681,
+      "pricePairs": 3883,
+      "positiveSpreads": 3322,
+      "valueMarkets": 561,
+      "liquid": 0,
+      "milliseconds": 55.21,
+      "savedSearchMismatch": 0,
+      "feedIssues": [
+        "Hourly aggregate is missing or stale"
+      ]
+    }
+  },
+  "publicHttp": {
+    "at": 1794766649,
+    "results": [
+      {
+        "name": "mapping",
+        "status": 200,
+        "bytes": 867659,
+        "sha256": "b62c757683193e123380ccc16e1bf0b0c99e1fdb1b4922f8472a979c60f95ef1",
+        "seconds": 0.46
+      },
+      {
+        "name": "latest",
+        "status": 200,
+        "bytes": 344159,
+        "sha256": "758444d50120037ae6ca41dbb477cef50c733dfd23b56b000b3847de421d7b8a",
+        "seconds": 0.65
+      },
+      {
+        "name": "5m",
+        "status": 200,
+        "bytes": 176531,
+        "sha256": "49273c84f56353181ced2431905ff3ba4c52ffb4556a9fc3080c4e40548e31f6",
+        "seconds": 0.51
+      },
+      {
+        "name": "1h",
+        "status": 200,
+        "bytes": 310069,
+        "sha256": "48fd0f468e0ca15c619cbb4be1dfef9fbf3e5b0815ba4f2fd428284286636205",
+        "seconds": 0.47
+      },
+      {
+        "name": "production_build",
+        "status": 200,
+        "bytes": 164,
+        "sha256": "f2d4997666abe3b39b860da0fd6a22710b3ee5b13d06ad7a0dbe54ad30fa0ef1",
+        "seconds": 0.44
+      },
+      {
+        "name": "production_hub",
+        "status": 200,
+        "bytes": 63545,
+        "sha256": "2094b01aa2843e6fbc87443275df0ae53ecb2d0b0764366cd2bdd04944e66c75",
+        "seconds": 0.34
+      },
+      {
+        "name": "production_index",
+        "status": 200,
+        "bytes": 374406,
+        "sha256": "2716988504cf6be402944f3c6515927c9de6cc3315f20871ebb6a7b04203f4d7",
+        "seconds": 0.74
+      }
+    ]
+  },
+  "apk": {
+    "apk": "Golden-Trading-Hub-0.3-audit-debug.apk",
+    "bytes": 1702363,
+    "sha256": "d54b956e35352cd6f63ddc085d49482f92b24165fc1df783df308f8bb610a5c1",
+    "bundledFrontendFilesVerified": 37,
+    "signing": "Android debug, verified v2",
+    "package": "com.goldenhub.dual.preview",
+    "versionCode": 2,
+    "versionName": "0.3-audit-preview",
+    "minSdk": 26,
+    "targetSdk": 34,
+    "compileSdk": 35
+  },
+  "testedFrontendManifestSha256": "e4675fbcfc44cc0e91fd42782bacea356177de22082f9abb7a0b6a9eb1ac37e5"
+}

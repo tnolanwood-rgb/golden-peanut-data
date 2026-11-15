@@ -1,5 +1,7 @@
 name: Golden Hub — Build Separate Android Preview
 on:
+  pull_request:
+    paths: ['android/**', 'app/**', '.github/workflows/private-hub-android.yml']
   push:
     branches: [feat/private-dual-game-hub-20261115]
     paths: ['android/**', '.github/workflows/private-hub-android.yml']
@@ -7,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: golden-hub-android-preview
+  group: golden-hub-android-preview-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   debug-preview:
@@ -29,11 +31,9 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
       - name: Build installable, independently identified preview APK
         working-directory: android
-        run: gradle --no-daemon :app:assembleDebug
+        run: bash ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
       - name: Verify APK manifest and signing
         shell: bash
         run: |
@@ -42,8 +42,12 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "com.goldenhub.dual.preview"
+          sha256sum "$APK" > android/app/build/outputs/apk/debug/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: golden-hub-cloudflare-preview-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/SHA256SUMS.txt
+            android/app/build/reports/
           retention-days: 30

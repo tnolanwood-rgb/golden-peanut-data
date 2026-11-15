@@ -68,6 +68,9 @@ function ideas(s){
 function rememberView(){
  const s=root.GoldenPeanutClean?.State;
  if(!visit||!s?.account||!document.body.classList.contains('gp-guided-active'))return;
+ // Hidden GW2 panels still receive document scroll events from the OSRS desk.
+ // Never replace the GW2 resume position with another game's scroll offset.
+ if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
  const state=deck?.snapshot?.(s.account);
  if(!state)return;
  visit.save(s.account,state,Math.max(0,window.scrollY||0),
@@ -87,13 +90,13 @@ function restoreVisiblePosition(){
  if(restoredScroll!==null){
   const y=restoredScroll;restoredScroll=null;
   for(const delay of [130,380,850])window.setTimeout(()=>{
-   if(document.body.classList.contains('gp-guided-active')&&window.scrollY<y-12)
+   if(document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert&&window.scrollY<y-12)
     window.scrollTo({top:y,behavior:'instant'});
   },delay);
  }
  if(restoredChart){
   const chart=restoredChart;restoredChart=null;
-  window.setTimeout(()=>{if(document.body.classList.contains('gp-guided-active'))
+  window.setTimeout(()=>{if(document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert)
    root.GPGuidedPriceChart?.restore?.(chart);},260);
  }
 }

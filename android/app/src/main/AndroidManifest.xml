@@ -4,6 +4,7 @@
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
+        android:enableOnBackInvokedCallback="true"
         android:label="Golden Trading Hub Preview"
         android:icon="@drawable/ic_hub"
         android:theme="@android:style/Theme.Material.NoActionBar">
@@ -11,7 +12,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="keyboardHidden|orientation|screenSize">
+            android:configChanges="keyboardHidden|keyboard|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

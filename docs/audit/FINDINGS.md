@@ -71,3 +71,8 @@ QH-001 CONFIRMED/repaired 5cecc05: renderConnectedMarkets multiplied every publi
 - **F023 / High — remains empirically unverified:** `GPExecution.backtest` does not allow automatic model promotion. Real out-of-sample calibration, phone-closed contiguous observation windows and live queue execution must be demonstrated with prospective data. Public asks/bids and standing depth are not sales.
 
 Full source-to-consumer and P0–P12 evidence map: `COMPLETE-COVERAGE-2026-11-15.md`.
+
+
+## HUB-R1 — 15 November 2026
+
+The current full-scope Hub reliability repair batch is documented in [HUB-RELIABILITY-2026-11-15.md](HUB-RELIABILITY-2026-11-15.md) with sanitized [evidence](HUB-RELIABILITY-EVIDENCE.json). Local tests/build pass; PR exact-head CI pending. Cross-scheduler write/consent atomicity, physical/native acceptance, preview cloud-monitor CORS, real-account continuity/forecast calibration and complete standalone v4 parity remain OPEN. No deployment, migration, user-data reset or original-app installation/uninstallation was performed.

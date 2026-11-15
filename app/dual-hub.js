@@ -1,9 +1,9 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
-const VERSION="osrs-research-2.0-2026-11-15";
+const VERSION="osrs-integrity-3.0-2026-11-15";
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
-const LAST_GAME="gh-last-game-v1";
+const LAST_GAME="gh-last-game-v1",VIEW="gh-view-session-v1",RECOVERY="gh-osrs-ledger-recovery-v1",ORIGINAL="gh-osrs-ledger-original-v1";
 const EXEMPT=new Set(("old school bond|bronze arrow|bronze dart|iron arrow|iron dart|mind rune|steel arrow|steel dart|bass|bread|cake|cooked chicken|cooked meat|herring|lobster|mackerel|meat pie|pike|salmon|shrimps|tuna|chisel|gardening trowel|glassblowing pipe|hammer|needle|pestle and mortar|rake|saw|secateurs|seed dibber|shears|spade|watering can|games necklace(8)|ring of dueling(8)|ardougne teleport|camelot teleport|falador teleport|kourend castle teleport|lumbridge teleport|teleport to house|varrock teleport|civitas illa fortis teleport|energy potion").split("|"));
 const RESTRICTED=new Set(("Oak logs|Willow logs|Yew logs|Raw shrimps|Shrimps|Raw anchovies|Anchovies|Raw lobster|Lobster|Clay|Soft clay|Copper ore|Tin ore|Iron ore|Silver ore|Gold ore|Coal|Mithril ore|Adamantite ore|Runite ore|Ashes|Vial|Vial of water|Jug of water|Fishing bait|Feather|Eye of newt|Wine of Zamorak|Air rune|Water rune|Earth rune|Fire rune|Mind rune|Chaos rune|Cowhide|Leather|Red spiders' eggs|Hard leather|Steel bar|Redberries").split("|"));
 const read=(key,fallback)=>{try{const v=JSON.parse(win.localStorage.getItem(key));return v===null?fallback:v}catch{return fallback}};
@@ -49,23 +49,35 @@ function renderValueTier(idea){
  if(t)heading.dataset.osrsValueTier=String(t.tier);
 }
 win.GoldenOSRSValueTiers=Object.freeze({classify:classifyValueTier});
-const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false,priceError:null,researchMode:"liquid",valueFloor:100000,search:"",watchOnly:false,watchlist:new Set(),liquidIdeas:[],valueIdeas:[],scanCount:0,positiveSpreads:0};
+const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,selectedId:null,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false,priceError:null,ledgerError:null,feedIssues:[],researchMode:"liquid",valueFloor:100000,search:"",watchOnly:false,watchlist:new Set(),liquidIdeas:[],valueIdeas:[],scanCount:0,positiveSpreads:0};
 function loadUser(){
  const c=read(CFG,{});
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
  state.mode=c.mode==="members"?"members":"f2p";
  state.restricted=c.restricted==="clear"?"clear":"unknown";
  state.index=Number.isSafeInteger(n(c.position))&&n(c.position)>=0?n(c.position):0;
+ state.selectedId=Number.isSafeInteger(c.selectedId)&&c.selectedId>0?c.selectedId:null;
  state.researchMode=c.researchMode==="value"?"value":"liquid";
  state.valueFloor=[100000,1000000,10000000].includes(c.valueFloor)?c.valueFloor:100000;
  state.search=typeof c.search==="string"?c.search.slice(0,80):"";
  state.watchOnly=c.watchOnly===true;
  state.watchlist=new Set(Array.isArray(c.watchlist)?c.watchlist.filter(x=>Number.isSafeInteger(x)&&x>0).slice(0,200):[]);
- const records=read(LEDGER,[]);
- state.records=Array.isArray(records)?records.filter(r=>r&&Number.isSafeInteger(r.id)&&r.id>0&&["buy","sell"].includes(r.side)&&good(r.qty)&&good(r.price)&&Number.isFinite(Date.parse(r.when))).slice(-1000):[];
+ // Never silently filter, truncate, or overwrite an unreadable personal ledger.
+ try{state.records=validateOsrsRows(JSON.parse(win.localStorage.getItem(LEDGER)||'[]'));}
+ catch(error){state.ledgerError='Saved ledger needs recovery: '+safe(error.message);state.records=[];}
 }
 function saveUser(){
- return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index,researchMode:state.researchMode,valueFloor:state.valueFloor,search:state.search,watchOnly:state.watchOnly,watchlist:[...state.watchlist]})&&store(LEDGER,state.records);
+ return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index,selectedId:state.selectedId,researchMode:state.researchMode,valueFloor:state.valueFloor,search:state.search,watchOnly:state.watchOnly,watchlist:[...state.watchlist]});
+}
+function saveLedger(records){
+ if(state.ledgerError)return false;
+ // Keep a separate, exact pre-write copy before changing the original OSRS key.
+ try{
+  const original=win.localStorage.getItem(LEDGER);
+  if(original!==null&&win.localStorage.getItem(ORIGINAL)===null&&!store(ORIGINAL,{at:Date.now(),raw:original}))return false;
+  if(original!==null&&!store(RECOVERY,{at:Date.now(),raw:original}))return false;
+  return store(LEDGER,records);
+ }catch{return false;}
 }
 /* OSRS Wiki mapping contains original in-game inventory-icon filenames. */
 function iconUrl(name){
@@ -176,9 +188,10 @@ function blank(){
     <label>Side<select id="gh-fill-side"><option value="buy">Bought</option><option value="sell">Sold</option></select></label>
     <label>Quantity<input type="number" min="1" step="1" id="gh-fill-qty" value="1" required></label>
     <label>Actual unit price (gp)<input type="number" min="1" step="1" id="gh-fill-price" required></label>
+    <label>Actual total sale tax (gp, optional)<input type="number" min="0" step="1" id="gh-fill-tax" placeholder="Current 2% rule assumed if blank"></label>
     <label>Item<input type="text" id="gh-fill-item" disabled></label>
    </div>
-   <p class="gh-trade-note">Record only confirmed Grand Exchange fills. Sales match recorded purchases FIFO; unmatched sales are rejected.</p>
+   <p class="gh-trade-note">Record only confirmed Grand Exchange fills. Sales match recorded purchases FIFO; unmatched sales are rejected. Without actual sale tax, today's tax rule is an explicit assumption, including older trades.</p>
    <div class="gh-trade-row"><button type="submit" class="gp-guide-primary">Save fill</button><button type="button" id="gh-cancel-fill" class="gp-guide-light">Cancel</button></div>
    <p class="gh-inline-status" id="gh-fill-feedback" aria-live="polite"></p>
   </form>
@@ -242,15 +255,33 @@ function install(){
  doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
  doc.addEventListener("click",guardDragClick,true);
  win.addEventListener("resize",cancelOnResize,{passive:true});
- doc.addEventListener("visibilitychange",()=>{if(doc.hidden)cancelOnResize()});
+ doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
+ win.addEventListener('pagehide',()=>{saveView();saveUser()});
+ doc.addEventListener('input',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
+ doc.addEventListener('change',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
+ doc.addEventListener('toggle',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()},true);
+ win.addEventListener('scroll',()=>{scrollPositions[state.game]=win.scrollY||0;scheduleViewSave()},{passive:true});
+ doc.addEventListener('scroll',event=>{if(event.target?.closest?.('#gh-osrs-root'))scheduleViewSave()},{passive:true,capture:true});
+ doc.addEventListener('pointerdown',()=>{pendingDocumentScroll=null},{passive:true,capture:true});
+ win.addEventListener('gh-osrs-chart-changed',saveView);
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
   game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
+  selectedId:state.selectedId,feedIssues:[...state.feedIssues],ledgerError:state.ledgerError,
   dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning
  })};
- const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
+ win.GoldenDualHub.back=()=>{
+  if(state.game!=='osrs')return false;
+  if(!get('gh-fill-form').hidden){get('gh-fill-form').hidden=true;saveView();return true;}
+  for(const id of ['gh-settings','gh-ledger'])if(get(id).open){get(id).open=false;saveView();return true;}
+  switchGame('gw2',true);return true;
+ };
+ win.setInterval(()=>{if(!doc.hidden&&state.game==='osrs')ensureGameReady('osrs')},60000);
+ const requested=new URLSearchParams(win.location.search).get('game');
+ const initial=['gw2','osrs'].includes(requested)?requested:read(LAST_GAME,"gw2");
  switchGame(initial==="osrs"?"osrs":"gw2",false);
  if(state.game==="osrs")render();
+ restoreView();
 }
 function activateOsrs(){
  if(get("gh-refresh"))return;
@@ -266,7 +297,7 @@ function activateOsrs(){
  get("gh-market-search").addEventListener("change",()=>saveUser());
  get("gh-market-search").addEventListener("input",event=>{
   state.search=String(event.target.value||"").toLocaleLowerCase().trim().slice(0,80);
-  state.index=0;applyIdeasView();render();
+  state.index=0;state.selectedId=null;applyIdeasView();saveUser();render();
  });
  get("gh-value-floor").addEventListener("change",event=>{
   const floor=Number(event.target.value);
@@ -293,7 +324,7 @@ function activateOsrs(){
  for(const b of root.querySelectorAll("[data-gh-range]"))b.addEventListener("click",()=>{state.chartRange=b.dataset.ghRange;state.chartVisible=null;loadChart()});
  get("gh-chart-reset").addEventListener("click",()=>{state.chartVisible=null;drawChart()});
  get("gh-add-fill").addEventListener("click",toggleFill);
- get("gh-cancel-fill").addEventListener("click",()=>get("gh-fill-form").hidden=true);
+ get("gh-cancel-fill").addEventListener("click",()=>{get("gh-fill-form").hidden=true;saveView()});
  get("gh-fill-form").addEventListener("submit",recordFill);
  get("gh-export-ledger").addEventListener("click",exportOsrsBackup);
  get("gh-import-ledger").addEventListener("click",()=>get("gh-import-file").click());
@@ -310,6 +341,53 @@ function activateOsrs(){
  */
 let transitioning=false,gesture=null,activeAnimation=null,ignoreClickBefore=0;
 const scrollPositions={gw2:0,osrs:0};
+let viewTimer=0,settingsReady=false,restoringView=false,pendingPanelScroll={},pendingDocumentScroll=null;
+const draftIds=['gh-budget-input','gh-mode','gh-restricted','gh-fill-side','gh-fill-qty','gh-fill-price','gh-fill-tax','gh-fill-item'];
+function scheduleViewSave(){win.clearTimeout(viewTimer);viewTimer=win.setTimeout(saveView,150)}
+function saveView(){
+ if(restoringView)return;
+ try{
+  const drafts={};for(const id of draftIds){const node=get(id);if(node)drafts[id]=node.value.slice(0,180)}
+  const panelScroll={};for(const id of ['gh-panel-gw2','gh-panel-osrs']){
+   const scroller=get(id)?.querySelector('.gh-trade-scroll');if(scroller)panelScroll[id]=pendingPanelScroll[id]??scroller.scrollTop;
+  }
+  store(VIEW,{v:1,at:Date.now(),game:state.game,scroll:{...scrollPositions,[state.game]:pendingDocumentScroll?.game===state.game?pendingDocumentScroll.y:win.scrollY||0},drafts,panelScroll,
+   fillOpen:!!get('gh-fill-form')&&!get('gh-fill-form').hidden,fillItem:state.fillItem||null,
+   details:['gh-settings','gh-ledger'].filter(id=>get(id)?.open),chart:win.GoldenOSRSChart?.snapshot?.()||null});
+ }catch{/* Session UI snapshots are optional; never write to GW2 account storage. */}
+}
+function restoreView(){
+ const saved=read(VIEW,null);
+ if(saved?.v!==1||Date.now()-saved.at<0||Date.now()-saved.at>86400000)return;
+ restoringView=true;
+ for(const game of ['gw2','osrs']){const y=saved.scroll?.[game];if(Number.isFinite(y)&&y>=0&&y<1e7)scrollPositions[game]=y;}
+ if(saved.game==='osrs')activateOsrs();
+ for(const id of draftIds){const node=get(id),value=saved.drafts?.[id];if(node&&typeof value==='string'&&value.length<=180)node.value=value}
+ for(const id of ['gh-settings','gh-ledger'])if(get(id))get(id).open=Array.isArray(saved.details)&&saved.details.includes(id);
+ const fill=saved.fillItem;
+ if(saved.fillOpen&&Number.isSafeInteger(fill?.id)&&fill.id>0&&typeof fill.name==='string'&&fill.name.length<=180){
+  state.fillItem={id:fill.id,name:fill.name};get('gh-fill-form').hidden=false;
+ }
+ for(const [id,y] of Object.entries(saved.panelScroll||{})){
+  if(!['gh-panel-gw2','gh-panel-osrs'].includes(id))continue;
+  if(Number.isFinite(y)&&y>=0&&y<1e7)pendingPanelScroll[id]=y;
+ }
+ if(saved.chart&&state.game==='osrs')win.GoldenOSRSChart?.restore?.(saved.chart);
+ restoringView=false;
+ const game=state.game,y=scrollPositions[game];
+ pendingDocumentScroll={game,y};
+ win.requestAnimationFrame(()=>{if(state.game===game)win.scrollTo({top:y,behavior:'instant'})});
+}
+function restoreScrolls(){
+ for(const [id,y] of Object.entries(pendingPanelScroll)){
+  const node=get(id)?.querySelector('.gh-trade-scroll');
+  if(node&&node.scrollHeight>node.clientHeight){node.scrollTop=y;delete pendingPanelScroll[id];}
+ }
+ if(pendingDocumentScroll&&state.snap&&!state.loading){
+  const saved=pendingDocumentScroll;pendingDocumentScroll=null;
+  win.requestAnimationFrame(()=>{if(state.game===saved.game)win.scrollTo({top:saved.y,behavior:'instant'})});
+ }
+}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function setPanelAccess(game){
  for(const id of ["gw2","osrs"]){
@@ -320,6 +398,7 @@ function setPanelAccess(game){
  }
 }
 function setActiveGame(game){
+ if(state.game==='gw2'&&game!=='gw2')win.GPGuided?.remember?.();
  state.game=game;
  doc.body.classList.toggle("gh-show-osrs",game==="osrs");
  for(const id of ["gw2","osrs"])get("gh-tab-"+id).setAttribute("aria-selected",String(id===game));
@@ -328,7 +407,7 @@ function setActiveGame(game){
 function ensureGameReady(next){
  if(next==="osrs"){
   activateOsrs();
-  if(!state.snap&&!state.loading)void refresh(false);
+  if(!state.loading&&(!state.snap||Date.now()-state.builtAt>=60000))void refresh(false);
  }
 }
 function createScene(from,next){
@@ -373,6 +452,7 @@ function finishScene(scene,commit){
   // Preserve each game's document scroll instead of losing the user's place.
   win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
  }
+ saveView();
 }
 /* Critically damped easing for the release only. Finger tracking remains 1:1.
  * A short eased tail prevents the sudden speed change and hard stop caused
@@ -409,7 +489,7 @@ function settleScene(scene,commit,releaseVelocity=0){
  const a=scene.out.animate(framesOut,options);
  const b=scene.incoming.animate(framesIn,options);
  const height=scene.stage.animate(framesHeight,options);
- activeAnimation={a,b,height,scene,duration};
+ activeAnimation={a,b,height,scene,duration,commit};
  Promise.all([a.finished,b.finished,height.finished])
   .then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
 }
@@ -490,10 +570,10 @@ function cancelGesture(ev){
 function cancelOnResize(){
  if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
  if(activeAnimation){
-  const {a,b,height,scene}=activeAnimation;activeAnimation=null;
+  const {a,b,height,scene,commit}=activeAnimation;activeAnimation=null;
   // Cancelling animations rejects .finished; guard the stale callback.
   try{a.cancel();b.cancel();height?.cancel();}catch{}
-  finishScene(scene,state.game===scene.next);
+  finishScene(scene,commit);
  }
 }
 function guardDragClick(event){
@@ -511,14 +591,16 @@ function applySettings(){
  state.index=0;saveUser();buildIdeas();render();
  get("gh-settings").open=false;
 }
-function cacheLoad(){const c=read(CACHE,{});return c&&typeof c==="object"&&!Array.isArray(c)?c:{}}
+let marketCache=null;
+function cacheLoad(){if(marketCache)return marketCache;const c=read(CACHE,{});return marketCache=c&&typeof c==="object"&&!Array.isArray(c)?c:{}}
 function validate(route,data){
- if(route==="mapping")return Array.isArray(data)&&data.length>100&&data.every((x)=>Number.isSafeInteger(x?.id)&&x.id>0&&typeof x.name==="string");
- return data&&typeof data.data==="object"&&!Array.isArray(data.data)&&data.data!==null&&Object.keys(data.data).length>100;
+ if(route==="mapping")return Array.isArray(data)&&data.every((x)=>Number.isSafeInteger(x?.id)&&x.id>0&&typeof x.name==="string");
+ return !!(data&&typeof data.data==="object"&&!Array.isArray(data.data)&&data.data!==null);
 }
+function aggregateFresh(route,data){return !['5m','1h'].includes(route)||Number.isSafeInteger(data?.timestamp)&&data.timestamp<=Date.now()/1000+60&&data.timestamp>=Date.now()/1000-(route==='5m'?1200:10800);}
 async function getPrices(route,ttl,force){
  const cache=cacheLoad(),rec=cache[route],age=Date.now()-n(rec?.at);
- if(!force&&rec&&age>=0&&age<ttl&&validate(route,rec.data))return {data:rec.data,at:rec.at,stale:false};
+ if(!force&&rec&&age>=0&&age<ttl&&validate(route,rec.data)&&aggregateFresh(route,rec.data))return {data:rec.data,at:rec.at,stale:false};
  let fresh;
  try{
   const response=await win.fetch(API+route,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(17000)});
@@ -542,13 +624,16 @@ async function refresh(force){
  if(get("gh-empty-retry"))get("gh-empty-retry").hidden=true;
  render();
  try{
-  const result=await Promise.all([
-   getPrices("mapping",86400000,force),
+  const settled=await Promise.allSettled([
+   getPrices("mapping",86400000,false),
    getPrices("latest",60000,force),
    getPrices("5m",300000,force),
    getPrices("1h",3600000,force)
   ]);
+  for(const i of [0,1])if(settled[i].status==='rejected')throw settled[i].reason;
+  const result=settled.map((r,i)=>r.status==='fulfilled'?r.value:{data:{data:{},timestamp:0},stale:true,error:(i===2?'5-minute':'hourly')+' feed unavailable: '+safe(r.reason?.message)});
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
+  state.feedIssues=result.flatMap((r,i)=>r.stale?[r.error||['mapping','latest','5-minute','hourly'][i]+' cached after an error']:[]);
   state.mappingById=new Map(state.snap.mapping.map(row=>[row.id,row]));
   state.stale=result.some(x=>x.stale);
   state.builtAt=Date.now();
@@ -581,7 +666,7 @@ async function refresh(force){
  * remain visible with warnings, not falsely promoted to actionable fills. */
 function chooseResearchMode(next){
  if(next!=="liquid"&&next!=="value")return;
- state.researchMode=next;state.index=0;state.watchOnly=false;
+ state.researchMode=next;state.index=0;state.selectedId=null;state.watchOnly=false;
  const only=get("gh-only-watch");if(only)only.checked=false;
  applyIdeasView();saveUser();render();
 }
@@ -599,6 +684,9 @@ function applyIdeasView(){
   (!state.watchOnly||state.watchlist.has(x.id))&&
   (state.researchMode!=="value"||Math.round((x.observedBuy+x.observedSell)/2)>=state.valueFloor));
  state.index=Math.min(state.index,Math.max(0,state.ideas.length-1));
+ const selected=state.ideas.findIndex(x=>x.id===state.selectedId);
+ if(selected>=0)state.index=selected;
+ if(state.ideas.length)state.selectedId=state.ideas[state.index].id;
 }
 function researchScore(age,flow,drift,stress){
  // Evidence quality is a transparent ranking score, NEVER fill probability.
@@ -611,10 +699,13 @@ function buildIdeas(){
  state.liquidIdeas=[];state.valueIdeas=[];state.scanCount=0;state.positiveSpreads=0;
  if(!state.snap){applyIdeasView();return;}
  const now=Date.now()/1000,s=state.snap,latest=s.latest.data||{},five=s.five.data||{},hour=s.hour.data||{};
- const hourFresh=n(s.hour.timestamp)<=now+60&&n(s.hour.timestamp)>=now-10800;
- const fiveFresh=n(s.five.timestamp)<=now+60&&n(s.five.timestamp)>=now-1200;
- if(!hourFresh||!fiveFresh||state.stale){applyIdeasView();return;}
+ const hourFresh=Object.keys(hour).length>0&&n(s.hour.timestamp)<=now+60&&n(s.hour.timestamp)>=now-10800;
+ const fiveFresh=Object.keys(five).length>0&&n(s.five.timestamp)<=now+60&&n(s.five.timestamp)>=now-1200;
+ const aggregateIssues=[...(!hourFresh?['Hourly aggregate is missing or stale']:[]),...(!fiveFresh?['5-minute aggregate is missing or stale']:[])];
+ state.feedIssues=[...new Set([...state.feedIssues,...aggregateIssues])];
+ if(!s.mapping.length||!Object.keys(latest).length)state.feedIssues.push('Market feed returned no item mappings or latest price observations');
  const liquid=[],value=[];
+ const usage=purchaseUsage(now*1000);
  for(const m of s.mapping){
   // Bonds require conversion/re-tradeability handling missing in normal GE math.
   if(String(m.name).toLowerCase()==="old school bond")continue;
@@ -623,12 +714,13 @@ function buildIdeas(){
   const buy=n(p.low),sell=n(p.high);
   if(!good(buy)||!good(sell)||!Number.isSafeInteger(buy)||!Number.isSafeInteger(sell)||buy>=sell)continue;
   state.scanCount++;
-  const age=Math.max(now-n(p.lowTime),now-n(p.highTime));
-  if(!Number.isFinite(age)||age<0)continue;
+  if(!Number.isSafeInteger(p.lowTime)||!Number.isSafeInteger(p.highTime)||p.lowTime<=0||p.highTime<=0||p.lowTime>now+60||p.highTime>now+60)continue;
+  const age=Math.max(0,now-p.lowTime,now-p.highTime);
   const observedProfit=sell-buy-tax(sell,m.name);
   if(observedProfit<=0||!Number.isSafeInteger(observedProfit))continue;
   state.positiveSpreads++;
   const cap=good(limit)?Math.floor(limit):0;
+  const remaining=Math.max(0,cap-(usage.get(m.id)||0));
   const lowVol=n(h?.lowPriceVolume),highVol=n(h?.highPriceVolume);
   const flow=Number.isFinite(lowVol)&&Number.isFinite(highVol)?Math.max(0,Math.min(lowVol,highVol)):0;
   const hBuy=n(h?.avgLowPrice),hSell=n(h?.avgHighPrice);
@@ -643,6 +735,8 @@ function buildIdeas(){
   // Allow out-of-budget and members markets for *research*, not a buy signal.
   if(age<=86400 && Math.round((buy+sell)/2)>=100000){
    const warnings=[];
+   warnings.push(...state.feedIssues);
+   if(state.stale)warnings.push('Cached observations are unverified; research only');
    if(m.members&&state.mode==="f2p")warnings.push("Members item — F2P account cannot buy");
    if(buy>state.budget)warnings.push("More capital needed for one unit");
    if(age>7200)warnings.push("Last observed trade older than two hours");
@@ -650,9 +744,10 @@ function buildIdeas(){
    if(!Number.isFinite(drift)||drift>.3)warnings.push("Price disagrees with hourly averages");
    if(stressProfit<=0)warnings.push("A 2% lower sale price erases the spread");
    if(!cap)warnings.push("GE purchase limit not verified");
+   else if(!remaining)warnings.push('Recorded four-hour purchase limit exhausted');
    const candidate={
     id:m.id,name:m.name,members:!!m.members,buy,sell,observedBuy:buy,observedSell:sell,
-    profit:observedProfit,spread:observedProfit/buy,qty:Math.max(0,Math.min(cap||1,affordable)),
+    profit:observedProfit,spread:observedProfit/buy,qty:Math.max(0,Math.min(remaining,affordable)),
     limit:cap,flow,age,drift,stressedMargin:stressProfit,total:0,
     evidence,research:true,warnings,
     capitalGap:Math.max(0,buy-state.budget),
@@ -661,6 +756,7 @@ function buildIdeas(){
    value.push(candidate);
   }
   // Verified/liquid mode retains the established strict screening rules.
+  if(!hourFresh||!fiveFresh||state.stale)continue;
   if(state.mode==="f2p"&&m.members)continue;
   if(state.mode==="f2p"&&state.restricted!=="clear"&&RESTRICTED.has(m.name))continue;
   if(!f||!h||!good(cap)||buy>state.budget||age>7200)continue;
@@ -674,7 +770,7 @@ function buildIdeas(){
   if(profit<=0||spread>=.4||spread<=0)continue;
   const currentDrift=Math.max(Math.abs(refBuy-buy)/buy,Math.abs(refSell-sell)/sell);
   if(currentDrift>.3)continue;
-  const qty=Math.min(cap,Math.max(0,Math.floor(flow*.04)),Math.floor(state.budget/refBuy));
+  const qty=Math.min(remaining,Math.max(0,Math.floor(flow*.04)),Math.floor(state.budget/refBuy));
   if(!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(qty*refBuy))continue;
   const stressedSell=Math.max(1,refSell-Math.ceil(refSell*.02));
   const stressedMargin=stressedSell-refBuy-tax(stressedSell,m.name);
@@ -750,8 +846,8 @@ function renderListingGuide(idea){
   'Prices are historical completed trades, NOT open listings. Suggested limits are one GP inside the recorded spread, not proven best bids/asks or fill predictions. Test small and adjust from your actual fills.');
 }
 function validateOsrsRows(raw){
- if(!Array.isArray(raw)||raw.length>1000)throw Error("Backup contains too many trade records");
- const seen=new Set(),out=[],lots=new Map();
+ if(!Array.isArray(raw)||raw.length>100000)throw Error("Ledger exceeds 100,000 records; original retained");
+ const seen=new Set(),occurrences=new Map(),out=[],lots=new Map();
  for(const record of raw){
   const id=record?.id,side=record?.side,qty=record?.qty,price=record?.price,when=record?.when;
   if(!Number.isSafeInteger(id)||id<=0||!["buy","sell"].includes(side)||
@@ -761,40 +857,58 @@ function validateOsrsRows(raw){
    Date.parse(when)>Date.now()+3600000||typeof record?.name!=="string"||
    record.name.length<1||record.name.length>170)throw Error("Invalid trade row in backup");
   const key=[id,side,qty,price,when].join("|");
-  if(seen.has(key))continue;
-  seen.add(key);
-  out.push({id,side,qty,price,when,name:record.name});
+  const occurrence=(occurrences.get(key)||0)+1;occurrences.set(key,occurrence);
+  const rid=record.rid||'legacy:'+key+'#'+occurrence;
+  if(typeof rid!=='string'||rid.length>220||seen.has(rid))throw Error('Conflicting trade identity');
+  seen.add(rid);
+  const row={id,side,qty,price,when,name:record.name,rid};
+  if(record.taxPaid!==undefined){
+   if(side!=='sell'||!Number.isSafeInteger(record.taxPaid)||record.taxPaid<0||record.taxPaid>qty*price)throw Error('Invalid actual sale tax');
+   row.taxPaid=record.taxPaid;
+  }
+  out.push(row);
  }
  out.sort((a,b)=>Date.parse(a.when)-Date.parse(b.when));
  for(const trade of out){
-  const stack=lots.get(trade.id)||[];
-  if(trade.side==="buy"){stack.push({qty:trade.qty,price:trade.price});trade.gain=null}
+  const stack=lots.get(trade.id)||{rows:[],head:0};
+  if(trade.side==="buy"){stack.rows.push({qty:trade.qty,price:trade.price});trade.gain=null}
   else{
    let remaining=trade.qty,cost=0;
-   while(remaining>0&&stack.length){
-    const lot=stack[0],matched=Math.min(remaining,lot.qty);
+   while(remaining>0&&stack.head<stack.rows.length){
+    const lot=stack.rows[stack.head],matched=Math.min(remaining,lot.qty);
     cost+=matched*lot.price;remaining-=matched;lot.qty-=matched;
-    if(!lot.qty)stack.shift();
+    if(!lot.qty)stack.head++;
    }
    if(remaining>0)throw Error("Backup contains a sale without earlier recorded purchases");
-   trade.gain=trade.qty*trade.price-cost-trade.qty*tax(trade.price,trade.name);
+   trade.gain=trade.qty*trade.price-cost-(trade.taxPaid??trade.qty*tax(trade.price,trade.name));
    if(!Number.isSafeInteger(trade.gain))throw Error("Backup realised profit exceeds safe numeric limits");
   }
   lots.set(trade.id,stack);
  }
  return out;
 }
+function purchaseUsage(now=Date.now()){
+ const windows=new Map(),usage=new Map();
+ for(const r of state.records){
+  const at=Date.parse(r.when);if(r.side!=='buy'||at>now)continue;
+  let window=windows.get(r.id);
+  if(!window||at>=window.start+14400000){window={start:at,quantity:0};windows.set(r.id,window);}
+  window.quantity+=r.qty;
+ }
+ for(const [id,window]of windows)if(now<window.start+14400000)usage.set(id,window.quantity);
+ return usage;
+}
 function exportOsrsBackup(){
  try{
   const body={format:"golden-hub-osrs-v1",exportedAt:new Date().toISOString(),
    config:{budget:state.budget,mode:state.mode,restricted:state.restricted},
    records:state.records};
-  const blob=new Blob([JSON.stringify(body,null,2)],{type:"application/json"});
+  const blob=new Blob([state.ledgerError?win.localStorage.getItem(LEDGER):JSON.stringify(body,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob),link=el("a");
   link.href=url;link.download="Golden-Hub-OSRS-"+new Date().toISOString().slice(0,10)+".json";
   doc.body.append(link);link.click();link.remove();
   win.setTimeout(()=>URL.revokeObjectURL(url),12000);
-  txt("gh-backup-status","Backup prepared for download: "+state.records.length+" trade records.");
+  txt("gh-backup-status",state.ledgerError?'Original unreadable ledger exported unchanged for recovery.':"Backup prepared for download: "+state.records.length+" trade records.");
  }catch(e){txt("gh-backup-status","Backup export failed: "+safe(e.message));}
 }
 async function importOsrsBackup(event){
@@ -805,35 +919,40 @@ async function importOsrsBackup(event){
   const data=JSON.parse(await file.text());
   if(data?.format!=="golden-hub-osrs-v1")throw Error("Unsupported backup format. This importer accepts Golden Hub OSRS backups; the original Golden Exchange v4 format needs separate migration.");
   const valid=validateOsrsRows(data.records);
-  const keys=new Set(state.records.map(r=>[r.id,r.side,r.qty,r.price,r.when].join("|")));
-  const additions=valid.filter(r=>!keys.has([r.id,r.side,r.qty,r.price,r.when].join("|")));
+  if(state.ledgerError)throw Error(state.ledgerError+'; original data will not be overwritten');
+  const keys=new Map(state.records.map(r=>[r.rid,r]));
+  for(const r of valid){const old=keys.get(r.rid);if(old&&JSON.stringify(old)!==JSON.stringify(r))throw Error('Conflicting existing trade; import not applied');}
+  const additions=valid.filter(r=>!keys.has(r.rid));
   const merged=validateOsrsRows([...state.records,...additions]);
   if(!additions.length){txt("gh-backup-status","Nothing new to import; all trades are already here.");return}
   if(!win.confirm("Add "+additions.length+" OSRS records to this device? Existing GW2 history will not be touched."))return;
-  const previous=state.records;state.records=merged;
-  if(!saveUser()){state.records=previous;throw Error("Device storage refused the import; previous records retained")}
+  if(!saveLedger(merged))throw Error("Device storage refused the import or recovery copy; previous records retained");
+  state.records=merged;
   txt("gh-backup-status","Imported "+additions.length+" OSRS records. Existing records preserved.");
   render();
  }catch(e){txt("gh-backup-status","Import not applied: "+safe(e.message));}
 }
 function ledgerTotals(){
  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
- const week=+day-6*86400000;let today=0,lastWeek=0;
- for(const r of state.records)if(r.side==="sell"&&Number.isFinite(r.gain)){const t=Date.parse(r.when);if(t>=week&&t<=now)lastWeek+=r.gain;if(t>=+day&&t<=now)today+=r.gain}
- return {today,lastWeek};
+ const weekDate=new Date(day);weekDate.setDate(weekDate.getDate()-6);
+ const week=+weekDate;let today=0n,lastWeek=0n;
+ for(const r of state.records)if(r.side==="sell"&&Number.isSafeInteger(r.gain)){const t=Date.parse(r.when);if(t>=week&&t<=now)lastWeek+=BigInt(r.gain);if(t>=+day&&t<=now)today+=BigInt(r.gain)}
+ const exact=value=>Number.isSafeInteger(Number(value))?Number(value):null;
+ return {today:exact(today),lastWeek:exact(lastWeek)};
 }
 function render(){
  if(!get("gh-budget-metric"))return;
  txt("gh-budget-metric",gp(state.budget));txt("gh-account-metric",state.mode==="members"?"Members · 8 GE slots":"Free-to-play · 3 GE slots");
- const totals=ledgerTotals();txt("gh-today",gp(totals.today));txt("gh-week",gp(totals.lastWeek));
- get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;
+ const totals=ledgerTotals();txt("gh-today",totals.today===null?'Total exceeds safe range':gp(totals.today));txt("gh-week",totals.lastWeek===null?'Total exceeds safe range':gp(totals.lastWeek));
+ if(!settingsReady){get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;settingsReady=true;}
  const current=state.ideas[state.index];
  get("gh-mode-liquid").setAttribute("aria-pressed",String(state.researchMode==="liquid"));
  get("gh-mode-value").setAttribute("aria-pressed",String(state.researchMode==="value"));
  get("gh-floor-label").hidden=state.researchMode!=="value";
  txt("gh-research-counts",state.loading?"Scanning price and volume evidence…":
   state.priceError?"Market feed unavailable · retry below":
-  state.stale?"Unverified cache · retry for fresh observations":
+  state.stale?"Unverified cache · research only; retry for fresh observations":
+  state.feedIssues.length?state.feedIssues.join(' · ')+' · liquid advice paused; research observations only':
   state.snap?state.liquidIdeas.length+" liquid ideas · "+state.valueIdeas.length+
    " higher-value markets · "+state.positiveSpreads.toLocaleString("en-GB")+" positive observed spreads":
   "Markets not yet checked");
@@ -844,7 +963,7 @@ function render(){
  renderValueTier(current);
  renderListingGuide(current);
  if(!current){
-  const failure=!!state.priceError,uncertain=!!state.stale;
+  const failure=!!state.priceError,uncertain=!!state.stale||state.feedIssues.length>0;
   txt("gh-position",state.loading?"Checking market evidence":
     failure?"Market feed error":
     uncertain?"Market evidence not verified":
@@ -860,7 +979,7 @@ function render(){
     state.snap?(state.researchMode==="value"?"No price pairs match your value floor, watchlist and search filters.":"No opportunities currently pass the price, volume and risk filters."):"Use Retry market check to load today's prices.");
   txt("gh-instruction-extra",state.loading?"":
     failure?"Details: "+state.priceError+" · Retry below when you're connected.":
-    uncertain?"Retry to verify fresh prices before placing an order.":
+    uncertain?(state.feedIssues.join(' · ')||"Retry to verify fresh prices before placing an order."):
     state.snap?(state.researchMode==="value"?"Try a lower value threshold, clear search, or disable Watched only.":"Switch to High-value research to inspect less liquid markets, or adjust your account settings."):"Your recorded trades and GW2 account data remain saved.");
   txt("gh-margin","—");txt("gh-total","—");
   txt("gh-caution",state.loading?"Checking current market evidence…":
@@ -888,7 +1007,7 @@ function render(){
     "No major filter flags; a fill is still not guaranteed";
    txt("gh-research-evidence","Evidence score "+current.evidence+"/100 (not a fill probability) · "+
      "Last observed "+Math.round(current.age/60)+" min ago · "+
-     (current.flow>0?current.flow.toLocaleString("en-GB")+" matched two-way units in last hour":
+     (current.flow>0?current.flow.toLocaleString("en-GB")+" units on the thinner side of the hourly bucket (not matched trades)":
        "No verified two-way hourly volume")+
      " · "+(current.limit?current.limit.toLocaleString("en-GB"):"unknown")+" four-hour GE limit");
    txt("gh-caution",warnings+
@@ -922,22 +1041,27 @@ function render(){
   get("gh-show-chart").disabled=false;
  }
  for(const id of ["gh-budget-metric","gh-today","gh-week","gh-margin","gh-total"])decorateGP(id);
+ if(state.ledgerError){txt('gh-today','Unverified');txt('gh-week','Unverified');txt('gh-backup-status',state.ledgerError+' · Export the original for recovery.');get('gh-add-fill').disabled=true;}
  renderLedger();
+ restoreScrolls();
 }
 function navigate(dir){
  if(!state.ideas.length)return;
  const index=Math.max(0,Math.min(state.ideas.length-1,state.index+dir));
  if(index===state.index)return;
- state.index=index;saveUser();state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;get("gh-fill-form").hidden=true;
+ state.index=index;state.selectedId=state.ideas[index].id;saveUser();state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
  render();
 }
 function toggleFill(){
  const f=get("gh-fill-form"),item=state.ideas[state.index];if(!item)return;
  f.hidden=!f.hidden;if(f.hidden)return;
+ state.fillItem={id:item.id,name:item.name};
  get("gh-fill-item").value=item.name;get("gh-fill-price").value=item.buy;get("gh-fill-side").value="buy";
  get("gh-fill-qty").value=Math.max(1,Math.min(item.qty,100));
+ get('gh-fill-tax').value='';
  txt("gh-fill-feedback","");
  f.scrollIntoView({behavior:"smooth",block:"nearest"});
+ saveView();
 }
 function inventory(id){
  const lots=[];
@@ -949,7 +1073,8 @@ function inventory(id){
  return lots;
 }
 function recordFill(e){
- e.preventDefault();const item=state.ideas[state.index];if(!item)return;
+ e.preventDefault();const item=state.fillItem;if(!item||get('gh-fill-form').hidden)return;
+ if(state.ledgerError){txt('gh-fill-feedback',state.ledgerError);return;}
  const side=get("gh-fill-side").value,qty=n(get("gh-fill-qty").value),price=n(get("gh-fill-price").value);
  if(!Number.isSafeInteger(qty)||qty<=0||!Number.isSafeInteger(price)||price<=0||qty*price>9e12){txt("gh-fill-feedback","Enter valid whole quantities and GP prices.");return}
  let gain=null;
@@ -959,14 +1084,25 @@ function recordFill(e){
   if(left>0){txt("gh-fill-feedback","Cannot record that sale: only "+(qty-left)+" units have matched recorded purchases.");return}
   gain=qty*price-cost-qty*tax(price,item.name);
  }
- if(state.records.length>=1000){txt("gh-fill-feedback","Ledger is full (1,000 events). Export your records before adding more.");return}
- state.records.push({id:item.id,name:item.name,side,qty,price,when:new Date().toISOString(),gain});
- if(!saveUser()){state.records.pop();txt("gh-fill-feedback","Device storage full or disabled; the fill was not saved.");return}
- txt("gh-fill-feedback",side==="sell"?"Recorded verified sale · realised "+gp(gain):"Recorded purchase · waiting for a matching sale");
+ if(state.records.length>=100000){txt("gh-fill-feedback","Ledger is full (100,000 events). Export your records before adding more.");return}
+ const row={id:item.id,name:item.name,side,qty,price,when:new Date().toISOString(),rid:win.crypto.randomUUID(),gain};
+ const actual=get('gh-fill-tax').value;
+ if(side==='sell'&&actual!==''){
+  const amount=Number(actual);if(!Number.isSafeInteger(amount)||amount<0||amount>qty*price){txt('gh-fill-feedback','Enter valid actual total sale tax.');return;}
+  row.taxPaid=amount;
+ }
+ let updated;try{updated=validateOsrsRows([...state.records,row]);}catch(error){txt('gh-fill-feedback',error.message);return;}
+ if(!saveLedger(updated)){txt("gh-fill-feedback","Device storage full or disabled; the fill and recovery copy were not saved.");return}
+ state.records=updated;
+ // A second submit of the same completed form cannot manufacture a duplicate fill.
+ get('gh-fill-form').hidden=true;state.fillItem=null;saveView();
+ txt("gh-fill-feedback",side==="sell"?"Recorded verified sale · realised "+gp(updated.find(r=>r.rid===row.rid).gain):"Recorded purchase · waiting for a matching sale");
  render();
 }
+let renderedRecords=null;
 function renderLedger(){
- const target=get("gh-ledger-list");if(!target)return;target.replaceChildren();
+ const target=get("gh-ledger-list");if(!target||renderedRecords===state.records)return;
+ renderedRecords=state.records;target.replaceChildren();
  if(!state.records.length){target.append(el("p","gh-empty","No recorded OSRS fills yet."));return}
  for(const r of state.records.slice(-20).reverse()){
   const row=el("div","gh-ledger-row");

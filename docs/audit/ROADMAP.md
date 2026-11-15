@@ -59,3 +59,8 @@ QH-001 / UI quote boundary: remove globally multiplied public quote quantities/p
 - **P12-001 IN PROGRESS:** aggregate-only D1 live-read workflow and exact live Pages hashes can now run using existing GitHub secrets; statuses must come from the actual workflow. If secrets, enrollment or a contiguous time series are absent, mark BLOCKED rather than manufacture evidence.
 
 Deleting shared datasets, private IndexedDB records, background collector workflows or incomplete research branches merely to simplify the repository is prohibited. Retain potentially useful archival information until a measured consumer-equivalence test proves safe removal. See `COMPLETE-COVERAGE-2026-11-15.md` for the evidence matrix.
+
+
+## HUB-R1 — 15 November 2026
+
+The current full-scope Hub reliability repair batch is documented in [HUB-RELIABILITY-2026-11-15.md](HUB-RELIABILITY-2026-11-15.md) with sanitized [evidence](HUB-RELIABILITY-EVIDENCE.json). Local tests/build pass; PR exact-head CI pending. Cross-scheduler write/consent atomicity, physical/native acceptance, preview cloud-monitor CORS, real-account continuity/forecast calibration and complete standalone v4 parity remain OPEN. No deployment, migration, user-data reset or original-app installation/uninstallation was performed.

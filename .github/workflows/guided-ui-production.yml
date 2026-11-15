@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   validate-and-deploy:
+    if: github.ref == 'refs/heads/main'
     name: Verify and deploy current GW2 site
     runs-on: ubuntu-latest
     timeout-minutes: 20

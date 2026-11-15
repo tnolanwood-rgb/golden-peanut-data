@@ -122,6 +122,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#gh-fill-price').fill('105');
   await page.locator('#gh-fill-form button[type="submit"]').click();
   assert.match(await page.locator('#gh-fill-feedback').innerText(),/Recorded purchase/);
+  await page.locator('#gh-add-fill').click();
   await page.locator('#gh-fill-side').selectOption('sell');
   await page.locator('#gh-fill-qty').fill('8');
   await page.locator('#gh-fill-price').fill('145');
@@ -295,8 +296,8 @@ const server=http.createServer((req,res)=>{
   }));
   await page.reload();
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs' &&
-    window.GoldenDualHub?.diagnostics().priceError && !window.GoldenDualHub?.diagnostics().loading);
-  assert.match(await page.locator('#gh-item-name').innerText(),/Market feed unavailable/,
+    window.GoldenDualHub?.diagnostics().feedIssues.length && !window.GoldenDualHub?.diagnostics().loading);
+  assert.match(await page.locator('#gh-item-name').innerText(),/Market prices need verification/,
     'a failed Wiki endpoint must not leave the trade card stuck checking markets');
   assert.doesNotMatch(await page.locator('#gh-item-name').innerText(),/Checking markets/);
   assert.match(await page.locator('#gh-instruction-extra').innerText(),/Wiki API 503/);

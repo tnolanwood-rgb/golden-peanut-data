@@ -292,3 +292,32 @@ test('invalid cursor/page cannot advance private event import',async()=>{
  assert.ok(!writes.some(x=>x.key==='cloud-monitor-cursor-v1'));
  assert.match(context.GPCloudAccount.status(state.account).lastError,/cursor/i);
 });
+
+test('Worker upstream requests have bounded deadlines and refuse credential redirects',async()=>{
+ const helpers=await import('data:text/javascript;base64,'+Buffer.from(source+'\nexport {gw2,paginated,monitorAccount,seal};').toString('base64'));
+ const old=global.fetch,calls=[];
+ global.fetch=async(url,opts)=>{calls.push(opts);throw new DOMException('Timed out','TimeoutError');};
+ try{
+  await assert.rejects(helpers.gw2(key,'/account'),/cannot currently contact/);
+  await assert.rejects(helpers.paginated(key,'/commerce/transactions/current/buys',{maxPages:2}));
+  assert.equal(calls.length,2);
+  for(const opts of calls){assert.ok(opts.signal instanceof AbortSignal);assert.equal(opts.redirect,'error');}
+ }finally{global.fetch=old;}
+});
+test('Worker overlapping recent pages cannot erase a prior historical coverage gap',async()=>{
+ const helpers=await import('data:text/javascript;base64,'+Buffer.from(source+'\nexport {gw2,paginated,monitorAccount,seal};').toString('base64'));
+ const writes=[],old=global.fetch;
+ const env={MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),DB:{prepare(sql){return {
+  params:[],bind(...args){this.params=args;return this;},
+  async first(){if(sql.includes('SELECT last_error'))return {last_error:'history_backfill_incomplete: previous cap'};if(sql.includes('SELECT 1 FROM gp_monitor_trades'))return {found:1};return null;},
+  async all(){return {results:[]};},async run(){writes.push({sql,params:this.params});return {success:true};}
+ };}}};
+ const sealed=await helpers.seal(env,key,'synthetic-account');
+ global.fetch=async url=>Response.json(String(url).includes('/history/')?Array.from({length:200},(_,i)=>({id:i+1})):[]);
+ try{
+  const result=await helpers.monitorAccount(env,{account_id:'synthetic-account',...sealed});
+  assert.equal(result.ok,true);assert.equal(result.historyComplete,false);
+  const update=writes.find(x=>x.sql.includes('last_success_at=?'));
+  assert.match(update.params[2],/history_backfill_incomplete/);
+ }finally{global.fetch=old;}
+});

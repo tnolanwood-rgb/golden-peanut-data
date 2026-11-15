@@ -351,11 +351,12 @@ function install(){if(started)return;started=true;load();document.body.classList
  document.addEventListener('click',()=>window.setTimeout(save,0),{passive:true});
  document.addEventListener('change',()=>window.setTimeout(save,0),{passive:true});
  window.addEventListener('scroll',()=>{
+  if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
   ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));
   if(scrollSaveTimer)clearTimeout(scrollSaveTimer);
   scrollSaveTimer=setTimeout(()=>{scrollSaveTimer=0;save();},180);
  },{passive:true});
- const capture=()=>{ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
+ const capture=()=>{if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
  window.addEventListener('pagehide',capture);
  window.addEventListener('orientationchange',capture,{passive:true});
  document.addEventListener('visibilitychange',()=>{
@@ -369,6 +370,7 @@ function install(){if(started)return;started=true;load();document.body.classList
  if(restoredScroll>0){
   let attempts=0;
   const restoreScroll=()=>{
+   if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
    if(ui.tab!==restoredTab||window.scrollY>=restoredScroll-8)return;
    if(document.documentElement.scrollHeight>restoredScroll+window.innerHeight/2)
     window.scrollTo({top:restoredScroll,behavior:'instant'});
