@@ -686,13 +686,38 @@ async function refresh(force){
  if(get("gh-empty-retry"))get("gh-empty-retry").hidden=true;
  render();
  try{
-  const settled=await Promise.allSettled([
+  // Start all four feeds concurrently, but don't make high-value research
+  // wait for slower aggregate volume. Separate allSettled handlers are
+  // attached immediately to prevent any unhandled rejection.
+  const essential=Promise.allSettled([
    getPrices("mapping",86400000,false),
-   getPrices("latest",60000,force),
+   getPrices("latest",60000,force)
+  ]);
+  const aggregates=Promise.allSettled([
    getPrices("5m",300000,force),
    getPrices("1h",3600000,force)
   ]);
-  for(const i of [0,1])if(settled[i].status==='rejected')throw settled[i].reason;
+  const first=await essential;
+  for(const r of first)if(r.status==='rejected')throw r.reason;
+  const core=first.map(r=>r.value);
+  // Provisional discovery is visibly UNVERIFIED. It may show high-value
+  // completed-trade spreads, but absolutely no liquid execution suggestions,
+  // budgets or claimed hourly volume until BOTH aggregates settle.
+  if(state.researchMode==='value'){
+   state.snap={mapping:core[0].data,latest:core[1].data,
+    five:{data:{},timestamp:0},hour:{data:{},timestamp:0}};
+   state.mappingById=new Map(state.snap.mapping.map(row=>[row.id,row]));
+   state.feedIssues=['Five-minute and hourly market evidence still loading'];
+   state.stale=true;
+   state.builtAt=Date.now();
+   buildIdeas();
+   if(state.ideas.length){
+    txt("gh-status","Latest observed prices received · verifying volume and liquidity. Research only.");
+    render();
+   }
+  }
+  const finished=await aggregates;
+  const settled=[...first,...finished];
   const result=settled.map((r,i)=>r.status==='fulfilled'?r.value:{data:{data:{},timestamp:0},stale:true,error:(i===2?'5-minute':'hourly')+' feed unavailable: '+safe(r.reason?.message)});
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
   state.feedIssues=result.flatMap((r,i)=>r.stale?[r.error||['mapping','latest','5-minute','hourly'][i]+' cached after an error']:[]);
