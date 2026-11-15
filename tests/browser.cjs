@@ -49,6 +49,36 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   return {orders:p.orders.map(x=>({id:x.id,cost:x.cost,expected:x.expectedProfit})),spent:p.spent,budget:p.budget,inventory:s.snapshot.inventoryVerified};
  });
  assert.equal(setup.inventory,true);assert.deepEqual(setup.orders.map(x=>x.id),[2,1]);assert.ok(setup.spent<=setup.budget);
+ // A slow account/characters inventory must NOT block the core account
+ // wallet, Delivery Box and complete TP order snapshot. Default callers
+ // still perform full inventory as before (asserted above).
+ const coreFastPath=await page.evaluate(async()=>{
+  const s=GoldenPeanutClean.State,original=s.api.inventory;
+  let requested=0;
+  s.api.inventory=()=>{requested++;return new Promise(()=>{})};
+  try{
+   const fast=await Promise.race([
+    s.api.snapshot('fixture-key-not-a-credential',s.account,
+     {includeInventory:false,oldSnapshot:s.snapshot}),
+    new Promise((_,reject)=>setTimeout(()=>reject(Error('wallet blocked by inventory')),2500))
+   ]);
+   return {requested,verifiedWallet:fast.wallet,deliveryCoins:fast.delivery?.coins,
+    ordersVerified:fast.buysVerified&&fast.sellsVerified,
+    inventoryVerified:fast.inventoryVerified,inventoryPending:fast.inventoryPending,
+    historyStillPresent:fast.holdings!==null,
+    originalInventoryAt:s.snapshot.inventoryAt,keptInventoryAt:fast.inventoryAt};
+  }finally{s.api.inventory=original}
+ });
+ assert.equal(coreFastPath.requested,0,'core-only snapshot must not start or await heavy inventory');
+ assert.equal(coreFastPath.verifiedWallet,10000);
+ assert.equal(coreFastPath.deliveryCoins,0);
+ assert.equal(coreFastPath.ordersVerified,true);
+ assert.equal(coreFastPath.inventoryVerified,false);
+ assert.equal(coreFastPath.inventoryPending,true);
+ assert.equal(coreFastPath.historyStillPresent,true,'previous account holdings must survive while refreshing');
+ assert.equal(coreFastPath.keptInventoryAt,coreFastPath.originalInventoryAt,
+  'stale holdings timestamp must never be relabelled as newly verified');
+
  // Guided mode preserves advanced workflows but provides one trade idea at a time.
  await page.waitForFunction(()=>window.GPGuided?.open);
  await page.evaluate(()=>GPGuided.open());
