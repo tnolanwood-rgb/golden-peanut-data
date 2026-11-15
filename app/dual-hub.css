@@ -114,3 +114,13 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:none;will-change:transform;backface-visibility:hidden}
 #gh-game-nav .gh-swipe-hint{text-align:center;color:#aabdae;font-size:11px;letter-spacing:.025em;line-height:1.25;margin:6px 0 0}
 @media(prefers-reduced-motion:reduce){#gh-game-stage>.gh-game-panel{transition:none!important;animation:none!important}}
+
+/* v0.6: direct finger-tracked dragging; preserve native vertical page scroll.
+ * pan-y must be defined BEFORE pointerdown; toggling it mid-gesture is too late.
+ * Do not apply touch-action:none to the app: that breaks normal scrolling/zoom. */
+#gh-game-stage,#gh-game-nav{touch-action:pan-y pinch-zoom}
+#gh-game-stage>.gh-game-panel{touch-action:pan-y pinch-zoom}
+#gh-game-stage.gh-stage-moving>.gh-game-panel{
+  transition:none!important;animation:none!important;transform-style:flat;
+}
+#gh-game-stage.gh-stage-moving{overflow:hidden;user-select:none;-webkit-user-select:none}
