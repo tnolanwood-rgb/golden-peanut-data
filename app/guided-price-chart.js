@@ -206,7 +206,8 @@ function render(){
  const heading=node('div','gp-price-heading');
  const headingText=node('div','gp-price-heading-text');
  headingText.append(node('div','gp-price-eyebrow','TRADE RESEARCH · GUILD WARS 2'),node('h2','',active.title));
- heading.append(headingText,btn('×',close,'gp-price-close'));
+ const closeButton=btn('×',close,'gp-price-close');closeButton.setAttribute('aria-label','Close price chart');
+ heading.append(headingText,closeButton);
  const controls=node('div','gp-price-controls');
  const week=btn('7 days',()=>chooseRange('week'),'gp-price-button'+(range==='week'?' is-selected':''));
  const all=btn('All recorded',()=>chooseRange('all'),'gp-price-button'+(range==='all'?' is-selected':''));
