@@ -5,6 +5,9 @@
  * No Trading Post order placement, cancellations or currency movement.
  */
 const API='https://api.guildwars2.com/v2',PUBLIC_ORIGIN='https://thegoldenpeanut.pages.dev';
+// GitHub already collects private trading data. Never run a second Cloudflare
+// collector on the same account in the deployed fallback configuration.
+const workerCollectionEnabled=env=>env?.MONITOR_BACKEND!=='github-actions-fallback';
 const PAGE_SIZE=200,MAX_ORDER_PAGES=20,MAX_HISTORY_PAGES=60,DAY=86400000;
 const now=()=>Date.now();
 const encoder=new TextEncoder();
@@ -293,10 +296,14 @@ async function handle(request,env,ctx){
   }
   // An initial account snapshot starts asynchronously, never blocking the
   // consent response or falsely claiming a successfully completed poll.
-  try{
-   ctx.waitUntil(monitorAccount(env,{account_id:account.id,iv:encrypted.iv,encrypted:encrypted.encrypted}));
-  }catch{/* Cron still monitors the enrolled account every ten minutes. */}
-  return response(request,200,{ok:true,account:account.name,mode:'background',intervalMinutes:10,
+  if(workerCollectionEnabled(env)){
+   try{
+    ctx.waitUntil(monitorAccount(env,{account_id:account.id,iv:encrypted.iv,encrypted:encrypted.encrypted}));
+   }catch{/* Scheduled Worker polling is still available when enabled. */}
+  }
+  return response(request,200,{ok:true,account:account.name,
+   mode:workerCollectionEnabled(env)?'background':'github-actions-fallback',
+   intervalMinutes:workerCollectionEnabled(env)?10:30,
    privacy:'Credential encrypted in private Cloudflare D1; revoke through app or GW2 account security'});
  }
  const tokenDigest=await digest(key);
@@ -379,6 +386,9 @@ export default {
   }
  },
  async scheduled(event,env,ctx){
+  // When GitHub Actions owns collection, skip before touching private D1 or GW2.
+  // Opt-out erasure and authenticated read endpoints remain active.
+  if(!workerCollectionEnabled(env))return;
   const result=await env.DB.prepare('SELECT account_id,iv,encrypted FROM gp_monitor_credentials WHERE enabled=1 AND encrypted IS NOT NULL').all();
   for(const row of result.results||[])ctx.waitUntil(monitorAccount(env,row));
  }
