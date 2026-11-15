@@ -294,6 +294,43 @@ const server=http.createServer((req,res)=>{
   await page.locator('#gh-tab-osrs').click();
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
+
+  // The vertically scrollable OSRS recommendation card must ALSO support
+  // horizontal GW2 switching. Simulate WebView cancelling Pointer Events:
+  // Touch Events alone must recover a deliberate horizontal gesture, while
+  // vertical card scrolling must not be consumed by the game switcher.
+  const cardTouches=await page.evaluate(()=>{
+    const node=document.querySelector('#gh-panel-osrs .gh-trade-scroll .gp-guide-idea-top');
+    if(!node)throw Error('Recommendation scroll content not found');
+    const fire=(type,x,y)=>{
+      const finger=new Touch({identifier:72,target:node,clientX:x,clientY:y});
+      const touches=type==='touchend'?[]:[finger];
+      const event=new TouchEvent(type,{bubbles:true,cancelable:true,touches,
+       targetTouches:touches,changedTouches:[finger]});
+      node.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    fire('touchstart',70,160);
+    const verticalConsumed=fire('touchmove',72,260);
+    fire('touchend',72,260);
+    const untouched=window.GoldenDualHub.diagnostics().game==='osrs' &&
+     !window.GoldenDualHub.diagnostics().dragging;
+    fire('touchstart',75,160);
+    const horizontalConsumed=fire('touchmove',275,162);
+    const stageMoving=document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving');
+    fire('touchend',275,162);
+    return {verticalConsumed,untouched,horizontalConsumed,stageMoving};
+  });
+  assert.equal(cardTouches.verticalConsumed,false,'vertical OSRS card scrolling must stay native');
+  assert.equal(cardTouches.untouched,true,'vertical touch must not switch games');
+  assert.equal(cardTouches.horizontalConsumed,true,'horizontal OSRS card touch must be claimed by game navigation');
+  assert.equal(cardTouches.stageMoving,true,'horizontal swipe in nested OSRS card must move the two full desks');
+  await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().game==='gw2' &&
+   !window.GoldenDualHub.diagnostics().transitioning);
+  await page.locator('#gh-tab-osrs').click();
+  await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().game==='osrs' &&
+   !window.GoldenDualHub.diagnostics().transitioning);
+  assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await page.reload();
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
   const preservedGW2=await page.evaluate(async()=>{
