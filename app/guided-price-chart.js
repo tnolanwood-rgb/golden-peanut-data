@@ -86,7 +86,11 @@ function visible(){
 }
 function chooseRange(next){
  if(!active?.rows?.length)return;
- range=next;viewSize=next==='week'?Math.min(7,availableDays()):availableDays();
+ range=next;
+ // GW2's existing verified feed records calendar-day bid/ask snapshots,
+ // not hourly trades. Do not pretend a daily point is a six-hour extreme.
+ const windows={day:2,three:4,week:7};
+ if(next!=='six')viewSize=Math.min(windows[next]||availableDays(),availableDays());
  offset=0;selected=active.rows.length-1;render();notify();
 }
 function ensureSelectedVisible(){
@@ -105,6 +109,8 @@ function setSelected(index){
  if(plot)plot.replaceWith(mainPlot(visible()));
  const panel=dialog?.querySelector('.gp-price-selection');
  if(panel)panel.replaceWith(selectedPanel(visible()));
+ const summary=dialog?.querySelector('.gp-price-range-summary');
+ if(summary)summary.replaceWith(rangeSummary(visible()));
  const slider=dialog?.querySelector('.gp-price-slider');
  if(slider)slider.value=String(selected);
  notify();
@@ -226,6 +232,25 @@ function onWheel(e){
  const n=availableDays(),desired=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
  if(viewSize!==desired){viewSize=desired;offset=Math.min(offset,n-viewSize);range='custom';render();}
 }
+function rangeSummary(rows){
+ const wrap=node('section','gp-price-range-summary');
+ if(!rows.length)return wrap;
+ // Buying immediately faces the ASK, selling immediately faces the BID.
+ const cheapest=rows.reduce((best,r)=>r[2]<best[2]?r:best);
+ const highest=rows.reduce((best,r)=>r[1]>best[1]?r:best);
+ wrap.append(node('h3','', 'Range indicator · '+rows.length+' recorded daily snapshots'));
+ const grid=node('div','gp-price-range-pair');
+ const addMetric=(label,record,col)=>{
+  const metric=node('div','gp-price-range-value');
+  metric.append(node('span','',label),moneyView(record[col]),node('small','',date(record[0])));
+  return metric;
+ };
+ grid.append(addMetric('Lowest observed cost to buy · ask',cheapest,2),
+             addMetric('Highest observed proceeds to sell · bid',highest,1));
+ wrap.append(grid,node('p','gp-price-range-caveat',
+   'Historical daily standing-order snapshots only. These prices may be from different days; they do not imply a filled trade or an achievable spread. Fees are excluded.'));
+ return wrap;
+}
 function selectedPanel(rows){
  const card=node('section','gp-price-selection');
  if(!active?.rows?.length)return card;
@@ -250,14 +275,16 @@ function render(){
  const closeButton=btn('×',close,'gp-price-close');closeButton.setAttribute('aria-label','Close price chart');
  heading.append(headingText,closeButton);
  const controls=node('div','gp-price-controls');
- const week=btn('7 days',()=>chooseRange('week'),'gp-price-button'+(range==='week'?' is-selected':''));
- const all=btn('All recorded',()=>chooseRange('all'),'gp-price-button'+(range==='all'?' is-selected':''));
+ for(const [id,label] of [['six','6h'],['day','24h'],['three','3 days'],['week','7 days'],['all','All recorded']]){
+  const b=btn(label,()=>chooseRange(id),'gp-price-button'+(range===id?' is-selected':''));
+  b.dataset.gpRange=id;b.setAttribute('aria-pressed',String(range===id));
+  controls.append(b);
+ }
  const expand=btn(expanded?'Normal size':'Expand chart',()=>{expanded=!expanded;render();notify();},'gp-price-button gp-price-expand');
- week.setAttribute('aria-pressed',String(range==='week'));all.setAttribute('aria-pressed',String(range==='all'));
- controls.append(week,all,expand);
+ controls.append(expand);
  const legend=node('div','gp-price-legend');
  legend.append(node('span','gp-price-buy-label','━  Buying reference · observed bid'),node('span','gp-price-sell-label','┄  Selling reference · observed ask'));
- const caption=node('p','gp-price-muted','Daily public bid/ask snapshots · missing dates are left blank. No hourly completed-trade or volume feed is available.');
+ const caption=node('p','gp-price-muted','Daily public bid/ask snapshots · 24h and 3-day selections use calendar-day observations, not intraday ticks. Missing dates are left blank. No verified hourly or volume history is available.');
  dialog.append(heading,controls,legend,caption);
  updateArtwork();
  if(active.status==='loading'){
@@ -267,11 +294,15 @@ function render(){
   dialog.append(node('p','gp-price-wait','The price history could not load. The chart has been left open so you can retry.'));
   dialog.append(btn('Retry price history',()=>load(active.id,active.title),'gp-price-button is-selected'));return;
  }
+ if(range==='six'){
+  dialog.append(node('div','gp-price-unavailable','6-hour range unavailable: Guild Wars 2 currently has daily quoted price snapshots, not verified intraday observations. A six-hour low or high cannot be calculated from these records. Choose 24h, 3 days or 7 days for the recorded daily prices.'));
+  return;
+ }
  if(active.rows.length<2){
   dialog.append(node('p','gp-price-wait','Not enough dated public price observations are available to draw a history. This does not mean no trades happened.'));return;
  }
  const rows=visible(),count=active.rows.length;
- dialog.append(mainPlot(rows));
+ dialog.append(mainPlot(rows),rangeSummary(rows));
  const hint=node('p','gp-price-hint','Drag the chart to explore earlier days · pinch to zoom · tap a point to inspect it.');
  const inspector=node('div','gp-price-inspector');
  const l=node('label','gp-price-inspect-label','Inspect an observation');
@@ -304,7 +335,7 @@ async function load(id,title){
   if(pendingRestore?.id===id){
    const saved=pendingRestore;pendingRestore=null;
    range=saved.range;
-   viewSize=range==='week'?Math.min(7,availableDays()):range==='all'?availableDays():Math.max(1,Math.min(availableDays(),saved.viewSize));
+   viewSize=range==='day'?Math.min(2,availableDays()):range==='three'?Math.min(4,availableDays()):range==='week'?Math.min(7,availableDays()):range==='all'?availableDays():Math.max(1,Math.min(availableDays(),saved.viewSize));
    offset=Math.max(0,Math.min(availableDays()-viewSize,saved.offset));
    expanded=saved.expanded;
    if(saved.selectedDay!==null){

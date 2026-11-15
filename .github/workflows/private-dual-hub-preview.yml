@@ -1,0 +1,74 @@
+name: Golden Hub — Temporary Private Dual-Game Preview
+on:
+  push:
+    branches:
+      - feat/private-dual-game-hub-20261115
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - '.github/workflows/private-dual-hub-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: private-dual-hub-preview
+  cancel-in-progress: true
+jobs:
+  checked-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      GP_PROJECT_NAME: thegoldenpeanut
+      GP_PREVIEW_BRANCH: private-dual-hub-preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact project identity
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          token = os.getenv('CLOUDFLARE_API_TOKEN','')
+          account = os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          project = os.getenv('GP_PROJECT_NAME','')
+          if not token or not account: raise SystemExit('Missing Cloudflare release credentials; preview not started')
+          req = urllib.request.Request(f'https://api.cloudflare.com/client/v4/accounts/{account}/pages/projects/{project}',headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+          try:
+            with urllib.request.urlopen(req,timeout=25) as res: payload=json.load(res)
+          except Exception as err: raise SystemExit('Cloudflare project not verified: '+type(err).__name__)
+          if not payload.get('success') or payload.get('result',{}).get('name') != project: raise SystemExit('Wrong Cloudflare project')
+          if payload['result'].get('production_branch')!='main': raise SystemExit('Unexpected production branch')
+          print('Existing Cloudflare project and production branch verified; using isolated preview branch.')
+          PY
+      - name: Run source and full browser tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          python -m pip install --disable-pip-version-check PyYAML==6.0.3
+          python scripts/check_release.py
+          python -m unittest discover -s tests -p 'test_*.py'
+          npm test
+          if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
+          npm run test:browser
+      - name: Publish PREVIEW only (not production)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GP_PREVIEW_BRANCH" != main
+          npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch "$GP_PREVIEW_BRANCH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: private-dual-hub-preview-screenshots
+          path: |
+            artifacts/browser-*.png
+            artifacts/audit/browser.log

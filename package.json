@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/execution.test.cjs tests/market-board.test.cjs tests/capacity.test.cjs tests/portfolio.test.cjs tests/stress.test.cjs tests/live-data.test.cjs tests/account-monitor.test.cjs tests/rarity-and-performance.test.cjs tests/fast-startup.test.cjs tests/guided-deck.test.cjs tests/public-index.test.cjs tests/accounting-oracle.test.cjs tests/guided-visit.test.cjs",
-    "test:browser": "node tests/browser.cjs",
+    "test:browser": "node tests/browser.cjs && node tests/dual-hub.browser.cjs",
     "check": "python scripts/check_release.py"
   },
   "devDependencies": {

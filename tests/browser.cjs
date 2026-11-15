@@ -235,6 +235,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(stateBefore.status,'ready');
  assert.equal(stateBefore.rows,8);
  assert.equal(stateBefore.viewSize,7,'a 7-day tab shows actual seven recent observations');
+ await modal.locator('[data-gp-range="six"]').click();
+ assert.match(await modal.locator('.gp-price-unavailable').innerText(),/6-hour range unavailable/i,'GW2 must not manufacture intraday lows from daily data');
+ await modal.locator('[data-gp-range="day"]').click();
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,2,'24h GW2 mode uses two calendar-day snapshots, explicitly labelled');
+ assert.match(await modal.locator('.gp-price-range-summary').innerText(),/Lowest observed cost to buy/);
+ assert.match(await modal.locator('.gp-price-range-summary').innerText(),/Highest observed proceeds to sell/);
+ await modal.locator('[data-gp-range="three"]').click();
+ assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,4,'3d GW2 mode shows recent three-day window of daily snapshots with endpoint');
+ await modal.locator('[data-gp-range="week"]').click();
+
  // The modal is a sibling of the repeatedly replaced home root. No account,
  // delivery, or quote refresh may silently close or reset a user's chart.
  await page.evaluate(()=>{for(let i=0;i<5;i++){GPGuided.render();GPFocus.render();}});
@@ -273,7 +283,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await modal.locator('.gp-price-heading-icon img').count(),1,'chart displays verified official item artwork');
  assert.equal(await modal.locator('.gp-price-heading h2.gp-rarity-exotic').count(),1,'chart title retains native GW2 rarity');
  assert.equal(await modal.locator('.gp-price-quote').count(),2);
- assert.equal(await modal.locator('.gp-price-money img').count(),6,'both quotes show official GW2 gold/silver/copper icons');
+ assert.equal(await modal.locator('.gp-price-selection .gp-price-money img').count(),6,'selected quotes show official GW2 gold/silver/copper icons');
+ assert.equal(await modal.locator('.gp-price-range-summary .gp-price-money img').count(),6,'range extrema also show official GW2 denominations');
  await modal.getByRole('button',{name:'Expand chart'}).click();
  assert.equal(await modal.evaluate(el=>el.classList.contains('is-expanded')),true);
  assert.equal(await modal.getByRole('button',{name:/Zoom in|Earlier|Later/i}).count(),0,'no opaque button-step controls');

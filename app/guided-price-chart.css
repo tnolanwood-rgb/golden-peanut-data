@@ -81,3 +81,17 @@
 .gp-price-heading-text h2.gp-rarity-ascended{color:#fb3e8d!important}
 .gp-price-heading-text h2.gp-rarity-legendary{color:#974eff!important}
 .gp-price-money-part img{width:17px;height:17px}
+
+/* Shared chart-range extrema summary. Only verified daily GW2 observations. */
+.gp-price-range-summary{background:#203a2b;border:1px solid #526e59;border-radius:14px;padding:16px;margin:15px 0 6px}
+.gp-price-range-summary h3{font-size:15px;font-weight:800;letter-spacing:.01em;margin:0 0 12px;color:#ead29b}
+.gp-price-range-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.gp-price-range-value{display:flex;flex-direction:column;gap:7px;min-width:0}
+.gp-price-range-value>span:first-child{font-size:12px;line-height:1.45;color:#d3e1d2}
+.gp-price-range-value small{font-size:11px;color:#c2d1c4}
+.gp-price-range-caveat{font-size:11px;color:#b9ccbe;line-height:1.5;margin:13px 0 0}
+.gp-price-unavailable{padding:22px 17px;border:1px solid #7c7254;border-radius:14px;background:#263425;color:#eadbb7;line-height:1.65;font-size:14px}
+.gp-price-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.gp-price-controls .gp-price-button{min-width:0;margin:0;font-size:13px;padding:10px 7px}
+.gp-price-controls .gp-price-expand{margin-left:0}
+@media(max-width:450px){.gp-price-range-summary{padding:13px}.gp-price-range-pair{gap:9px}.gp-price-range-value .gp-price-money{font-size:14px}.gp-price-controls .gp-price-button{font-size:12px;padding-inline:4px}}

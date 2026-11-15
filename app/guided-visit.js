@@ -21,7 +21,7 @@ function validDeck(d){
 function cleanChart(c){
  if(!c||!validId(c.id))return null;
  const d=Number(c.selectedDay),range=c.range;
- return {id:c.id,range:['week','all','custom'].includes(range)?range:'week',
+ return {id:c.id,range:['six','day','three','week','all','custom'].includes(range)?range:'week',
   viewSize:Number.isSafeInteger(c.viewSize)&&c.viewSize>=1&&c.viewSize<=31?c.viewSize:7,
   offset:Number.isSafeInteger(c.offset)&&c.offset>=0&&c.offset<=31?c.offset:0,
   selectedDay:Number.isSafeInteger(d)&&d>0&&d<200000?d:null,
