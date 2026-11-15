@@ -34,6 +34,17 @@ const server=http.createServer((req,res)=>{
   });
   await page.goto(url+'/?game=osrs');
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
+  // Preserve the original same-origin GW2 storage while switching games.
+  // Test-only synthetic marker in the real GW2 IndexedDB store, not an OSRS store.
+  await page.evaluate(async()=>{
+   localStorage.setItem('gp-hub-continuity-probe','original-account-data-sentinel');
+   const req=indexedDB.open('golden-peanut-clean-v1',1);
+   const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+   const tx=db.transaction('config','readwrite');
+   tx.objectStore('config').put({pk:'Fixture.1234|hub-continuity-test',account:'Fixture.1234',key:'hub-continuity-test',value:{marker:'untouched'}});
+   await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+   db.close();
+  });
   await page.waitForFunction(()=>document.getElementById('gh-item-name')?.textContent==='Copper sword',{timeout:15000});
   assert.equal(await page.locator('#gh-game-nav [role="tab"]').count(),2);
   assert.equal(await page.locator('#gh-tab-osrs').getAttribute('aria-selected'),'true');
@@ -193,6 +204,16 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await page.reload();
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
+  const preservedGW2=await page.evaluate(async()=>{
+   const req=indexedDB.open('golden-peanut-clean-v1',1);
+   const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+   const tx=db.transaction('config','readonly'),read=tx.objectStore('config').get('Fixture.1234|hub-continuity-test');
+   const row=await new Promise((resolve,reject)=>{read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error)});
+   db.close();
+   return {local:localStorage.getItem('gp-hub-continuity-probe'),indexed:row?.value?.marker};
+  });
+  assert.deepEqual(preservedGW2,{local:'original-account-data-sentinel',indexed:'untouched'},
+    'moving between OSRS and GW2 must not erase same-origin GW2 browser history or settings');
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await fs.promises.mkdir('artifacts',{recursive:true});
   await page.screenshot({path:'artifacts/browser-osrs-390.png',fullPage:true});
