@@ -31,3 +31,15 @@ asserted each run. Reproduce with scripts/benchmark_family.cjs and baseline sour
 extracted using git show (see EVIDENCE). No whole-app/physical Android claim.
 
 QH-001: list evidence lookups use a single-unit reference; no extra API calls, no new timers. Existing assembled and performance regressions pass; no measured speed claim.
+
+## 2026-11-15 · staged performance audit #42 (not yet an Android claim)
+
+Confirmed from repository data sizes (not transferred network bytes): full `data/market_public.json` ~15.7 MB and `data/market_history.json` ~6.6 MB. The prior startup fetched the full former for labels; prior charts fetched the full latter even for one item. See `SYSTEMS-2026-11-15.md` for causal paths and guards.
+
+Proposed improvement: complete compact `market_index.json` provides only public ID/name/type/rarity on startup; the full quote file remains for deep research. A 32-way daily-history partition lets an individual chart fetch only its ID-modulo-32 shard. These files are generated/published by the existing complete-data collector; fallback preserves functionality until new files exist. HTTP conditional revalidation replaces forced `no-store` requests, and duplicate simultaneous chart loads share one in-flight promise.
+
+UI side: 130ms trade/order search coalescing (last character wins, Enter immediate) and guided market-board cache keyed on account, wallet, plan reference/arrays/lengths, market index state and minute. The cache deliberately reevaluates at least once/minute for quote freshness. The capital-budget field is not replaced during typing (merged PR #41).
+
+Synthetic CI output: `scripts/benchmark_startup.cjs`, reports 24,000-row quote+metadata JSON and 12,000×21-day price-history fixtures with 2 warmups and 7 trials. GitHub Actions uploads `artifacts/audit/startup-benchmark.json`. Results represent fixture byte sizes and Node JSON parse medians, **not** a measured S23 Ultra page-open speed, server-side transfer compression, or end-to-end search latency. Do not assert an improvement percentage without the report and real Android before/after data.
+
+Release evidence required: inspect latest collector generation and shard parity, check 404/invalid/stale fallback, verify exact served JS paths and use mobile network throttling or a physical phone to compare 10 repeated cold/warm load runs, median/p95; record bytes, render count, error rate, account history count and queue stability. No sample source/user data is discarded to improve benchmark results.
