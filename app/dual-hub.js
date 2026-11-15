@@ -265,12 +265,12 @@ function settleScene(scene,commit,releaseVelocity=0){
  const fromX=scene.offset,delta=finalX-fromX,distance=Math.abs(delta);
  const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
  if(reduced||distance<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
- // Even a tiny release has room to slow down, while full-width navigation
- // remains brisk. Unlike a fixed 140ms snap, no segment teleports to rest.
- const duration=clamp(Math.round(340+220*distance/scene.width),340,560);
- const k=6.6,steps=40;
+ // A slightly longer, more gently damped release preserves direct 1:1
+ // finger tracking and lets the final movement arrive without a hard stop.
+ const duration=clamp(Math.round(390+260*distance/scene.width),390,650);
+ const k=5.35,steps=48;
  const vToward=Math.max(0,Math.sign(delta)*clamp(releaseVelocity,-1.3,1.3));
- const velocityFactor=clamp(vToward*duration/Math.max(distance,1),0,1.6);
+ const velocityFactor=clamp(vToward*duration/Math.max(distance,1),0,1.0);
  const spring=t=>1-(1+k*t)*Math.exp(-k*t)+velocityFactor*t*Math.exp(-k*t);
  const end=spring(1);
  const framesOut=[],framesIn=[],framesHeight=[];
