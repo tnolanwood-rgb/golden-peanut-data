@@ -1758,10 +1758,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  * is loaded before the home UI; its dialog is independent of home rerenders. */
 (function(){
  const chart=document.createElement('script');
- chart.src='./guided-price-chart.js?v=20261115-persistent-osrs-v1';
+ chart.src='./guided-price-chart.js?v=20261115-icons-resume-v1';
  const start=()=>{
   const guided=document.createElement('script');
-  guided.src='./guided-peanut.js?v=20261115-persistent-osrs-v1';
+  guided.src='./guided-peanut.js?v=20261115-icons-resume-v1';
   guided.async=true;
   document.head.append(guided);
  };
