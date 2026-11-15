@@ -7,7 +7,8 @@ android {
     defaultConfig {
         applicationId 'com.goldenhub.dual.preview'
         minSdk 26
-        targetSdk 35
+        // Private preview: target 34 until Android 15 edge-to-edge insets receive device testing.
+        targetSdk 34
         versionCode 1
         versionName '0.2-preview'
     }
