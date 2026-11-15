@@ -25,7 +25,9 @@ const server=http.createServer((req,res)=>{
    const u=new URL(route.request().url());
    if(u.origin===url)return route.continue();
    if(u.hostname==='prices.runescape.wiki'){
-    const end=u.pathname.split('/').pop(),data=end==='mapping'?mapping:end==='latest'?{data:prices}:end==='5m'?{timestamp:now-120,data:volume}:end==='1h'?{timestamp:now-120,data:hourly}:end==='timeseries'?history:{data:{}};
+    const end=u.pathname.split('/').pop();
+    if(end==='timeseries')assert.ok(['6h','24h','7d','30d'].includes(u.searchParams.get('lookback')),'v2 API requires lookback; timestep is not supported');
+    const data=end==='mapping'?mapping:end==='latest'?{data:prices}:end==='5m'?{timestamp:now-120,data:volume}:end==='1h'?{timestamp:now-120,data:hourly}:end==='timeseries'?{...history,timestep:3600}:{data:{}};
     return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(data)});
    }
    return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:'{}'});
@@ -65,12 +67,43 @@ const server=http.createServer((req,res)=>{
   const selectionAfter=await page.locator('#gh-research-selected h3').innerText();
   assert.notEqual(selectionBefore,selectionAfter,'slider should inspect a different observed bucket');
   assert.match(await page.locator('#gh-research-selected').innerText(),/instant-sold/);
+  assert.match(await page.locator('#gh-range-summary').innerText(),/Lowest observed cost to buy/);
+  assert.match(await page.locator('#gh-range-summary').innerText(),/Highest observed proceeds to sell/);
+  await page.locator('[data-gh-period="six"]').click();
+  await page.waitForFunction(()=>window.GoldenOSRSChart?.diagnostics().range==='six'&&window.GoldenOSRSChart?.diagnostics().points===6);
+  assert.match(await page.locator('#gh-range-summary').innerText(),/158 gp/,'6h low buy cost from observed high-side prices');
+  assert.match(await page.locator('#gh-range-summary').innerText(),/123 gp/,'6h high sell proceeds from observed low-side prices');
+  await page.locator('[data-gh-period="day"]').click();
+  await page.waitForFunction(()=>window.GoldenOSRSChart?.diagnostics().range==='day'&&window.GoldenOSRSChart?.diagnostics().points===24);
+  await page.locator('[data-gh-period="three"]').click();
+  await page.waitForFunction(()=>window.GoldenOSRSChart?.diagnostics().range==='three'&&window.GoldenOSRSChart?.diagnostics().points===24);
+  assert.match(await page.locator('#gh-range-summary').innerText(),/24 observed buckets/);
   await page.locator('.gh-research-close').click();
   assert.equal(await page.locator('#gh-research-dialog').isVisible(),false);
+  const swipe=async(source,target,x0,x1)=>{
+   const result=await page.evaluate(({source,x0,x1})=>{
+    const node=document.querySelector(source==='osrs'?'#gh-panel-osrs .gp-guide-header':'#gh-panel-gw2 .app');
+    const touch=x=>new Touch({identifier:41,target:node,clientX:x,clientY:180});
+    node.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[touch(x0)],changedTouches:[touch(x0)],targetTouches:[touch(x0)]}));
+    node.dispatchEvent(new TouchEvent('touchend',{bubbles:true,touches:[],changedTouches:[touch(x1)],targetTouches:[]}));
+    return {moving:document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'),
+      animated:document.querySelector('#gh-panel-'+source).getAnimations().length>0};
+   },{source,x0,x1});
+   assert.equal(result.moving,true,'swiping should trigger visible slide, not just swap content');
+   assert.equal(result.animated,true,'outgoing page must be actively animating horizontally');
+   await page.waitForFunction(t=>window.GoldenDualHub?.diagnostics().game===t&&
+      !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'),target);
+   assert.equal(await page.locator('#gh-panel-'+target).isVisible(),true);
+   assert.equal(await page.locator('#gh-panel-'+source).isVisible(),false);
+  };
+  await swipe('osrs','gw2',80,300);
+  await swipe('gw2','osrs',300,80);
   await page.locator('#gh-tab-gw2').click();
+  await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal(await page.locator('#gh-tab-gw2').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#gh-osrs-root').isVisible(),false);
   await page.locator('#gh-tab-osrs').click();
+  await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal(await page.locator('#gh-today').innerText(),'304 gp');
   await page.reload();
   await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs');
