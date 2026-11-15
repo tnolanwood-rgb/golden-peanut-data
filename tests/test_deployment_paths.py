@@ -24,6 +24,14 @@ class DeploymentPathTests(unittest.TestCase):
         self.assertIn("production_branch",yml)
         self.assertIn("persist-credentials: false",yml)
         self.assertIn('group: golden-peanut-production-deploy',yml)
+    def test_preview_uses_selected_branch_and_never_the_old_716_checkout(self):
+        workflow=(WORKFLOWS/'pages-preview.yml').read_text(encoding='utf-8')
+        self.assertIn('ref: ${{ github.ref_name }}',workflow)
+        self.assertNotIn('ref: development/7.16-evidence-engine',workflow)
+        self.assertIn('npm run test:browser',workflow)
+        self.assertIn('golden-peanut-reviewed',workflow)
+        self.assertIn("default: 'thegoldenpeanut'",workflow)
+
     def test_static_assets_support_conditional_revalidation_not_forced_unstored_download(self):
         headers=(ROOT/'app/_headers').read_text(encoding='utf-8')
         self.assertIn('Referrer-Policy: no-referrer',headers)
