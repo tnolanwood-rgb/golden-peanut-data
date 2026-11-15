@@ -160,3 +160,7 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-osrs-root .gh-tier-key-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
 #gh-osrs-root .gh-tier-key-grid span{font-size:12px;font-weight:750;line-height:1.45}
 #gh-osrs-root .gh-tier-key small{display:block;color:#aebfae;line-height:1.55;margin-top:10px;font-size:11px}
+
+/* Empty/error state: a retry affordance right on the trade card, never a frozen spinner. */
+#gh-osrs-root .gh-empty-retry{display:block;min-height:48px;width:100%;margin:12px 0 6px;font-size:14px}
+#gh-osrs-root .gh-empty-retry[hidden]{display:none!important}
