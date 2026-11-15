@@ -47,6 +47,17 @@ const server=http.createServer((req,res)=>{
    db.close();
   });
   await page.waitForFunction(()=>document.getElementById('gh-item-name')?.textContent==='Copper sword',{timeout:15000});
+  const osrsArtwork=await page.locator('#gh-item-icon').evaluate(frame=>{
+    const icon=document.createElement('img');
+    icon.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==';
+    frame.replaceChildren(icon);
+    const f=frame.getBoundingClientRect(),i=icon.getBoundingClientRect();
+    return {size:[f.width,f.height],fit:getComputedStyle(icon).objectFit,
+      inset:[i.left-f.left,i.top-f.top,f.right-i.right,f.bottom-i.bottom]};
+  });
+  assert.deepEqual(osrsArtwork.size,[70,70],'OSRS artwork uses the same framed dimensions');
+  assert.equal(osrsArtwork.fit,'contain','OSRS thumbnail cannot use cover cropping');
+  assert.ok(osrsArtwork.inset.every(v=>v>=6),'OSRS artwork must be fully inside its padded frame');
   assert.equal(await page.locator('#gh-game-nav [role="tab"]').count(),2);
   assert.equal(await page.locator('#gh-tab-osrs').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#gh-margin').innerText(),'38 gp / item');
