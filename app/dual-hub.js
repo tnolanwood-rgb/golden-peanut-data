@@ -112,12 +112,25 @@ function install(){
  if(doc.getElementById("gh-game-nav")||!doc.body)return;
  loadUser();
  const nav=el("nav");nav.id="gh-game-nav";nav.setAttribute("aria-label","Select trading game");nav.innerHTML=`<div class="gh-nav-inner" role="tablist" aria-label="Trading game"><button type="button" id="gh-tab-gw2" role="tab" aria-selected="true" aria-controls="gp-guided-root">Guild Wars 2</button><button type="button" id="gh-tab-osrs" role="tab" aria-selected="false" aria-controls="gh-osrs-root">Old School RuneScape</button></div>`;
- const root=el("section");root.id="gh-osrs-root";root.setAttribute("aria-label","The Golden Exchange trading desk");root.hidden=true;root.append(blank());
+ const root=el("section");root.id="gh-osrs-root";root.setAttribute("aria-label","The Golden Exchange trading desk");root.hidden=true; /* OSRS controls mount only on first OSRS visit. */
  const legacyApp=doc.querySelector("body > .app");
  if(legacyApp)doc.body.insertBefore(nav,legacyApp);else doc.body.prepend(nav);
  if(legacyApp)legacyApp.after(root);else doc.body.append(root);
  get("gh-tab-gw2").addEventListener("click",()=>switchGame("gw2",true));
  get("gh-tab-osrs").addEventListener("click",()=>switchGame("osrs",true));
+ doc.addEventListener("touchstart",rememberSwipe,{passive:true});
+ doc.addEventListener("touchend",handleSwipe,{passive:true});
+ win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
+ win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length})};
+ const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
+ switchGame(initial==="osrs"?"osrs":"gw2",false);
+ if(state.game==="osrs")render();
+}
+function activateOsrs(){
+ if(get("gh-refresh"))return;
+ const root=get("gh-osrs-root");
+ if(!root)return;
+ root.append(blank());
  get("gh-refresh").addEventListener("click",()=>refresh(true));
  get("gh-settings-toggle").addEventListener("click",()=>{const x=get("gh-settings");x.open=!x.open;if(x.open)x.scrollIntoView({block:"nearest",behavior:"smooth"})});
  get("gh-apply").addEventListener("click",applySettings);
@@ -132,14 +145,7 @@ function install(){
  get("gh-chart-svg").addEventListener("wheel",zoomChart,{passive:false});
  get("gh-chart-svg").addEventListener("pointerdown",chartStart);
  get("gh-chart-svg").addEventListener("pointerup",chartEnd);
- doc.addEventListener("touchstart",rememberSwipe,{passive:true});
- doc.addEventListener("touchend",handleSwipe,{passive:true});
- win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
- win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length})};
- const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
- switchGame(initial==="osrs"?"osrs":"gw2",false);
- render();
- refresh(false);
+
 }
 function switchGame(game,userAction){
  state.game=game==="osrs"?"osrs":"gw2";
@@ -148,7 +154,7 @@ function switchGame(game,userAction){
  get("gh-tab-gw2").setAttribute("aria-selected",state.game==="gw2"?"true":"false");
  get("gh-tab-osrs").setAttribute("aria-selected",state.game==="osrs"?"true":"false");
  store(LAST_GAME,state.game);
- if(state.game==="osrs")win.__gpReleaseBoot?.();
+ if(state.game==="osrs"){activateOsrs();render();if(!state.snap&&!state.loading)void refresh(false);win.__gpReleaseBoot?.();}
  if(userAction){win.scrollTo({top:0,behavior:"instant"});}
 }
 let swipe=null;
@@ -199,7 +205,7 @@ async function getPrices(route,ttl,force){
 async function refresh(force){
  if(state.loading)return;
  state.loading=true;txt("gh-status","Checking RuneScape Wiki price observations…");
- get("gh-refresh").disabled=true;
+ if(get("gh-refresh"))get("gh-refresh").disabled=true;
  try{
   const result=await Promise.all([getPrices("mapping",86400000,force),getPrices("latest",60000,force),getPrices("5m",300000,force),getPrices("1h",3600000,force)]);
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
@@ -209,7 +215,7 @@ async function refresh(force){
  }catch(err){
   txt("gh-status","Could not load market observations: "+safe(err.message)+". Use Update prices to retry.");
   state.ideas=[];render();
- }finally{state.loading=false;get("gh-refresh").disabled=false}
+ }finally{state.loading=false;if(get("gh-refresh"))get("gh-refresh").disabled=false}
 }
 function buildIdeas(){
  if(!state.snap){state.ideas=[];return}
@@ -255,6 +261,7 @@ function ledgerTotals(){
  return {today,lastWeek};
 }
 function render(){
+ if(!get("gh-budget-metric"))return;
  txt("gh-budget-metric",gp(state.budget));txt("gh-account-metric",state.mode==="members"?"Members · 8 GE slots":"Free-to-play · 3 GE slots");
  const totals=ledgerTotals();txt("gh-today",gp(totals.today));txt("gh-week",gp(totals.lastWeek));
  get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;
