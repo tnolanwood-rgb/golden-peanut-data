@@ -1,3 +1,13 @@
+# Live UI repair checkpoint — 15 November 2026, 23:27 UTC (PR #57)
+
+**PR #57 MERGED, CLOUDFARE PAGES RELEASE VERIFIED:** Merge commit `ec01fea4725ae53534429811f950867561622025`, exact-head regression run `43774621881` successful, Android preview build `43774621875` successful, main-branch production Pages run `43774776938` successful including exact SHA-256 of every deployed asset. Existing website origin `https://thegoldenpeanut.pages.dev/` unchanged; original Android WebView continues to load this URL, so no APK reinstall is required for these website changes.
+
+**FIXED SWIPE/UX:** OSRS suggestion box now supports horizontal game-switch gestures while retaining native vertical scrolling; added WebView Touch Events fallback and vertical/horizontal axis lock, moved OSRS prewarm to idle, removed scan/render work from pointermove, shortened drag release to 145–315ms compositor-only transform, removed layout-thrashing height animation, bounded stalled animations. Browser suite covers nested card touch movement, vertical gesture noninterference, account data and scroll state. Real owner-phone acceptance remains to be observed rather than presumed.
+
+**RECOVERED ORIGINAL OSRS V4 SOURCE:** The user's persistent ChatGPT Library contains `The-Golden-Exchange-v4.0-complete-delivery.zip`, and inspection in session extracted nested `The-Golden-Exchange-v4.0-source.zip`: 167 source entries, including `www/core.mjs`, `www/storage.mjs`, `www/database.mjs`, `www/workspace.mjs`, `www/intelligence.mjs`, `www/simple-plan.mjs`, `www/studio.mjs`, and the original automated tests/Android project. The archive itself was NOT added to GitHub, and full v4 integration remains a separate audited task. Do not claim OSRS advanced parity or original v4 backup migration implemented.
+
+---
+
 # Live repair checkpoint — 15 November 2026, 22:53 UTC (PR #56)
 
 **PR #56 MERGED AND PRIVATE WORKER DEPLOYED:** Source merge `247dab5cc78c370027e578954c1f4559c1a23a7e`; exact-head CI `43771445550` completed successfully. Isolated Worker/D1 deployment `43771653374` completed successfully, including schema deployment, encryption checks and health/preflight verification. Post-deployment aggregate-only D1 audit `43771726600` completed successfully with `RECENT_WRITES_VERIFIED`, 1 active/fresh monitor, 49 recent polls, 197 recent trade records, 299 recent events, zero warned monitors, and 0 observed complete nights (not equivalent to no partial fills). No user account IDs, trade rows, keys or private logs were output.
