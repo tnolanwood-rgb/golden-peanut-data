@@ -89,3 +89,29 @@ test('unattended list growth is capped and never reorders the first visible idea
  assert.equal(d.move(all,'a','next').total,35);
  assert.equal(d.move(all,'a','previous').id,5);
 });
+
+test('a recreated Android WebView resumes the same numbered idea without storing prices',()=>{
+ const original=create(),rows=ids(101,202,303,404);
+ original.move(rows,'account-a','next');
+ original.move(rows,'account-a','next');
+ const saved=original.snapshot('account-a');
+ assert.deepEqual(saved,{v:1,ids:[101,202,303,404],position:2,started:true});
+ assert.equal('buy' in saved,false);
+ const recovered=create();
+ assert.equal(recovered.restore(saved,'account-a'),true);
+ const reshuffled=ids(999,404,202,101,303);
+ const v=recovered.view(reshuffled,'account-a');
+ assert.deepEqual([v.id,v.position,v.total,v.started],[303,3,4,true]);
+ assert.equal(recovered.move(reshuffled,'account-a','previous').id,202);
+ assert.equal(recovered.view(ids(1,2),'account-b').id,1,'account switch resets the recovered deck');
+});
+test('untrusted or corrupt saved UI deck cannot be used after restart',()=>{
+ const d=create();
+ for(const x of [
+  null,{v:2,ids:[1],position:0},{v:1,ids:[],position:0},
+  {v:1,ids:[1,1],position:1},{v:1,ids:[-1,2],position:0},
+  {v:1,ids:[1],position:100},{v:1,ids:[1],position:'0'},
+  {v:1,ids:Array.from({length:36},(_,i)=>i+1),position:1}
+ ])assert.equal(d.restore(x,'account-a'),false);
+ assert.deepEqual([d.view(ids(4,5),'account-a').position,d.view(ids(4,5),'account-a').total],[1,2]);
+});
