@@ -924,7 +924,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   if(model)state.executionLearning=model;
   state.opportunityDeepPaused=true;
   await GPOpportunity.refresh(state,{phase:'quick'});
-  GPGuided.render();
+  // This test intentionally forces advanced mode at every document load for
+  // legacy Focus browser coverage. Simulate the user's return to the guided
+  // screen after Android reconstructs that document.
+  GPGuided.open();GPGuided.render();
  });
  await page.waitForFunction(expected=>{
   const v=GPGuided?.navigation?.();
