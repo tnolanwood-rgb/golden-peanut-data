@@ -1,6 +1,6 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
-const VERSION="dual-hub-preview-2026-11-15";
+const VERSION="dual-hub-main-2026-11-15";
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1";
@@ -120,7 +120,13 @@ function blank(){
  </details>
  <details class="gh-osrs-ledger" id="gh-ledger">
    <summary>My manually recorded OSRS trades</summary>
-   <div class="gh-settings-body"><p>Keep your actual purchases and completed sales; the figures here are not estimates.</p><div id="gh-ledger-list" class="gh-ledger-list"></div></div>
+   <div class="gh-settings-body">
+    <p>Keep your actual purchases and completed sales; these figures are not estimates. OSRS trades are saved separately from the GW2 account database.</p>
+    <div class="gh-backup-actions"><button type="button" id="gh-export-ledger" class="gp-guide-light">Export OSRS backup</button><button type="button" id="gh-import-ledger" class="gp-guide-light">Import OSRS backup</button></div>
+    <input type="file" id="gh-import-file" accept=".json,application/json" hidden>
+    <p id="gh-backup-status" class="gh-inline-status" role="status" aria-live="polite"></p>
+    <div id="gh-ledger-list" class="gh-ledger-list"></div>
+   </div>
  </details>
  <p class="gh-meta">Independent trading research · no automated Grand Exchange orders · no Jagex affiliation.</p>`;
  return h;
@@ -178,6 +184,9 @@ function activateOsrs(){
  get("gh-add-fill").addEventListener("click",toggleFill);
  get("gh-cancel-fill").addEventListener("click",()=>get("gh-fill-form").hidden=true);
  get("gh-fill-form").addEventListener("submit",recordFill);
+ get("gh-export-ledger").addEventListener("click",exportOsrsBackup);
+ get("gh-import-ledger").addEventListener("click",()=>get("gh-import-file").click());
+ get("gh-import-file").addEventListener("change",importOsrsBackup);
  get("gh-chart-svg").addEventListener("wheel",zoomChart,{passive:false});
  get("gh-chart-svg").addEventListener("pointerdown",chartStart);
  get("gh-chart-svg").addEventListener("pointerup",chartEnd);
@@ -467,6 +476,73 @@ function buildIdeas(){
  list.sort((a,b)=>b.score-a.score||a.id-b.id);
  state.ideas=list.slice(0,80);
  state.index=Math.min(state.index,Math.max(0,state.ideas.length-1));
+}
+function validateOsrsRows(raw){
+ if(!Array.isArray(raw)||raw.length>1000)throw Error("Backup contains too many trade records");
+ const seen=new Set(),out=[],lots=new Map();
+ for(const record of raw){
+  const id=record?.id,side=record?.side,qty=record?.qty,price=record?.price,when=record?.when;
+  if(!Number.isSafeInteger(id)||id<=0||!["buy","sell"].includes(side)||
+   !Number.isSafeInteger(qty)||qty<=0||!Number.isSafeInteger(price)||price<=0||
+   !Number.isSafeInteger(qty*price)||qty*price>9e12||
+   typeof when!=="string"||when.length>50||!Number.isFinite(Date.parse(when))||
+   Date.parse(when)>Date.now()+3600000||typeof record?.name!=="string"||
+   record.name.length<1||record.name.length>170)throw Error("Invalid trade row in backup");
+  const key=[id,side,qty,price,when].join("|");
+  if(seen.has(key))continue;
+  seen.add(key);
+  out.push({id,side,qty,price,when,name:record.name});
+ }
+ out.sort((a,b)=>Date.parse(a.when)-Date.parse(b.when));
+ for(const trade of out){
+  const stack=lots.get(trade.id)||[];
+  if(trade.side==="buy"){stack.push({qty:trade.qty,price:trade.price});trade.gain=null}
+  else{
+   let remaining=trade.qty,cost=0;
+   while(remaining>0&&stack.length){
+    const lot=stack[0],matched=Math.min(remaining,lot.qty);
+    cost+=matched*lot.price;remaining-=matched;lot.qty-=matched;
+    if(!lot.qty)stack.shift();
+   }
+   if(remaining>0)throw Error("Backup contains a sale without earlier recorded purchases");
+   trade.gain=trade.qty*trade.price-cost-trade.qty*tax(trade.price,trade.name);
+   if(!Number.isSafeInteger(trade.gain))throw Error("Backup realised profit exceeds safe numeric limits");
+  }
+  lots.set(trade.id,stack);
+ }
+ return out;
+}
+function exportOsrsBackup(){
+ try{
+  const body={format:"golden-hub-osrs-v1",exportedAt:new Date().toISOString(),
+   config:{budget:state.budget,mode:state.mode,restricted:state.restricted},
+   records:state.records};
+  const blob=new Blob([JSON.stringify(body,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),link=el("a");
+  link.href=url;link.download="Golden-Hub-OSRS-"+new Date().toISOString().slice(0,10)+".json";
+  doc.body.append(link);link.click();link.remove();
+  win.setTimeout(()=>URL.revokeObjectURL(url),12000);
+  txt("gh-backup-status","Backup prepared for download: "+state.records.length+" trade records.");
+ }catch(e){txt("gh-backup-status","Backup export failed: "+safe(e.message));}
+}
+async function importOsrsBackup(event){
+ const file=event.target.files?.[0];event.target.value="";
+ if(!file)return;
+ try{
+  if(file.size>3000000)throw Error("OSRS backup is too large (3MB limit)");
+  const data=JSON.parse(await file.text());
+  if(data?.format!=="golden-hub-osrs-v1")throw Error("Unsupported backup format. This importer accepts Golden Hub OSRS backups; the original Golden Exchange v4 format needs separate migration.");
+  const valid=validateOsrsRows(data.records);
+  const keys=new Set(state.records.map(r=>[r.id,r.side,r.qty,r.price,r.when].join("|")));
+  const additions=valid.filter(r=>!keys.has([r.id,r.side,r.qty,r.price,r.when].join("|")));
+  const merged=validateOsrsRows([...state.records,...additions]);
+  if(!additions.length){txt("gh-backup-status","Nothing new to import; all trades are already here.");return}
+  if(!win.confirm("Add "+additions.length+" OSRS records to this device? Existing GW2 history will not be touched."))return;
+  const previous=state.records;state.records=merged;
+  if(!saveUser()){state.records=previous;throw Error("Device storage refused the import; previous records retained")}
+  txt("gh-backup-status","Imported "+additions.length+" OSRS records. Existing records preserved.");
+  render();
+ }catch(e){txt("gh-backup-status","Import not applied: "+safe(e.message));}
 }
 function ledgerTotals(){
  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
