@@ -211,6 +211,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await modal.getByRole('button',{name:'Close price chart'}).click();
  assert.equal(await modal.isVisible(),false);
  await page.getByRole('button',{name:'Explore all trade research'}).click();
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State;
+  if(window.__originalGuidedMeta){s.api.itemMetadata=window.__originalGuidedMeta;delete window.__originalGuidedMeta;}
+ });
  assert.equal(await page.locator('#gp-guided-root').isVisible(),false);
  assert.equal(await page.locator('#gp-return-guided').isVisible(),true);
  await page.evaluate(()=>GPFocus.goto('today'));
