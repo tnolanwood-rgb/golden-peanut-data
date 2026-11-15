@@ -6,6 +6,7 @@ const OWN='https://raw.githubusercontent.com/tnolanwood-rgb/golden-peanut-data/m
 const FLIP='https://github.com/PieOrCake/flip_out/releases/download/seed-latest/';
 const DAY=86400000,MAX_CATALOGUE_AGE=3*DAY, MAX_HISTORY_AGE=3*DAY;
 let loaded=null,loading=null,indexLoaded=null,indexLoading=null,trendStore=null,historyLoading=null,lastError='';
+const itemHistoryCache=new Map(),itemHistoryPending=new Map(),HISTORY_SHARDS=32;
 function valid(v){return Number.isSafeInteger(v)&&v>0;}
 async function request(url,ms=9500){
  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms);
@@ -202,6 +203,58 @@ async function loadHistory({force=false,now=Date.now()}={}){
  historyLoading=promise;
  try{return await promise;}finally{if(historyLoading===promise)historyLoading=null;}
 }
+/* Individual charts should fetch only 1/32 of the daily history dataset.
+ * Each slice is checked independently. Fallback to the old whole-market file
+ * while the next public collector generation is still publishing shards. */
+function parseHistoryShard(body,id,now=Date.now()){
+ if(!valid(id)||body?.schema!=='golden-peanut-history-shard-v1'||
+    body.modulus!==HISTORY_SHARDS||body.shard!==id%HISTORY_SHARDS||
+    !Number.isSafeInteger(body.generated_at)||
+    !body.history||typeof body.history!=='object'||Array.isArray(body.history))
+  throw Error('Invalid item history shard');
+ const age=now-body.generated_at*1000;
+ if(age< -3600000||age>MAX_HISTORY_AGE)throw Error('Item history shard outdated');
+ const rows=body.history[String(id)]||[];
+ if(!Array.isArray(rows)||rows.length>21)throw Error('Invalid item history observations');
+ const clean=[];
+ const seen=new Set();
+ const day=Math.floor(now/DAY);
+ for(const r of rows){
+  if(!Array.isArray(r)||r.length!==5||!r.every(x=>Number.isSafeInteger(x)&&x>=0)||
+     r[0]>day||r[0]<=day-21||seen.has(r[0]))throw Error('Malformed item history observation');
+  seen.add(r[0]);clean.push(r);
+ }
+ clean.sort((a,b)=>a[0]-b[0]);
+ const entries=new Map();if(clean.length>=2)entries.set(id,clean);
+ return {source:'own-public-daily-quoted-price-shard',entries,generatedAt:body.generated_at*1000};
+}
+async function loadItemHistory(id,{force=false,now=Date.now()}={}){
+ if(!valid(id))return null;
+ if(trendStore&&!force&&now-trendStore.generatedAt<MAX_HISTORY_AGE)
+  return trendStore;
+ const cached=itemHistoryCache.get(id);
+ if(!force&&cached&&now-cached.generatedAt<MAX_HISTORY_AGE){
+  itemHistoryCache.delete(id);itemHistoryCache.set(id,cached);return cached;
+ }
+ if(itemHistoryPending.has(id)&&!force)return itemHistoryPending.get(id);
+ const pending=(async()=>{
+  let result=null;
+  try{
+   const url=OWN+'market_history_shards/'+(id%HISTORY_SHARDS)+'.json';
+   result=parseHistoryShard(await request(url,8000),id,now);
+  }catch(err){
+   lastError='Item-history shard unavailable: '+String(err?.message||err).slice(0,90);
+   result=await loadHistory({force,now});
+  }
+  if(result){
+   itemHistoryCache.delete(id);itemHistoryCache.set(id,result);
+   while(itemHistoryCache.size>12)itemHistoryCache.delete(itemHistoryCache.keys().next().value);
+  }
+  return result;
+ })();
+ itemHistoryPending.set(id,pending);
+ try{return await pending;}finally{if(itemHistoryPending.get(id)===pending)itemHistoryPending.delete(id);}
+}
 function volatility(id){
  const rows=trendStore?.entries.get(id);if(!rows||rows.length<5||Date.now()-trendStore.generatedAt>MAX_HISTORY_AGE||Date.now()-rows.at(-1)[0]*DAY>MAX_HISTORY_AGE)return null;
  const asks=rows.map(x=>x[2]).filter(x=>x>0),bids=rows.map(x=>x[1]).filter(x=>x>0);
@@ -214,6 +267,6 @@ function volatility(id){
 }
 function status(){return {source:loaded?.source||indexLoaded?.source||null,items:loaded?.byId.size||indexLoaded?.byId.size||0,fullMarketSnapshotLoaded:!!loaded,
   generatedAt:loaded?.generatedAt||null,historyMarkets:trendStore?.entries.size||0,lastError};}
-root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadIndex,loadHistory,equipmentSeeds,volatility,status,parseOwn,parseIndex,parseFlipOut,parseHistory,parseFlipOutHistory};
+root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadIndex,loadHistory,loadItemHistory,equipmentSeeds,volatility,status,parseOwn,parseIndex,parseFlipOut,parseHistory,parseHistoryShard,parseFlipOutHistory};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketFeed;
 })(typeof globalThis!=='undefined'?globalThis:this);
