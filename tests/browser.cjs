@@ -30,7 +30,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
- await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));localStorage.setItem('gp-guided-mode-v1','advanced');localStorage.setItem('gp-guided-skips-v1','[1,2,999]');});
+ await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));if(!localStorage.getItem('gp-guided-mode-v1'))localStorage.setItem('gp-guided-mode-v1','advanced');if(!localStorage.getItem('gp-guided-visit-test-bootstrapped')){localStorage.setItem('gp-guided-skips-v1','[1,2,999]');localStorage.setItem('gp-guided-visit-test-bootstrapped','1');}});
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
  // Never rely on an activation-less startup pushState: Android skips it.
