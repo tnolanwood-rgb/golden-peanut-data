@@ -10,7 +10,7 @@ const btn=(text,fn,cls='gp-price-button')=>{const b=node('button',cls,text);b.ty
 const date=d=>new Date(d*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const coin=v=>{if(!Number.isSafeInteger(v)||v<0)return 'Not available';return Math.floor(v/10000).toLocaleString('en-GB')+'g '+String(Math.floor(v%10000/100)).padStart(2,'0')+'s '+String(v%100).padStart(2,'0')+'c';};
 const shortCoin=v=>v>=10000?(v/10000).toFixed(v>=100000?1:2)+'g':v>=100?(v/100).toFixed(1)+'s':v+'c';
-let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null;
+let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null,pendingRestore=null;
 function moneyView(value){
  const out=node('span','gp-price-money');
  out.setAttribute('aria-label',coin(value));
@@ -18,17 +18,55 @@ function moneyView(value){
  const parts=[['gold','g',Math.floor(value/10000)],['silver','s',Math.floor(value%10000/100)],['copper','c',value%100]];
  for(const [kind,unit,n] of parts){
   const p=node('span','gp-price-money-part '+kind),img=node('img');
-  img.src='./assets/gw2-'+kind+'-coin.png';img.alt=unit;img.width=15;img.height=15;img.decoding='async';
+  img.src='./assets/gw2-'+kind+'-coin.png';img.alt=unit;img.width=17;img.height=17;img.loading='eager';img.decoding='async';
   img.addEventListener('error',()=>{img.hidden=true;});
   p.append(node('span','',kind==='gold'?n.toLocaleString('en-GB'):String(n).padStart(2,'0')),img,node('span','gp-price-unit',unit));out.append(p);
  }
  return out;
 }
+function notify(){
+ try{root.dispatchEvent?.(new Event('gp-guided-chart-changed'));}catch{}
+}
+function snapshot(){
+ if(!dialog?.open||!active)return null;
+ return {id:active.id,range,viewSize,offset,selectedDay:active.rows?.[selected]?.[0]??null,expanded};
+}
+function restore(input){
+ const saved=root.GPGuidedVisit?.cleanChart?.(input);
+ if(!saved)return false;
+ const state=root.GoldenPeanutClean?.State;
+ // The saved item ID is public. Prices are fetched afresh; no stale quote
+ // or previous user's research is persisted in browser display state.
+ const item=state?.meta?.[saved.id];
+ pendingRestore=saved;
+ const opened=open({id:saved.id,name:item?.name||'Item #'+saved.id});
+ if(!opened)pendingRestore=null;
+ return opened;
+}
+function updateArtwork(){
+ if(!dialog?.open||!active)return;
+ const h=dialog.querySelector('.gp-price-heading h2'),icon=dialog.querySelector('.gp-price-heading-icon');
+ if(!h||!icon)return;
+ const m=root.GoldenPeanutClean?.State?.meta?.[active.id];
+ if(m?.name)h.textContent=m.name;
+ root.GPRarity?.apply?.(h,m?.rarity);
+ if(root.GPFocus?.validItemIcon?.(m)){
+  if(icon.querySelector('img')?.getAttribute('src')!==m.icon){
+   const img=node('img');img.src=m.icon;img.alt='';img.loading='eager';img.decoding='async';
+   img.onerror=()=>{icon.textContent='◇';};
+   icon.replaceChildren(img);
+  }
+ }else{
+  icon.textContent='◇';
+  root.GPFocus?.ensureItemArtwork?.([active.id]);
+ }
+ root.GPRarity?.apply?.(icon,m?.rarity);
+}
 function ensure(){
  if(dialog)return;
  dialog=document.createElement('dialog');dialog.id='gp-price-dialog';dialog.className='gp-price-dialog';
  dialog.setAttribute('aria-label','Guild Wars 2 market price research');
- dialog.addEventListener('close',()=>{active=null;drag=null;fingers.clear();gesture=null;version++;});
+ dialog.addEventListener('close',()=>{active=null;drag=null;pendingRestore=null;fingers.clear();gesture=null;version++;notify();});
  dialog.addEventListener('pointerdown',onPointerDown);
  dialog.addEventListener('pointermove',onPointerMove);
  dialog.addEventListener('pointerup',onPointerEnd);
@@ -37,8 +75,9 @@ function ensure(){
  // Native dialog has its own Escape/Android Back behaviour. Outside taps
  // deliberately do NOT close a chart a user is reading.
  document.body.append(dialog);
+ root.addEventListener?.('gp-item-metadata-updated',updateArtwork);
 }
-function close(){if(dialog?.open)dialog.close();active=null;drag=null;version++;}
+function close(){if(dialog?.open)dialog.close();active=null;drag=null;pendingRestore=null;version++;notify();}
 function availableDays(){return active?.rows?.length?active.rows.at(-1)[0]-active.rows[0][0]+1:0;}
 function visible(){
  if(!active?.rows?.length)return [];
@@ -48,7 +87,7 @@ function visible(){
 function chooseRange(next){
  if(!active?.rows?.length)return;
  range=next;viewSize=next==='week'?Math.min(7,availableDays()):availableDays();
- offset=0;selected=active.rows.length-1;render();
+ offset=0;selected=active.rows.length-1;render();notify();
 }
 function ensureSelectedVisible(){
  if(!active?.rows?.length)return;
@@ -68,6 +107,7 @@ function setSelected(index){
  if(panel)panel.replaceWith(selectedPanel(visible()));
  const slider=dialog?.querySelector('.gp-price-slider');
  if(slider)slider.value=String(selected);
+ notify();
 }
 function svg(tag,attrs={},text){
  const n=document.createElementNS(NS,tag);
@@ -176,7 +216,7 @@ function onPointerEnd(e){
  fingers.delete(e.pointerId);
  if(inspect){
   const index=dayAtClientX(e.clientX);
-  if(index>=0){selected=index;render();}
+  if(index>=0){selected=index;render();notify();}
  }
  if(fingers.size===0)gesture=null;
 }
@@ -206,12 +246,14 @@ function render(){
  const heading=node('div','gp-price-heading');
  const headingText=node('div','gp-price-heading-text');
  headingText.append(node('div','gp-price-eyebrow','TRADE RESEARCH · GUILD WARS 2'),node('h2','',active.title));
+ heading.append(node('span','gp-price-heading-icon','◇'));
  const closeButton=btn('×',close,'gp-price-close');closeButton.setAttribute('aria-label','Close price chart');
  heading.append(headingText,closeButton);
+ updateArtwork();
  const controls=node('div','gp-price-controls');
  const week=btn('7 days',()=>chooseRange('week'),'gp-price-button'+(range==='week'?' is-selected':''));
  const all=btn('All recorded',()=>chooseRange('all'),'gp-price-button'+(range==='all'?' is-selected':''));
- const expand=btn(expanded?'Normal size':'Expand chart',()=>{expanded=!expanded;render();},'gp-price-button gp-price-expand');
+ const expand=btn(expanded?'Normal size':'Expand chart',()=>{expanded=!expanded;render();notify();},'gp-price-button gp-price-expand');
  week.setAttribute('aria-pressed',String(range==='week'));all.setAttribute('aria-pressed',String(range==='all'));
  controls.append(week,all,expand);
  const legend=node('div','gp-price-legend');
@@ -258,7 +300,20 @@ async function load(id,title){
   }
   active.rows=[...seen.values()].sort((a,b)=>a[0]-b[0]);active.source=result?.source||'Public bid/ask price snapshots';
   active.status='ready';selected=Math.max(0,active.rows.length-1);
-  viewSize=Math.min(7,availableDays());render();
+  viewSize=Math.min(7,availableDays());
+  if(pendingRestore?.id===id){
+   const saved=pendingRestore;pendingRestore=null;
+   range=saved.range;
+   viewSize=range==='week'?Math.min(7,availableDays()):range==='all'?availableDays():Math.max(1,Math.min(availableDays(),saved.viewSize));
+   offset=Math.max(0,Math.min(availableDays()-viewSize,saved.offset));
+   expanded=saved.expanded;
+   if(saved.selectedDay!==null){
+    const found=active.rows.findIndex(row=>row[0]===saved.selectedDay);
+    if(found>=0)selected=found;
+   }
+   ensureSelectedVisible();
+  }
+  render();notify();
  }catch{
   if(ticket!==version||!dialog.open||!active||active.id!==id)return;
   active.status='error';render();
@@ -274,6 +329,6 @@ function open(choice){
  load(id,title);
  return true;
 }
-root.GPGuidedPriceChart={open,close,isOpen:()=>!!dialog?.open,
+root.GPGuidedPriceChart={open,close,restore,snapshot,isOpen:()=>!!dialog?.open,
  state:()=>active?{id:active.id,range,viewSize,offset,selected,rows:active.rows.length,status:active.status}:null};
 })(typeof window!=='undefined'?window:globalThis);
