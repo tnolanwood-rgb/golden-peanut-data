@@ -125,6 +125,21 @@ function blank(){
   <h2 id="gh-item-name">Checking eligible trades…</h2>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
+  <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
+   <h3>What prices should I enter into the GE?</h3>
+   <p class="gh-quote-intro">OSRS does not publish a live order book. These are recent <strong>completed transactions</strong> and experimental limit-order targets, not outstanding offers.</p>
+   <div class="gh-quote-grid">
+    <div><span>Last instant SELL (low)</span><strong id="gh-last-sell">—</strong><small id="gh-last-sell-age"></small></div>
+    <div><span>Last instant BUY (high)</span><strong id="gh-last-buy">—</strong><small id="gh-last-buy-age"></small></div>
+   </div>
+   <div class="gh-quote-targets">
+    <div><span>Try listing a BUY at</span><strong id="gh-bid-target">—</strong></div>
+    <div><span>Try listing a SELL at</span><strong id="gh-ask-target">—</strong></div>
+   </div>
+   <p id="gh-quote-margin" class="gh-quote-margin">—</p>
+   <p id="gh-quote-meta" class="gh-quote-meta"></p>
+   <p id="gh-quote-warning" class="gh-quote-warning"></p>
+  </section>
   <div class="gp-guide-instructions">
     <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
     <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
@@ -674,6 +689,63 @@ function buildIdeas(){
  state.valueIdeas=value.slice(0,500);
  applyIdeasView();
 }
+/* OSRS Wiki latest HIGH = a completed instant BUY, LOW = a completed
+ * instant SELL. Neither is the currently open best bid or ask. We expose
+ * their timestamps and trial limit prices, never invent a live order book. */
+function listingGuide(idea){
+ if(!idea||!state.snap)return null;
+ const p=state.snap.latest?.data?.[idea.id],f=state.snap.five?.data?.[idea.id],
+  h=state.snap.hour?.data?.[idea.id];
+ const low=Number(p?.low),high=Number(p?.high),lowTime=Number(p?.lowTime),
+  highTime=Number(p?.highTime),now=Math.floor(Date.now()/1000);
+ if(!Number.isSafeInteger(low)||!Number.isSafeInteger(high)||low<=0||high<=low||
+   !Number.isSafeInteger(lowTime)||!Number.isSafeInteger(highTime)||
+   lowTime>now+60||highTime>now+60)return null;
+ const lowAge=now-lowTime,highAge=now-highTime,spread=high-low;
+ // One-GP price improvement is a *trial* to queue ahead of the last
+ // observed execution anchors. It does not reveal queue depth or guarantee fills.
+ const bid=low+1,ask=high-1;
+ const margin=ask-bid-tax(ask,idea.name);
+ const viable=Number.isSafeInteger(margin)&&bid<ask&&margin>0;
+ const flow=Math.max(0,Math.min(Number(h?.lowPriceVolume)||0,Number(h?.highPriceVolume)||0));
+ const fiveLow=Number(f?.avgLowPrice),fiveHigh=Number(f?.avgHighPrice),
+  hourLow=Number(h?.avgLowPrice),hourHigh=Number(h?.avgHighPrice);
+ const ages=[lowAge,highAge];
+ const warn=[];
+ if(Math.max(...ages)>900)warn.push('At least one last-trade price is over 15 minutes old');
+ if(flow<50)warn.push('Low two-way volume: limit orders could take a long time');
+ if(Number.isFinite(hourLow)&&hourLow>0&&Math.abs(low-hourLow)/hourLow>.15||
+    Number.isFinite(hourHigh)&&hourHigh>0&&Math.abs(high-hourHigh)/hourHigh>.15)
+  warn.push('Latest executions differ notably from hourly averages');
+ if(!viable)warn.push('One-GP inside-spread offers do not produce a positive after-tax margin');
+ if(idea.members&&state.mode==="f2p")warn.push('Members-only item; cannot trade on F2P');
+ if(bid>state.budget)warn.push('Buy listing exceeds your entered cash budget');
+ return {low,high,lowAge,highAge,bid:viable?bid:null,ask:viable?ask:null,
+  margin:viable?margin:null,flow,warn,
+  fiveLow:Number.isFinite(fiveLow)?fiveLow:null,fiveHigh:Number.isFinite(fiveHigh)?fiveHigh:null,
+  hourLow:Number.isFinite(hourLow)?hourLow:null,hourHigh:Number.isFinite(hourHigh)?hourHigh:null};
+}
+function renderListingGuide(idea){
+ const section=get('gh-order-guide');
+ if(!section)return;
+ const quote=listingGuide(idea);
+ section.hidden=!quote;
+ if(!quote)return;
+ txt('gh-last-sell',gp(quote.low));txt('gh-last-buy',gp(quote.high));
+ txt('gh-last-sell-age',Math.max(0,Math.round(quote.lowAge/60))+' min ago · completed seller-initiated trade');
+ txt('gh-last-buy-age',Math.max(0,Math.round(quote.highAge/60))+' min ago · completed buyer-initiated trade');
+ txt('gh-bid-target',quote.bid===null?'No prudent target':gp(quote.bid));
+ txt('gh-ask-target',quote.ask===null?'No prudent target':gp(quote.ask));
+ txt('gh-quote-margin',quote.margin===null?'No positive after-tax trial spread':
+  'Illustrative net per unit, if BOTH offers fill: '+gp(quote.margin));
+ const pair=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)?gp(a)+' low / '+gp(b)+' high':'not recorded';
+ txt('gh-quote-meta','5-minute averages: '+pair(quote.fiveLow,quote.fiveHigh)+
+  ' · 1-hour averages: '+pair(quote.hourLow,quote.hourHigh)+
+  ' · hourly two-way volume '+quote.flow.toLocaleString('en-GB')+
+  ' · GE tax '+(quote.ask===null?'—':gp(tax(quote.ask,idea.name))));
+ txt('gh-quote-warning',(quote.warn.length?quote.warn.join(' · ')+' · ':'')+
+  'Prices are historical completed trades, NOT open listings. Suggested limits are one GP inside the recorded spread, not proven best bids/asks or fill predictions. Test small and adjust from your actual fills.');
+}
 function validateOsrsRows(raw){
  if(!Array.isArray(raw)||raw.length>1000)throw Error("Backup contains too many trade records");
  const seen=new Set(),out=[],lots=new Map();
@@ -767,6 +839,7 @@ function render(){
  txt("gh-total-label",state.researchMode==="value"?"Capital needed for one unit":"Illustrative total");
  txt("gh-margin-label",state.researchMode==="value"?"Observed after-tax spread per unit":"Potential after-tax margin");
  renderValueTier(current);
+ renderListingGuide(current);
  if(!current){
   const failure=!!state.priceError,uncertain=!!state.stale;
   txt("gh-position",state.loading?"Checking market evidence":
