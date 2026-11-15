@@ -1,0 +1,1 @@
+2026-11-15: Run aggregate-only private D1 health readback. Strictly SELECT-only, no account IDs or trades in logs. Verify recent polls, monitor warnings, and completeness gates. This does not enrol monitoring.
