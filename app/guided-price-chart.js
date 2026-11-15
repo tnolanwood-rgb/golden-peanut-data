@@ -39,29 +39,35 @@ function ensure(){
  document.body.append(dialog);
 }
 function close(){if(dialog?.open)dialog.close();active=null;drag=null;version++;}
+function availableDays(){return active?.rows?.length?active.rows.at(-1)[0]-active.rows[0][0]+1:0;}
 function visible(){
  if(!active?.rows?.length)return [];
- const all=active.rows,windowSize=Math.min(viewSize,all.length);
- const end=Math.max(windowSize,all.length-offset),start=Math.max(0,end-windowSize);
- return all.slice(start,end);
+ const lastDay=active.rows.at(-1)[0]-offset,firstDay=lastDay-viewSize+1;
+ return active.rows.filter(r=>r[0]>=firstDay&&r[0]<=lastDay);
 }
 function chooseRange(next){
  if(!active?.rows?.length)return;
- range=next;viewSize=next==='week'?Math.min(7,active.rows.length):active.rows.length;
+ range=next;viewSize=next==='week'?Math.min(7,availableDays()):availableDays();
  offset=0;selected=active.rows.length-1;render();
 }
 function ensureSelectedVisible(){
  if(!active?.rows?.length)return;
- const n=active.rows.length,span=Math.min(viewSize,n);
- let last=Math.min(n,n-offset),first=last-span;
- if(selected<first)offset=Math.min(n-span,n-span-selected-1);
- if(selected>=last)offset=Math.max(0,n-selected-1);
+ const maxDay=active.rows.at(-1)[0],selectedDay=active.rows[selected][0];
+ const windowEnd=maxDay-offset,windowStart=windowEnd-viewSize+1;
+ if(selectedDay<windowStart)offset=Math.min(Math.max(0,availableDays()-viewSize),maxDay-selectedDay-viewSize+1);
+ if(selectedDay>windowEnd)offset=Math.max(0,maxDay-selectedDay);
 }
 function setSelected(index){
  if(!active?.rows?.length)return;
  selected=Math.max(0,Math.min(active.rows.length-1,index));
  ensureSelectedVisible();
- render();
+ // Keep the range control mounted throughout a drag on mobile.
+ const plot=dialog?.querySelector('.gp-price-plot');
+ if(plot)plot.replaceWith(mainPlot(visible()));
+ const panel=dialog?.querySelector('.gp-price-selection');
+ if(panel)panel.replaceWith(selectedPanel(visible()));
+ const slider=dialog?.querySelector('.gp-price-slider');
+ if(slider)slider.value=String(selected);
 }
 function svg(tag,attrs={},text){
  const n=document.createElementNS(NS,tag);
@@ -147,10 +153,10 @@ function onPointerMove(e){
  if(!active?.rows?.length||!fingers.has(e.pointerId)||!gesture)return;
  fingers.set(e.pointerId,e.clientX);
  if(fingers.size>=2&&gesture.pinching){
-  const desired=Math.max(MIN_POINTS,Math.min(active.rows.length,Math.round(
+  const desired=Math.max(MIN_POINTS,Math.min(availableDays(),Math.round(
    gesture.originalSize*gesture.originalDistance/Math.max(20,fingersApart()))));
   if(desired!==viewSize){
-   viewSize=desired;offset=Math.max(0,Math.min(active.rows.length-viewSize,gesture.originalOffset));
+   viewSize=desired;offset=Math.max(0,Math.min(availableDays()-viewSize,gesture.originalOffset));
    range='custom';render();
   }
  }else if(fingers.size===1&&!gesture.pinching){
@@ -159,7 +165,7 @@ function onPointerMove(e){
   if(gesture.used){
    const chart=dialog.querySelector('.gp-price-svg');
    const step=Math.max(40,(chart?.getBoundingClientRect().width||400)/(Math.max(4,viewSize)+1));
-   const target=Math.max(0,Math.min(active.rows.length-viewSize,gesture.originalOffset+Math.round(distance/step)));
+   const target=Math.max(0,Math.min(availableDays()-viewSize,gesture.originalOffset+Math.round(distance/step)));
    if(target!==offset){offset=target;render();}
   }
  }
@@ -177,7 +183,7 @@ function onPointerEnd(e){
 function onWheel(e){
  if(!e.ctrlKey||!active?.rows?.length||!e.target?.closest?.('.gp-price-svg'))return;
  e.preventDefault();
- const n=active.rows.length,desired=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
+ const n=availableDays(),desired=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
  if(viewSize!==desired){viewSize=desired;offset=Math.min(offset,n-viewSize);range='custom';render();}
 }
 function selectedPanel(rows){
@@ -251,7 +257,7 @@ async function load(id,title){
   }
   active.rows=[...seen.values()].sort((a,b)=>a[0]-b[0]);active.source=result?.source||'Public bid/ask price snapshots';
   active.status='ready';selected=Math.max(0,active.rows.length-1);
-  viewSize=Math.min(7,active.rows.length);render();
+  viewSize=Math.min(7,availableDays());render();
  }catch{
   if(ticket!==version||!dialog.open||!active||active.id!==id)return;
   active.status='error';render();
