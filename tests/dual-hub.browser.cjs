@@ -3,9 +3,28 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 const root=path.resolve('app');
 const now=Math.floor(Date.now()/1000);
 const mapping=[{id:1,name:'Copper sword',members:false,limit:100,icon:'Copper_sword.png'},{id:2,name:'An extremely long item description for fixed layout regression',members:false,limit:100,icon:'Bronze_sword.png'},{id:3,name:'Old school bond',members:false,limit:100,icon:'Old_school_bond.png'},...Array.from({length:110},(_,i)=>({id:i+4,name:'Synthetic noncandidate '+(i+4),members:false,limit:100,icon:''}))];
-const prices=Object.fromEntries(mapping.map(x=>[x.id,{low:100,high:[1,2,3].includes(x.id)?150:100,lowTime:now-60,highTime:now-60}]));
-const volume=Object.fromEntries(mapping.map(x=>[x.id,{avgLowPrice:105,avgHighPrice:[1,2,3].includes(x.id)?145:105,lowPriceVolume:1000,highPriceVolume:1000}]));
-const hourly=Object.fromEntries(mapping.map(x=>[x.id,{avgLowPrice:103,avgHighPrice:[1,2,3].includes(x.id)?147:103,lowPriceVolume:1000,highPriceVolume:1000}]));
+mapping.find(x=>x.id===10).name='High-value rare members weapon';
+mapping.find(x=>x.id===10).members=true;
+mapping.find(x=>x.id===10).limit=8;
+mapping.find(x=>x.id===11).name='High-value free-to-play equipment';
+mapping.find(x=>x.id===11).limit=70;
+const prices=Object.fromEntries(mapping.map(x=>[x.id,{
+ low:x.id===10?14700000:x.id===11?1150000:100,
+ high:x.id===10?15800000:x.id===11?1270000:[1,2,3].includes(x.id)?150:100,
+ lowTime:now-60,highTime:now-60
+}]));
+const volume=Object.fromEntries(mapping.map(x=>[x.id,{
+ avgLowPrice:x.id===10?14800000:x.id===11?1160000:105,
+ avgHighPrice:x.id===10?15650000:x.id===11?1260000:[1,2,3].includes(x.id)?145:105,
+ lowPriceVolume:[10,11].includes(x.id)?3:1000,
+ highPriceVolume:[10,11].includes(x.id)?2:1000
+}]));
+const hourly=Object.fromEntries(mapping.map(x=>[x.id,{
+ avgLowPrice:x.id===10?14800000:x.id===11?1160000:103,
+ avgHighPrice:x.id===10?15650000:x.id===11?1260000:[1,2,3].includes(x.id)?147:103,
+ lowPriceVolume:[10,11].includes(x.id)?6:1000,
+ highPriceVolume:[10,11].includes(x.id)?4:1000
+}]));
 const history={data:Array.from({length:24},(_,i)=>({timestamp:now-(24-i)*3600,avgLowPrice:100+i,avgHighPrice:140+i,lowPriceVolume:100,highPriceVolume:100}))};
 const server=http.createServer((req,res)=>{
  const pathname=req.url.split('?')[0],file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
@@ -88,6 +107,15 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-tab-osrs').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#gh-margin').innerText(),'38 gp / item');
   assert.match(await page.locator('#gh-total').innerText(),/1,520 gp/);
+  assert.equal(await page.locator('#gh-order-guide').isVisible(),true,
+    'OSRS must display completed trades and practical GE trial limits');
+  assert.equal(await page.locator('#gh-last-sell').innerText(),'100 gp');
+  assert.equal(await page.locator('#gh-last-buy').innerText(),'150 gp');
+  assert.equal(await page.locator('#gh-bid-target').innerText(),'101 gp');
+  assert.equal(await page.locator('#gh-ask-target').innerText(),'149 gp');
+  assert.match(await page.locator('#gh-quote-margin').innerText(),/46 gp/);
+  assert.match(await page.locator('#gh-quote-warning').innerText(),/NOT open listings/);
+  assert.match(await page.locator('#gh-quote-meta').innerText(),/5-minute averages/);
   assert.equal(await page.locator('.hub-desk-nav').count(),0,'native duplicate switch bar must not be in Cloudflare build');
   await page.locator('#gh-add-fill').click();
   await page.locator('#gh-fill-qty').fill('10');
@@ -299,6 +327,65 @@ const server=http.createServer((req,res)=>{
   await page.locator('#gh-apply').click();
   assert.ok((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas>0);
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
+
+  // High-value discovery must show thin, excluded markets for research
+  // without promoting them into the verified liquid trading shortlist.
+  const initial=await page.evaluate(()=>window.GoldenDualHub.diagnostics());
+  assert.equal(initial.researchMode,'liquid');
+  assert.ok(initial.liquidCount>=2);
+  assert.ok(initial.valueCount>=2,'market-wide scanner should find both expensive examples');
+  assert.equal(await page.locator('#gh-mode-liquid').getAttribute('aria-pressed'),'true');
+  await page.locator('#gh-mode-value').click();
+  await page.waitForFunction(()=>window.GoldenDualHub.diagnostics().researchMode==='value');
+  assert.ok((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas>=2);
+  assert.match(await page.locator('#gh-item-name').innerText(),/High-value/);
+  assert.match(await page.locator('#gh-research-evidence').innerText(),/Evidence score.*not a fill probability/);
+  assert.match(await page.locator('#gh-caution').innerText(),/Thin market/);
+  assert.match(await page.locator('#gh-instruction').innerText(),/Observed instant-sell/);
+  assert.match(await page.locator('#gh-instruction-extra').innerText(),/not standing GE offers/);
+  assert.match(await page.locator('#gh-total-label').innerText(),/Capital needed for one unit/);
+  assert.equal(await page.locator('#gh-order-guide').isVisible(),true);
+  assert.match(await page.locator('#gh-quote-warning').innerText(),/historical completed trades/i);
+  // A free-to-play account must not be invited to record a members-only item.
+  await page.locator('#gh-market-search').fill('rare members weapon');
+  assert.equal(await page.locator('#gh-item-name').innerText(),'High-value rare members weapon');
+  assert.equal(await page.locator('#gh-add-fill').isEnabled(),false);
+  assert.match(await page.locator('#gh-caution').innerText(),/Members item/);
+  const watched=await page.locator('#gh-watch-toggle');
+  await watched.click();
+  assert.equal(await watched.getAttribute('aria-pressed'),'true');
+  await page.locator('#gh-only-watch').check();
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas,1);
+  await page.reload();
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs' &&
+    window.GoldenDualHub?.diagnostics().researchMode==='value' &&
+    window.GoldenDualHub?.diagnostics().valueCount>=2);
+  assert.equal(await page.locator('#gh-item-name').innerText(),'High-value rare members weapon');
+  assert.equal(await page.locator('#gh-watch-toggle').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('#gh-only-watch').isChecked(),true);
+  await page.locator('#gh-only-watch').uncheck();
+  await page.locator('#gh-market-search').fill('free-to-play equipment');
+  assert.equal(await page.locator('#gh-item-name').innerText(),'High-value free-to-play equipment');
+  assert.equal(await page.locator('#gh-add-fill').isEnabled(),true);
+  await page.locator('#gh-market-search').fill('');
+  await page.locator('#gh-value-floor').selectOption('10000000');
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas,1);
+  await page.locator('#gh-mode-liquid').click();
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).researchMode,'liquid');
+  assert.equal(await page.locator('#gh-item-name').innerText(),'Copper sword');
+  // The initial GW2 IndexedDB marker and OSRS ledger survive all research work.
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ledgerRows,3);
+  const continuity=await page.evaluate(async()=>{
+    const req=indexedDB.open('golden-peanut-clean-v1',1);
+    const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+    const row=await new Promise((resolve,reject)=>{
+      const transaction=db.transaction('config','readonly');
+      const get=transaction.objectStore('config').get('Fixture.1234|hub-continuity-test');
+      get.onsuccess=()=>resolve(get.result);get.onerror=()=>reject(get.error);
+    });
+    db.close();return row?.value?.marker;
+  });
+  assert.equal(continuity,'untouched');
   await fs.promises.mkdir('artifacts',{recursive:true});
   await page.screenshot({path:'artifacts/browser-osrs-390.png',fullPage:true});
   assert.deepEqual(errors,[],'dual game interface must be free of JS page errors');
