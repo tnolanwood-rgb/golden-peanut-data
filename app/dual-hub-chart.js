@@ -74,7 +74,7 @@ function render(){
   pane.append(pair);
   pane.append(e('p','gh-research-volume','Bucket volumes: '+Number(q.lowPriceVolume||0).toLocaleString('en-GB')+' instant-sold / '+Number(q.highPriceVolume||0).toLocaleString('en-GB')+' instant-bought'));
  }else pane.append(e('p','','No observations available.'));
- const plot=dialog.querySelector('#gh-research-plot');plot.replaceChildren();
+ const plot=dialog.querySelector('#gh-research-plot');plot.replaceChildren();renderRange();
  if(rows.length<2){plot.append(e('p','gh-research-empty','No usable two-sided historical buckets.'));return}
  const [a,b]=bounds(),view=rows.slice(a,b),W=700,H=330,L=100,R=20,T=24,B=57;
  if(view.length<2)return;
@@ -93,10 +93,11 @@ function render(){
  }
  for(let k=0;k<3;k++)chart.append(svg('text',{x:L+k*sx/2,y:H-15,'text-anchor':k===0?'start':k===2?'end':'middle',fill:'#c8d4c6','font-size':15},date(first+(last-first)*k/2)));
  if(q&&q.timestamp>=first&&q.timestamp<=last){const xx=X(q.timestamp);chart.append(svg('line',{x1:xx,x2:xx,y1:T,y2:H-B,stroke:'#e7d7b6','stroke-dasharray':'5 7'}));for(const [key,color] of [['avgLowPrice','#75d4b1'],['avgHighPrice','#eccc7c']])chart.append(svg('circle',{cx:xx,cy:Y(q[key]),r:6,fill:color,stroke:'#112318','stroke-width':3}));}
- plot.append(chart);renderRange();
+ plot.append(chart);
 }
 async function load(key){
  if(!item)return;range=periods[key]?key:'week';const [label,step,horizon]=periods[range],ref=item.id+'-'+step,token=++sequence;
+ rows=[];size=0;offset=0;selected=0;render();
  dialog.querySelector('#gh-research-status').textContent='Loading '+label+' of RuneScape Wiki market observations…';
  try{
   let entry=cache.get(ref);
