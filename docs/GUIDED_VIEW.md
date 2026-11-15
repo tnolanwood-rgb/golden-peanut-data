@@ -42,3 +42,7 @@ The layout copies the OSRS *interaction pattern*, not OSRS data: large teal obse
 **Evidence boundary:** GW2 feed contains daily public *quoted bid/ask* snapshots (one per recorded day when available), not the OSRS app's hourly instant-trade buckets with completed transaction volumes. The chart must never imply GW2 daily standing quantity represents completed trades or invent 166 hourly points from ten daily snapshots. Gaps in calendar dates are not bridged by SVG line segments. Individual prices are inspectable per recorded date. Source stays public and read-only.
 
 **Regression:** Synthetic assembled Chromium 390px and 1440px tests validate opening, selected-day slider, correct 7-day window, 8-day all-history window, coin icons, expanded layout, and persistence across repeated `GPGuided.render()` and `GPFocus.render()` calls. No production deployment or physical-device proof follows automatically from these tests.
+
+## 15 November — confirmed production release
+
+Merged PR #44 into main at `3eee015e3fb4b3a1a94f1c4a6b5eae8c8c1dd988`. Cloudflare Pages workflow run #43664749794 succeeded. GitHub Actions log: `VERIFIED: 33 exact production asset checksums at the existing Pages origin.` The updated chart source is hosted on the existing `https://thegoldenpeanut.pages.dev/` origin. Android wrapper/APK rebuild and physical device behavioural tests remain separate; the source Chromium browser gestures passed on both 390px and desktop viewports. Original trading ledger and private monitoring are untouched.
