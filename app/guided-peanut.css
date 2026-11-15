@@ -85,5 +85,4 @@ body.focus-edition.gp-guided-active{background:#0e1914!important}
 .gp-guide-number .gp-guide-unit{font-size:.68em;font-weight:820;letter-spacing:0;opacity:.88;margin-left:1px}
 .gp-guide-number .gp-guide-negative{color:#f0afa3}
 .gp-guide-number .gp-guide-unverified{font-size:17px;color:#b9c9bd}
-.gp-guide-nav-note{margin:1px 0 0;color:#aebfab;font-size:12px;line-height:1.5}
 @media(max-width:390px){.gp-guide-number .gp-guide-coinset{column-gap:5px;row-gap:3px}.gp-guide-number .gp-guide-denom img,.gp-guide-number .focus-money-big .gp-guide-denom img{width:15px;height:15px;flex-basis:15px}}

@@ -1,6 +1,6 @@
 /* Guided Peanut — a calm, single-screen alternative to Focus Edition.
  * The session-only deck is fixed on first navigation. No market data, keys,
- * item skips or account history are persisted by this UI.
+ * browsing position or account history are persisted by this UI.
  */
 (function(root){
 'use strict';
@@ -197,11 +197,11 @@ function buildIdea(host,s,view){
  controls.firstChild.disabled=!view.canPrevious;
  if(!view.total)controls.lastChild.disabled=true;
  section.append(controls);
- const second=el('div','gp-guide-secondary-row');
- if(view.canNext)second.append(button('Skip for now →',()=>navigate('skip'),'gp-guide-text'));
- if(view.newIdeas)second.append(button('Update idea list · '+view.newIdeas+' new',()=>navigate('restart'),'gp-guide-text'));
- if(second.childNodes.length)section.append(second);
- if(view.skipped)section.append(el('p','gp-guide-nav-note','You skipped this idea earlier in this visit. It is still available using Previous and Next.'));
+ if(view.newIdeas){
+  const second=el('div','gp-guide-secondary-row');
+  second.append(button('Update idea list · '+view.newIdeas+' new',()=>navigate('restart'),'gp-guide-text'));
+  section.append(second);
+ }
  host.append(section);
 }
 function renderChartArea(host){
@@ -260,7 +260,7 @@ function render(force=false){
  // Compare the active quote, not merely array lengths; rankings can be rebuilt
  // or repriced without changing their counts.
  const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
-  s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,view.skipped,
+  s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,
   view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
   s?.meta?.[view.id]?.icon,$('focus-delivery-total')?.textContent||'',chartOpen,chartDays,chartOffset]);
  if(!force&&sig===fingerprint)return;fingerprint=sig;

@@ -59,7 +59,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
- // swaps priorities, even before the user presses Next or Skip.
+ // swaps priorities, even before the user presses Next.
  await page.evaluate(()=>{
   const original=GPMarketBoard.build;
   GPMarketBoard.build=(...args)=>{
@@ -77,10 +77,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(total>=2,'synthetic fixtures provide at least two guided ideas');
  assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
    'obsolete cross-reload skipped bin is removed on startup');
- assert.equal(await page.locator('.gp-guide-idea').getByRole('button',{name:/Review skipped/}).count(),0,
-   'never create a persistent skipped-items bin');
- await page.getByRole('button',{name:'Skip for now →'}).click();
- assert.equal(await counter.innerText(),'2 of '+total,'Skip moves to second item; denominator stays fixed');
+ assert.equal(await page.getByRole('button',{name:/Skip|Review skipped/i}).count(),0,'no Skip or skipped-items controls exist');
+ await page.getByRole('button',{name:'Next idea →'}).click();
+ assert.equal(await counter.innerText(),'2 of '+total,'Next advances; denominator stays fixed');
  assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true);
  const secondIdea=await page.locator('.gp-guide-item-name').innerText();
  await page.evaluate(()=>{
@@ -110,8 +109,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.getByRole('button',{name:'← Previous'}).click();
  assert.equal(await counter.innerText(),'1 of '+total,'Previous always returns to first numbered idea');
  assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea);
- assert.equal(await page.locator('.gp-guide-nav-note').count(),1,'session-only skipped marker is visible on revisit');
- assert.equal(await page.getByRole('button',{name:/Review skipped/}).count(),0);
+ assert.equal(await page.getByRole('button',{name:/Skip|Review skipped/i}).count(),0,'only Previous and Next navigate the list');
  await page.getByRole('button',{name:'Next idea →'}).click();
  assert.equal(await counter.innerText(),'2 of '+total);
  await page.getByRole('button',{name:'← Previous'}).click();

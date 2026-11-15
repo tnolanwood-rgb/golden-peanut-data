@@ -14,18 +14,16 @@ test('initial card is never silently replaced by a newly ranked candidate',()=>{
  assert.equal(d.move(ids(2,6,8),'acct','restart').id,2,'explicit restart takes the latest ranked first result');
 });
 
-test('Next and Skip progress through one immutable deck; Previous goes to the immediately preceding item',()=>{
+test('Previous and Next move through one stable deck with no redundant skip action',()=>{
  const d=create(),rows=ids(11,22,33,44);
  assert.deepEqual([d.view(rows,'a').position,d.view(rows,'a').total],[1,4]);
- assert.deepEqual([d.move(rows,'a','skip').position,d.view(rows,'a').total],[2,4]);
- assert.equal(d.view(rows,'a').skipped,false);
+ assert.equal(d.move(rows,'a','next').position,2);
  assert.equal(d.move(rows,'a','previous').position,1);
- assert.equal(d.view(rows,'a').skipped,true);
  assert.equal(d.move(rows,'a','next').position,2);
  assert.equal(d.move(rows,'a','next').position,3);
  assert.equal(d.move(rows,'a','next').position,4);
  assert.equal(d.move(rows,'a','next').position,4,'last card does not wrap invisibly');
- assert.equal(d.move(rows,'a','skip').position,4,'cannot skip beyond the end');
+ assert.throws(()=>d.move(rows,'a','skip'),/Unsupported guided action/,'Skip is removed completely');
 });
 
 test('late discoveries and reordered ranking never move a viewed item or alter its denominator',()=>{
@@ -54,15 +52,15 @@ test('a disappeared or expired item keeps its position but never reuses a stale 
  assert.equal(d.view(ids(3,1),'a').item.id,3);
 });
 
-test('account change resets navigation, and a fresh controller has no inherited skips',()=>{
+test('account change resets navigation and a new controller has no inherited position',()=>{
  const a=create(),rows=ids(1,2,3);
- a.move(rows,'account-1','skip');
+ a.move(rows,'account-1','next');
  assert.equal(a.view(rows,'account-1').position,2);
  assert.equal(a.view(rows,'account-1').canPrevious,true);
  const b=a.view(ids(7,8),'account-2');
- assert.deepEqual([b.id,b.position,b.total,b.started,b.skipped],[7,1,2,false,false]);
+ assert.deepEqual([b.id,b.position,b.total,b.started],[7,1,2,false]);
  const fresh=create().view(rows,'account-1');
- assert.deepEqual([fresh.id,fresh.position,fresh.total,fresh.skipped],[1,1,3,false]);
+ assert.deepEqual([fresh.id,fresh.position,fresh.total],[1,1,3]);
 });
 
 test('only an explicit restart rebuilds the deck from latest research',()=>{

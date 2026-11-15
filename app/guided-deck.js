@@ -2,7 +2,7 @@
  * No account snapshots, personal history, prices, secrets or trade orders stored.
  * Ranking may update in the background. Before the user navigates we always
  * show current rank #1; after the first navigation we freeze the viewed deck.
- * A full reload creates a clean new deck. Skips last only until that reload.
+ * A full reload creates a clean new deck. Only Previous and Next are needed.
  */
 (function(root){
 'use strict';
@@ -18,8 +18,7 @@ function uniqueIds(rows){
 }
 function create(){
  let account=null,deck=[],position=0,started=false;
- const skipped=new Set();
- function reset(){deck=[];position=0;started=false;skipped.clear();}
+ function reset(){deck=[];position=0;started=false;}
  function view(rows,accountId=''){
   const accountValue=String(accountId||'');
   if(account!==accountValue){account=accountValue;reset();}
@@ -36,14 +35,14 @@ function create(){
      if(!seen.has(id)){deck.push(id);seen.add(id);}
     }
    }
-   position=0;skipped.clear();
+   position=0;
   }
   if(position>=deck.length)position=Math.max(0,deck.length-1);
   const id=deck[position]??null;
   const item=(Array.isArray(rows)?rows:[]).find(r=>r?.id===id)||null;
   const additions=latest.filter(id=>!deck.includes(id)).length;
   return Object.freeze({id,position:id?position+1:0,total:deck.length,
-   item,unavailable:id!==null&&!item,started,skipped:skipped.has(id),
+   item,unavailable:id!==null&&!item,started,
    newIdeas:additions,canPrevious:position>0,canNext:deck.length>0&&position<deck.length-1});
  }
  function move(rows,accountId,action){
@@ -52,12 +51,9 @@ function create(){
   if(action==='restart'){
    reset();return view(rows,accountId);
   }
-  // A disabled Next/Skip must not silently wrap or change the current idea.
+  // A disabled Next must not silently wrap or change the current idea.
   if(action==='previous'){started=true;position=Math.max(0,position-1);}
   else if(action==='next'){started=true;position=Math.min(deck.length-1,position+1);}
-  else if(action==='skip'){
-   if(position<deck.length-1){started=true;skipped.add(deck[position]);position++;}
-  }
   else throw Error('Unsupported guided action');
   return view(rows,accountId);
  }
