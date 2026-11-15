@@ -609,16 +609,31 @@ function applySettings(){
  state.index=0;saveUser();buildIdeas();render();
  get("gh-settings").open=false;
 }
-let marketCache=null,marketCacheDirty=false,marketCacheTimer=0,cacheWriteCount=0;
-function cacheLoad(){if(marketCache)return marketCache;const c=read(CACHE,{});return marketCache=c&&typeof c==="object"&&!Array.isArray(c)?c:{}}
+let marketCache=null,marketCacheDiskBaseline=null,marketCacheDirty=false,marketCacheTimer=0,cacheWriteCount=0;
+function cacheLoad(){
+ if(marketCache)return marketCache;
+ let raw=null;try{raw=win.localStorage.getItem(CACHE)}catch{}
+ marketCacheDiskBaseline=raw;
+ let parsed={};try{parsed=raw?JSON.parse(raw):{}}catch{}
+ return marketCache=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{};
+}
 function flushMarketCache(){
  if(marketCacheTimer){win.clearTimeout(marketCacheTimer);marketCacheTimer=0;}
  if(!marketCacheDirty)return;
  marketCacheDirty=false;
- // Save all four bulk endpoints once instead of repeatedly serializing the
- // same multi-megabyte object for each response. Old cache remains if quota
- // prevents the next write.
- if(store(CACHE,cacheLoad()))cacheWriteCount++;
+ // Optimistic storage safety: a user/other tab intentionally cleared or
+ // replaced the cache while our network requests ran. Do not resurrect old
+ // values or overwrite a newer independent writer on pagehide.
+ let current=null;try{current=win.localStorage.getItem(CACHE)}catch{return}
+ if(current!==marketCacheDiskBaseline){
+  marketCache=null;marketCacheDiskBaseline=current;return;
+ }
+ // One batched stringify for all four routes, not four serialized writes.
+ const next=JSON.stringify(cacheLoad());
+ try{
+  win.localStorage.setItem(CACHE,next);
+  marketCacheDiskBaseline=next;cacheWriteCount++;
+ }catch{/* Quota/private mode: previous persisted data are untouched. */}
 }
 function scheduleMarketCacheSave(){
  marketCacheDirty=true;
