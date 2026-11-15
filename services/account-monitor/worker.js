@@ -190,14 +190,14 @@ async function monitorAccount(env,row){
   const reachedEnd=sideNames.every(x=>history[x+'_coverage']==='api-end');
   const historyWarning=sideNames.some(x=>history[x+'_incomplete'])||previousGap&&!reachedEnd?
    'history_backfill_incomplete: Recent completed trades saved; historical 90-day backfill exceeds per-run page budget':null;
-  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0 WHERE account_id=?')
+  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0 WHERE account_id=? AND enabled=1')
    .bind(stamp,stamp,historyWarning,account).run();
   await finalizeNights(env,account,stamp);
   return {ok:true,account,orders:current.buys.length+current.sells.length,trades:tradeChanges,partials:partiallyFilled,newOrders,closedUnknown,
    historyComplete:!historyWarning};
  }catch(e){
   const code=(previousGap?'history_backfill_incomplete: ':'')+String(e.message||'Unknown monitor failure').slice(0,140);
-  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1 WHERE account_id=?')
+  await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1 WHERE account_id=? AND enabled=1')
    .bind(stamp,code,account).run();
   // Never emit credential details or account trading records into public logs.
   return {ok:false,code:code.replace(/[A-Za-z0-9-]{40,128}/g,'[redacted]')};
