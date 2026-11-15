@@ -30,5 +30,27 @@ class PublicIndexTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'repeated'):
             MODULE.compact_index({**self.public,'items':dup})
 
+    def test_shards_recover_complete_public_history_without_changing_totals(self):
+        day=21000
+        history={'schema':'golden-peanut-daily-v1','generation':'release-123','generated_at':1234567890,
+                 'history':{str(i):[[day-1,100,200,20,20],[day,101,202,21,21]]
+                            for i in range(1,1001)}}
+        shards=MODULE.shard_history(history)
+        self.assertEqual(len(shards),32)
+        self.assertEqual(sum(len(x['history']) for x in shards.values()),1000)
+        for filename,payload in shards.items():
+            self.assertEqual(payload['schema'],'golden-peanut-history-shard-v1')
+            self.assertEqual(payload['generation'],history['generation'])
+            self.assertEqual(payload['generated_at'],history['generated_at'])
+            for key,rows in payload['history'].items():
+                self.assertEqual(int(key)%32,payload['shard'])
+                self.assertEqual(rows,history['history'][key])
+            self.assertTrue(filename.endswith(str(payload['shard'])+'.json'))
+    def test_shards_reject_broken_input(self):
+        with self.assertRaisesRegex(RuntimeError,'invalid'):
+            MODULE.shard_history({'schema':'bad','history':{}})
+        with self.assertRaisesRegex(RuntimeError,'Invalid history shard ID'):
+            MODULE.shard_history({'schema':'golden-peanut-daily-v1','history':{'0':[]}})
+
 if __name__=='__main__':
     unittest.main()
