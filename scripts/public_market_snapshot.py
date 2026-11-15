@@ -138,6 +138,32 @@ def merge_history(rows, old, day, observation_times=None):
             'source': 'ArenaNet standing quotes; NOT completed turnover', 'history': fresh}
 
 
+def compact_index(public):
+    """Complete names/type/rarity without the much larger quote, depth and recipe payloads.
+
+    This is for startup discovery/search labels only. It MUST NOT be a source of
+    current bid/ask prices or a proxy for actual completed market volume.
+    """
+    if public.get('schema') != 'golden-peanut-public-v1':
+        raise RuntimeError('Cannot index an invalid public-market generation')
+    rows = public.get('items')
+    count = public.get('count')
+    if not isinstance(rows, list) or not isinstance(count, int) or len(rows) != count or count < 1000:
+        raise RuntimeError('Cannot publish a partial startup market index')
+    result = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row, list) or len(row) != 8 or not valid_int(row[0]) or row[0] <= 0 or row[0] in seen:
+            raise RuntimeError('Invalid or repeated market-index item')
+        if any(not isinstance(row[i], str) for i in (1, 2, 3)):
+            raise RuntimeError('Malformed index labels')
+        seen.add(row[0])
+        result.append(row[:4])
+    return {'schema': 'golden-peanut-index-v1', 'generation': public.get('generation'),
+            'generated_at': public['generated_at'], 'count': count, 'items': result,
+            'source': 'ArenaNet public item metadata; no execution or current quote data'}
+
+
 def depth_rows(raw):
     out = {}
     for side in ('buys', 'sells'):
@@ -200,7 +226,8 @@ def run():
                            'quotes_complete': True, 'oldest_quote_at': min(times.values())},
               'depth_next_cursor': (cursor+count) % len(ids),
               'source': 'Official public GW2 API. Quantities and deltas are outstanding orders, NOT executions.'}
-    outputs = {'market_public.json': public, 'market_history.json': history,
+    outputs = {'market_index.json': compact_index(public),
+               'market_public.json': public, 'market_history.json': history,
                'market_depth.json': {'generation': generation, 'generated_at': generated, 'items': depths, 'quote_changes': changes},
                'market_recipes.json': {'generation': generation, 'generated_at': generated, 'recipes': recipes}}
     # All network/validation work finishes BEFORE writing. Git commit publishes a generation atomically.
