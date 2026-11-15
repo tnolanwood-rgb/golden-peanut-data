@@ -859,15 +859,65 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
  assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
- // Fresh page/navigation session MUST reset to the first market and clear obsolete skips.
- await page.evaluate(()=>localStorage.setItem('gp-guided-skips-v1','[1,2,999]'));
+ // Android can recreate a WebView after the user opens another app.
+ // Rebuild the app in the SAME origin using the saved public UI-only context:
+ // exact numbered deck position, scroll and independently opened chart.
+ await page.evaluate(async()=>{
+  const state=GoldenPeanutClean.State;
+  localStorage.setItem('gp-clean-selected-account','Fixture.1234');
+  localStorage.setItem('gp-guided-skips-v1','[1,2,999]');
+  const original=(await state.db.get('snapshots','Fixture.1234','last'))?.value;
+  if(original)state.snapshot=original;
+  const learning=(await state.db.get('config','Fixture.1234','execution-learning-v1'))?.value;
+  if(learning)state.executionLearning=learning;
+  state.opportunityDeepPaused=true;
+  await GPOpportunity.refresh(state,{phase:'quick'});
+  GPGuided.open();GPGuided.render();
+ });
+ const originalCard=await page.evaluate(()=>GPGuided.navigation());
+ assert.ok(originalCard.total>0,'a recorded trading deck is available before Android reconstruction');
+ await page.evaluate(()=>{
+  const current=GPGuided.navigation().id,state=GoldenPeanutClean.State;
+  const name=state.meta[current]?.name||'Observed price history';
+  GPGuidedPriceChart.open({id:current,name});
+ });
+ await page.waitForFunction(()=>GPGuidedPriceChart.isOpen());
+ await page.evaluate(()=>{window.scrollTo({top:260,behavior:'instant'});GPGuided.remember();});
+ const savedView=await page.evaluate(()=>({
+  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot(),
+  persisted:GPGuidedVisit.create(localStorage).load('Fixture.1234')
+ }));
+ assert.equal(savedView.persisted.deck.ids[savedView.persisted.deck.position],savedView.deck.id);
+ assert.equal(savedView.persisted.chart.id,savedView.deck.id);
+ assert.ok(savedView.persisted.scroll>=100);
  await page.reload();
  await page.waitForFunction(()=>window.GPGuided?.navigation&&window.GoldenPeanutClean?.State?.db?.db);
  assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
-   'reload clears any migrated legacy skip-bin state without touching account storage');
- const freshlyOpened=await page.evaluate(()=>GPGuided.navigation());
- assert.equal(freshlyOpened.position,freshlyOpened.total?1:0,'reload starts at first idea, not prior rank 18');
- assert.equal(freshlyOpened.started,false,'new document must not inherit a browsing session');
+   'obsolete skipped bin still cleared on reload');
+ await page.evaluate(async()=>{
+  const state=GoldenPeanutClean.State;
+  if(state.account!=='Fixture.1234')state.account='Fixture.1234';
+  const snap=(await state.db.get('snapshots','Fixture.1234','last'))?.value;
+  if(snap)state.snapshot=snap;
+  const model=(await state.db.get('config','Fixture.1234','execution-learning-v1'))?.value;
+  if(model)state.executionLearning=model;
+  state.opportunityDeepPaused=true;
+  await GPOpportunity.refresh(state,{phase:'quick'});
+  GPGuided.render();
+ });
+ await page.waitForFunction(expected=>{
+  const v=GPGuided?.navigation?.();
+  return v?.id===expected.id&&v?.position===expected.position&&
+   window.GPGuidedPriceChart?.isOpen?.();
+ },{id:savedView.deck.id,position:savedView.deck.position},{timeout:12000});
+ const resumed=await page.evaluate(()=>({
+  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot()
+ }));
+ assert.equal(resumed.deck.position,savedView.deck.position,'same numbered trade card on Android app return');
+ assert.equal(resumed.deck.total,savedView.deck.total,'background recreation does not reset idea count');
+ assert.equal(resumed.chart.id,savedView.chart.id,'open price chart survives WebView recreation');
+ assert.equal(await page.locator('#gp-price-dialog').isVisible(),true);
+ assert.deepEqual(errors,[]);
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; stable guided deck, reload, detail/search/legendary/backup guards`);
  await context.close();
 }}finally{await browser.close();server.close();}
