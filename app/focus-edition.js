@@ -1730,7 +1730,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* Guided Peanut is an optional presentation-only layer. */
 (function(){
  const script=document.createElement('script');
- script.src='./guided-peanut.js?v=20261115-stable-deck';
+ script.src='./guided-peanut.js?v=20261115-prev-next-only';
  script.async=true;
  document.head.append(script);
 })();
