@@ -276,7 +276,7 @@ const server=http.createServer((req,res)=>{
   assert.ok(gentle.stillMoving,'settling should visibly continue after release');
   assert.ok(gentle.duration>=145&&gentle.duration<=315,'release must settle promptly, not lock input for 650ms');
   assert.equal(gentle.frames,2,'release must use compositor-friendly easing, not a sampled 48-frame spring');
-  assert.ok(gentle.heightAnimated,'different page heights should transition instead of suddenly jumping');
+  assert.equal(gentle.heightAnimated,false,'height animation would force layout/reflow on every swipe frame');
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
   // Complete GW2 -> OSRS from the whole page and then OSRS -> GW2 over a
