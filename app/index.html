@@ -3614,7 +3614,7 @@ async function sync(){if(State.busy)return;try{await ensureConnectionReady();}ca
    try{
     await State.db.put('snapshots',accountAtStart,'last',updated);
     if(State.account===accountAtStart&&State.key===keyAtStart&&State.snapshot===s){
-     State.snapshot=updated;render();root.GPFocus?.render?.();
+     State.snapshot=updated;invalidateAllocation();render();root.GPFocus?.render?.();
     }
    }catch{
     s.inventoryPending=false;
