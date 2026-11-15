@@ -129,3 +129,14 @@ test('realised ledger metrics are cached across item navigation but recompute af
  assert.notStrictEqual(changed,first);
  assert.equal(changed.today,280);
 });
+
+test('explicitly deleted market cache is not silently resurrected on pagehide flush',async()=>{
+ const existing={'mapping':{data:[{id:123,name:'Existing item'}],at:Date.now()}};
+ const {api,window,storage}=hub({'gh-osrs-v1-cache':JSON.stringify(existing)});
+ let timer=0;window.setTimeout=()=>++timer;window.clearTimeout=()=>{};
+ window.fetch=async()=>({ok:true,json:async()=>[{id:124,name:'New mapping'}]});
+ await api.getPrices('mapping',0,true);
+ storage.delete('gh-osrs-v1-cache');
+ api.flushMarketCache();
+ assert.equal(storage.has('gh-osrs-v1-cache'),false,'user deletion must win over a buffered write');
+});
