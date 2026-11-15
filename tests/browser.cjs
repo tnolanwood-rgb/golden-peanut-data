@@ -69,23 +69,30 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  // A compact public index has only names, type and rarity. On the visible
  // guided card we MUST request verified ArenaNet icon metadata from the
  // existing Focus fetch queue, even though all Focus rows are hidden.
- await page.evaluate(()=>{
+ // Verify the actual guided UI requests missing official item art, then
+ // simulate a completed, verified metadata response. Do not race a previous
+ // in-flight API request or mistake an <img> tag for a loaded image.
+ const artResolution=await page.evaluate(()=>{
   const state=GoldenPeanutClean.State,id=GPGuided.navigation().id;
-  const existing=state.meta[id]||{};
-  state.meta[id]={...existing,id,rarity:'Exotic',icon:''};
-  const original=state.api.itemMetadata.bind(state.api);
-  window.__originalGuidedMeta=original;
-  state.api.itemMetadata=async ids=>Object.fromEntries(ids.map(n=>[n,{
-   ...state.meta[n],id:n,name:state.meta[n]?.name||'Official fixture '+n,
-   type:state.meta[n]?.type||'Weapon',rarity:'Exotic',
-   icon:'https://render.guildwars2.com/file/aabbcc/'+n+'.png'
-  }]));
+  const original=GPFocus.ensureItemArtwork;
+  const requests=[];
+  GPFocus.ensureItemArtwork=(ids)=>{requests.push(...ids);return original(ids);};
+  state.meta[id]={...(state.meta[id]||{}),id,rarity:'Exotic',icon:''};
   GPGuided.render();
-  GPFocus.ensureItemArtwork([id]);
+  GPFocus.ensureItemArtwork=original;
+  return {id,requests};
  });
+ assert.ok(artResolution.requests.includes(artResolution.id),
+   'guided screen must explicitly request a verified ArenaNet icon when the lightweight index has no artwork');
+ await page.evaluate(id=>{
+  const s=GoldenPeanutClean.State;
+  s.meta[id]={...(s.meta[id]||{}),id,name:s.meta[id]?.name||'Official fixture',
+   rarity:'Exotic',icon:'https://render.guildwars2.com/file/aabbcc/'+id+'.png'};
+  dispatchEvent(new Event('gp-item-metadata-updated'));
+ },artResolution.id);
  await page.waitForFunction(()=>{
-  const i=document.querySelector('.gp-guide-item-icon img');
-  return i&&i.complete&&i.naturalWidth>0&&
+  const img=document.querySelector('.gp-guide-item-icon img');
+  return img&&img.complete&&img.naturalWidth>0&&
    document.querySelector('.gp-guide-item-name.gp-rarity-exotic');
  },null,{timeout:15000});
  assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
@@ -211,10 +218,6 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await modal.getByRole('button',{name:'Close price chart'}).click();
  assert.equal(await modal.isVisible(),false);
  await page.getByRole('button',{name:'Explore all trade research'}).click();
- await page.evaluate(()=>{
-  const s=GoldenPeanutClean.State;
-  if(window.__originalGuidedMeta){s.api.itemMetadata=window.__originalGuidedMeta;delete window.__originalGuidedMeta;}
- });
  assert.equal(await page.locator('#gp-guided-root').isVisible(),false);
  assert.equal(await page.locator('#gp-return-guided').isVisible(),true);
  await page.evaluate(()=>GPFocus.goto('today'));
