@@ -1,30 +1,17 @@
 # Golden Peanut — current engineering checkpoint
 
-2026-11-09. Urgent screenshot repair QH-001 VERIFIED locally; not deployed.
-Branch fix/research-quote-headlines, base main 8afad54; implementation 710007c
-(and 5cecc05). Checkpoint SHA: git log -1 -- docs/audit/STATE.md.
+**2026-11-15 · source audit and performance engineering, staged PR #42.**
 
-User reported 250 Invisible footwear recommended for 425,000g. Confirmed root:
-a global saved research lot was multiplied across every public quote and rendered
-as headline profit, despite no affordability or execution evidence. Fixed list
-presentation: no bulk selector/quantity/profit extrapolation; outside-wallet items
-show Outside wallet; affordable public quotes show only net spread per item.
-Explicit hypothetical sizing remains in item details, with a one-unit initial
-reference instead of inheriting the global lot. No account data cleared.
+Production branch `main` includes **PR #41** (Previous/Next only, no Skip) at commit `993b94bd937220f73e6a9ff72e9e9ffb07358432`. A separate fix in that PR preserved actively edited capital budgets during background repaint. Its final GitHub regression checks passed. The Cloudflare served production deployment and physical Android behaviour were **not independently verified**.
 
-Tests: 79 JS, 34 Python, source/workflow validation and assembled desktop/mobile
-Chromium passed. Screenshot regression starts with saved marketResearchLot=250,
-checks 1700g footwear, unknown fills/resales, and no 425,000g or bulk profit headline.
-QH-001-baseline.json dirty flag is solely local node_modules symlink, not source.
-Prior financial/funded-allocation assertions remain unchanged and green.
+**Do not merge broad audit work automatically.** Draft PR #42 on `audit/fast-ui-and-intelligence-20261115` holds startup metadata compaction, chart-history slicing, HTTP cache revalidation, chart request coalescing, search render coalescing, guided board caching, source/collector parity tests, synthetic benchmarks and the complete system-lineage audit. Review and verify green tests for its final head SHA. The new files only exist on the live data branch after a successful `.github/workflows/public-market-data.yml` run; the app safely falls back before that. No benchmark based on a physical phone has been run.
 
-Next: check hotfix PR CI, review/release the isolated fix through existing Pages
-workflow, verify deployed focus-edition.js/market-board.js/index.html cache URLs.
-No release-request change or deployment performed. Production background systems,
-account history, credentials and Trading Post orders are untouched.
+**First priority on resumption:** run/review exact head SHA CI for #42; inspect failing job logs and artifacts, not just workflow status. Confirm starter index and 32 history shards publish atomically with their same generation. Review no missing lookups, invalid stats, missing charts or credential leaks. Then compare actual served Cloudflare assets, collector execution and physical Android cold/warm startup before release/performance claims.
 
-Longer programme remains on audit/competitive-exposure, draft PR #31, checkpoint
-4d1511e. Its CE-003c model work is incomplete. Resume that branch's STATE/RESUME after
-integrating this hotfix. Do NOT merge or deploy draft #31 to release this small fix.
-No private D1 credentials or live predictive accuracy proof. This repair corrects
-presentation and quantities attached to quotes; it does not establish market volume.
+**Current evidence:** See `docs/audit/SYSTEMS-2026-11-15.md` for complete source → importer → storage → consumer matrix and unresolved P0/P1/P2/P3/P8/P10 findings. `docs/audit/PERFORMANCE.md` differentiates synthetic Node timings from Android. `docs/GUIDED_VIEW.md` has original guided navigation defect reasoning.
+
+**Non-negotiable preservation:** `golden-peanut-clean-v1` IndexedDB, all user-ledger/account-scoped keys and completed trades, optional monitor consent, Trading Post orders, existing public quote/history/recipe/depth sources, existing read-only models. Never infer execution volume from public outstanding order quantities or use unsupported historical activity to present a calibrated 24h forecast. No active-order placement or cancellation.
+
+**Separate long-running audit:** `audit/competitive-exposure`, draft PR #31 (CE-003c model, incomplete); do not merge it into a UI/performance release without causal proof.
+
+**Prior state:** The 2026-11-09 QH-001 invisible-footwear quote/bulk-profit defect and its previous release discussion are archived in `docs/audit/FINDINGS.md`, `EVIDENCE.md` and `QH-001-baseline.json`. Old instructions in the prior checkpoint were superseded by the later PR #41 and this staged audit.
