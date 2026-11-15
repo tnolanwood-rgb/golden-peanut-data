@@ -37,3 +37,15 @@
 .gh-research-dialog button:focus-visible,.gh-research-slider:focus-visible{outline:3px solid #f2dca4;outline-offset:3px}
 @media(max-width:450px){.gh-research-dialog{width:100vw;max-height:calc(100dvh - 4px);border-radius:8px;padding:14px 12px}.gh-research-ranges{gap:5px}.gh-research-ranges button{font-size:12px;padding:8px 4px}.gh-research-head h2{font-size:24px}.gh-research-selected{padding:13px}.gh-research-value strong{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.gh-research-dialog *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* Period extrema are anchored to the visible chart viewport, not the whole archive. */
+.gh-range-summary{margin:14px 0;padding:15px;background:#223a2c;border:1px solid #62775d;border-radius:13px}
+.gh-range-summary h3{margin:0 0 12px;color:#eacf97;font-size:15px}
+.gh-range-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gh-range-metric{display:flex;flex-direction:column;gap:7px;min-width:0}
+.gh-range-metric span{font-size:12px;line-height:1.4;color:#d3dfd0}
+.gh-range-metric strong{font-size:clamp(15px,4vw,20px);font-weight:800;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.gh-range-metric.low strong{color:#7cd8b6}.gh-range-metric.high strong{color:#edce8b}
+.gh-range-metric small{font-size:11px;color:#bdcfbf}
+.gh-range-caveat{margin:12px 0 0;font-size:11px;color:#b9d0be;line-height:1.55}
+.gh-research-ranges{grid-template-columns:repeat(3,minmax(0,1fr))}
