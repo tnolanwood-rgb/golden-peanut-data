@@ -283,7 +283,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await modal.locator('.gp-price-heading-icon img').count(),1,'chart displays verified official item artwork');
  assert.equal(await modal.locator('.gp-price-heading h2.gp-rarity-exotic').count(),1,'chart title retains native GW2 rarity');
  assert.equal(await modal.locator('.gp-price-quote').count(),2);
- assert.equal(await modal.locator('.gp-price-money img').count(),6,'both quotes show official GW2 gold/silver/copper icons');
+ assert.equal(await modal.locator('.gp-price-selection .gp-price-money img').count(),6,'selected quotes show official GW2 gold/silver/copper icons');
+ assert.equal(await modal.locator('.gp-price-range-summary .gp-price-money img').count(),6,'range extrema also show official GW2 denominations');
  await modal.getByRole('button',{name:'Expand chart'}).click();
  assert.equal(await modal.evaluate(el=>el.classList.contains('is-expanded')),true);
  assert.equal(await modal.getByRole('button',{name:/Zoom in|Earlier|Later/i}).count(),0,'no opaque button-step controls');
