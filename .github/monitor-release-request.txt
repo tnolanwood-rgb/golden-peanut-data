@@ -27,3 +27,5 @@ Approved fallback monitor deploy: 2026-11-06. PR #16 merged cbdb99a55bb12238a458
 Approved 7.21 private overnight evidence endpoint — 2026-11-06.
 Merged PR #17, commit 7bc951c8c3e2df0c06ae1a1df8f02a6db63f1d2f.
 Deploy authenticated, account-scoped /nights?items= with maximum 40 item IDs and fail-closed complete nightly samples. Do not modify existing D1 rows, keys, public quote collector, or Trading Post orders. Respect 30-minute private GitHub collector and existing data.
+
+2026-11-15: Deploy reviewed PR #43 monitor privacy fixes: opt-out tombstone, private history coverage warning and account isolation. Preserve the existing AES key and D1 schema; keep all private records and user consent. No account key transmitted by this approval marker. Require Worker health/preflight success.
