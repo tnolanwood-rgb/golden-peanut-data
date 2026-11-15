@@ -164,6 +164,34 @@ def compact_index(public):
             'source': 'ArenaNet public item metadata; no execution or current quote data'}
 
 
+HISTORY_SHARDS = 32
+
+def shard_history(history):
+    """Bounded on-demand slices for mobile item charts, never execution evidence."""
+    rows = history.get('history', {})
+    if history.get('schema') != 'golden-peanut-daily-v1' or not isinstance(rows, dict):
+        raise RuntimeError('Cannot shard invalid public history')
+    files = {index: {} for index in range(HISTORY_SHARDS)}
+    for key, observations in rows.items():
+        if not str(key).isdigit() or not isinstance(observations, list):
+            raise RuntimeError('Invalid history shard item')
+        item_id = int(key)
+        if item_id <= 0:
+            raise RuntimeError('Invalid history shard ID')
+        files[item_id % HISTORY_SHARDS][key] = observations
+    return {
+        f'market_history_shards/{index}.json': {
+            'schema': 'golden-peanut-history-shard-v1',
+            'modulus': HISTORY_SHARDS,
+            'shard': index,
+            'generation': history.get('generation'),
+            'generated_at': history.get('generated_at'),
+            'history': files[index],
+            'source': 'Daily public bid/ask snapshots, not completed trades'
+        } for index in range(HISTORY_SHARDS)
+    }
+
+
 def depth_rows(raw):
     out = {}
     for side in ('buys', 'sells'):
@@ -230,6 +258,9 @@ def run():
                'market_public.json': public, 'market_history.json': history,
                'market_depth.json': {'generation': generation, 'generated_at': generated, 'items': depths, 'quote_changes': changes},
                'market_recipes.json': {'generation': generation, 'generated_at': generated, 'recipes': recipes}}
+    # The full history remains intact for intelligence; 32 small deterministic
+    # slices allow an individual mobile price chart to load one file instead.
+    outputs.update(shard_history(history))
     # All network/validation work finishes BEFORE writing. Git commit publishes a generation atomically.
     for name, obj in outputs.items():
         write_json(OUTPUT / name, obj)
