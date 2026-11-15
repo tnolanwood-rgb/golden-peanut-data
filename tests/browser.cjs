@@ -177,7 +177,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.evaluate(()=>GPGuided.render());
  assert.equal(await modal.isVisible(),true);
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2,'selected inspection persists through refresh');
- await modal.getByRole('button',{name:'×'}).click();
+ await modal.getByRole('button',{name:'Close price chart'}).click();
  assert.equal(await modal.isVisible(),false);
  await page.getByRole('button',{name:'Explore all trade research'}).click();
  assert.equal(await page.locator('#gp-guided-root').isVisible(),false);
