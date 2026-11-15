@@ -141,6 +141,32 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,7);
  await modal.getByRole('button',{name:'All recorded'}).click();
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).viewSize,8);
+ await modal.getByRole('button',{name:'7 days'}).click();
+ // Native touch handlers stay bound to the persistent dialog even after the
+ // SVG is redrawn. Exercise a full drag and two-pointer pinch using synthetic
+ // pointer events, on both desktop and 390px-width Chromium layouts.
+ const gestures=await page.evaluate(()=>{
+  const dialog=document.querySelector('#gp-price-dialog');
+  const ptr=(type,id,x,target)=>target.dispatchEvent(new PointerEvent(type,{
+   bubbles:true,pointerId:id,pointerType:'touch',clientX:x,clientY:200,isPrimary:id===31
+  }));
+  let svg=dialog.querySelector('.gp-price-svg');
+  ptr('pointerdown',31,100,svg);
+  ptr('pointermove',31,330,dialog);
+  ptr('pointerup',31,330,dialog);
+  const dragged=GPGuidedPriceChart.state();
+  svg=dialog.querySelector('.gp-price-svg');
+  ptr('pointerdown',31,100,svg);
+  ptr('pointerdown',32,140,svg);
+  ptr('pointermove',32,350,dialog);
+  ptr('pointerup',32,350,dialog);
+  ptr('pointerup',31,100,dialog);
+  return {dragged,pinched:GPGuidedPriceChart.state(),visible:dialog.open};
+ });
+ assert.equal(gestures.visible,true);
+ assert.equal(gestures.dragged.offset,1,'dragging to an earlier day must move the visible time window');
+ assert.ok(gestures.pinched.viewSize<7,'pinching outward must increase chart detail');
+ await modal.getByRole('button',{name:'All recorded'}).click();
  await modal.locator('.gp-price-slider').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));});
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2);
  assert.equal(await modal.locator('.gp-price-quote').count(),2);
