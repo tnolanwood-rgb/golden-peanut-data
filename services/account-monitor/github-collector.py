@@ -176,22 +176,32 @@ def timestamp(x):
     return int(dt.timestamp() * 1000)
 
 
+class HistoryBatch(list):
+    """Backward-compatible rows with explicit history-coverage evidence."""
+    def __init__(self, rows, coverage):
+        super().__init__(rows)
+        self.coverage = coverage
+
+
 def history_side(side, known):
     rows = []
     max_pages = 2 if not known else MAX_HISTORY_PAGES
+    coverage = 'cap'
     for page in range(max_pages):
         items, headers = arena('/commerce/transactions/history/%s?page=%d&page_size=%d' % (side, page, PAGE_SIZE))
         if not isinstance(items, list):
             raise MonitorProblem('ArenaNet returned invalid transaction history')
         rows.extend(items)
-        if len(items) < PAGE_SIZE:
+        pages = headers.get('X-Page-Total') or headers.get('x-page-total')
+        if (pages and page + 1 >= int(pages)) or len(items) < PAGE_SIZE:
+            coverage = 'api-end'
             break
-        # History is newest-first; overlap one already-recorded page to catch
-        # amended quantities, then stop. We cannot see beyond the API's
-        # 90-day availability; the app retains everything previously saved.
-        if page >= 1 and any(int(x.get('id', 0)) in known for x in items):
+        # Overlap proves NEW transactions were captured, not that any prior
+        # capped bootstrap ever reached the oldest 90-day records.
+        if known and page >= 1 and any(int(x.get('id', 0)) in known for x in items):
+            coverage = 'known-overlap'
             break
-    return rows
+    return HistoryBatch(rows, coverage)
 
 
 def current_side(side):
@@ -274,6 +284,17 @@ def poll(account):
                   [account_id, side])
         recorded[side] = {int(x['trade_id']): int(x['quantity']) for x in past}
     recent = {side: history_side(side, recorded[side]) for side in ('buys', 'sells')}
+    previous_warning = db('SELECT last_error FROM gp_monitor_credentials WHERE account_id=? LIMIT 1',
+                          [account_id])
+    previously_capped = any('history_backfill_incomplete' in str(x.get('last_error') or '')
+                            for x in previous_warning)
+    capped = any(getattr(recent[side], 'coverage', 'api-end') == 'cap' for side in ('buys','sells'))
+    api_end = all(getattr(recent[side], 'coverage', 'api-end') == 'api-end'
+                  for side in ('buys','sells'))
+    # The warning persists if an earlier incomplete bootstrap now merely
+    # overlaps recently saved trades. Only reaching the API end can clear it.
+    history_warning = ('history_backfill_incomplete: 90-day private history coverage was capped'
+                       if capped or (previously_capped and not api_end) else None)
     stamp = NOW()
     trade_rows, events, orders, closed = [], [], [], []
     counts = {'newTrades': 0, 'partialUnits': 0, 'unknownClosures': 0}
@@ -333,8 +354,10 @@ def poll(account):
                   WHERE account_id=? AND side=? AND order_id=? AND closed_at IS NULL''', list(item))
     db('INSERT OR IGNORE INTO gp_monitor_polls(account_id,polled_at,buy_count,sell_count) VALUES(?,?,?,?)',
        [account_id,stamp,len(current['buys']),len(current['sells'])])
-    db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=NULL,consecutive_failures=0
-          WHERE account_id=? AND enabled=1''', [stamp,stamp,account_id])
+    db('''UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0
+          WHERE account_id=? AND enabled=1''', [stamp,stamp,history_warning,account_id])
+    counts['historyComplete'] = history_warning is None
+    counts['historyCoverage'] = {side: getattr(recent[side], 'coverage', 'api-end') for side in ('buys','sells')}
     counts['observedNights'] = finalize_nights(account_id,stamp)
     return counts, len(current['buys']),len(current['sells'])
 
@@ -419,6 +442,8 @@ def run():
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
         print('D1 rows written by private collector this run: %d' % D1_ROWS_WRITTEN)
+        if not metrics['historyComplete']:
+            print('WARNING: Private 90-day history remains incomplete. Recent fills and open orders can be recorded, but no exhaustive history is claimed.')
         return 0
     except Exception as e:
         # No API keys, account names, API response bodies, raw SQL parameters
