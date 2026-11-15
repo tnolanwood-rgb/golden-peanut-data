@@ -285,7 +285,7 @@ function install(){
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
   game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
   selectedId:state.selectedId,feedIssues:[...state.feedIssues],ledgerError:state.ledgerError,
-  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning,cacheWrites:cacheWriteCount
+  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning,cacheWrites:cacheWriteCount,iconWarmCount:warmedOsrsIcons.size
  })};
  win.GoldenDualHub.back=()=>{
   if(state.game!=='osrs')return false;
@@ -980,13 +980,21 @@ async function importOsrsBackup(event){
   render();
  }catch(e){txt("gh-backup-status","Import not applied: "+safe(e.message));}
 }
+let ledgerTotalsCache=null;
 function ledgerTotals(){
  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
+ // Today/weekly totals only change on a new recorded fill, a day rollover,
+ // or a new minute. Never rescan a 100k-row ledger on every Next swipe.
+ if(ledgerTotalsCache?.records===state.records&&ledgerTotalsCache.day===+day&&
+    now-ledgerTotalsCache.at>=0&&now-ledgerTotalsCache.at<60000)
+  return ledgerTotalsCache.result;
  const weekDate=new Date(day);weekDate.setDate(weekDate.getDate()-6);
  const week=+weekDate;let today=0n,lastWeek=0n;
  for(const r of state.records)if(r.side==="sell"&&Number.isSafeInteger(r.gain)){const t=Date.parse(r.when);if(t>=week&&t<=now)lastWeek+=BigInt(r.gain);if(t>=+day&&t<=now)today+=BigInt(r.gain)}
  const exact=value=>Number.isSafeInteger(Number(value))?Number(value):null;
- return {today:exact(today),lastWeek:exact(lastWeek)};
+ const result={today:exact(today),lastWeek:exact(lastWeek)};
+ ledgerTotalsCache={records:state.records,day:+day,at:now,result};
+ return result;
 }
 function render(){
  if(!get("gh-budget-metric"))return;
@@ -1081,10 +1089,17 @@ function render(){
    get("gh-add-fill").disabled=false;
   }
   const icon=get("gh-item-icon"),meta=state.mappingById.get(current.id);
-  icon.replaceChildren();const url=iconUrl(meta?.icon);
-  if(url){const image=el("img");image.src=url;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
-   image.onerror=()=>{icon.textContent="▥"};icon.append(image)}
-  else icon.textContent="▥";
+  const url=iconUrl(meta?.icon),existing=icon.firstElementChild;
+  if(url){
+   // Preserve the same decoded image between repeated paints of this item.
+   if(existing?.tagName!=='IMG'||existing.getAttribute('src')!==url){
+    const image=el('img');image.src=url;image.alt='';image.loading='eager';
+    image.decoding='async';image.fetchPriority='high';image.referrerPolicy='no-referrer';
+    image.onerror=()=>{if(icon.contains(image))icon.textContent='▥'};
+    icon.replaceChildren(image);
+   }
+  }else if(icon.textContent!=='▥')icon.textContent='▥';
+  prefetchNearbyOsrsIcons();
   get("gh-previous").disabled=state.index===0;get("gh-next").disabled=state.index===state.ideas.length-1;
   get("gh-show-chart").disabled=false;
  }
@@ -1092,6 +1107,25 @@ function render(){
  if(state.ledgerError){txt('gh-today','Unverified');txt('gh-week','Unverified');txt('gh-backup-status',state.ledgerError+' · Export the original for recovery.');get('gh-add-fill').disabled=true;}
  renderLedger();
  restoreScrolls();
+}
+// Predecode the nearest three icons only (not an entire market catalogue).
+const warmedOsrsIcons=new Map();
+let osrsPrefetchTimer=0;
+function prefetchNearbyOsrsIcons(){
+ if(osrsPrefetchTimer)win.clearTimeout(osrsPrefetchTimer);
+ osrsPrefetchTimer=win.setTimeout(()=>{
+  osrsPrefetchTimer=0;
+  if(!win.Image||doc.hidden||state.game!=='osrs')return;
+  for(const i of [state.index+1,state.index+2,state.index-1]){
+   const row=state.ideas[i];if(!row)continue;
+   const src=iconUrl(state.mappingById.get(row.id)?.icon);
+   if(!src||warmedOsrsIcons.has(src))continue;
+   const image=new win.Image();image.decoding='async';image.src=src;
+   warmedOsrsIcons.set(src,image);
+   while(warmedOsrsIcons.size>12)warmedOsrsIcons.delete(warmedOsrsIcons.keys().next().value);
+   if(typeof image.decode==='function')void image.decode().catch(()=>{});
+  }
+ },90);
 }
 function navigate(dir){
  if(!state.ideas.length)return;
