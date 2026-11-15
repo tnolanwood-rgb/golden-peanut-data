@@ -92,6 +92,8 @@ jobs:
           compatibility_date = "2026-11-06"
           workers_dev = true
           account_id = "{account}"
+          [vars]
+          MONITOR_BACKEND = "github-actions-fallback"
           [triggers]
           crons = ["*/10 * * * *"]
           [[d1_databases]]
