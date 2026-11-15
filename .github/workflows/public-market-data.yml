@@ -37,7 +37,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/market_public.json data/market_history.json data/market_depth.json data/market_recipes.json
+          git add data/market_index.json data/market_public.json data/market_history.json data/market_history_shards/ data/market_depth.json data/market_recipes.json
           if ! git diff --cached --quiet; then
             git commit -m 'data: complete public market generation'
             git pull --rebase origin "${GITHUB_REF_NAME}"

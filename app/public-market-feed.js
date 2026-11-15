@@ -5,11 +5,12 @@
 const OWN='https://raw.githubusercontent.com/tnolanwood-rgb/golden-peanut-data/main/data/';
 const FLIP='https://github.com/PieOrCake/flip_out/releases/download/seed-latest/';
 const DAY=86400000,MAX_CATALOGUE_AGE=3*DAY, MAX_HISTORY_AGE=3*DAY;
-let loaded=null,loading=null,trendStore=null,lastError='';
+let loaded=null,loading=null,indexLoaded=null,indexLoading=null,trendStore=null,historyLoading=null,lastError='';
+const itemHistoryCache=new Map(),itemHistoryPending=new Map(),HISTORY_SHARDS=32;
 function valid(v){return Number.isSafeInteger(v)&&v>0;}
 async function request(url,ms=9500){
  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms);
- try{const r=await fetch(url,{cache:'no-store',signal:ctl.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+ try{const r=await fetch(url,{cache:'no-cache',signal:ctl.signal,credentials:'omit',referrerPolicy:'no-referrer'});
   if(!r.ok)throw Error('public feed HTTP '+r.status);return await r.json();}
  finally{clearTimeout(t);}
 }
@@ -22,6 +23,23 @@ function parseOwn(body,now=Date.now()){
   byId.set(r[0],{...(body.metadata?.[r[0]]||{}),id:r[0],name:r[1],type:r[2],rarity:r[3],buy:r[4],sell:r[5],buyQty:r[6],sellQty:r[7],quoteAt:body.quote_times?.[r[0]]||body.generated_at});}
  if(byId.size<1000||byId.size!==body.items.length||body.count!==byId.size||(body.coverage?.quotes_complete===true&&body.coverage.universe!==byId.size))throw Error('Public item catalogue incomplete');
  return {coverage:body.coverage||null,generation:body.generation||null,source:'golden-peanut-github-public',byId,generatedAt:body.generated_at*1000,ageMs:age,usableForLiveTrades:false};
+}
+function parseIndex(body,now=Date.now()){
+ if(body?.schema!=='golden-peanut-index-v1'||!Number.isSafeInteger(body.generated_at)||
+    !Number.isSafeInteger(body.count)||!Array.isArray(body.items))throw Error('Invalid compact market index');
+ const age=now-body.generated_at*1000;
+ if(age< -3600000||age>MAX_CATALOGUE_AGE)throw Error('Compact market index outdated');
+ if(body.count<1000||body.count!==body.items.length)throw Error('Incomplete compact market index');
+ const byId=new Map();
+ for(const row of body.items){
+  if(!Array.isArray(row)||row.length!==4||!valid(row[0])||
+     typeof row[1]!=='string'||!row[1]||row[1].length>150||
+     typeof row[2]!=='string'||typeof row[3]!=='string'||byId.has(row[0]))
+   throw Error('Invalid compact market index entry');
+  byId.set(row[0],{id:row[0],name:row[1],type:row[2],rarity:row[3]});
+ }
+ return {source:'golden-peanut-index-labels-only',byId,generation:body.generation||null,
+  generatedAt:body.generated_at*1000,ageMs:age,usableForLiveTrades:false};
 }
 function parseFlipOut(body){
  if(!Array.isArray(body))throw Error('Wrong Flip Out index format');
@@ -46,6 +64,10 @@ function hydrate(state,result){
  if(!state?.meta)return;
  let additions=0;
  for(const [id,r] of result.byId){const old=state.meta[id]||{};
+  // Label-only startup index: don't allocate tens of thousands of duplicate
+  // metadata objects or overwrite richer saved icons and stat details.
+  if(result.source==='golden-peanut-index-labels-only'&&old.name===r.name&&
+     (old.type||'')===(r.type||'')&&(old.rarity||'')===(r.rarity||''))continue;
   state.meta[id]={...r,...old,id,name:r.name,type:r.type||old.type,rarity:r.rarity||old.rarity,
    details:r.details||old.details};if(!old.name)additions++;}
  result.addedNames=additions;
@@ -67,6 +89,34 @@ async function load(state,{force=false,now=Date.now()}={}){
   return result;
  })();
  try{return await loading;}finally{loading=null;}
+}
+/* Startup needs item IDs, names, types and rarity, not a 15+ MB quote
+ * snapshot. Deep discovery still requests the complete public market feed
+ * through load(). If no index has been published yet, preserve old behaviour
+ * by falling back to the full validated feed without losing user data. */
+async function loadIndex(state,{force=false,now=Date.now()}={}){
+ if(loaded&&!force&&loaded.loadedAt&&now-loaded.loadedAt<3600000){
+  hydrate(state,loaded);return loaded;
+ }
+ if(indexLoaded&&!force&&indexLoaded.loadedAt&&now-indexLoaded.loadedAt<3600000){
+  hydrate(state,indexLoaded);return indexLoaded;
+ }
+ if(indexLoading&&!force)return indexLoading;
+ indexLoading=(async()=>{
+  let result;
+  try{result=parseIndex(await request(OWN+'market_index.json',8000),now);}
+  catch(e){
+   lastError='Compact startup index unavailable: '+String(e?.message||e).slice(0,100);
+   return load(state,{force,now});
+  }
+  result.loadedAt=now;indexLoaded=result;
+  const changed=missingMetadata(state,result);
+  hydrate(state,result);
+  if(state?.db?.putMetadataBatch&&Object.keys(changed).length)
+   await state.db.putMetadataBatch(changed);
+  return result;
+ })();
+ try{return await indexLoading;}finally{indexLoading=null;}
 }
 /* Full-catalogue priority selector. A snapshot identifies ITEMS TO REQUOTE,
  * not measured volume or actionable buy opportunities. Deliberately reserve
@@ -143,10 +193,67 @@ function parseFlipOutHistory(body,now=Date.now()){
 }
 async function loadHistory({force=false,now=Date.now()}={}){
  if(trendStore&&!force&&now-trendStore.generatedAt<MAX_HISTORY_AGE)return trendStore;
- try{const x=parseHistory(await request(OWN+'market_history.json',11000),now);trendStore=x;return x;}
- catch(e){lastError=String(e?.message||e).slice(0,120);
-  try{const x=parseFlipOutHistory(await request(FLIP+'seed_prices.json',10000),now);trendStore=x;return x;}
-  catch(e2){lastError+='; '+String(e2?.message||e2).slice(0,120);return null;}}
+ if(historyLoading&&!force)return historyLoading;
+ const promise=(async()=>{
+  try{const x=parseHistory(await request(OWN+'market_history.json',11000),now);trendStore=x;return x;}
+  catch(e){lastError=String(e?.message||e).slice(0,120);
+   try{const x=parseFlipOutHistory(await request(FLIP+'seed_prices.json',10000),now);trendStore=x;return x;}
+   catch(e2){lastError+='; '+String(e2?.message||e2).slice(0,120);return null;}}
+ })();
+ historyLoading=promise;
+ try{return await promise;}finally{if(historyLoading===promise)historyLoading=null;}
+}
+/* Individual charts should fetch only 1/32 of the daily history dataset.
+ * Each slice is checked independently. Fallback to the old whole-market file
+ * while the next public collector generation is still publishing shards. */
+function parseHistoryShard(body,id,now=Date.now()){
+ if(!valid(id)||body?.schema!=='golden-peanut-history-shard-v1'||
+    body.modulus!==HISTORY_SHARDS||body.shard!==id%HISTORY_SHARDS||
+    !Number.isSafeInteger(body.generated_at)||
+    !body.history||typeof body.history!=='object'||Array.isArray(body.history))
+  throw Error('Invalid item history shard');
+ const age=now-body.generated_at*1000;
+ if(age< -3600000||age>MAX_HISTORY_AGE)throw Error('Item history shard outdated');
+ const rows=body.history[String(id)]||[];
+ if(!Array.isArray(rows)||rows.length>21)throw Error('Invalid item history observations');
+ const clean=[];
+ const seen=new Set();
+ const day=Math.floor(now/DAY);
+ for(const r of rows){
+  if(!Array.isArray(r)||r.length!==5||!r.every(x=>Number.isSafeInteger(x)&&x>=0)||
+     r[0]>day||r[0]<=day-21||seen.has(r[0]))throw Error('Malformed item history observation');
+  seen.add(r[0]);clean.push(r);
+ }
+ clean.sort((a,b)=>a[0]-b[0]);
+ const entries=new Map();if(clean.length>=2)entries.set(id,clean);
+ return {source:'own-public-daily-quoted-price-shard',entries,generatedAt:body.generated_at*1000};
+}
+async function loadItemHistory(id,{force=false,now=Date.now()}={}){
+ if(!valid(id))return null;
+ if(trendStore&&!force&&now-trendStore.generatedAt<MAX_HISTORY_AGE)
+  return trendStore;
+ const cached=itemHistoryCache.get(id);
+ if(!force&&cached&&now-cached.generatedAt<MAX_HISTORY_AGE){
+  itemHistoryCache.delete(id);itemHistoryCache.set(id,cached);return cached;
+ }
+ if(itemHistoryPending.has(id)&&!force)return itemHistoryPending.get(id);
+ const pending=(async()=>{
+  let result=null;
+  try{
+   const url=OWN+'market_history_shards/'+(id%HISTORY_SHARDS)+'.json';
+   result=parseHistoryShard(await request(url,8000),id,now);
+  }catch(err){
+   lastError='Item-history shard unavailable: '+String(err?.message||err).slice(0,90);
+   result=await loadHistory({force,now});
+  }
+  if(result){
+   itemHistoryCache.delete(id);itemHistoryCache.set(id,result);
+   while(itemHistoryCache.size>12)itemHistoryCache.delete(itemHistoryCache.keys().next().value);
+  }
+  return result;
+ })();
+ itemHistoryPending.set(id,pending);
+ try{return await pending;}finally{if(itemHistoryPending.get(id)===pending)itemHistoryPending.delete(id);}
 }
 function volatility(id){
  const rows=trendStore?.entries.get(id);if(!rows||rows.length<5||Date.now()-trendStore.generatedAt>MAX_HISTORY_AGE||Date.now()-rows.at(-1)[0]*DAY>MAX_HISTORY_AGE)return null;
@@ -158,8 +265,8 @@ function volatility(id){
  return {days:asks.length,relativeStd:changing,spiking:high,
   caution:high||changing>.4,source:'public daily ASK snapshots, not actual trading volume'};
 }
-function status(){return {source:loaded?.source||null,items:loaded?.byId.size||0,
+function status(){return {source:loaded?.source||indexLoaded?.source||null,items:loaded?.byId.size||indexLoaded?.byId.size||0,fullMarketSnapshotLoaded:!!loaded,
   generatedAt:loaded?.generatedAt||null,historyMarkets:trendStore?.entries.size||0,lastError};}
-root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadHistory,equipmentSeeds,volatility,status,parseOwn,parseFlipOut,parseHistory,parseFlipOutHistory};
+root.GPMarketFeed={buildId:'7.16.0-evidence',load,loadIndex,loadHistory,loadItemHistory,equipmentSeeds,volatility,status,parseOwn,parseIndex,parseFlipOut,parseHistory,parseHistoryShard,parseFlipOutHistory};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.GPMarketFeed;
 })(typeof globalThis!=='undefined'?globalThis:this);

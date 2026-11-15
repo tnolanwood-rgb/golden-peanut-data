@@ -57,6 +57,15 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('.gp-guide-idea').count(),1);
  assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
  assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ // Repeated guided repaints and navigation must reuse the same opportunity
+ // evaluation instead of rescreening thousands of markets for every tap.
+ const guideBuilds=await page.evaluate(()=>{
+  const before=GPMarketBoard.build;let count=0;
+  GPMarketBoard.build=(...args)=>{count++;return before(...args);};
+  try{for(let i=0;i<6;i++)GPGuided.render();return count;}
+  finally{GPMarketBoard.build=before;}
+ });
+ assert.ok(guideBuilds<=1,'six unchanged guided repaints should not rebuild the opportunity board six times');
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
  // swaps priorities, even before the user presses Next.
@@ -320,7 +329,24 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Mini Untraded Catalogue Test'));
  assert.match(await page.locator('#focus-trade-rows').innerText(),/current price and profit unverified|no fill or profit forecast/i);
  await page.locator('#focus-trade-search').fill('99001');
- assert.match(await page.locator('#focus-trade-rows').innerText(),/Mini Untraded Catalogue Test/);
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Mini Untraded Catalogue Test'));
+ // Ten synchronous input events should result in one actual results build,
+ // not ten large DOM reconstructions; last typed value must win.
+ const rapidSearch=await page.evaluate(async()=>{
+  const el=document.querySelector('#focus-trade-search'),target=document.querySelector('#focus-trade-rows');
+  const original=target.replaceChildren;let calls=0;
+  target.replaceChildren=function(...args){calls++;return original.apply(this,args);};
+  try{
+   for(const term of ['M','Ma','Mar','Mark','Marke','Market','Market ','Market I','Market It','99001']){
+    el.value=term;el.dispatchEvent(new Event('input',{bubbles:true}));
+   }
+   await new Promise(resolve=>setTimeout(resolve,260));
+   return {calls,value:el.value,matched:target.textContent.includes('Mini Untraded Catalogue Test')};
+  }finally{target.replaceChildren=original;}
+ });
+ assert.equal(rapidSearch.calls,1,'rapid typing coalesces into one trade DOM redraw');
+ assert.equal(rapidSearch.value,'99001');
+ assert.equal(rapidSearch.matched,true,'final search query wins');
  await page.locator('#focus-trade-search').fill('Catalogue family');
  await page.waitForFunction(()=>document.querySelector('#focus-trade-rows')?.textContent.includes('Show more catalogue matches'));
  const before=await page.locator('#focus-trade-rows .focus-memory-related').count();

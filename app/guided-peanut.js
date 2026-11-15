@@ -10,6 +10,7 @@ const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, priceChart=null, chartOpen=false;
 let chartDays=21, chartOffset=0, fingerprint='', renderTimer=0;
+let ideasCache=null;
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
 const save=(k,v)=>{try{localStorage.setItem(k,v);}catch{}};
 const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
@@ -24,8 +25,21 @@ function board(s){
  }catch{return null;}
 }
 function ideas(s){
+ const plan=s?.opportunityPlan,snap=snapshot(s),engine=root.GPMarketBoard?.build;
+ // Heavy capital allocation and public-market sorting should not rerun for
+ // every navigation click, account label repaint or visibility timer.
+ // A minute boundary reevaluates freshness, even when plans are unchanged.
+ const minute=Math.floor(Date.now()/60000),parts=[
+  s?.account,s?.opportunityAt,plan,engine,snap?.wallet,
+  plan?.orders,plan?.marketChoices,plan?.publicResearch,
+  plan?.activeBook,plan?.privateNightEvidence,
+  plan?.orders?.length,plan?.marketChoices?.length,plan?.publicResearch?.length,
+  s?.externalMarketStatus?.indexed,s?.externalMarketStatus?.at,minute
+ ];
+ if(ideasCache&&parts.length===ideasCache.parts.length&&parts.every((v,i)=>v===ideasCache.parts[i]))
+  return ideasCache.rows;
  const b=board(s), out=[], used=new Set();
- if(!b?.ready)return out;
+ if(!b?.ready){ideasCache={parts,rows:out};return out;}
  const append=(rows,tier)=>{
   for(const v of rows||[]){
    const id=Number(v.id||v.item);
@@ -45,6 +59,7 @@ function ideas(s){
  append(b.forecast,'forecast');
  append(b.history,'history');
  append(b.newMarkets,'research');
+ ideasCache={parts,rows:out};
  return out;
 }
 function setCurrent(id){current=id;priceChart=null;chartOpen=false;chartDays=21;chartOffset=0;}
@@ -218,8 +233,8 @@ function renderChartArea(host){
 function showChart(choice){
  chartOpen=true;chartDays=21;chartOffset=0;priceChart=null;render(true);
  const area=$('gp-guide-chart-section');area?.scrollIntoView({block:'start',behavior:'smooth'});
- if(!root.GPMarketFeed?.loadHistory){$('gp-guide-chart-body').textContent='A compatible price-history feed is not available.';return;}
- root.GPMarketFeed.loadHistory().then(data=>{
+ if(!root.GPMarketFeed?.loadItemHistory){$('gp-guide-chart-body').textContent='A compatible price-history feed is not available.';return;}
+ root.GPMarketFeed.loadItemHistory(choice.id).then(data=>{
   if(!chartOpen||current!==choice.id)return;
   const rows=data?.entries?.get(choice.id)||[];
   priceChart={id:choice.id,source:data?.source||'',rows:rows.filter(r=>Array.isArray(r)&&r.length>=3&&r[1]>0&&r[2]>0)};
