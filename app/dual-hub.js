@@ -236,6 +236,11 @@ function moveScene(scene,offset){
 function finishScene(scene,commit){
  if(!scene||scene.closed)return;
  scene.closed=true;
+ if(activeAnimation?.scene===scene){
+  const {a,b}=activeAnimation;activeAnimation=null;
+  // Remove Web Animation fill-forwards before clearing inline drag transforms.
+  try{a.cancel();b.cancel();}catch{}
+ }
  const next=commit?scene.next:scene.from;
  scene.out.style.transform="";scene.incoming.style.transform="";
  scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
