@@ -1,6 +1,6 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
-const VERSION="dual-hub-main-2026-11-15";
+const VERSION="osrs-research-2.0-2026-11-15";
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1";
@@ -49,18 +49,23 @@ function renderValueTier(idea){
  if(t)heading.dataset.osrsValueTier=String(t.tier);
 }
 win.GoldenOSRSValueTiers=Object.freeze({classify:classifyValueTier});
-const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false,priceError:null};
+const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false,priceError:null,researchMode:"liquid",valueFloor:100000,search:"",watchOnly:false,watchlist:new Set(),liquidIdeas:[],valueIdeas:[],scanCount:0,positiveSpreads:0};
 function loadUser(){
  const c=read(CFG,{});
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
  state.mode=c.mode==="members"?"members":"f2p";
  state.restricted=c.restricted==="clear"?"clear":"unknown";
  state.index=Number.isSafeInteger(n(c.position))&&n(c.position)>=0?n(c.position):0;
+ state.researchMode=c.researchMode==="value"?"value":"liquid";
+ state.valueFloor=[100000,1000000,10000000].includes(c.valueFloor)?c.valueFloor:100000;
+ state.search=typeof c.search==="string"?c.search.slice(0,80):"";
+ state.watchOnly=c.watchOnly===true;
+ state.watchlist=new Set(Array.isArray(c.watchlist)?c.watchlist.filter(x=>Number.isSafeInteger(x)&&x>0).slice(0,200):[]);
  const records=read(LEDGER,[]);
  state.records=Array.isArray(records)?records.filter(r=>r&&Number.isSafeInteger(r.id)&&r.id>0&&["buy","sell"].includes(r.side)&&good(r.qty)&&good(r.price)&&Number.isFinite(Date.parse(r.when))).slice(-1000):[];
 }
 function saveUser(){
- return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index})&&store(LEDGER,state.records);
+ return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index,researchMode:state.researchMode,valueFloor:state.valueFloor,search:state.search,watchOnly:state.watchOnly,watchlist:[...state.watchlist]})&&store(LEDGER,state.records);
 }
 /* OSRS Wiki mapping contains original in-game inventory-icon filenames. */
 function iconUrl(name){
@@ -93,22 +98,59 @@ function blank(){
   <div class="gp-guide-metric"><div class="gp-guide-label">Last 7 days · realised</div><strong class="gp-guide-number" id="gh-week">—</strong><small>Not predicted future profit</small></div>
  </div>
  <p class="gp-guide-update" id="gh-status" role="status" aria-live="polite">Loading OSRS market prices…</p>
+ <section class="gh-market-lab" aria-label="OSRS research engine">
+   <div class="gh-market-tabs" role="group" aria-label="Trade discovery type">
+     <button type="button" id="gh-mode-liquid" aria-pressed="true">Verified liquid flips</button>
+     <button type="button" id="gh-mode-value" aria-pressed="false">High-value research</button>
+   </div>
+   <div class="gh-market-controls">
+     <label class="gh-market-search-label" for="gh-market-search">Find a market
+       <input id="gh-market-search" type="search" placeholder="Search item names" autocomplete="off" maxlength="80">
+     </label>
+     <label id="gh-floor-label" for="gh-value-floor">Minimum item value
+       <select id="gh-value-floor">
+         <option value="100000">100k+ GP</option><option value="1000000">1m+ GP</option><option value="10000000">10m+ GP</option>
+       </select>
+     </label>
+   </div>
+   <div class="gh-market-bottom">
+     <p id="gh-research-counts" class="gh-market-counts" role="status" aria-live="polite">Waiting for market evidence…</p>
+     <label class="gh-watch-filter"><input type="checkbox" id="gh-only-watch"> Watched only</label>
+   </div>
+ </section>
  <section class="gp-guide-idea" aria-label="Next OSRS trade idea">
   <div class="gh-trade-shell"><div class="gh-trade-scroll">
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
+  <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
+  <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
+   <h3>What prices should I enter into the GE?</h3>
+   <p class="gh-quote-intro">OSRS does not publish a live order book. These are recent <strong>completed transactions</strong> and experimental limit-order targets, not outstanding offers.</p>
+   <div class="gh-quote-grid">
+    <div><span>Last instant SELL (low)</span><strong id="gh-last-sell">—</strong><small id="gh-last-sell-age"></small></div>
+    <div><span>Last instant BUY (high)</span><strong id="gh-last-buy">—</strong><small id="gh-last-buy-age"></small></div>
+   </div>
+   <div class="gh-quote-targets">
+    <div><span>Try listing a BUY at</span><strong id="gh-bid-target">—</strong></div>
+    <div><span>Try listing a SELL at</span><strong id="gh-ask-target">—</strong></div>
+   </div>
+   <p id="gh-quote-margin" class="gh-quote-margin">—</p>
+   <p id="gh-quote-meta" class="gh-quote-meta"></p>
+   <p id="gh-quote-warning" class="gh-quote-warning"></p>
+  </section>
   <div class="gp-guide-instructions">
     <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
     <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
   </div>
   <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
   <div class="gp-guide-totals">
-   <div class="gp-guide-metric"><span class="gp-guide-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
-   <div class="gp-guide-metric"><span class="gp-guide-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-margin-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-total-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
   </div>
   <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
+  <button type="button" id="gh-watch-toggle" class="gp-guide-secondary gh-watch-toggle" hidden aria-pressed="false">☆ Watch market</button>
   </div><div class="gh-action-dock"><div class="gp-guide-controls">
     <button type="button" id="gh-previous" class="gp-guide-secondary" disabled>← Previous</button>
     <button type="button" id="gh-next" class="gp-guide-primary" disabled>Next →</button>
@@ -203,7 +245,7 @@ function install(){
  doc.addEventListener("visibilitychange",()=>{if(doc.hidden)cancelOnResize()});
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
-  game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,
+  game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
   dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning
  })};
  const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
@@ -216,6 +258,25 @@ function activateOsrs(){
  if(!root)return;
  root.append(blank());
  get("gh-refresh").addEventListener("click",()=>refresh(true));
+ get("gh-market-search").value=state.search;
+ get("gh-value-floor").value=String(state.valueFloor);
+ get("gh-only-watch").checked=state.watchOnly;
+ get("gh-mode-liquid").addEventListener("click",()=>chooseResearchMode("liquid"));
+ get("gh-mode-value").addEventListener("click",()=>chooseResearchMode("value"));
+ get("gh-market-search").addEventListener("change",()=>saveUser());
+ get("gh-market-search").addEventListener("input",event=>{
+  state.search=String(event.target.value||"").toLocaleLowerCase().trim().slice(0,80);
+  state.index=0;applyIdeasView();render();
+ });
+ get("gh-value-floor").addEventListener("change",event=>{
+  const floor=Number(event.target.value);
+  if(![100000,1000000,10000000].includes(floor))return;
+  state.valueFloor=floor;state.index=0;applyIdeasView();saveUser();render();
+ });
+ get("gh-only-watch").addEventListener("change",event=>{
+  state.watchOnly=event.target.checked;state.index=0;applyIdeasView();saveUser();render();
+ });
+ get("gh-watch-toggle").addEventListener("click",toggleMarketWatch);
  get("gh-empty-retry").addEventListener("click",()=>refresh(true));
  get("gh-settings-toggle").addEventListener("click",()=>{const x=get("gh-settings");x.open=!x.open;if(x.open)x.scrollIntoView({block:"nearest",behavior:"smooth"})});
  get("gh-apply").addEventListener("click",applySettings);
@@ -514,44 +575,179 @@ async function refresh(force){
   render();
  }
 }
+/* Explore all markets once from the Wiki bulk endpoints.
+ * Liquid mode is the unchanged cautious execution screen. Value mode is
+ * explicitly observational research: thin/stale/members/out-of-budget items
+ * remain visible with warnings, not falsely promoted to actionable fills. */
+function chooseResearchMode(next){
+ if(next!=="liquid"&&next!=="value")return;
+ state.researchMode=next;state.index=0;state.watchOnly=false;
+ const only=get("gh-only-watch");if(only)only.checked=false;
+ applyIdeasView();saveUser();render();
+}
+function toggleMarketWatch(){
+ const idea=state.ideas[state.index];if(!idea)return;
+ if(state.watchlist.has(idea.id))state.watchlist.delete(idea.id);
+ else if(state.watchlist.size<200)state.watchlist.add(idea.id);
+ else{txt("gh-status","Watchlist full (200 markets). Unwatch another before adding this one.");return;}
+ saveUser();applyIdeasView();render();
+}
+function applyIdeasView(){
+ const base=state.researchMode==="value"?state.valueIdeas:state.liquidIdeas;
+ const query=state.search.toLocaleLowerCase();
+ state.ideas=base.filter(x=>(!query||x.name.toLocaleLowerCase().includes(query))&&
+  (!state.watchOnly||state.watchlist.has(x.id))&&
+  (state.researchMode!=="value"||Math.round((x.observedBuy+x.observedSell)/2)>=state.valueFloor));
+ state.index=Math.min(state.index,Math.max(0,state.ideas.length-1));
+}
+function researchScore(age,flow,drift,stress){
+ // Evidence quality is a transparent ranking score, NEVER fill probability.
+ const freshness=clamp(1-age/86400,0,1);
+ const liquidity=clamp(Math.log10(1+Math.max(0,flow))/Math.log10(101),0,1);
+ const stability=Number.isFinite(drift)?clamp(1-drift/0.4,0,1):0;
+ return Math.round(100*(0.35*freshness+0.35*liquidity+0.2*stability+0.1*(stress>0?1:0)));
+}
 function buildIdeas(){
- if(!state.snap){state.ideas=[];return}
+ state.liquidIdeas=[];state.valueIdeas=[];state.scanCount=0;state.positiveSpreads=0;
+ if(!state.snap){applyIdeasView();return;}
  const now=Date.now()/1000,s=state.snap,latest=s.latest.data||{},five=s.five.data||{},hour=s.hour.data||{};
  const hourFresh=n(s.hour.timestamp)<=now+60&&n(s.hour.timestamp)>=now-10800;
  const fiveFresh=n(s.five.timestamp)<=now+60&&n(s.five.timestamp)>=now-1200;
- const list=[];
- if(!hourFresh||!fiveFresh||state.stale){state.ideas=[];return}
+ if(!hourFresh||!fiveFresh||state.stale){applyIdeasView();return;}
+ const liquid=[],value=[];
  for(const m of s.mapping){
-  // Bonds require conversion/re-tradeability handling not represented by normal GE spread math.
+  // Bonds require conversion/re-tradeability handling missing in normal GE math.
   if(String(m.name).toLowerCase()==="old school bond")continue;
+  const p=latest[m.id],f=five[m.id],h=hour[m.id],limit=n(m.limit);
+  if(!p)continue;
+  const buy=n(p.low),sell=n(p.high);
+  if(!good(buy)||!good(sell)||!Number.isSafeInteger(buy)||!Number.isSafeInteger(sell)||buy>=sell)continue;
+  state.scanCount++;
+  const age=Math.max(now-n(p.lowTime),now-n(p.highTime));
+  if(!Number.isFinite(age)||age<0)continue;
+  const observedProfit=sell-buy-tax(sell,m.name);
+  if(observedProfit<=0||!Number.isSafeInteger(observedProfit))continue;
+  state.positiveSpreads++;
+  const cap=good(limit)?Math.floor(limit):0;
+  const lowVol=n(h?.lowPriceVolume),highVol=n(h?.highPriceVolume);
+  const flow=Number.isFinite(lowVol)&&Number.isFinite(highVol)?Math.max(0,Math.min(lowVol,highVol)):0;
+  const hBuy=n(h?.avgLowPrice),hSell=n(h?.avgHighPrice);
+  const drift=good(hBuy)&&good(hSell)?
+   Math.max(Math.abs(hBuy-buy)/buy,Math.abs(hSell-sell)/sell):Infinity;
+  const stressSell=Math.max(1,sell-Math.ceil(sell*.02));
+  const stressProfit=stressSell-buy-tax(stressSell,m.name);
+  const evidence=researchScore(age,flow,drift,stressProfit);
+  const affordable=Math.floor(state.budget/buy);
+  // High-value discovery doesn't assume the displayed ask/bid prices are
+  // executable concurrently. Price age or sparse volume means elevated risk.
+  // Allow out-of-budget and members markets for *research*, not a buy signal.
+  if(age<=86400 && Math.round((buy+sell)/2)>=100000){
+   const warnings=[];
+   if(m.members&&state.mode==="f2p")warnings.push("Members item — F2P account cannot buy");
+   if(buy>state.budget)warnings.push("More capital needed for one unit");
+   if(age>7200)warnings.push("Last observed trade older than two hours");
+   if(flow<50)warnings.push("Thin market: fewer than 50 two-way hourly trades");
+   if(!Number.isFinite(drift)||drift>.3)warnings.push("Price disagrees with hourly averages");
+   if(stressProfit<=0)warnings.push("A 2% lower sale price erases the spread");
+   if(!cap)warnings.push("GE purchase limit not verified");
+   const candidate={
+    id:m.id,name:m.name,members:!!m.members,buy,sell,observedBuy:buy,observedSell:sell,
+    profit:observedProfit,spread:observedProfit/buy,qty:Math.max(0,Math.min(cap||1,affordable)),
+    limit:cap,flow,age,drift,stressedMargin:stressProfit,total:0,
+    evidence,research:true,warnings,
+    capitalGap:Math.max(0,buy-state.budget),
+    score:evidence*.75+Math.log10(1+observedProfit)*5
+   };
+   value.push(candidate);
+  }
+  // Verified/liquid mode retains the established strict screening rules.
   if(state.mode==="f2p"&&m.members)continue;
   if(state.mode==="f2p"&&state.restricted!=="clear"&&RESTRICTED.has(m.name))continue;
-  const p=latest[m.id],f=five[m.id],h=hour[m.id];
-  if(!p||!f||!h)continue;
-  const buy=n(p.low),sell=n(p.high),cap=n(m.limit);
-  if(!good(buy)||!good(sell)||!good(cap)||buy>state.budget||sell<=buy)continue;
-  const age=Math.max(now-n(p.lowTime),now-n(p.highTime));
-  if(!Number.isFinite(age)||age<0||age>7200)continue;
-  const flow=Math.min(n(h.lowPriceVolume),n(h.highPriceVolume));
+  if(!f||!h||!good(cap)||buy>state.budget||age>7200)continue;
+  if(!Number.isFinite(flow)||flow<50)continue;
   const recentFlow=Math.min(n(f.lowPriceVolume),n(f.highPriceVolume));
-  if(!Number.isFinite(flow)||flow<50||!Number.isFinite(recentFlow)||recentFlow<1)continue;
-  const refBuy=Math.ceil(Math.max(buy,n(h.avgLowPrice),n(f.avgLowPrice)));
-  const refSell=Math.floor(Math.min(sell,n(h.avgHighPrice),n(f.avgHighPrice)));
+  if(!Number.isFinite(recentFlow)||recentFlow<1)continue;
+  const refBuy=Math.ceil(Math.max(buy,hBuy,n(f.avgLowPrice)));
+  const refSell=Math.floor(Math.min(sell,hSell,n(f.avgHighPrice)));
   if(!good(refBuy)||!good(refSell)||refBuy>=refSell)continue;
   const profit=refSell-refBuy-tax(refSell,m.name),spread=profit/refBuy;
   if(profit<=0||spread>=.4||spread<=0)continue;
-  const drift=Math.max(Math.abs(refBuy-buy)/buy,Math.abs(refSell-sell)/sell);
-  if(drift>.3)continue;
-  const qty=Math.min(Math.floor(cap),Math.max(0,Math.floor(flow*0.04)),Math.floor(state.budget/refBuy));
+  const currentDrift=Math.max(Math.abs(refBuy-buy)/buy,Math.abs(refSell-sell)/sell);
+  if(currentDrift>.3)continue;
+  const qty=Math.min(cap,Math.max(0,Math.floor(flow*.04)),Math.floor(state.budget/refBuy));
   if(!Number.isSafeInteger(qty)||qty<1||!Number.isSafeInteger(qty*refBuy))continue;
-  const stressSell=Math.max(1,refSell-Math.ceil(refSell*.02));
-  const stressedMargin=stressSell-refBuy-tax(stressSell,m.name);
-  const reliability=(age>3600?.7:1)*(drift>.1?.75:1)*(stressedMargin>0?1:.5);
-  list.push({id:m.id,name:m.name,members:!!m.members,buy:refBuy,sell:refSell,observedBuy:buy,observedSell:sell,profit,spread,qty,limit:cap,flow,age,drift,stressedMargin,total:qty*profit,score:qty*profit*reliability});
+  const stressedSell=Math.max(1,refSell-Math.ceil(refSell*.02));
+  const stressedMargin=stressedSell-refBuy-tax(stressedSell,m.name);
+  const reliability=(age>3600?.7:1)*(currentDrift>.1?.75:1)*(stressedMargin>0?1:.5);
+  liquid.push({id:m.id,name:m.name,members:!!m.members,buy:refBuy,sell:refSell,
+   observedBuy:buy,observedSell:sell,profit,spread,qty,limit:cap,flow,age,drift:currentDrift,
+   stressedMargin,total:qty*profit,score:qty*profit*reliability,
+   evidence:researchScore(age,flow,currentDrift,stressedMargin),research:false,warnings:[]});
  }
- list.sort((a,b)=>b.score-a.score||a.id-b.id);
- state.ideas=list.slice(0,80);
- state.index=Math.min(state.index,Math.max(0,state.ideas.length-1));
+ liquid.sort((a,b)=>b.score-a.score||a.id-b.id);
+ value.sort((a,b)=>b.score-a.score||b.profit-a.profit||a.id-b.id);
+ // Keep the full qualified universe searchable; pagination is done by the
+ // existing Previous/Next card rather than discarding markets before search.
+ state.liquidIdeas=liquid;
+ state.valueIdeas=value;
+ applyIdeasView();
+}
+/* OSRS Wiki latest HIGH = a completed instant BUY, LOW = a completed
+ * instant SELL. Neither is the currently open best bid or ask. We expose
+ * their timestamps and trial limit prices, never invent a live order book. */
+function listingGuide(idea){
+ if(!idea||!state.snap)return null;
+ const p=state.snap.latest?.data?.[idea.id],f=state.snap.five?.data?.[idea.id],
+  h=state.snap.hour?.data?.[idea.id];
+ const low=Number(p?.low),high=Number(p?.high),lowTime=Number(p?.lowTime),
+  highTime=Number(p?.highTime),now=Math.floor(Date.now()/1000);
+ if(!Number.isSafeInteger(low)||!Number.isSafeInteger(high)||low<=0||high<=low||
+   !Number.isSafeInteger(lowTime)||!Number.isSafeInteger(highTime)||
+   lowTime>now+60||highTime>now+60)return null;
+ const lowAge=now-lowTime,highAge=now-highTime,spread=high-low;
+ // One-GP price improvement is a *trial* to queue ahead of the last
+ // observed execution anchors. It does not reveal queue depth or guarantee fills.
+ const bid=low+1,ask=high-1;
+ const margin=ask-bid-tax(ask,idea.name);
+ const viable=Number.isSafeInteger(margin)&&bid<ask&&margin>0;
+ const flow=Math.max(0,Math.min(Number(h?.lowPriceVolume)||0,Number(h?.highPriceVolume)||0));
+ const fiveLow=Number(f?.avgLowPrice),fiveHigh=Number(f?.avgHighPrice),
+  hourLow=Number(h?.avgLowPrice),hourHigh=Number(h?.avgHighPrice);
+ const ages=[lowAge,highAge];
+ const warn=[];
+ if(Math.max(...ages)>900)warn.push('At least one last-trade price is over 15 minutes old');
+ if(flow<50)warn.push('Low two-way volume: limit orders could take a long time');
+ if(Number.isFinite(hourLow)&&hourLow>0&&Math.abs(low-hourLow)/hourLow>.15||
+    Number.isFinite(hourHigh)&&hourHigh>0&&Math.abs(high-hourHigh)/hourHigh>.15)
+  warn.push('Latest executions differ notably from hourly averages');
+ if(!viable)warn.push('One-GP inside-spread offers do not produce a positive after-tax margin');
+ if(idea.members&&state.mode==="f2p")warn.push('Members-only item; cannot trade on F2P');
+ if(bid>state.budget)warn.push('Buy listing exceeds your entered cash budget');
+ return {low,high,lowAge,highAge,bid:viable?bid:null,ask:viable?ask:null,
+  margin:viable?margin:null,flow,warn,
+  fiveLow:Number.isFinite(fiveLow)?fiveLow:null,fiveHigh:Number.isFinite(fiveHigh)?fiveHigh:null,
+  hourLow:Number.isFinite(hourLow)?hourLow:null,hourHigh:Number.isFinite(hourHigh)?hourHigh:null};
+}
+function renderListingGuide(idea){
+ const section=get('gh-order-guide');
+ if(!section)return;
+ const quote=listingGuide(idea);
+ section.hidden=!quote;
+ if(!quote)return;
+ txt('gh-last-sell',gp(quote.low));txt('gh-last-buy',gp(quote.high));
+ txt('gh-last-sell-age',Math.max(0,Math.round(quote.lowAge/60))+' min ago · completed seller-initiated trade');
+ txt('gh-last-buy-age',Math.max(0,Math.round(quote.highAge/60))+' min ago · completed buyer-initiated trade');
+ txt('gh-bid-target',quote.bid===null?'No prudent target':gp(quote.bid));
+ txt('gh-ask-target',quote.ask===null?'No prudent target':gp(quote.ask));
+ txt('gh-quote-margin',quote.margin===null?'No positive after-tax trial spread':
+  'Illustrative net per unit, if BOTH offers fill: '+gp(quote.margin));
+ const pair=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)?gp(a)+' low / '+gp(b)+' high':'not recorded';
+ txt('gh-quote-meta','5-minute averages: '+pair(quote.fiveLow,quote.fiveHigh)+
+  ' · 1-hour averages: '+pair(quote.hourLow,quote.hourHigh)+
+  ' · hourly two-way volume '+quote.flow.toLocaleString('en-GB')+
+  ' · GE tax '+(quote.ask===null?'—':gp(tax(quote.ask,idea.name))));
+ txt('gh-quote-warning',(quote.warn.length?quote.warn.join(' · ')+' · ':'')+
+  'Prices are historical completed trades, NOT open listings. Suggested limits are one GP inside the recorded spread, not proven best bids/asks or fill predictions. Test small and adjust from your actual fills.');
 }
 function validateOsrsRows(raw){
  if(!Array.isArray(raw)||raw.length>1000)throw Error("Backup contains too many trade records");
@@ -632,7 +828,21 @@ function render(){
  const totals=ledgerTotals();txt("gh-today",gp(totals.today));txt("gh-week",gp(totals.lastWeek));
  get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;
  const current=state.ideas[state.index];
+ get("gh-mode-liquid").setAttribute("aria-pressed",String(state.researchMode==="liquid"));
+ get("gh-mode-value").setAttribute("aria-pressed",String(state.researchMode==="value"));
+ get("gh-floor-label").hidden=state.researchMode!=="value";
+ txt("gh-research-counts",state.loading?"Scanning price and volume evidence…":
+  state.priceError?"Market feed unavailable · retry below":
+  state.stale?"Unverified cache · retry for fresh observations":
+  state.snap?state.liquidIdeas.length+" liquid ideas · "+state.valueIdeas.length+
+   " higher-value markets · "+state.positiveSpreads.toLocaleString("en-GB")+" positive observed spreads":
+  "Markets not yet checked");
+ const note=get("gh-research-evidence");if(note)note.hidden=true;
+ const watch=get("gh-watch-toggle");if(watch)watch.hidden=!current;
+ txt("gh-total-label",state.researchMode==="value"?"Capital needed for one unit":"Illustrative total");
+ txt("gh-margin-label",state.researchMode==="value"?"Observed after-tax spread per unit":"Potential after-tax margin");
  renderValueTier(current);
+ renderListingGuide(current);
  if(!current){
   const failure=!!state.priceError,uncertain=!!state.stale;
   txt("gh-position",state.loading?"Checking market evidence":
@@ -642,16 +852,16 @@ function render(){
   txt("gh-item-name",state.loading?"Checking markets…":
     failure?"Market feed unavailable":
     uncertain?"Market prices need verification":
-    state.snap?"No trades meet the safety checks right now":"Market prices not loaded");
+    state.snap?(state.researchMode==="value"?"No matching high-value markets":"No trades meet the safety checks right now"):"Market prices not loaded");
   txt("gh-risk",state.loading?"Checking":failure?"Unavailable":uncertain?"Stale data":"No qualifying trades");
   txt("gh-instruction",state.loading?"Fetching prices and observed volume…":
     failure?"The RuneScape Wiki feed could not be verified.":
     uncertain?"Cached observations are not reliable enough for new trade advice.":
-    state.snap?"No opportunities currently pass the price, volume and risk filters.":"Use Retry market check to load today's prices.");
+    state.snap?(state.researchMode==="value"?"No price pairs match your value floor, watchlist and search filters.":"No opportunities currently pass the price, volume and risk filters."):"Use Retry market check to load today's prices.");
   txt("gh-instruction-extra",state.loading?"":
     failure?"Details: "+state.priceError+" · Retry below when you're connected.":
     uncertain?"Retry to verify fresh prices before placing an order.":
-    state.snap?"You can retry later or adjust your budget and account settings.":"Your recorded trades and GW2 account data remain saved.");
+    state.snap?(state.researchMode==="value"?"Try a lower value threshold, clear search, or disable Watched only.":"Switch to High-value research to inspect less liquid markets, or adjust your account settings."):"Your recorded trades and GW2 account data remain saved.");
   txt("gh-margin","—");txt("gh-total","—");
   txt("gh-caution",state.loading?"Checking current market evidence…":
     "No eligible trade has been verified. The app will not invent prices or profit forecasts.");
@@ -661,21 +871,55 @@ function render(){
   const retry=get("gh-empty-retry");if(retry)retry.hidden=state.loading;
  }else{
   const retry=get("gh-empty-retry");if(retry)retry.hidden=true;
-  txt("gh-position","Trade idea "+(state.index+1)+" of "+state.ideas.length);
+  txt("gh-position",(current.research?"Research market ":"Trade idea ")+(state.index+1)+" of "+state.ideas.length);
   txt("gh-item-name",current.name);
-  txt("gh-risk",current.stressedMargin>0?"Stronger evidence":"Small test only");
-  txt("gh-instruction","Try buying "+current.qty.toLocaleString("en-GB")+" × at "+gp(current.buy)+" each");
-  txt("gh-instruction-extra","Then list at "+gp(current.sell)+" each · not guaranteed to fill");
-  txt("gh-margin",gp(current.profit)+" / item");
-  txt("gh-total",gp(current.total));
-  txt("gh-caution","Four-hour GE limit: "+current.limit.toLocaleString("en-GB")+" · recent two-way volume: "+current.flow.toLocaleString("en-GB")+"/hr · "+(current.stressedMargin>0?"margin survives a 2% lower sell price":"a 2% lower sell price could erase the margin")+". Illustrative only.");
+  const watch=get("gh-watch-toggle");watch.hidden=false;
+  watch.setAttribute("aria-pressed",String(state.watchlist.has(current.id)));
+  watch.textContent=state.watchlist.has(current.id)?"★ Watching this market":"☆ Watch this market";
+  const note=get("gh-research-evidence");note.hidden=false;
+  if(current.research){
+   txt("gh-risk",current.warnings.length?"Research · caution":"Research · stronger evidence");
+   txt("gh-instruction","Observed instant-sell (low) "+gp(current.buy)+
+    " · observed instant-buy (high) "+gp(current.sell));
+   txt("gh-instruction-extra","Historical transaction references, not standing GE offers. Never assume you can buy at the low and sell at the high.");
+   txt("gh-margin",gp(current.profit)+" / item");
+   txt("gh-total",gp(current.buy));
+   const warnings=current.warnings.length?current.warnings.join(" · "):
+    "No major filter flags; a fill is still not guaranteed";
+   txt("gh-research-evidence","Evidence score "+current.evidence+"/100 (not a fill probability) · "+
+     "Last observed "+Math.round(current.age/60)+" min ago · "+
+     (current.flow>0?current.flow.toLocaleString("en-GB")+" matched two-way units in last hour":
+       "No verified two-way hourly volume")+
+     " · "+(current.limit?current.limit.toLocaleString("en-GB"):"unknown")+" four-hour GE limit");
+   txt("gh-caution",warnings+
+    " · After-tax spread "+gp(current.profit)+
+    " · 2% sell-price stress: "+(current.stressedMargin>0?gp(current.stressedMargin)+" remains":
+      "margin erased")+
+    ". These are research observations, NOT a forecast or an executable flip.");
+   get("gh-add-fill").disabled=!!(current.capitalGap>0||
+     current.members&&state.mode==="f2p");
+  }else{
+   txt("gh-risk",current.stressedMargin>0?"Stronger evidence":"Small test only");
+   txt("gh-instruction","Try buying "+current.qty.toLocaleString("en-GB")+" × at "+gp(current.buy)+" each");
+   txt("gh-instruction-extra","Then list at "+gp(current.sell)+" each · not guaranteed to fill");
+   txt("gh-margin",gp(current.profit)+" / item");
+   txt("gh-total",gp(current.total));
+   txt("gh-research-evidence","Evidence score "+current.evidence+
+      "/100 (not fill probability) · "+Math.round(current.age/60)+
+      " min quote age · "+current.flow.toLocaleString("en-GB")+" hourly two-way units");
+   txt("gh-caution","Four-hour GE limit: "+current.limit.toLocaleString("en-GB")+
+    " · recent two-way volume: "+current.flow.toLocaleString("en-GB")+"/hr · "+
+    (current.stressedMargin>0?"margin survives a 2% lower sell price":
+      "a 2% lower sell price could erase the margin")+". Illustrative only.");
+   get("gh-add-fill").disabled=false;
+  }
   const icon=get("gh-item-icon"),meta=state.mappingById.get(current.id);
   icon.replaceChildren();const url=iconUrl(meta?.icon);
   if(url){const image=el("img");image.src=url;image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
    image.onerror=()=>{icon.textContent="▥"};icon.append(image)}
   else icon.textContent="▥";
   get("gh-previous").disabled=state.index===0;get("gh-next").disabled=state.index===state.ideas.length-1;
-  get("gh-show-chart").disabled=false;get("gh-add-fill").disabled=false;
+  get("gh-show-chart").disabled=false;
  }
  for(const id of ["gh-budget-metric","gh-today","gh-week","gh-margin","gh-total"])decorateGP(id);
  renderLedger();
