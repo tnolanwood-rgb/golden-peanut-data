@@ -81,3 +81,37 @@ test('two simultaneous chart openings only fetch one 21-day history',async()=>{
   assert.equal(requests,1);assert.equal(a,b);assert.equal(a.entries.get(1).length,2);
  }finally{global.fetch=original;}
 });
+
+test('individual price chart fetches a validated item history slice once, not the whole-market history',async()=>{
+ const api=fresh(),original=global.fetch,urls=[];
+ const day=Math.floor(now/86400000);
+ const shard={schema:'golden-peanut-history-shard-v1',generation:'fixture',generated_at:generated,
+  modulus:32,shard:65%32,history:{65:[[day-2,100,205,20,20],[day-1,111,221,25,22],[day,120,232,30,26]]}};
+ global.fetch=async url=>{urls.push(String(url));await new Promise(r=>setTimeout(r,10));return {ok:true,json:async()=>shard};};
+ try{
+  const [a,b]=await Promise.all([api.loadItemHistory(65,{now}),api.loadItemHistory(65,{now})]);
+  assert.equal(urls.length,1,'coalesced chart clicks share one request');
+  assert.match(urls[0],/market_history_shards\/1\.json$/);
+  assert.equal(a,b);
+  assert.equal(a.entries.get(65).length,3);
+  const warm=await api.loadItemHistory(65,{now:now+100});
+  assert.equal(warm,a);assert.equal(urls.length,1,'subsequent chart reuses cached history');
+  assert.throws(()=>api.parseHistoryShard({...shard,shard:12},65,now),/Invalid/);
+  assert.throws(()=>api.parseHistoryShard({...shard,history:{65:[[day-1,100,-1,10,10]]}},65,now),/Malformed/);
+  assert.throws(()=>api.parseHistoryShard({...shard,generated_at:generated-4*86400},65,now),/outdated/);
+ }finally{global.fetch=original;}
+});
+test('missing chart slice gracefully falls back to full 21-day public history',async()=>{
+ const api=fresh(),original=global.fetch,urls=[],day=Math.floor(now/86400000);
+ global.fetch=async url=>{
+  urls.push(String(url));
+  if(String(url).includes('market_history_shards'))return {ok:false,status:404};
+  return {ok:true,json:async()=>({schema:'golden-peanut-daily-v1',generated_at:generated,
+   history:{65:[[day-1,100,200,10,10],[day,111,201,10,10]]}})};
+ };
+ try{
+  const data=await api.loadItemHistory(65,{now});
+  assert.equal(data.entries.get(65).length,2);
+  assert.equal(urls.length,2,'only one unsuccessful slice request and one full-data fallback');
+ }finally{global.fetch=original;}
+});
