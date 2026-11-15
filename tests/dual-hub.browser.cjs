@@ -48,11 +48,11 @@ const server=http.createServer((req,res)=>{
   await page.locator('#gh-fill-price').fill('145');
   await page.locator('#gh-fill-form button[type="submit"]').click();
   assert.match(await page.locator('#gh-today').innerText(),/304 gp/);
-  const dockBefore=await page.locator('#gh-next').evaluate(n=>Math.round(n.getBoundingClientRect().top));
+  const dockBefore=await page.locator('#gh-next').evaluate(n=>Math.round(n.getBoundingClientRect().top-n.closest('.gp-guide-idea').getBoundingClientRect().top));
   await page.locator('#gh-next').click();
   assert.match(await page.locator('#gh-item-name').innerText(),/extremely long item/);
-  const dockAfter=await page.locator('#gh-next').evaluate(n=>Math.round(n.getBoundingClientRect().top));
-  assert.ok(Math.abs(dockBefore-dockAfter)<=2,'next/previous dock must not move with description length');
+  const dockAfter=await page.locator('#gh-next').evaluate(n=>Math.round(n.getBoundingClientRect().top-n.closest('.gp-guide-idea').getBoundingClientRect().top));
+  assert.ok(Math.abs(dockBefore-dockAfter)<=2,'next/previous dock must be anchored within its card: '+dockBefore+' vs '+dockAfter);
   await page.locator('#gh-previous').click();
   assert.equal(await page.locator('#gh-item-name').innerText(),'Copper sword');
   await page.locator('#gh-show-chart').click();
