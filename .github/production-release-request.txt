@@ -61,3 +61,10 @@ User reported slow repeated full-market scans every time the app opens. PR #33 m
 2026-11-15: user-requested OSRS-style chart repair, merged PR #44 source commit 3eee015e3fb4b3a1a94f1c4a6b5eae8c8c1dd988. Ship the current main `app/` to the EXISTING Cloudflare Pages project `thegoldenpeanut`, production branch main. Preserve all account credentials, local IndexedDB, private D1 and in-game trading orders. Validate both 390px/desktop browser regressions, persistent chart across refresh, real daily quote source, date inspector with official coin icons, draggable/pinch chart and absence of obsolete zoom-step buttons. Do not deploy or modify the private Worker. Require existing project verification and per-asset production SHA-256 check; fail closed and report if hosted bytes differ. Source tests green at PR #44 head 0ca8cb48b04d4779a5742e1e914ea6717af08d98.
 
 2026-11-15: user-requested production release of merged PR #45 (`73adb940942211c9d1755d446b17c969d94ab78b`). Restore verified ArenaNet item art, official rarity and coin styling across guided trade and chart; preserve the current trade card, scroll and open chart after Android WebView recreation. Preserve existing IndexedDB, keys, historical trades and private monitor. Use existing `thegoldenpeanut` Pages project, main branch; require Chromium mobile/desktop checks plus SHA-256 comparison of every hosted asset. No APK rebuild or D1/Worker changes.
+
+---
+2026-11-15 — Golden Trading Hub first production promotion, retry after async file-input test fix.
+Approved original production Pages project: thegoldenpeanut; branch main.
+Merge PR #47: 5784815ffe48f58cc5fddfdd0e1c876ddbd03373.
+OSRS backup-import browser assertion repaired in fc97eb002a99af4698c5b95db4221886c95496a0.
+Run the existing production action against the current main HEAD. Require full source, Python, JS, mobile and desktop browser tests, Cloudflare project verification, and exact served SHA-256 verification. No GW2 IndexedDB migration, Cloudflare Worker/D1 schema change, key deletion, or new domain.
