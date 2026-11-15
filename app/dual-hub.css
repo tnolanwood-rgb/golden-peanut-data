@@ -91,7 +91,7 @@ body.gh-show-osrs #gh-osrs-root{display:block}
  * accessible region, never underneath the buttons. Charts are separate dialogs. */
 #gh-osrs-root .gp-guide-idea{display:flex;flex-direction:column;gap:0;min-height:0}
 #gh-osrs-root .gh-trade-shell{height:clamp(570px,74dvh,740px);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-#gh-osrs-root .gh-trade-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#708369 #203528;padding:0 7px 9px 0}
+#gh-osrs-root .gh-trade-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior-y:contain;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#708369 #203528;padding:0 7px 9px 0}
 #gh-osrs-root .gh-trade-scroll .gp-guide-idea-top{margin-bottom:13px}
 #gh-osrs-root .gh-trade-scroll .gp-guide-item-icon{margin-bottom:15px}
 #gh-osrs-root .gh-trade-scroll .gp-guide-totals{margin:16px 0 11px}
