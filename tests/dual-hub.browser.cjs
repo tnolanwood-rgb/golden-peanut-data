@@ -47,6 +47,32 @@ const server=http.createServer((req,res)=>{
    db.close();
   });
   await page.waitForFunction(()=>document.getElementById('gh-item-name')?.textContent==='Copper sword',{timeout:15000});
+  // Official OSRS mobile/Steam value colour thresholds, not GW2 rarity.
+  const tierCases=await page.evaluate(()=>{
+    const classify=window.GoldenOSRSValueTiers.classify;
+    return [-1,0,19999,20000,99999,100000,999999,1000000,9999999,10000000,
+      Number.NaN,null].map(x=>classify(x)?.tier??null);
+  });
+  assert.deepEqual(tierCases,[null,1,1,2,2,3,3,4,4,5,null,null],
+    'exact OSRS 0/20k/100k/1m/10m official threshold boundaries');
+  assert.equal(await page.locator('#gh-item-name').getAttribute('data-osrs-value-tier'),'1');
+  assert.equal(await page.locator('#gh-item-name').evaluate(n=>getComputedStyle(n).color),
+    'rgb(255, 255, 255)','inexpensive OSRS items should use official white');
+  assert.match(await page.locator('#gh-value-tier').innerText(),/Tier 1.*observed midpoint/);
+  const officialRgb=await page.locator('#gh-item-name').evaluate(n=>{
+    const original=n.dataset.osrsValueTier,values=[];
+    for(let tier=1;tier<=5;tier++){
+      n.dataset.osrsValueTier=String(tier);
+      values.push(getComputedStyle(n).color);
+    }
+    n.dataset.osrsValueTier=original;
+    return values;
+  });
+  assert.deepEqual(officialRgb,[
+    'rgb(255, 255, 255)','rgb(102, 178, 255)','rgb(153, 255, 153)',
+    'rgb(255, 150, 0)','rgb(255, 102, 178)'
+  ],'rendered text must use official OSRS Mobile/Steam default colours');
+  assert.equal(await page.locator('#gh-osrs-root .gh-tier-key-grid span').count(),5);
   const osrsArtwork=await page.locator('#gh-item-icon').evaluate(frame=>{
     const icon=document.createElement('img');
     icon.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==';
@@ -102,6 +128,8 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-item-name').innerText(),'Copper sword');
   await page.locator('#gh-show-chart').click();
   await page.waitForFunction(()=>window.GoldenOSRSChart?.diagnostics().points>=2);
+  assert.equal(await page.locator('#gh-research-item').getAttribute('data-osrs-value-tier'),'1',
+    'chart item heading must match the main OSRS price tier');
   assert.equal(await page.locator('#gh-research-plot svg path').count(),2);
   assert.equal(await page.locator('#gh-research-plot svg text').count(),9,'chart must label price axis, GP and date axis');
   assert.equal(await page.locator('#gh-research-slider').getAttribute('max'),'23');
