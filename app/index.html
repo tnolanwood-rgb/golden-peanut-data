@@ -3800,7 +3800,7 @@ async function init(){
   else if(State.account){status('Saved history loaded. Paste your API key to resume live checks.');}
   else{status('No account connected. Connect or recover existing history.');}
  }catch(e){startupFailure=e;warning('Database startup failed: '+safeError(e)+'. No history has been erased.');status('Browser storage unavailable at this address. Try opening the Cloudflare HTTPS site in regular Chrome (not an HTML file or private tab). Do not clear data or delete backups.');}
- finally{if(State.db?.db&&root.GPMarketFeed)void root.GPMarketFeed.load(State).then(()=>root.GPFocus?.render?.()).catch(()=>{});
+ finally{if(State.db?.db&&root.GPMarketFeed)void root.GPMarketFeed.loadIndex(State).then(()=>root.GPFocus?.render?.()).catch(()=>{});
   const ready=!!State.db?.db&&!startupFailure;$('connect-form').querySelector('button[type=submit]').disabled=!ready;$('import-personal-key').disabled=!ready;$('sync-btn').disabled=!ready;
   if(ready)startLocalTradeWatch();}
 }
@@ -4063,7 +4063,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 <script src="./growth-intelligence.js?v=716-evidence" defer></script>
-<script src="./public-market-feed.js?v=20261108-startup-cache" defer></script>
+<script src="./public-market-feed.js?v=20261115-index-cache-v1" defer></script>
 <script src="./execution-engine.js?v=7.16.0" defer></script>
 <script src="./opportunity-engine.js?v=20261108-startup-cache" defer></script>
 <script src="./capacity-intelligence.js?v=20261108-outbid-bias" defer></script>
