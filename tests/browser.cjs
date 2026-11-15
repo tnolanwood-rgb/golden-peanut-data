@@ -83,10 +83,10 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForFunction(()=>window.GPGuided?.open);
  await page.evaluate(()=>GPGuided.open());
  await page.waitForSelector('#gp-guided-root:not([hidden])');
- assert.match(await page.locator('.gp-guide-header h1').innerText(),/The Golden Peanut/);
- assert.equal(await page.locator('.gp-guide-idea').count(),1);
- assert.equal(await page.locator('.gp-guide-metrics .gp-guide-metric').count(),4);
- assert.match(await page.locator('.gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ assert.match(await page.locator('#gh-panel-gw2 .gp-guide-header h1').innerText(),/The Golden Peanut/);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-idea').count(),1);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics .gp-guide-metric').count(),4);
+ assert.match(await page.locator('#gh-panel-gw2 .gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
  // Repeated guided repaints and navigation must reuse the same opportunity
  // evaluation instead of rescreening thousands of markets for every tap.
  const guideBuilds=await page.evaluate(()=>{
@@ -139,7 +139,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   console.error('Synthetic item-art regression diagnostic',JSON.stringify(dbg));
   throw err;
  }
- const gw2Artwork=await page.locator('.gp-guide-item-icon').evaluate(frame=>{
+ const gw2Artwork=await page.locator('#gh-panel-gw2 .gp-guide-item-icon').evaluate(frame=>{
   const img=frame.querySelector('img'),f=frame.getBoundingClientRect(),i=img.getBoundingClientRect();
   return {size:[f.width,f.height],padding:getComputedStyle(frame).paddingLeft,
     fit:getComputedStyle(img).objectFit,inset:[i.left-f.left,i.top-f.top,f.right-i.right,f.bottom-i.bottom]};
@@ -147,14 +147,14 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.deepEqual(gw2Artwork.size,[70,70],'GW2 artwork has a consistent 70px frame');
  assert.equal(gw2Artwork.fit,'contain','GW2 thumbnails cannot be cropped using cover');
  assert.ok(gw2Artwork.inset.every(v=>v>=6),'GW2 image must sit completely inside a padded frame');
- assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-instructions .gp-guide-coinset').count(),2,
    'buy and sell instructions use full GW2 gold/silver/copper artwork, not plain letters');
- assert.equal(await page.locator('.gp-guide-instructions img[src*="gw2-"]').count(),6);
- const instructionsCurrency=await page.locator('.gp-guide-instructions .gp-guide-denom-g').first().evaluate(el=>getComputedStyle(el).color);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-instructions img[src*="gw2-"]').count(),6);
+ const instructionsCurrency=await page.locator('#gh-panel-gw2 .gp-guide-instructions .gp-guide-denom-g').first().evaluate(el=>getComputedStyle(el).color);
  assert.equal(instructionsCurrency,'rgb(251, 209, 100)','instructions show native gold colouring');
- const itemColor=await page.locator('.gp-guide-item-name').evaluate(el=>getComputedStyle(el).color);
+ const itemColor=await page.locator('#gh-panel-gw2 .gp-guide-item-name').evaluate(el=>getComputedStyle(el).color);
  assert.equal(itemColor,'rgb(255, 164, 5)','the selected exotic item label uses actual GW2 rarity');
- const firstIdea=await page.locator('.gp-guide-item-name').innerText();
+ const firstIdea=await page.locator('#gh-panel-gw2 .gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
  // swaps priorities, even before the user presses Next.
  await page.evaluate(()=>{
@@ -166,9 +166,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPGuided.render();
   GPMarketBoard.build=original;
  });
- assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea,
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-item-name').innerText(),firstIdea,
   'background ranking must not silently change the initial visible item');
- const counter=page.locator('.gp-guide-position');
+ const counter=page.locator('#gh-panel-gw2 .gp-guide-position');
  const firstProgress=await counter.innerText();
  const total=Number(firstProgress.match(/^1 of (\d+)$/)?.[1]);
  assert.ok(total>=2,'synthetic fixtures provide at least two guided ideas');
@@ -229,7 +229,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(delayedArt.afterLate.itemColor,'rgb(255, 164, 5)','late rarity gets patched in place');
  assert.equal(await counter.innerText(),'2 of '+total,'Next advances; denominator stays fixed');
  assert.equal(await page.getByRole('button',{name:'← Previous'}).isEnabled(),true);
- const secondIdea=await page.locator('.gp-guide-item-name').innerText();
+ const secondIdea=await page.locator('#gh-panel-gw2 .gp-guide-item-name').innerText();
  await page.evaluate(()=>{
   window.__gpOriginalBoard=GPMarketBoard.build;
   GPMarketBoard.build=(...args)=>{
@@ -239,7 +239,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPGuided.render();
  });
  assert.equal(await counter.innerText(),'2 of '+total,'new priority ordering must not move the viewed card');
- assert.equal(await page.locator('.gp-guide-item-name').innerText(),secondIdea,'the viewed item ID is stable');
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-item-name').innerText(),secondIdea,'the viewed item ID is stable');
  // A disappearing quote must never show its previously calculated trading values.
  await page.evaluate(()=>{
   const selected=GPGuided.navigation().id;
@@ -251,12 +251,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPGuided.render();
  });
  assert.equal(await counter.innerText(),'2 of '+total,'expired quote leaves original deck position intact');
- assert.match(await page.locator('.gp-guide-idea h2').innerText(),/needs a new quote/);
- assert.equal(await page.locator('.gp-guide-instructions').count(),0,'stale buy/sell prices are withheld');
+ assert.match(await page.locator('#gh-panel-gw2 .gp-guide-idea h2').innerText(),/needs a new quote/);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-instructions').count(),0,'stale buy/sell prices are withheld');
  await page.evaluate(()=>{GPMarketBoard.build=window.__gpOriginalBoard;delete window.__gpOriginalBoard;GPGuided.render();});
  await page.getByRole('button',{name:'← Previous'}).click();
  assert.equal(await counter.innerText(),'1 of '+total,'Previous always returns to first numbered idea');
- assert.equal(await page.locator('.gp-guide-item-name').innerText(),firstIdea);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-item-name').innerText(),firstIdea);
  assert.equal(await page.getByRole('button',{name:/Skip|Review skipped/i}).count(),0,'only Previous and Next navigate the list');
  await page.getByRole('button',{name:'Next idea →'}).click();
  assert.equal(await counter.innerText(),'2 of '+total);
@@ -386,7 +386,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  // Simple view must retain the official GW2 currency artwork, colours and explicit denomination letters.
  await page.evaluate(()=>GPGuided.open());
- const hero=page.locator('.gp-guide-delivery-summary .gp-guide-number');
+ const hero=page.locator('#gh-panel-gw2 .gp-guide-delivery-summary .gp-guide-number');
  assert.equal(await hero.locator('.gp-guide-denom').count(),3);
  for(const [unit,metal] of [['g','gold'],['s','silver'],['c','copper']]){
   const part=hero.locator('.gp-guide-denom-'+unit);
