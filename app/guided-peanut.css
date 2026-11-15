@@ -77,3 +77,22 @@ body.focus-edition.gp-guided-active{background:#0e1914!important}
 .gp-guide-number .gp-guide-negative{color:#f0afa3}
 .gp-guide-number .gp-guide-unverified{font-size:17px;color:#b9c9bd}
 @media(max-width:390px){.gp-guide-number .gp-guide-coinset{column-gap:5px;row-gap:3px}.gp-guide-number .gp-guide-denom img,.gp-guide-number .focus-money-big .gp-guide-denom img{width:15px;height:15px;flex-basis:15px}}
+
+/* Game-native rarity and currency treatment on the single guided card. */
+.gp-guide-idea .gp-guide-item-name.gp-item-name{color:inherit}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-junk{color:#aaa!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-basic{color:#fff!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-fine{color:#62a4da!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-masterwork{color:#1a9306!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-rare{color:#fcd00b!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-exotic{color:#ffa405!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-ascended{color:#fb3e8d!important}
+.gp-guide-idea .gp-guide-item-name.gp-rarity-legendary{color:#974eff!important}
+.gp-guide-item-icon.gp-item-name{border-color:currentColor}
+.gp-guide-instructions .gp-guide-coinset{display:inline-flex;vertical-align:baseline;align-items:baseline;flex-wrap:wrap;column-gap:.4em;row-gap:0;font:inherit;white-space:normal}
+.gp-guide-instructions .gp-guide-denom{display:inline-flex;align-items:baseline;gap:2px;white-space:nowrap;line-height:1.25}
+.gp-guide-instructions .gp-guide-denom img{width:18px;height:18px;object-fit:contain;vertical-align:middle;align-self:center}
+.gp-guide-instructions .gp-guide-unit{font-size:.65em;color:inherit}
+.gp-guide-instructions .gp-guide-denom-g{color:#fbd164}
+.gp-guide-instructions .gp-guide-denom-s{color:#d3e2ec}
+.gp-guide-instructions .gp-guide-denom-c{color:#e3a174}
