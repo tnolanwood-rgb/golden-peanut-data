@@ -263,6 +263,7 @@ function activateOsrs(){
  get("gh-only-watch").checked=state.watchOnly;
  get("gh-mode-liquid").addEventListener("click",()=>chooseResearchMode("liquid"));
  get("gh-mode-value").addEventListener("click",()=>chooseResearchMode("value"));
+ get("gh-market-search").addEventListener("change",()=>saveUser());
  get("gh-market-search").addEventListener("input",event=>{
   state.search=String(event.target.value||"").toLocaleLowerCase().trim().slice(0,80);
   state.index=0;applyIdeasView();render();
@@ -685,8 +686,10 @@ function buildIdeas(){
  }
  liquid.sort((a,b)=>b.score-a.score||a.id-b.id);
  value.sort((a,b)=>b.score-a.score||b.profit-a.profit||a.id-b.id);
- state.liquidIdeas=liquid.slice(0,80);
- state.valueIdeas=value.slice(0,500);
+ // Keep the full qualified universe searchable; pagination is done by the
+ // existing Previous/Next card rather than discarding markets before search.
+ state.liquidIdeas=liquid;
+ state.valueIdeas=value;
  applyIdeasView();
 }
 /* OSRS Wiki latest HIGH = a completed instant BUY, LOW = a completed
