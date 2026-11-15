@@ -861,10 +861,11 @@ class API{
   }
   return counts;
  }
- async snapshot(key,account,{signal,oldSnapshot=null}={}){
+ async snapshot(key,account,{signal,oldSnapshot=null,includeInventory=true}={}){
   const [buyResult,sellResult,balance,delivery,inventory]=await Promise.allSettled([
    this.currentSide(key,'buys',{signal}),this.currentSide(key,'sells',{signal}),
-   this.get('/account/wallet',{key,signal}),this.get('/commerce/delivery',{key,signal}),this.inventory(key,{signal})
+   this.get('/account/wallet',{key,signal}),this.get('/commerce/delivery',{key,signal}),
+   includeInventory?this.inventory(key,{signal}):Promise.resolve(null)
   ]);
   const at=new Date().toISOString(),prev=oldSnapshot?.account===account?oldSnapshot:null;
   const freshBuys=buyResult.status==='fulfilled',freshSells=sellResult.status==='fulfilled';
@@ -882,9 +883,13 @@ class API{
    wallet:Core.validInt(wallet)?wallet:prev?.wallet??null,
    delivery:deliveryValid?deliveryObj:prev?.delivery??null,warning
   },account,at);
-  snap.inventoryVerified=inventory.status==='fulfilled';
-  snap.holdings=snap.inventoryVerified?inventory.value:null;
-  snap.inventoryAt=snap.inventoryVerified?at:null;
+  snap.inventoryVerified=includeInventory&&inventory.status==='fulfilled';
+  // A faster wallet/delivery refresh never erases previously verified
+  // holdings while the larger account/characters inventory is still loading.
+  // Old values retain their original observed timestamp, NOT a new one.
+  snap.holdings=snap.inventoryVerified?inventory.value:(prev?.holdings??null);
+  snap.inventoryAt=snap.inventoryVerified?at:(prev?.inventoryAt??null);
+  snap.inventoryPending=!includeInventory;
   snap.buysVerified=freshBuys;
   snap.sellsVerified=freshSells;
   snap.buysAt=freshBuys?at:(prev?.buysAt||prev?.ordersAt||null);
@@ -3577,8 +3582,46 @@ async function loadHistory(){
 async function sync(){if(State.busy)return;try{await ensureConnectionReady();}catch(e){warning('Account check unavailable: '+safeError(e));return;}if(!State.account||!State.key){$('connection-panel').open=true;status('Connect your account to check live values.');return;}
  State.busy=true;$('sync-btn').disabled=true;warning('');status('Checking wallet, Delivery Box and orders…');
  try{
-  const s=await State.api.snapshot(State.key,State.account,{oldSnapshot:State.snapshot});
-  await State.db.put('snapshots',State.account,'last',s);State.snapshot=s;
+  const accountAtStart=State.account,keyAtStart=State.key;
+  // Run heavy bank/materials/characters requests in parallel, but never
+  // keep wallet, Trading Post orders or Delivery Box waiting on characters.
+  // The catch is attached immediately: no unhandled private request errors.
+  const inventoryResult=State.api.inventory(keyAtStart)
+   .then(holdings=>({ok:true,holdings}),error=>({ok:false,error}));
+  const s=await State.api.snapshot(keyAtStart,accountAtStart,
+   {oldSnapshot:State.snapshot,includeInventory:false});
+  if(State.account!==accountAtStart||State.key!==keyAtStart)return;
+  await State.db.put('snapshots',accountAtStart,'last',s);
+  if(State.account!==accountAtStart||State.key!==keyAtStart)return;
+  State.snapshot=s;
+  // Send the already-visible account metrics to the screen immediately.
+  State.lastSuccess=new Date().toISOString();
+  invalidateAllocation();render();root.GPFocus?.render?.();
+  // A slower inventory result is appended to exactly its originating
+  // snapshot/account; it cannot silently overwrite a newer account check.
+  void inventoryResult.then(async result=>{
+   if(State.account!==accountAtStart||State.key!==keyAtStart||
+      State.snapshot!==s)return;
+   if(!result.ok){
+    s.inventoryPending=false;
+    // Keep historic holdings and timestamp, explicitly unverified.
+    root.GPFocus?.render?.();
+    return;
+   }
+   const updated={...s,holdings:result.holdings,inventoryVerified:true,
+    inventoryAt:new Date().toISOString(),inventoryPending:false};
+   if(State.snapshot!==s)return;
+   try{
+    await State.db.put('snapshots',accountAtStart,'last',updated);
+    if(State.account===accountAtStart&&State.key===keyAtStart&&State.snapshot===s){
+     State.snapshot=updated;invalidateAllocation();render();root.GPFocus?.render?.();
+    }
+   }catch{
+    s.inventoryPending=false;
+    // The old saved snapshot and all histories remain intact.
+    root.GPFocus?.render?.();
+   }
+  });
   // Learn from verified PARTIAL fills. Do not turn disappeared buy orders into
   // imaginary executed purchases; they may have been cancelled. Keep this
   // separately from the official completed-transaction ledger.
