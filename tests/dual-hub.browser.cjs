@@ -408,6 +408,57 @@ const server=http.createServer((req,res)=>{
     db.close();return row?.value?.marker;
   });
   assert.equal(continuity,'untouched');
+
+  // Cold OSRS research: verified *latest* prices should render while a
+  // slow hourly endpoint is still in flight. Until the latter settles,
+  // NO liquid flip may be labelled executable; the user sees explicit risk.
+  // Use the app's own persistence controls: pagehide intentionally writes
+  // its in-memory settings and would overwrite a direct localStorage edit.
+  await page.locator('#gh-mode-value').click();
+  await page.locator('#gh-value-floor').selectOption('100000');
+  await page.locator('#gh-only-watch').uncheck();
+  await page.locator('#gh-market-search').fill('');
+  await page.evaluate(()=>localStorage.removeItem('gh-osrs-v1-cache'));
+  let releaseHour=null;
+  await page.route('**/api/v2/osrs/1h',route=>new Promise(resolve=>{
+    releaseHour=async()=>{
+      await route.fulfill({status:200,contentType:'application/json',
+       headers:{'access-control-allow-origin':'*'},
+       body:JSON.stringify({timestamp:now-120,data:hourly})});
+      resolve();
+    };
+  }));
+  try{
+   await page.reload({waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>{
+    const state=window.GoldenDualHub?.diagnostics();
+    return state?.researchMode==='value'&&state?.loading===true&&state?.valueCount>=2;
+   },null,{timeout:12000});
+   const interim=await page.evaluate(()=>GoldenDualHub.diagnostics());
+   assert.equal(interim.liquidCount,0,'no verified liquid trades before hourly evidence arrives');
+   assert.match(await page.locator('#gh-item-name').innerText(),/High-value/,
+    'price research should be visible before the slow hourly feed finishes');
+   assert.match(await page.locator('#gh-caution').innerText(),/still loading/,
+    'provisional research must be clearly labelled as unverified');
+   if(!releaseHour){
+    await new Promise((ok,fail)=>{
+     let attempts=0;const check=()=>{
+      if(releaseHour)return ok();
+      if(++attempts>70)return fail(Error('hourly request was not intercepted'));
+      setTimeout(check,50);
+     };check();
+    });
+   }
+   await releaseHour();releaseHour=null;
+   await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading&&
+     GoldenDualHub.diagnostics().liquidCount>=2,null,{timeout:12000});
+   assert.doesNotMatch(await page.locator('#gh-caution').innerText(),/still loading/,
+    'final evidence should replace temporary pending warnings');
+   assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).ledgerRows,3);
+  }finally{
+   if(releaseHour)await releaseHour();
+   await page.unroute('**/api/v2/osrs/1h');
+  }
   await fs.promises.mkdir('artifacts',{recursive:true});
   await page.screenshot({path:'artifacts/browser-osrs-390.png',fullPage:true});
   assert.deepEqual(errors,[],'dual game interface must be free of JS page errors');
