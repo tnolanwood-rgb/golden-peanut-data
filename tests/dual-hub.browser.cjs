@@ -142,6 +142,20 @@ const server=http.createServer((req,res)=>{
   const back=await trace('gw2','#gh-panel-gw2 .app',325,[170,303]);
   assert.equal(back[0].sideBySide,true);
   assert.equal(Number(back[1].out.match(/translate3d\((-?[\d.]+)px/)?.[1]),-22);
+  // On release, the remaining movement should glide rather than finish
+  // inside the old jarring 140–320ms window; both pages and height settle.
+  const gentle=await page.evaluate(()=>{
+   const stage=document.querySelector('#gh-game-stage'),panel=document.querySelector('#gh-panel-gw2');
+   const shift=panel.getAnimations().find(a=>a.effect?.getKeyframes?.().some(k=>String(k.transform||'').includes('translate3d')));
+   const grow=stage.getAnimations().find(a=>a.effect?.getKeyframes?.().some(k=>typeof k.height==='string'));
+   return {duration:shift?.effect?.getTiming()?.duration,
+     stillMoving:stage.classList.contains('gh-stage-moving'),
+     heightAnimated:!!grow,frames:shift?.effect?.getKeyframes?.().length||0};
+  });
+  assert.ok(gentle.stillMoving,'settling should visibly continue after release');
+  assert.ok(gentle.duration>=340&&gentle.duration<=560,'settling should last long enough to soften the snap');
+  assert.ok(gentle.frames>=35,'damped glide should use smooth sampled positions');
+  assert.ok(gentle.heightAnimated,'different page heights should transition instead of suddenly jumping');
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
   // Complete GW2 -> OSRS from the whole page and then OSRS -> GW2 over a
