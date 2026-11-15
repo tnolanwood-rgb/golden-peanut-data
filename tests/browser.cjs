@@ -9,7 +9,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin)return route.continue();
   if(u.hostname==='render.guildwars2.com'&&u.pathname.endsWith('.png'))return route.fulfill({
    status:200,contentType:'image/png',
-   body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Yp4HJEAAAAASUVORK5CYII=','base64')
+   body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8v4SVgYGBiYGBgYGBAQAVBAGs/fab0gAAAABJRU5ErkJggg==','base64')
   });
   const now=Math.floor(Date.now()/1000),day=Math.floor(now/86400);let data=[];
   if(u.pathname.endsWith('market_public.json'))data={schema:'golden-peanut-public-v1',generated_at:now,count:1100,items:Array.from({length:1100},(_,i)=>[i+1,i<2?'Fixture opportunity '+(i+1):'Catalogue family '+(i+1),'Weapon','Exotic',99,201,100,100])};
