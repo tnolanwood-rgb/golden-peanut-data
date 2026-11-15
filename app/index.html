@@ -4,6 +4,12 @@
 <meta name="application-name" content="The Golden Peanut">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Start DNS/TLS setup for the two game APIs and item renderers early.
+     These are public asset/market hosts; no private account values are sent. -->
+<link rel="preconnect" href="https://oldschool.runescape.wiki" crossorigin>
+<link rel="preconnect" href="https://prices.runescape.wiki" crossorigin>
+<link rel="preconnect" href="https://render.guildwars2.com" crossorigin>
+<link rel="dns-prefetch" href="//api.guildwars2.com">
 <link rel="manifest" href="/manifest.webmanifest?v=718-portrait">
 <link rel="icon" type="image/png" sizes="48x48" href="/icons/gp-48.png?v=415">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/gp-192.png?v=415">
@@ -3594,8 +3600,15 @@ async function sync(){if(State.busy)return;try{await ensureConnectionReady();}ca
   // Heavy personal-history backfill runs separately; it must not prevent account and market refresh.
   if(!State.historyBusy)void loadHistory();
   const ids=[...new Set((State.snapshot.delivery?.items||[]).map(x=>x.id))].filter(id=>!State.meta[id]?.name||!iconValid(State.meta[id]?.icon));
-  if(ids.length){try{const meta=await State.api.itemMetadata(ids);for(const [id,value]of Object.entries(meta)){State.meta[id]=value;await State.db.put('metadata','global',String(id),value);}}
-   catch(e){warning([State.error,'Could not resolve all item icons: '+safeError(e)].filter(Boolean).join(' '));}}
+  if(ids.length){try{
+    const meta=await State.api.itemMetadata(ids);
+    // One IndexedDB transaction instead of N separate awaited writes.
+    // Preserve the exact same objects and images, merely commit in a batch.
+    if(Object.keys(meta).length){
+     await State.db.putMetadataBatch(meta);Object.assign(State.meta,meta);
+     renderMarket();root.GPFocus?.render?.();
+    }
+   }catch(e){warning([State.error,'Could not resolve all item icons: '+safeError(e)].filter(Boolean).join(' '));}}
   await checkPriorityMarkets(true);
   State.lastSuccess=new Date().toISOString();render();if($('outcome56-panel')?.open)renderOutcomes56();if(State.error)warning(State.error);
   // Retrieve encrypted background monitor observations without blocking wallet refresh.
@@ -4083,7 +4096,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="./guided-visit.js?v=20261115-range-v04" defer></script>
 <script src="./focus-edition.js?v=20261115-range-v04" defer></script>
 <script src="./dual-hub-chart.js?v=20261115-official-value-colours-v10" defer></script>
-<script src="./dual-hub.js?v=20261115-osrs-brain-v2" defer></script>
+<script src="./dual-hub.js?v=20261115-fast-firstpaint-v1" defer></script>
 <script id="gp-integrity-check">
 document.addEventListener('DOMContentLoaded',()=>{
  const stamp='7.16.0-evidence',engine=window.GPOpportunity,front=window.GPFocus;
