@@ -179,20 +179,37 @@ function buildIdea(host,s,view){
  }else{
   const tier=choice.tier;
   const state=tier==='forecast'?'Evidence-backed 24h estimate':tier==='history'?'History-backed · conditional':'Public quote · research only';
-  add(section,el('p','gp-guide-tier',state),el('h2','gp-guide-item-name',choice.label));
-  const art=el('div','gp-guide-item-icon');const m=s.meta?.[choice.id];
-  if(typeof m?.icon==='string'&&/^https:\/\/render\.guildwars2\.com\/file\/[a-f0-9]+\/\d+\.(png|jpe?g|webp)$/i.test(m.icon)){
-   const img=el('img');img.src=m.icon;img.alt='';art.append(img);
-  }else art.textContent=choice.label.slice(0,1).toUpperCase();
-  section.querySelector('h2').before(art);
-  const instructions=el('div','gp-guide-instructions');
-  if(tier==='research'){
-   add(instructions,el('p','gp-guide-instruction','Research a single unit at '+coin(choice.buy)+' buy reference.'),
-    el('p','gp-guide-instruction-sub','Current sell reference: '+coin(choice.exit)+' per item.'));
+  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',choice.label);
+  root.GPRarity?.apply?.(heading,m?.rarity);
+  add(section,el('p','gp-guide-tier',state),heading);
+  const art=el('div','gp-guide-item-icon');
+  root.GPRarity?.apply?.(art,m?.rarity);
+  if(root.GPFocus?.validItemIcon?.(m)){
+   const img=el('img');img.src=m.icon;img.alt='';img.loading='eager';img.decoding='async';
+   img.onerror=()=>{art.textContent=choice.label.slice(0,1).toUpperCase();};
+   art.append(img);
   }else{
-   add(instructions,el('p','gp-guide-instruction','Buy '+choice.qty.toLocaleString('en-GB')+' × '+coin(choice.buy)+' each.'),
-    el('p','gp-guide-instruction-sub','Then consider selling at '+coin(choice.exit)+' each.'));
+   art.textContent=choice.label.slice(0,1).toUpperCase();
+   // The compact startup feed intentionally contains names/rarities but no
+   // icons. Request the REAL ArenaNet item artwork on the visible card,
+   // even while Focus Edition's own market rows are hidden.
+   root.GPFocus?.ensureItemArtwork?.([choice.id]);
   }
+  heading.before(art);
+  const instructions=el('div','gp-guide-instructions');
+  const buyLine=el('p','gp-guide-instruction'),sellLine=el('p','gp-guide-instruction-sub');
+  if(tier==='research'){
+   add(buyLine,document.createTextNode('Research a single unit at '),
+    coinArtwork(choice.buy),document.createTextNode(' buy reference.'));
+   add(sellLine,document.createTextNode('Current sell reference: '),
+    coinArtwork(choice.exit),document.createTextNode(' per item.'));
+  }else{
+   add(buyLine,document.createTextNode('Buy '+choice.qty.toLocaleString('en-GB')+' × '),
+    coinArtwork(choice.buy),document.createTextNode(' each.'));
+   add(sellLine,document.createTextNode('Then consider selling at '),
+    coinArtwork(choice.exit),document.createTextNode(' each.'));
+  }
+  add(instructions,buyLine,sellLine);
   section.append(instructions);
   const totals=el('div','gp-guide-totals');
   add(totals,moneyMetric(tier==='research'?'Net spread per item, if filled':tier==='forecast'?'Modelled 24h profit, uncertain':'Net profit if entire lot resells',coinArtwork(choice.profit),tier==='research'?'No quantity or future fill rate established':tier==='forecast'?'Not guaranteed or live-tested for accuracy':'Not an overnight profit prediction'),
