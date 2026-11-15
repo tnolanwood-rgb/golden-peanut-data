@@ -153,8 +153,8 @@ const server=http.createServer((req,res)=>{
      heightAnimated:!!grow,frames:shift?.effect?.getKeyframes?.().length||0};
   });
   assert.ok(gentle.stillMoving,'settling should visibly continue after release');
-  assert.ok(gentle.duration>=340&&gentle.duration<=560,'settling should last long enough to soften the snap');
-  assert.ok(gentle.frames>=35,'damped glide should use smooth sampled positions');
+  assert.ok(gentle.duration>=390&&gentle.duration<=650,'settling should glide softly rather than snap');
+  assert.ok(gentle.frames>=45,'damped glide should use smooth sampled positions');
   assert.ok(gentle.heightAnimated,'different page heights should transition instead of suddenly jumping');
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
