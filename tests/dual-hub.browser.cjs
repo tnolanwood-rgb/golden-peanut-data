@@ -412,13 +412,13 @@ const server=http.createServer((req,res)=>{
   // Cold OSRS research: verified *latest* prices should render while a
   // slow hourly endpoint is still in flight. Until the latter settles,
   // NO liquid flip may be labelled executable; the user sees explicit risk.
-  await page.evaluate(()=>{
-    const key='gh-osrs-v1-config',settings=JSON.parse(localStorage.getItem(key)||'{}');
-    localStorage.setItem(key,JSON.stringify({...settings,researchMode:'value',
-     valueFloor:100000,search:'',watchOnly:false}));
-    localStorage.removeItem('gh-osrs-v1-cache');
-    localStorage.setItem('gh-last-game-v1',JSON.stringify('osrs'));
-  });
+  // Use the app's own persistence controls: pagehide intentionally writes
+  // its in-memory settings and would overwrite a direct localStorage edit.
+  await page.locator('#gh-mode-value').click();
+  await page.locator('#gh-value-floor').selectOption('100000');
+  await page.locator('#gh-only-watch').uncheck();
+  await page.locator('#gh-market-search').fill('');
+  await page.evaluate(()=>localStorage.removeItem('gh-osrs-v1-cache'));
   let releaseHour=null;
   await page.route('**/api/v2/osrs/1h',route=>new Promise(resolve=>{
     releaseHour=async()=>{
