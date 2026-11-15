@@ -24,8 +24,10 @@
 .gp-guide-position{font-size:12px;color:#b7cbb9}
 .gp-guide-tier{color:#d7dbaa;background:#2a3b29;border-radius:8px;padding:7px 10px;font-size:12px;margin:0;align-self:start}
 .gp-guide-idea h2{font-size:clamp(25px,5.8vw,35px);margin:0;line-height:1.2;overflow-wrap:anywhere;font-weight:820;letter-spacing:-.03em}
-.gp-guide-item-icon{width:54px;height:54px;display:grid;place-items:center;background:#20392b;color:#eacb8e;border:1px solid #77926c;border-radius:12px;font-weight:800;font-size:26px}
-.gp-guide-item-icon img{width:100%;height:100%;object-fit:contain}
+/* A padded icon frame avoids the appearance of clipping the artwork at its edges.
+ * Keep the whole verified source thumbnail visible; never use cover/cropped sizing. */
+.gp-guide-item-icon{width:70px;height:70px;flex:0 0 70px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:7px;overflow:hidden;background:#20392b;color:#eacb8e;border:1px solid #77926c;border-radius:12px;font-weight:800;font-size:26px}
+.gp-guide-item-icon img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;min-width:0;min-height:0;flex:0 1 auto;object-fit:contain;object-position:center;image-rendering:auto}
 .gp-guide-instructions{margin-top:4px}
 .gp-guide-instruction{font-size:clamp(21px,5vw,29px);font-weight:800;line-height:1.45;margin:0;color:#f8f0df}
 .gp-guide-instruction-sub{font-size:clamp(17px,4vw,22px);line-height:1.45;color:#e5d4ac;margin:9px 0 0}

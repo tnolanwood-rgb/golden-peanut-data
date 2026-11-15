@@ -109,6 +109,14 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   console.error('Synthetic item-art regression diagnostic',JSON.stringify(dbg));
   throw err;
  }
+ const gw2Artwork=await page.locator('.gp-guide-item-icon').evaluate(frame=>{
+  const img=frame.querySelector('img'),f=frame.getBoundingClientRect(),i=img.getBoundingClientRect();
+  return {size:[f.width,f.height],padding:getComputedStyle(frame).paddingLeft,
+    fit:getComputedStyle(img).objectFit,inset:[i.left-f.left,i.top-f.top,f.right-i.right,f.bottom-i.bottom]};
+ });
+ assert.deepEqual(gw2Artwork.size,[70,70],'GW2 artwork has a consistent 70px frame');
+ assert.equal(gw2Artwork.fit,'contain','GW2 thumbnails cannot be cropped using cover');
+ assert.ok(gw2Artwork.inset.every(v=>v>=6),'GW2 image must sit completely inside a padded frame');
  assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
    'buy and sell instructions use full GW2 gold/silver/copper artwork, not plain letters');
  assert.equal(await page.locator('.gp-guide-instructions img[src*="gw2-"]').count(),6);
