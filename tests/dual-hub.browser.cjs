@@ -285,6 +285,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-empty-retry').isVisible(),false,
     'retry button should disappear when verified trading candidates return');
   // Even a successful 0-candidate response must render a genuine no-trade state.
+  await page.locator('#gh-settings').evaluate(el=>el.open=true);
   await page.locator('#gh-budget-input').fill('0');
   await page.locator('#gh-apply').click();
   assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas,0);
@@ -293,6 +294,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#gh-next').isEnabled(),false);
   assert.equal(await page.locator('#gh-show-chart').isEnabled(),false);
   // Return to the user's previous budget in this synthetic fixture.
+  await page.locator('#gh-settings').evaluate(el=>el.open=true);
   await page.locator('#gh-budget-input').fill('100000000');
   await page.locator('#gh-apply').click();
   assert.ok((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).ideas>0);
