@@ -10,6 +10,8 @@ const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, fingerprint='', renderTimer=0;
 let ideasCache=null,restoredAccount=null,restoredScroll=null,restoredChart=null,saveScrollTimer=0;
+let renderedAccount=null,topFingerprint='',lastPrefetch='',renderCount=0;
+const warmedImages=new Map();
 let visit=null;
 try{visit=root.GPGuidedVisit?.create?.(root.localStorage);}catch{/* Private browsing/storage denial must never break UI. */}
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
@@ -213,22 +215,19 @@ function buildIdea(host,s,view){
  }else{
   const tier=choice.tier;
   const state=tier==='forecast'?'Evidence-backed 24h estimate':tier==='history'?'History-backed · conditional':'Public quote · research only';
-  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',choice.label);
+  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',m?.name||choice.label);
+  heading.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(heading,m?.rarity);
   add(section,el('p','gp-guide-tier',state),heading);
   const art=el('div','gp-guide-item-icon');
+  art.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(art,m?.rarity);
   if(root.GPFocus?.validItemIcon?.(m)){
-   const img=el('img');img.src=m.icon;img.alt='';img.loading='eager';img.decoding='async';
-   img.onerror=()=>{art.textContent=choice.label.slice(0,1).toUpperCase();};
+   const img=el('img');img.src=m.icon;img.alt='';img.width=54;img.height=54;
+   img.loading='eager';img.decoding='async';
+   img.onerror=()=>{if(art.contains(img))art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();};
    art.append(img);
-  }else{
-   art.textContent=choice.label.slice(0,1).toUpperCase();
-   // The compact startup feed intentionally contains names/rarities but no
-   // icons. Request the REAL ArenaNet item artwork on the visible card,
-   // even while Focus Edition's own market rows are hidden.
-   root.GPFocus?.ensureItemArtwork?.([choice.id]);
-  }
+  }else art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();
   heading.before(art);
   const instructions=el('div','gp-guide-instructions');
   const buyLine=el('p','gp-guide-instruction'),sellLine=el('p','gp-guide-instruction-sub');
@@ -270,6 +269,66 @@ function buildIdea(host,s,view){
   section.append(second);
  }
  host.append(section);
+}
+/* The lightweight index deliberately excludes icon URLs. Prefetch art for
+ * the visible idea and the next four deck positions so Next is usually
+ * instant. Keep only a handful of decoded public images in memory. */
+function prewarmIcon(src){
+ if(!root.Image||typeof src!=='string'||!/^https:\/\/render\.guildwars2\.com\/file\/[a-f0-9]+\/\d+\.(png|jpe?g|webp)$/i.test(src)||
+    warmedImages.has(src))return;
+ const img=new root.Image();img.decoding='async';img.src=src;
+ warmedImages.set(src,img);
+ while(warmedImages.size>12)warmedImages.delete(warmedImages.keys().next().value);
+ if(typeof img.decode==='function')void img.decode().catch(()=>{});
+}
+function prefetchNearbyArtwork(s,view){
+ if(!s?.account||!view?.id)return;
+ const snapshot=deck?.snapshot?.(s.account);
+ if(!snapshot)return;
+ const ids=snapshot.ids.slice(snapshot.position,Math.min(snapshot.position+5,snapshot.ids.length));
+ const missing=ids.filter(id=>!root.GPFocus?.validItemIcon?.(s.meta?.[id]));
+ const srcs=ids.map(id=>s.meta?.[id]?.icon).filter(Boolean);
+ const key=s.account+'|'+ids.join(',')+'|'+srcs.join(',');
+ if(key===lastPrefetch)return;
+ lastPrefetch=key;
+ if(missing.length)root.GPFocus?.ensureItemArtwork?.(missing);
+ for(const src of srcs)prewarmIcon(src);
+}
+/* Metadata arrives asynchronously, often one second AFTER the user clicks
+ * Next. Patching just the fixed-size artwork/title avoids rebuilding the
+ * whole card, moving the navigation controls, or resetting page scroll. */
+function updateActiveArtwork(event){
+ if(!installed||!document.body.classList.contains('gp-guided-active'))return;
+ const s=root.GoldenPeanutClean?.State;
+ if(!s?.account||event?.detail?.account&&event.detail.account!==s.account)return;
+ const view=deck?.view?.(ideas(s),s.account),id=view?.id;
+ if(!id)return;
+ const changed=event?.detail?.ids;
+ if(Array.isArray(changed)&&!changed.some(x=>Number(x)===id)){
+  prefetchNearbyArtwork(s,view);
+  return;
+ }
+ const host=$('gp-guided-root'),art=host?.querySelector('.gp-guide-item-icon'),
+  heading=host?.querySelector('.gp-guide-item-name');
+ if(!art||!heading||art.dataset.itemId!==String(id)||heading.dataset.itemId!==String(id))return;
+ const m=s.meta?.[id];
+ if(m?.name&&heading.textContent!==m.name)heading.textContent=m.name;
+ // GPRarity.apply resets its own classes but appends to title, so clear any
+ // old hint first when upgrading fallback metadata in place.
+ heading.title='';art.title='';
+ root.GPRarity?.apply?.(heading,m?.rarity);
+ root.GPRarity?.apply?.(art,m?.rarity);
+ if(root.GPFocus?.validItemIcon?.(m)){
+  const old=art.querySelector('img');
+  if(old?.getAttribute('src')!==m.icon){
+   const img=el('img');img.src=m.icon;img.alt='';img.width=54;img.height=54;
+   img.loading='eager';img.decoding='async';
+   img.onerror=()=>{if(art.contains(img))art.textContent=(m?.name||'◇').slice(0,1).toUpperCase();};
+   art.replaceChildren(img);
+  }
+  prewarmIcon(m.icon);
+ }
+ prefetchNearbyArtwork(s,view);
 }
 /* The chart lives outside the guided home renderer so background refreshes
  * cannot replace or close a user's active inspection. */
