@@ -105,3 +105,12 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-osrs-root .gp-guide-item-icon img{image-rendering:auto}
 #gh-osrs-root .gh-action-dock button{min-height:48px}
 @media(max-width:450px){#gh-osrs-root .gh-trade-shell{height:clamp(570px,74dvh,730px)}#gh-osrs-root .gh-trade-scroll{padding-right:3px}}
+
+/* Slide the *whole* trading desk, never just swap tab text or fade a header. */
+#gh-game-stage{position:relative;width:100%;min-width:0;overflow:hidden}
+#gh-game-stage>.gh-game-panel{width:100%;min-width:0}
+#gh-game-stage>.gh-game-panel[hidden]{display:none!important}
+#gh-game-stage.gh-stage-moving{isolation:isolate}
+#gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:none;will-change:transform;backface-visibility:hidden}
+#gh-game-nav .gh-swipe-hint{text-align:center;color:#aabdae;font-size:11px;letter-spacing:.025em;line-height:1.25;margin:6px 0 0}
+@media(prefers-reduced-motion:reduce){#gh-game-stage>.gh-game-panel{transition:none!important;animation:none!important}}
