@@ -1744,10 +1744,18 @@ function schedule(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })(typeof globalThis!=='undefined'?globalThis:this);
 
-/* Guided Peanut is an optional presentation-only layer. */
+/* Guided Peanut is an optional presentation-only layer. The market chart
+ * is loaded before the home UI; its dialog is independent of home rerenders. */
 (function(){
- const script=document.createElement('script');
- script.src='./guided-peanut.js?v=20261115-item-chart-v2';
- script.async=true;
- document.head.append(script);
+ const chart=document.createElement('script');
+ chart.src='./guided-price-chart.js?v=20261115-persistent-osrs-v1';
+ const start=()=>{
+  const guided=document.createElement('script');
+  guided.src='./guided-peanut.js?v=20261115-persistent-osrs-v1';
+  guided.async=true;
+  document.head.append(guided);
+ };
+ chart.addEventListener('load',start,{once:true});
+ chart.addEventListener('error',start,{once:true});
+ document.head.append(chart);
 })();
