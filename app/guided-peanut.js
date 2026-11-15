@@ -10,7 +10,8 @@ const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, fingerprint='', renderTimer=0;
 let ideasCache=null,restoredAccount=null,restoredScroll=null,restoredChart=null,saveScrollTimer=0;
-const visit=root.GPGuidedVisit?.create?.(typeof localStorage==='undefined'?null:localStorage);
+let visit=null;
+try{visit=root.GPGuidedVisit?.create?.(root.localStorage);}catch{/* Private browsing/storage denial must never break UI. */}
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
 const save=(k,v)=>{try{localStorage.setItem(k,v);}catch{}};
 const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
