@@ -120,7 +120,11 @@ async function load(key){
 function open(next){
  if(!Number.isSafeInteger(next?.id)||next.id<=0)return false;
  ensure();item={id:next.id,name:String(next.name||'Item #'+next.id),icon:next.icon};
- dialog.querySelector('#gh-research-item').textContent=item.name;
+ const title=dialog.querySelector('#gh-research-item');
+ title.textContent=item.name;
+ const tier=next.valueTier;
+ if(Number.isInteger(tier)&&tier>=1&&tier<=5)title.dataset.osrsValueTier=String(tier);
+ else delete title.dataset.osrsValueTier;
  const imageBox=dialog.querySelector('#gh-research-icon');imageBox.replaceChildren();
  const src=iconUrl(item.icon);
  if(src){const img=e('img');img.src=src;img.alt='';img.referrerPolicy='no-referrer';img.onerror=()=>{imageBox.textContent='▥'};imageBox.append(img)}else imageBox.textContent='▥';
