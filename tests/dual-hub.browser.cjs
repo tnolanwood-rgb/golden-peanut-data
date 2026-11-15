@@ -22,7 +22,7 @@ const server=http.createServer((req,res)=>{
   const page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
-   const u=new URL(route.request().url);
+   const u=new URL(route.request().url());
    if(u.origin===url)return route.continue();
    if(u.hostname==='prices.runescape.wiki'){
     const end=u.pathname.split('/').pop(),data=end==='mapping'?mapping:end==='latest'?{data:prices}:end==='5m'?{timestamp:now-120,data:volume}:end==='1h'?{timestamp:now-120,data:hourly}:end==='timeseries'?history:{data:{}};
