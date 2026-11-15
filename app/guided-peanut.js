@@ -372,7 +372,16 @@ function render(force=false){
   // reflow at the top of the document and preserves their scroll positions.
   const staging=el('div');
   buildIdea(staging,s,view);
-  oldCard.replaceWith(staging.firstElementChild);
+  const focused=document.activeElement,oldControls=oldCard.querySelector('.gp-guide-controls');
+  const focusedIndex=oldControls?.contains(focused)?[...oldControls.children].indexOf(focused):-1;
+  const newCard=staging.firstElementChild;
+  oldCard.replaceWith(newCard);
+  // Android may move focus to BODY when the tapped Next button is removed.
+  // Give focus to its replacement without implicit browser scroll.
+  if(focusedIndex>=0){
+   const nextControl=newCard.querySelector('.gp-guide-controls')?.children[focusedIndex];
+   if(nextControl&&!nextControl.disabled)nextControl.focus({preventScroll:true});
+  }
  }else{
   const oldDrawer=host.querySelector('.gp-guide-delivery-drawer');
   const openDelivery=oldDrawer?.open||false;
