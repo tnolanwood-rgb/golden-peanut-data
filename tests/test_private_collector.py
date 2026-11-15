@@ -220,6 +220,51 @@ class PrivateMonitorTests(unittest.TestCase):
         self.assertEqual(len(rows), 400)
 
 
+    def test_history_first_bootstrap_hitting_two_full_pages_is_explicitly_capped(self):
+        page = [{"id": i + 1, "item_id": 19684, "quantity": 2,
+                 "price": 300, "created": "2026-11-06T11:00:00Z",
+                 "purchased": "2026-11-06T11:30:00Z"} for i in range(200)]
+        with mock.patch.object(m, "arena", return_value=(page, {})):
+            rows = m.history_side("buys", {})
+        self.assertEqual(len(rows), 400)
+        self.assertEqual(rows.coverage, 'cap')
+        with mock.patch.object(m, "arena", return_value=(page, {"X-Page-Total": "2"})):
+            complete = m.history_side("buys", {})
+        self.assertEqual(complete.coverage, 'api-end')
+
+    def test_known_overlap_does_not_claim_previously_missing_history_backfill(self):
+        page = [{"id": i + 1, "item_id": 19684, "quantity": 2,
+                 "price": 300, "created": "2026-11-06T11:00:00Z",
+                 "purchased": "2026-11-06T11:30:00Z"} for i in range(200)]
+        with mock.patch.object(m, "arena", return_value=(page, {})):
+            rows = m.history_side("buys", {1: 2})
+        self.assertEqual(rows.coverage, 'known-overlap')
+        self.assertEqual(len(rows), 400)
+
+    def test_private_poll_marks_capped_history_and_keeps_warning_across_known_overlap(self):
+        writes = []
+        def fake_db(sql, params=()):
+            writes.append((sql, params))
+            if 'SELECT last_error FROM gp_monitor_credentials' in sql:
+                return [{'last_error': 'history_backfill_incomplete: earlier page limit'}]
+            return []
+        with mock.patch.object(m, "db", side_effect=fake_db), \
+             mock.patch.object(m, "current_side", return_value=[]), \
+             mock.patch.object(m, "history_side", return_value=m.HistoryBatch([], 'known-overlap')), \
+             mock.patch.object(m, "finalize_nights", return_value=0):
+            counts, _, _ = m.poll({"id": "fixture-account"})
+        self.assertFalse(counts['historyComplete'])
+        status = [(sql,params) for sql,params in writes
+                  if 'UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?' in sql]
+        self.assertEqual(len(status), 1)
+        self.assertIn('history_backfill_incomplete',status[0][1][2])
+        with mock.patch.object(m, "db", side_effect=fake_db), \
+             mock.patch.object(m, "current_side", return_value=[]), \
+             mock.patch.object(m, "history_side", return_value=m.HistoryBatch([], 'api-end')), \
+             mock.patch.object(m, "finalize_nights", return_value=0):
+            complete, _, _ = m.poll({"id": "fixture-account"})
+        self.assertTrue(complete['historyComplete'])
+
     def test_unchanged_open_orders_are_not_rewritten(self):
         order = {"id": 123, "item_id": 19684, "quantity": 20, "price": 125,
                  "created": "2026-11-06T11:00:00Z"}
