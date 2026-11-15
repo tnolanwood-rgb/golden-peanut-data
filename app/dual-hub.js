@@ -128,15 +128,22 @@ function blank(){
 function install(){
  if(doc.getElementById("gh-game-nav")||!doc.body)return;
  loadUser();
- const nav=el("nav");nav.id="gh-game-nav";nav.setAttribute("aria-label","Select trading game");nav.innerHTML=`<div class="gh-nav-inner" role="tablist" aria-label="Trading game"><button type="button" id="gh-tab-gw2" role="tab" aria-selected="true" aria-controls="gp-guided-root">Guild Wars 2</button><button type="button" id="gh-tab-osrs" role="tab" aria-selected="false" aria-controls="gh-osrs-root">Old School RuneScape</button></div>`;
- const root=el("section");root.id="gh-osrs-root";root.setAttribute("aria-label","The Golden Exchange trading desk");root.hidden=true; /* OSRS controls mount only on first OSRS visit. */
+ const nav=el("nav");nav.id="gh-game-nav";nav.setAttribute("aria-label","Select trading game");nav.innerHTML=`<div class="gh-nav-inner" role="tablist" aria-label="Trading game"><button type="button" id="gh-tab-gw2" role="tab" aria-selected="true" aria-controls="gh-panel-gw2">Guild Wars 2</button><button type="button" id="gh-tab-osrs" role="tab" aria-selected="false" aria-controls="gh-panel-osrs">Old School RuneScape</button></div><div class="gh-swipe-hint" aria-hidden="true">← Swipe to switch games →</div>`;
+ const root=el("section");root.id="gh-osrs-root";root.setAttribute("aria-label","The Golden Exchange trading desk");
  const legacyApp=doc.querySelector("body > .app");
- if(legacyApp)doc.body.insertBefore(nav,legacyApp);else doc.body.prepend(nav);
- if(legacyApp)legacyApp.after(root);else doc.body.append(root);
+ const stage=el("div");stage.id="gh-game-stage";stage.setAttribute("aria-label","Trading game screens");
+ const gwPanel=el("div","gh-game-panel"),osrsPanel=el("div","gh-game-panel");
+ gwPanel.id="gh-panel-gw2";osrsPanel.id="gh-panel-osrs";
+ osrsPanel.hidden=true;
+ if(legacyApp){legacyApp.before(nav,stage);gwPanel.append(legacyApp);}
+ else doc.body.prepend(nav,stage);
+ osrsPanel.append(root);stage.append(gwPanel,osrsPanel);
  get("gh-tab-gw2").addEventListener("click",()=>switchGame("gw2",true));
  get("gh-tab-osrs").addEventListener("click",()=>switchGame("osrs",true));
  doc.addEventListener("touchstart",rememberSwipe,{passive:true});
+ doc.addEventListener("touchmove",trackSwipe,{passive:true});
  doc.addEventListener("touchend",handleSwipe,{passive:true});
+ doc.addEventListener("touchcancel",()=>{swipe=null},{passive:true});
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length})};
  const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
@@ -168,30 +175,82 @@ function activateOsrs(){
  get("gh-chart-svg").addEventListener("pointerup",chartEnd);
 
 }
-function switchGame(game,userAction){
- state.game=game==="osrs"?"osrs":"gw2";
- doc.body.classList.toggle("gh-show-osrs",state.game==="osrs");
- get("gh-osrs-root").hidden=state.game!=="osrs";
- get("gh-tab-gw2").setAttribute("aria-selected",state.game==="gw2"?"true":"false");
- get("gh-tab-osrs").setAttribute("aria-selected",state.game==="osrs"?"true":"false");
- store(LAST_GAME,state.game);
- if(state.game==="osrs"){activateOsrs();render();if(!state.snap&&!state.loading)void refresh(false);win.__gpReleaseBoot?.();}
- if(userAction){win.scrollTo({top:0,behavior:"instant"});}
-}
-let swipe=null;
-function rememberSwipe(e){
- const t=e.target;
- if(!t||!t.closest||t.closest("button,input,select,textarea,summary,dialog,form,svg,.gh-chart-card,[contenteditable]")){swipe=null;return}
- if(!t.closest("#gh-game-nav,#gh-osrs-root,#gp-guided-root")){swipe=null;return}
- const a=e.changedTouches?.[0];swipe=a?{x:a.clientX,y:a.clientY}:null;
-}
-function handleSwipe(e){
- if(!swipe)return;const a=e.changedTouches?.[0];if(!a){swipe=null;return}
- const dx=a.clientX-swipe.x,dy=a.clientY-swipe.y;swipe=null;
- if(Math.abs(dx)>120&&Math.abs(dx)>Math.abs(dy)*2&&Math.abs(dy)<80){
-  if(dx<0&&state.game==="gw2")switchGame("osrs",true);
-  else if(dx>0&&state.game==="osrs")switchGame("gw2",true);
+let transitioning=false,swipe=null;
+function setPanelAccess(game){
+ for(const id of ["gw2","osrs"]){
+  const panel=get("gh-panel-"+id),active=id===game;
+  if(!panel)continue;
+  panel.inert=!active;
+  panel.setAttribute("aria-hidden",active?"false":"true");
  }
+}
+function switchGame(game,userAction){
+ const next=game==="osrs"?"osrs":"gw2";
+ if(transitioning||(userAction&&state.game===next))return;
+ const previous=state.game,fromPanel=get("gh-panel-"+previous),toPanel=get("gh-panel-"+next);
+ const stage=get("gh-game-stage");
+ if(!stage||!toPanel)return;
+ if(next==="osrs"){
+  activateOsrs();render();
+  if(!state.snap&&!state.loading)void refresh(false);
+  win.__gpReleaseBoot?.();
+ }
+ state.game=next;
+ doc.body.classList.toggle("gh-show-osrs",next==="osrs");
+ get("gh-tab-gw2").setAttribute("aria-selected",next==="gw2"?"true":"false");
+ get("gh-tab-osrs").setAttribute("aria-selected",next==="osrs"?"true":"false");
+ store(LAST_GAME,next);
+ const complete=()=>{
+  for(const id of ["gw2","osrs"]){const pane=get("gh-panel-"+id);if(pane)pane.hidden=id!==next;}
+  stage.classList.remove("gh-stage-moving");
+  stage.style.height="";
+  setPanelAccess(next);
+  transitioning=false;
+ };
+ if(userAction)win.scrollTo({top:0,behavior:"instant"});
+ const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ if(!userAction||!fromPanel||previous===next||reduced||!fromPanel.animate){complete();return;}
+ transitioning=true;
+ // Both full-width pages overlap only during the animation; normal layout
+ // uses one visible panel, avoiding an enormous blank scroll area.
+ toPanel.hidden=false;
+ const oldHeight=Math.max(1,fromPanel.getBoundingClientRect().height);
+ const newHeight=Math.max(1,toPanel.getBoundingClientRect().height);
+ stage.style.height=oldHeight+"px";
+ stage.classList.add("gh-stage-moving");
+ const delta=next==="osrs"?-100:100;
+ const opts={duration:370,easing:"cubic-bezier(.22,.78,.18,1)",fill:"both"};
+ const outgoing=fromPanel.animate([{transform:"translate3d(0,0,0)"},{transform:"translate3d("+delta+"%,0,0)"}],opts);
+ const incoming=toPanel.animate([{transform:"translate3d("+(-delta)+"%,0,0)"},{transform:"translate3d(0,0,0)"}],opts);
+ const height=stage.animate([{height:oldHeight+"px"},{height:newHeight+"px"}],opts);
+ Promise.all([outgoing.finished,incoming.finished,height.finished]).then(complete,complete);
+}
+function rememberSwipe(event){
+ swipe=null;
+ const target=event.target?.nodeType===1?event.target:event.target?.parentElement;
+ if(!target?.closest||transitioning||event.touches?.length!==1||doc.querySelector("dialog[open]"))return;
+ // A swipe can start anywhere in either game's page, including the GW2
+ // dashboard outside its guided content; this fixes the one-way bug.
+ if(!target.closest("#gh-game-stage,#gh-game-nav"))return;
+ if(target.closest("button,input,select,textarea,a,summary,form,svg,canvas,[contenteditable],[role=slider],.gh-chart-card,.gp-price-plot"))return;
+ const t=event.changedTouches?.[0];
+ if(t)swipe={x:t.clientX,y:t.clientY,game:state.game};
+}
+function trackSwipe(event){
+ if(!swipe)return;
+ const t=event.changedTouches?.[0];if(!t)return;
+ const dx=t.clientX-swipe.x,dy=t.clientY-swipe.y;
+ if(Math.abs(dy)>60&&Math.abs(dy)>Math.abs(dx)*1.2)swipe=null;
+}
+function handleSwipe(event){
+ if(!swipe||transitioning)return;
+ const t=event.changedTouches?.[0],start=swipe;swipe=null;
+ if(!t||start.game!==state.game||doc.querySelector("dialog[open]"))return;
+ const dx=t.clientX-start.x,dy=t.clientY-start.y;
+ const threshold=Math.min(110,Math.max(74,win.innerWidth*.22));
+ if(Math.abs(dx)<threshold||Math.abs(dx)<Math.abs(dy)*1.5||Math.abs(dy)>90)return;
+ if(dx<0&&state.game==="gw2")switchGame("osrs",true);
+ if(dx>0&&state.game==="osrs")switchGame("gw2",true);
 }
 function applySettings(){
  const budget=n(get("gh-budget-input").value),mode=get("gh-mode").value;
