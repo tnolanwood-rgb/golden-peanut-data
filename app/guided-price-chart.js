@@ -28,7 +28,12 @@ function ensure(){
  if(dialog)return;
  dialog=document.createElement('dialog');dialog.id='gp-price-dialog';dialog.className='gp-price-dialog';
  dialog.setAttribute('aria-label','Guild Wars 2 market price research');
- dialog.addEventListener('close',()=>{active=null;drag=null;version++;});
+ dialog.addEventListener('close',()=>{active=null;drag=null;fingers.clear();gesture=null;version++;});
+ dialog.addEventListener('pointerdown',onPointerDown);
+ dialog.addEventListener('pointermove',onPointerMove);
+ dialog.addEventListener('pointerup',onPointerEnd);
+ dialog.addEventListener('pointercancel',onPointerEnd);
+ dialog.addEventListener('wheel',onWheel,{passive:false});
  // Native dialog has its own Escape/Android Back behaviour. Outside taps
  // deliberately do NOT close a chart a user is reading.
  document.body.append(dialog);
@@ -103,66 +108,77 @@ function mainPlot(rows){
    v.append(svg('circle',{cx:xx,cy:y(rec[ix]),r:7,fill:color,stroke:'#13231b','stroke-width':3}));
   }
  }
- const pointFromX=clientX=>{
-  const rect=v.getBoundingClientRect();
-  const logical=(clientX-rect.left)*W/Math.max(1,rect.width);
-  let nearest=rows[0],distance=Infinity;
-  for(const r of rows){const dx=Math.abs(x(r)-logical);if(dx<distance){nearest=r;distance=dx;}}
-  return active.rows.indexOf(nearest);
- };
- const touches=new Map();
- let movement=null,pinched=false;
- const distance=()=>{const p=[...touches.values()];return p.length>=2?Math.abs(p[0]-p[1]):0;};
+ // Pointer events are delegated to the persistent dialog, NOT this SVG.
+ // The SVG is recreated when the selected day/window changes; binding touch
+ // capture here would silently end every gesture after its first movement.
  v.style.touchAction='none';
- v.addEventListener('pointerdown',e=>{
-  if(!active||!dialog?.open)return;
-  touches.set(e.pointerId,e.clientX);
-  try{v.setPointerCapture(e.pointerId);}catch{}
-  if(touches.size===1){movement={x:e.clientX,at:offset,used:false};pinched=false;}
-  if(touches.size===2){drag={distance:distance(),size:viewSize,offset};pinched=true;movement=null;}
- });
- v.addEventListener('pointermove',e=>{
-  if(!touches.has(e.pointerId)||!active)return;
-  touches.set(e.pointerId,e.clientX);
-  if(touches.size>=2&&drag){
-   const nowDistance=distance(),step=Math.max(1,Math.round(drag.size*drag.distance/Math.max(20,nowDistance)));
-   const desired=Math.max(MIN_POINTS,Math.min(active.rows.length,step));
-   if(desired!==viewSize){
-    viewSize=desired;offset=Math.max(0,Math.min(active.rows.length-viewSize,drag.offset));
-    range='custom';render();
-   }
-  }else if(touches.size===1&&movement){
-   const delta=e.clientX-movement.x;
-   if(Math.abs(delta)>12)movement.used=true;
-   if(movement.used){
-    const step=Math.max(40,v.getBoundingClientRect().width/(Math.max(4,viewSize)+1));
-    const requested=Math.round(delta/step);
-    const next=Math.max(0,Math.min(active.rows.length-Math.min(viewSize,active.rows.length),movement.at+requested));
-    if(next!==offset){offset=next;render();}
-   }
-  }
- });
- const endPointer=e=>{
-  if(!touches.has(e.pointerId))return;
-  const moved=movement?.used||false;
-  touches.delete(e.pointerId);
-  if(!moved&&!pinched&&touches.size===0){
-   const index=pointFromX(e.clientX);
-   if(index>=0){selected=index;render();}
-  }
-  if(touches.size===0){drag=null;movement=null;pinched=false;}
- };
- v.addEventListener('pointerup',endPointer);v.addEventListener('pointercancel',e=>{touches.delete(e.pointerId);if(!touches.size){drag=null;movement=null;pinched=false;}});
- // Mouse wheel with Ctrl behaves like trackpad pinch; ordinary scroll keeps
- // moving the page instead of trapping an accessibility-critical gesture.
- v.addEventListener('wheel',e=>{
-  if(!e.ctrlKey||!active)return;
-  e.preventDefault();const n=active.rows.length;
-  viewSize=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
-  offset=Math.min(offset,n-viewSize);range='custom';render();
- },{passive:false});
  frame.append(v);
  return frame;
+}
+/* Interactions live on the persistent modal so a redraw never loses the
+ * pointer capture (the original cause of drag/pinch stopping mid-gesture). */
+const fingers=new Map();
+let gesture=null;
+function dayAtClientX(clientX){
+ if(!active?.rows?.length)return -1;
+ const plot=dialog?.querySelector('.gp-price-svg'),rows=visible();
+ if(!plot||!rows.length)return -1;
+ const rect=plot.getBoundingClientRect(),W=680,L=94,R=20,span=W-L-R;
+ const logical=(clientX-rect.left)*W/Math.max(1,rect.width);
+ const first=rows[0][0],last=rows.at(-1)[0];
+ let nearest=rows[0],distance=Infinity;
+ for(const row of rows){
+  const xx=L+(row[0]-first)/Math.max(1,last-first)*span,delta=Math.abs(xx-logical);
+  if(delta<distance){nearest=row;distance=delta;}
+ }
+ return active.rows.indexOf(nearest);
+}
+function fingersApart(){
+ const p=[...fingers.values()];return p.length>=2?Math.abs(p[0]-p[1]):0;
+}
+function onPointerDown(e){
+ if(!active?.rows?.length||!e.target?.closest?.('.gp-price-svg'))return;
+ fingers.set(e.pointerId,e.clientX);
+ try{dialog.setPointerCapture(e.pointerId);}catch{}
+ if(fingers.size===1)gesture={x:e.clientX,originalOffset:offset,used:false,pinching:false};
+ if(fingers.size===2)gesture={pinching:true,used:true,originalDistance:fingersApart(),originalSize:viewSize,originalOffset:offset};
+}
+function onPointerMove(e){
+ if(!active?.rows?.length||!fingers.has(e.pointerId)||!gesture)return;
+ fingers.set(e.pointerId,e.clientX);
+ if(fingers.size>=2&&gesture.pinching){
+  const desired=Math.max(MIN_POINTS,Math.min(active.rows.length,Math.round(
+   gesture.originalSize*gesture.originalDistance/Math.max(20,fingersApart()))));
+  if(desired!==viewSize){
+   viewSize=desired;offset=Math.max(0,Math.min(active.rows.length-viewSize,gesture.originalOffset));
+   range='custom';render();
+  }
+ }else if(fingers.size===1&&!gesture.pinching){
+  const distance=e.clientX-gesture.x;
+  if(Math.abs(distance)>12)gesture.used=true;
+  if(gesture.used){
+   const chart=dialog.querySelector('.gp-price-svg');
+   const step=Math.max(40,(chart?.getBoundingClientRect().width||400)/(Math.max(4,viewSize)+1));
+   const target=Math.max(0,Math.min(active.rows.length-viewSize,gesture.originalOffset+Math.round(distance/step)));
+   if(target!==offset){offset=target;render();}
+  }
+ }
+}
+function onPointerEnd(e){
+ if(!fingers.has(e.pointerId))return;
+ const inspect=!!gesture&&!gesture.used&&!gesture.pinching&&fingers.size===1;
+ fingers.delete(e.pointerId);
+ if(inspect){
+  const index=dayAtClientX(e.clientX);
+  if(index>=0){selected=index;render();}
+ }
+ if(fingers.size===0)gesture=null;
+}
+function onWheel(e){
+ if(!e.ctrlKey||!active?.rows?.length||!e.target?.closest?.('.gp-price-svg'))return;
+ e.preventDefault();
+ const n=active.rows.length,desired=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
+ if(viewSize!==desired){viewSize=desired;offset=Math.min(offset,n-viewSize);range='custom';render();}
 }
 function selectedPanel(rows){
  const card=node('section','gp-price-selection');
