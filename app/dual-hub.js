@@ -234,7 +234,8 @@ function moveScene(scene,offset){
  scene.incoming.style.transform="translate3d("+(scene.direction*scene.width+dx)+"px,0,0)";
 }
 function finishScene(scene,commit){
- if(!scene)return;
+ if(!scene||scene.closed)return;
+ scene.closed=true;
  const next=commit?scene.next:scene.from;
  scene.out.style.transform="";scene.incoming.style.transform="";
  scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
@@ -275,7 +276,7 @@ function switchGame(game,userAction){
   for(const id of ["gw2","osrs"]){const p=get("gh-panel-"+id);if(p)p.hidden=id!==next;}
   setActiveGame(next);setPanelAccess(next);
   if(next==="osrs")render();
-  win.__gpReleaseBoot?.();
+  if(next==="osrs")win.__gpReleaseBoot?.();
   return;
  }
  scrollPositions[from]=win.scrollY||0;
