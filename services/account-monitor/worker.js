@@ -322,16 +322,15 @@ async function handle(request,env,ctx){
    env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=?').bind(account),
    env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=?').bind(account),
-   // GitHub Actions must retain only an inactive salted-key digest tombstone
-   // so the scheduler NEVER recreates a user-deleted account next time. This
-   // is not the API key and cannot be used to access ArenaNet.
-   credentials.encrypted===null?
-    env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL,account_name=?,last_error=NULL WHERE account_id=?')
-     .bind('[Monitoring stopped]',account):
-    env.DB.prepare('DELETE FROM gp_monitor_credentials WHERE account_id=?').bind(account)
+   // Always retain a disabled digest tombstone. Deleting a Worker-enrolled
+   // account could allow a still-configured GitHub Actions secret to recreate
+   // private monitoring on its next scheduled poll. This digest is not a token.
+   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL,account_name=?,last_error=NULL,last_polled_at=NULL,last_success_at=NULL WHERE account_id=?')
+    .bind('[Monitoring stopped]',account)
   ]);
   return response(request,200,{ok:true,enabled:false,credentialDeleted:true,cloudRecordsErased:true,
-   requiresGithubSecretRemoval:credentials.encrypted===null});
+   requiresGithubSecretRemoval:true,
+   note:'If a GitHub monitor secret exists, remove it separately; the inactive digest prevents automatic re-enrolment.'});
  }
  if(pathname==='/events'&&request.method==='GET'){
   const cursor=Math.max(0,Math.min(1e12,Number(url.searchParams.get('after')||0)))||0;
