@@ -132,21 +132,33 @@ async function connectGithub(state=current()){
 }
 async function refresh(state=current(),{force=false}={}){
  if(!state?.account||!state?.key||!state?.db)return null;
- const x=getEntry(state.account);
+ const account=state.account,apiKey=state.key,db=state.db;
+ const sameAccount=()=>state.account===account&&state.key===apiKey&&state.db===db;
+ const x=getEntry(account);
  if(!x.enabled||x.syncing||(!force&&now()-x.checkedAt<STATUS_MINUTES*60000))return x.status;
  x.syncing=true;x.lastError=null;
  try{
   const remote=await request(state,'/status');
+  if(!sameAccount()||remote?.account!==account)
+   throw Error('Account changed during monitor verification; no import attempted');
   if(!remote.enabled)throw Error('Background monitoring has been disabled');
-  x.checkedAt=now();x.status=remote;
-  // Account-scoped event cursor: acknowledge a page ONLY after its trade
-  // contents are safely imported into the original IndexedDB ledger.
-  let cursor=(await state.db.get('config',state.account,'cloud-monitor-cursor-v1'))?.value?.cursor||0;
-  let ledgerChanged=false,eventsCaptured=0,partialBuys=0,partialSells=0;
+  let cursor=(await db.get('config',account,'cloud-monitor-cursor-v1'))?.value?.cursor||0;
+  if(!Number.isSafeInteger(cursor)||cursor<0)throw Error('Saved monitor cursor is invalid');
+  if(!sameAccount())throw Error('Account changed before monitor import');
+  let ledgerChanged=false,eventsCaptured=0,partialBuys=0,partialSells=0,more=false;
   for(let page=0;page<25;page++){
-   if(state.account!==remote.account)break;
+   if(!sameAccount())throw Error('Account changed during monitor import');
    const payload=await request(state,'/events?after='+encodeURIComponent(cursor));
-   const rows=payload.events||[];
+   if(!sameAccount()||(payload?.account&&payload.account!==account))
+    throw Error('Account changed during monitor event lookup');
+   const rows=payload.events;
+   if(!Array.isArray(rows))throw Error('Monitor event page was malformed');
+   const nextCursor=Number(payload.nextCursor);
+   if(!Number.isSafeInteger(nextCursor)||nextCursor<cursor||
+      rows.some((e,i)=>!Number.isSafeInteger(e?.id)||e.id<=cursor||(i>0&&e.id<=rows[i-1].id))||
+      (rows.length&&nextCursor!==rows[rows.length-1].id)||
+      (payload.hasMore===true&&!rows.length))
+    throw Error('Monitor cursor/page conflict; nothing acknowledged');
    const trades=[];
    for(const e of rows){
     if(e.kind==='trade'&&valid(e.order_id)&&valid(e.item_id)&&valid(e.price)&&valid(e.completed_qty)&&
@@ -160,38 +172,42 @@ async function refresh(state=current(),{force=false}={}){
     }
    }
    if(trades.length){
-    const saved=await state.db.importLedger(state.account,trades,{source:'Verified ArenaNet background monitor'});
+    if(!sameAccount())throw Error('Account changed before trade import');
+    const saved=await db.importLedger(account,trades,{source:'Verified ArenaNet background monitor'});
     if(saved.added||saved.amended)ledgerChanged=true;
    }
    if(rows.length){
+    if(!sameAccount())throw Error('Account changed before event persistence');
+    const old=(await db.get('config',account,'cloud-monitor-events-v1'))?.value||[];
+    const combined=new Map();
+    for(const e of [...old,...rows])if(Number.isSafeInteger(e?.id))combined.set(e.id,e);
+    await db.put('config',account,'cloud-monitor-events-v1',[...combined.values()].sort((a,b)=>a.id-b.id).slice(-12000));
+    cursor=nextCursor;
+    await db.put('config',account,'cloud-monitor-cursor-v1',{cursor,at:now()});
     eventsCaptured+=rows.length;
-    // Store a bounded raw change feed, separately from the historical ledger.
-    // This is for after-action analyses, not a duplicate source of profit.
-    const old=(await state.db.get('config',state.account,'cloud-monitor-events-v1'))?.value||[];
-    const next=[...old,...rows].slice(-12000);
-    await state.db.put('config',state.account,'cloud-monitor-events-v1',next);
-    cursor=payload.nextCursor;
-    await state.db.put('config',state.account,'cloud-monitor-cursor-v1',{cursor,at:now()});
    }
-   if(!payload.hasMore)break;
+   more=payload.hasMore===true;
+   if(!more)break;
   }
-  if(ledgerChanged&&state.account===remote.account){
-   const saved=await state.db.all('ledger',state.account);
+  if(!sameAccount())throw Error('Account changed before monitor summary');
+  if(ledgerChanged){
+   const saved=await db.all('ledger',account);
+   if(!sameAccount())throw Error('Account changed before account summary');
    state.ledger=saved.map(r=>r.value);
    state.summary=root.PeanutCore?.summarizeLedger?.(state.ledger)||state.summary;
    try{await root.GPExecution?.update?.(state,now());}catch{}
-   // Cloud transactions are not just displayed: refresh price-verified
-   // recommendations using the newly imported ledger when account data is
-   // fresh. Never use an old wallet or stale quotations for buy instructions.
    const snapshotAt=Date.parse(state.snapshot?.at);
    if(!state.opportunityBusy&&Number.isFinite(snapshotAt)&&now()-snapshotAt<25*60000&&
-      state.snapshot?.buysVerified&&state.snapshot?.sellsVerified){
+      state.snapshot?.buysVerified&&state.snapshot?.sellsVerified&&sameAccount()){
     void root.GPOpportunity?.refresh?.(state,{phase:'quick'}).catch(()=>{});
    }
   }
+  x.checkedAt=more?0:now();
+  x.status={...remote,importComplete:!more,importedThrough:cursor};
   x.lastImportedEvents=eventsCaptured;x.lastObservedBuyUnits=partialBuys;x.lastObservedSellUnits=partialSells;
-  await state.db.put('config',state.account,'cloud-monitor-status-v1',{...remote,checkedAt:x.checkedAt,eventsCaptured});
-  return remote;
+  if(more)x.lastError='Private event import continues on the next check; more pages remain.';
+  await db.put('config',account,'cloud-monitor-status-v1',{...x.status,checkedAt:x.checkedAt,eventsCaptured});
+  return x.status;
  }catch(e){
   x.lastError=String(e.message||e).slice(0,180);
   return null;

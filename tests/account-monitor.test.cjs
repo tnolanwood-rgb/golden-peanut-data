@@ -200,3 +200,95 @@ test('monitor reload recovers server connection only when earlier opt-in evidenc
  assert.equal(ctx.GPCloudAccount.status(state.account).enabled,true);
  assert.equal(ctx.GPCloudAccount.status(state.account).status.backend,'github-actions');
 });
+
+test('disable always preserves an inactive digest tombstone, even for Worker-enrolled credentials',async()=>{
+ const {default:worker}=await moduleTask;
+ for(const encryption of ['ciphertext',null]){
+  const statements=[],batches=[];
+  const env={DB:{
+   prepare(sql){
+    const query={sql,params:[],bind(...params){this.params=params;return this;},
+     async first(){
+      assert.match(sql,/FROM gp_monitor_credentials WHERE token_digest/);
+      return {account_id:'acct-fixture',account_name:'Fixture.1234',enabled:1,encrypted:encryption};
+     }};
+    statements.push(query);return query;
+   },
+   async batch(q){batches.push(q);return q.map(()=>({success:true}));}
+  }};
+  const response=await worker.fetch(req('/disable','POST',{Origin:origin,Authorization:'Bearer '+key}),env,{});
+  assert.equal(response.status,200);
+  const payload=await response.json();
+  assert.equal(payload.enabled,false);
+  assert.equal(payload.cloudRecordsErased,true);
+  assert.equal(payload.requiresGithubSecretRemoval,true);
+  assert.equal(batches.length,1);
+  const sql=batches[0].map(q=>q.sql).join('\n');
+  assert.match(sql,/UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL/);
+  assert.doesNotMatch(sql,/DELETE FROM gp_monitor_credentials/,'no token digest deletion: GitHub scheduler must honour opt-out');
+  assert.match(sql,/DELETE FROM gp_monitor_events/);
+  assert.match(sql,/DELETE FROM gp_monitor_nights/);
+  assert.match(sql,/DELETE FROM gp_monitor_trades/);
+  assert.match(sql,/DELETE FROM gp_monitor_orders/);
+  assert.match(sql,/DELETE FROM gp_monitor_polls/);
+  const final=batches[0].at(-1);
+  assert.equal(final.params[0],'[Monitoring stopped]');
+  assert.equal(final.params[1],'acct-fixture');
+ }
+});
+
+test('monitor import cannot write status or ledger under a newly switched account',async()=>{
+ const vm=require('node:vm'),source=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
+ const writes=[],imports=[],state={account:'Fixture.1234',key:'synthetic-key',snapshot:null};
+ const db={
+  async get(store,account,key){
+   if(key==='cloud-account-monitor-v1')return {value:{enabled:true}};
+   if(key==='cloud-monitor-cursor-v1')return {value:{cursor:0}};
+   return null;
+  },
+  async put(store,account,key,value){writes.push({store,account,key,value});},
+  async importLedger(account,rows){imports.push({account,rows});return {added:0,amended:0};},
+  async all(){return []}
+ };
+ state.db=db;
+ const context={document:{readyState:'loading',addEventListener(){}},window:{addEventListener(){}},
+  fetch:async url=>{
+   if(String(url).endsWith('/status'))return {ok:true,json:async()=>({ok:true,enabled:true,account:'Fixture.1234',backend:'github-actions'})};
+   if(String(url).includes('/events?after=')){
+    state.account='Other.1234';
+    return {ok:true,json:async()=>({ok:true,account:'Fixture.1234',events:[],nextCursor:0,hasMore:false})};
+   }
+   throw Error('Unexpected request');
+  },AbortController,setTimeout,clearTimeout,Date,Map,Set,console};
+ vm.runInNewContext(source,context);
+ const api=context.GPCloudAccount;
+ await api.loadPreferences(state);
+ const result=await api.refresh(state,{force:true});
+ assert.equal(result,null,'a switched account cannot complete an old import');
+ assert.equal(imports.length,0);
+ assert.ok(!writes.some(x=>x.account==='Other.1234'),'never write private old-account status to the new account');
+ assert.match(api.status('Fixture.1234').lastError,/account/i);
+});
+test('invalid cursor/page cannot advance private event import',async()=>{
+ const vm=require('node:vm'),source=fs.readFileSync(path.join(__dirname,'../app/account-monitor-client.js'),'utf8');
+ const writes=[],state={account:'Fixture.1234',key:'synthetic-key',snapshot:null};
+ state.db={
+  async get(store,account,key){
+   if(key==='cloud-account-monitor-v1')return {value:{enabled:true}};
+   if(key==='cloud-monitor-cursor-v1')return {value:{cursor:15}};
+   return null;
+  },async put(store,account,key,value){writes.push({key,value})},
+  async importLedger(){throw Error('Malformed cursor must fail before ledger import')}
+ };
+ const context={document:{readyState:'loading',addEventListener(){}},window:{addEventListener(){}},
+  fetch:async url=>({ok:true,json:async()=>String(url).endsWith('/status')?
+   {ok:true,enabled:true,account:'Fixture.1234',backend:'github-actions'}:
+   {ok:true,account:'Fixture.1234',events:[{id:14,kind:'partial',quantity:100,side:'buys'}],nextCursor:14,hasMore:true}}),
+  AbortController,setTimeout,clearTimeout,Date,Map,Set,console};
+ vm.runInNewContext(source,context);
+ await context.GPCloudAccount.loadPreferences(state);
+ const result=await context.GPCloudAccount.refresh(state,{force:true});
+ assert.equal(result,null);
+ assert.ok(!writes.some(x=>x.key==='cloud-monitor-cursor-v1'));
+ assert.match(context.GPCloudAccount.status(state.account).lastError,/cursor/i);
+});
