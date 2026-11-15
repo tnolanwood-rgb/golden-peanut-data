@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: golden-peanut-pages-production
+  group: golden-peanut-production-deploy
   cancel-in-progress: false
 
 jobs:
@@ -26,6 +26,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -69,7 +71,26 @@ jobs:
               raise SystemExit('Unexpected production branch; refusing to deploy')
           print('Verified Cloudflare Pages project and main production branch.')
           PY
+      - name: Embed exact GitHub release identity in the published static bundle
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          sha=os.environ['GITHUB_SHA']
+          if len(sha)!=40 or any(c not in '0123456789abcdef' for c in sha.lower()):
+              raise SystemExit('Commit SHA unverified; no publish')
+          pathlib.Path('app/build-info.json').write_text(json.dumps({
+              'schema':'golden-peanut-pages-release-v1',
+              'commit':sha,
+              'source':'github-actions-main',
+              'origin':'thegoldenpeanut.pages.dev'
+          },separators=(',',':'))+'\n',encoding='utf-8')
+          PY
       - name: Deploy reviewed UI to existing production Pages project
         shell: bash
         run: |
           npx --yes wrangler@4 pages deploy app --project-name thegoldenpeanut --branch main
+      - name: Verify the EXACT deployed SHA-256 of every production asset
+        shell: bash
+        run: |
+          python3 scripts/verify_live_release.py --origin https://thegoldenpeanut.pages.dev --attempts 10
