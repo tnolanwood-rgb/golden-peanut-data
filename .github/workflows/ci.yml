@@ -31,13 +31,17 @@ jobs:
           fi
       - name: Reproducible audit baseline
         run: python scripts/audit_baseline.py
+      - name: Synthetic startup and chart payload benchmark
+        run: |
+          mkdir -p artifacts/audit
+          node scripts/benchmark_startup.cjs > artifacts/audit/startup-benchmark.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: browser-regression-screenshots
           path: |
             artifacts/browser-*.png
-            artifacts/audit/baseline.json
+            artifacts/audit/*.json
             artifacts/audit/*.log
       - uses: actions/setup-go@v5
         with:
