@@ -128,7 +128,7 @@ function blank(){
 function install(){
  if(doc.getElementById("gh-game-nav")||!doc.body)return;
  loadUser();
- const nav=el("nav");nav.id="gh-game-nav";nav.setAttribute("aria-label","Select trading game");nav.innerHTML=`<div class="gh-nav-inner" role="tablist" aria-label="Trading game"><button type="button" id="gh-tab-gw2" role="tab" aria-selected="true" aria-controls="gh-panel-gw2">Guild Wars 2</button><button type="button" id="gh-tab-osrs" role="tab" aria-selected="false" aria-controls="gh-panel-osrs">Old School RuneScape</button></div><div class="gh-swipe-hint" aria-hidden="true">← Swipe to switch games →</div>`;
+ const nav=el("nav");nav.id="gh-game-nav";nav.setAttribute("aria-label","Select trading game");nav.innerHTML=`<div class="gh-nav-inner" role="tablist" aria-label="Trading game"><button type="button" id="gh-tab-gw2" role="tab" aria-selected="true" aria-controls="gh-panel-gw2">Guild Wars 2</button><button type="button" id="gh-tab-osrs" role="tab" aria-selected="false" aria-controls="gh-panel-osrs">Old School RuneScape</button></div><div class="gh-swipe-hint" aria-hidden="true">← Drag sideways to change games →</div>`;
  const root=el("section");root.id="gh-osrs-root";root.setAttribute("aria-label","The Golden Exchange trading desk");
  const legacyApp=doc.querySelector("body > .app");
  const stage=el("div");stage.id="gh-game-stage";stage.setAttribute("aria-label","Trading game screens");
@@ -140,12 +140,20 @@ function install(){
  osrsPanel.append(root);stage.append(gwPanel,osrsPanel);
  get("gh-tab-gw2").addEventListener("click",()=>switchGame("gw2",true));
  get("gh-tab-osrs").addEventListener("click",()=>switchGame("osrs",true));
- doc.addEventListener("touchstart",rememberSwipe,{passive:true});
- doc.addEventListener("touchmove",trackSwipe,{passive:true});
- doc.addEventListener("touchend",handleSwipe,{passive:true});
- doc.addEventListener("touchcancel",()=>{swipe=null},{passive:true});
+ // Pointer Events + touch-action:pan-y preserve native vertical scrolling,
+ // while horizontal movement directly tracks the finger (not a post-swipe GIF).
+ doc.addEventListener("pointerdown",startGesture,{passive:true,capture:true});
+ doc.addEventListener("pointermove",moveGesture,{passive:false,capture:true});
+ doc.addEventListener("pointerup",endGesture,{passive:true,capture:true});
+ doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
+ doc.addEventListener("click",guardDragClick,true);
+ win.addEventListener("resize",cancelOnResize,{passive:true});
+ doc.addEventListener("visibilitychange",()=>{if(doc.hidden)cancelOnResize()});
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
- win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length})};
+ win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
+  game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,
+  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning
+ })};
  const initial=win.location.search.includes("game=osrs")?"osrs":read(LAST_GAME,"gw2");
  switchGame(initial==="osrs"?"osrs":"gw2",false);
  if(state.game==="osrs")render();
@@ -175,7 +183,14 @@ function activateOsrs(){
  get("gh-chart-svg").addEventListener("pointerup",chartEnd);
 
 }
-let transitioning=false,swipe=null;
+/* Two-page interactive swipe controller.
+ * Every pointer move directly positions both sheets. The last few pixels use
+ * a settling animation; never start a full-screen animation on finger lift.
+ * OSRS/W2 content and storage are never unmounted or recreated on each drag.
+ */
+let transitioning=false,gesture=null,activeAnimation=null,ignoreClickBefore=0;
+const scrollPositions={gw2:0,osrs:0};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function setPanelAccess(game){
  for(const id of ["gw2","osrs"]){
   const panel=get("gh-panel-"+id),active=id===game;
@@ -184,73 +199,162 @@ function setPanelAccess(game){
   panel.setAttribute("aria-hidden",active?"false":"true");
  }
 }
+function setActiveGame(game){
+ state.game=game;
+ doc.body.classList.toggle("gh-show-osrs",game==="osrs");
+ for(const id of ["gw2","osrs"])get("gh-tab-"+id).setAttribute("aria-selected",String(id===game));
+ store(LAST_GAME,game);
+}
+function ensureGameReady(next){
+ if(next==="osrs"){
+  activateOsrs();
+  if(!state.snap&&!state.loading)void refresh(false);
+ }
+}
+function createScene(from,next){
+ const stage=get("gh-game-stage"),out=get("gh-panel-"+from),incoming=get("gh-panel-"+next);
+ if(!stage||!out||!incoming)return null;
+ ensureGameReady(next);
+ // The receiving panel is prepared off-screen before the first drag frame.
+ const width=Math.max(1,stage.getBoundingClientRect().width);
+ const height=Math.max(1,out.getBoundingClientRect().height);
+ const direction=next==="osrs"?1:-1; // destination starts right (OSRS) or left (GW2).
+ incoming.hidden=false;
+ stage.style.height=height+"px";
+ stage.classList.add("gh-stage-moving");
+ incoming.inert=true;incoming.setAttribute("aria-hidden","true");
+ const scene={stage,out,incoming,from,next,width,direction,offset:0};
+ moveScene(scene,0);
+ return scene;
+}
+function moveScene(scene,offset){
+ const dx=clamp(offset,-scene.width,scene.width);
+ scene.offset=dx;
+ scene.out.style.transform="translate3d("+dx+"px,0,0)";
+ scene.incoming.style.transform="translate3d("+(scene.direction*scene.width+dx)+"px,0,0)";
+}
+function finishScene(scene,commit){
+ if(!scene)return;
+ const next=commit?scene.next:scene.from;
+ scene.out.style.transform="";scene.incoming.style.transform="";
+ scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
+ scene.out.hidden=next!==scene.from;
+ scene.incoming.hidden=next!==scene.next;
+ setActiveGame(next);
+ setPanelAccess(next);
+ transitioning=false;activeAnimation=null;
+ if(commit){
+  // Preserve each game's document scroll instead of losing the user's place.
+  win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
+ }
+}
+function settleScene(scene,commit){
+ if(!scene)return;
+ transitioning=true;
+ const finalX=commit?-scene.direction*scene.width:0;
+ const fromX=scene.offset,delta=Math.abs(finalX-fromX);
+ // Reduced-motion users still drag pages, but the release is immediate.
+ const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ if(reduced||delta<1||!scene.out.animate){moveScene(scene,finalX);finishScene(scene,commit);return;}
+ const duration=clamp(Math.round(delta/scene.width*350),140,320);
+ const options={duration,easing:"cubic-bezier(.21,.8,.22,1)",fill:"forwards"};
+ const a=scene.out.animate([{transform:"translate3d("+fromX+"px,0,0)"},{transform:"translate3d("+finalX+"px,0,0)"}],options);
+ const b=scene.incoming.animate([
+  {transform:"translate3d("+(scene.direction*scene.width+fromX)+"px,0,0)"},
+  {transform:"translate3d("+(scene.direction*scene.width+finalX)+"px,0,0)"}
+ ],options);
+ activeAnimation={a,b,scene};
+ Promise.all([a.finished,b.finished]).then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
+}
 function switchGame(game,userAction){
  const next=game==="osrs"?"osrs":"gw2";
- if(transitioning||(userAction&&state.game===next))return;
- const previous=state.game,fromPanel=get("gh-panel-"+previous),toPanel=get("gh-panel-"+next);
- const stage=get("gh-game-stage");
- if(!stage||!toPanel)return;
- if(next==="osrs"){
-  activateOsrs();render();
-  if(!state.snap&&!state.loading)void refresh(false);
+ if(transitioning||gesture||((userAction===true)&&state.game===next))return;
+ const from=state.game;
+ if(!userAction||next===from){
+  ensureGameReady(next);
+  for(const id of ["gw2","osrs"]){const p=get("gh-panel-"+id);if(p)p.hidden=id!==next;}
+  setActiveGame(next);setPanelAccess(next);
+  if(next==="osrs")render();
   win.__gpReleaseBoot?.();
+  return;
  }
- state.game=next;
- doc.body.classList.toggle("gh-show-osrs",next==="osrs");
- get("gh-tab-gw2").setAttribute("aria-selected",next==="gw2"?"true":"false");
- get("gh-tab-osrs").setAttribute("aria-selected",next==="osrs"?"true":"false");
- store(LAST_GAME,next);
- const complete=()=>{
-  for(const id of ["gw2","osrs"]){const pane=get("gh-panel-"+id);if(pane)pane.hidden=id!==next;}
-  stage.classList.remove("gh-stage-moving");
-  stage.style.height="";
-  setPanelAccess(next);
-  transitioning=false;
- };
- if(userAction)win.scrollTo({top:0,behavior:"instant"});
- const reduced=win.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
- if(!userAction||!fromPanel||previous===next||reduced||!fromPanel.animate){complete();return;}
- transitioning=true;
- // Both full-width pages overlap only during the animation; normal layout
- // uses one visible panel, avoiding an enormous blank scroll area.
- toPanel.hidden=false;
- const oldHeight=Math.max(1,fromPanel.getBoundingClientRect().height);
- const newHeight=Math.max(1,toPanel.getBoundingClientRect().height);
- stage.style.height=oldHeight+"px";
- stage.classList.add("gh-stage-moving");
- const delta=next==="osrs"?-100:100;
- const opts={duration:370,easing:"cubic-bezier(.22,.78,.18,1)",fill:"both"};
- const outgoing=fromPanel.animate([{transform:"translate3d(0,0,0)"},{transform:"translate3d("+delta+"%,0,0)"}],opts);
- const incoming=toPanel.animate([{transform:"translate3d("+(-delta)+"%,0,0)"},{transform:"translate3d(0,0,0)"}],opts);
- const height=stage.animate([{height:oldHeight+"px"},{height:newHeight+"px"}],opts);
- Promise.all([outgoing.finished,incoming.finished,height.finished]).then(complete,complete);
+ scrollPositions[from]=win.scrollY||0;
+ const scene=createScene(from,next);
+ if(!scene)return;
+ // Standard tab buttons use the same adjacent-page movement, but start from 0.
+ // Touch dragging instead updates the position continuously before release.
+ setActiveGame(next);
+ settleScene(scene,true);
 }
-function rememberSwipe(event){
- swipe=null;
- const target=event.target?.nodeType===1?event.target:event.target?.parentElement;
- if(!target?.closest||transitioning||event.touches?.length!==1||doc.querySelector("dialog[open]"))return;
- // A swipe can start anywhere in either game's page, including the GW2
- // dashboard outside its guided content; this fixes the one-way bug.
- if(!target.closest("#gh-game-stage,#gh-game-nav"))return;
- if(target.closest("button,input,select,textarea,a,summary,form,svg,canvas,[contenteditable],[role=slider],.gh-chart-card,.gp-price-plot"))return;
- const t=event.changedTouches?.[0];
- if(t)swipe={x:t.clientX,y:t.clientY,game:state.game};
+function startGesture(ev){
+ if(transitioning||gesture||!ev.isPrimary||!["touch","pen"].includes(ev.pointerType)||doc.querySelector("dialog[open]"))return;
+ const node=ev.target?.nodeType===1?ev.target:ev.target?.parentElement;
+ if(!node?.closest||!node.closest("#gh-game-stage,#gh-game-nav"))return;
+ // Avoid hijacking text editing, charts, slider scrubbing and pinch interactions.
+ // Buttons/cards/summary text are swipeable, but their click is cancelled after
+ // a real horizontal drag. This drastically expands the responsive touch area.
+ if(node.closest("input,textarea,select,svg,canvas,video,iframe,[contenteditable],[role=slider],.gp-price-plot,.gh-chart-card,[data-no-game-swipe]"))return;
+ const now=win.performance.now();
+ gesture={pointerId:ev.pointerId,startX:ev.clientX,startY:ev.clientY,lastX:ev.clientX,
+  lastTime:now,sampleX:ev.clientX,sampleTime:now,from:state.game,scene:null};
 }
-function trackSwipe(event){
- if(!swipe)return;
- const t=event.changedTouches?.[0];if(!t)return;
- const dx=t.clientX-swipe.x,dy=t.clientY-swipe.y;
- if(Math.abs(dy)>60&&Math.abs(dy)>Math.abs(dx)*1.2)swipe=null;
+function moveGesture(ev){
+ const g=gesture;
+ if(!g||ev.pointerId!==g.pointerId)return;
+ const dx=ev.clientX-g.startX,dy=ev.clientY-g.startY;
+ if(!g.scene){
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){gesture=null;return;}
+  if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
+  if((dx<0&&g.from!=="gw2")||(dx>0&&g.from!=="osrs")){gesture=null;return;}
+  const next=g.from==="gw2"?"osrs":"gw2";
+  scrollPositions[g.from]=win.scrollY||0;
+  g.scene=createScene(g.from,next);
+  if(!g.scene){gesture=null;return;}
+  // Capture after the receiving page is mounted, as specified by Pointer Events.
+  try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
+ }
+ const now=win.performance.now();
+ if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}
+ g.lastX=ev.clientX;g.lastTime=now;
+ moveScene(g.scene,dx);
+ if(ev.cancelable)ev.preventDefault();
 }
-function handleSwipe(event){
- if(!swipe||transitioning)return;
- const t=event.changedTouches?.[0],start=swipe;swipe=null;
- if(!t||start.game!==state.game||doc.querySelector("dialog[open]"))return;
- const dx=t.clientX-start.x,dy=t.clientY-start.y;
- const threshold=Math.min(110,Math.max(74,win.innerWidth*.22));
- if(Math.abs(dx)<threshold||Math.abs(dx)<Math.abs(dy)*1.5||Math.abs(dy)>90)return;
- if(dx<0&&state.game==="gw2")switchGame("osrs",true);
- if(dx>0&&state.game==="osrs")switchGame("gw2",true);
+function endGesture(ev){
+ const g=gesture;if(!g||ev.pointerId!==g.pointerId)return;
+ gesture=null;
+ if(!g.scene)return;
+ // An interrupted or reversed drag can return the original page.
+ const dx=clamp(ev.clientX-g.startX,-g.scene.width,g.scene.width);
+ moveScene(g.scene,dx);
+ const elapsed=Math.max(1,win.performance.now()-g.sampleTime);
+ const speed=(ev.clientX-g.sampleX)/elapsed;
+ const towardNew=(dx<0&&g.from==="gw2")||(dx>0&&g.from==="osrs");
+ const commit=towardNew&&(Math.abs(dx)>g.scene.width*.32||
+  (Math.abs(dx)>48&&Math.sign(speed)===Math.sign(dx)&&Math.abs(speed)>.65));
+ ignoreClickBefore=Date.now()+350;
+ settleScene(g.scene,commit);
+}
+function cancelGesture(ev){
+ const g=gesture;
+ if(!g||(ev&&ev.pointerId!==g.pointerId))return;
+ gesture=null;
+ if(g.scene)settleScene(g.scene,false);
+}
+function cancelOnResize(){
+ if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
+ if(activeAnimation){
+  const {a,b,scene}=activeAnimation;activeAnimation=null;
+  // Cancelling animations rejects .finished; guard the stale callback.
+  try{a.cancel();b.cancel();}catch{}
+  finishScene(scene,state.game===scene.next);
+ }
+}
+function guardDragClick(event){
+ if(Date.now()>ignoreClickBefore||event.detail===0)return;
+ const node=event.target?.nodeType===1?event.target:event.target?.parentElement;
+ if(!node?.closest?.("#gh-game-stage,#gh-game-nav"))return;
+ ignoreClickBefore=0;
+ event.preventDefault();event.stopImmediatePropagation();
 }
 function applySettings(){
  const budget=n(get("gh-budget-input").value),mode=get("gh-mode").value;
