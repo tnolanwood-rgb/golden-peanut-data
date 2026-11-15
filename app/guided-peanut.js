@@ -112,6 +112,9 @@ function guided(enabled){
  $('gp-return-guided').hidden=enabled;
  save(KEY,enabled?'guided':'advanced');
  if(enabled){render(true);window.scrollTo({top:0,behavior:'instant'});}
+ // Release the first paint only after Guided (or the saved Advanced view) is mounted.
+ // Double RAF avoids briefly exposing the legacy page while WebView lays out.
+ window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>window.__gpReleaseBoot?.()));
 }
 function advanced(toTrades=false){
  root.GPGuidedPriceChart?.close?.();
