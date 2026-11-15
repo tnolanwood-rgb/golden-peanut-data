@@ -289,7 +289,11 @@ function prefetchNearbyArtwork(s,view){
  const missing=ids.filter(id=>!root.GPFocus?.validItemIcon?.(s.meta?.[id]));
  const srcs=ids.map(id=>s.meta?.[id]?.icon).filter(Boolean);
  const key=s.account+'|'+ids.join(',')+'|'+srcs.join(',');
- if(key===lastPrefetch)return;
+ // Current missing artwork may be retried on an explicit repaint, while
+ // Focus itself deduplicates in-flight requests and caps failed attempts.
+ // Nearby prefetched items are requested only when their list changes.
+ const needsVisible=missing.includes(view.id);
+ if(key===lastPrefetch&&!needsVisible)return;
  lastPrefetch=key;
  if(missing.length)root.GPFocus?.ensureItemArtwork?.(missing);
  for(const src of srcs)prewarmIcon(src);
