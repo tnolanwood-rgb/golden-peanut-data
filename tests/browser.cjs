@@ -90,11 +90,25 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    rarity:'Exotic',icon:'https://render.guildwars2.com/file/aabbcc/'+id+'.png'};
   dispatchEvent(new Event('gp-item-metadata-updated'));
  },artResolution.id);
- await page.waitForFunction(()=>{
-  const img=document.querySelector('.gp-guide-item-icon img');
-  return img&&img.complete&&img.naturalWidth>0&&
-   document.querySelector('.gp-guide-item-name.gp-rarity-exotic');
- },null,{timeout:15000});
+ try{
+  await page.waitForFunction(()=>{
+   const img=document.querySelector('.gp-guide-item-icon img');
+   return img&&img.complete&&img.naturalWidth>0&&
+    document.querySelector('.gp-guide-item-name.gp-rarity-exotic');
+  },null,{timeout:8000});
+ }catch(err){
+  // Synthetic fixture only. Never dump any live account values or keys.
+  const dbg=await page.evaluate(()=>{
+   const n=document.querySelector('.gp-guide-item-icon'),img=n?.querySelector('img');
+   const id=GPGuided?.navigation?.()?.id;
+   return {id,html:n?.outerHTML?.slice(0,500),src:img?.src,complete:img?.complete,
+    width:img?.naturalWidth,rarity:document.querySelector('.gp-guide-item-name')?.className,
+    metadata:GoldenPeanutClean?.State?.meta?.[id]?.icon,
+    pageErrors:window.__uiImageError||''};
+  });
+  console.error('Synthetic item-art regression diagnostic',JSON.stringify(dbg));
+  throw err;
+ }
  assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
    'buy and sell instructions use full GW2 gold/silver/copper artwork, not plain letters');
  assert.equal(await page.locator('.gp-guide-instructions img[src*="gw2-"]').count(),6);
