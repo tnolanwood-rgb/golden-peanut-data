@@ -80,24 +80,78 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('#gh-range-summary').innerText(),/\d+ observed buckets/);
   await page.locator('.gh-research-close').click();
   assert.equal(await page.locator('#gh-research-dialog').isVisible(),false);
-  const swipe=async(source,target,x0,x1)=>{
-   const result=await page.evaluate(({source,x0,x1})=>{
-    const node=document.querySelector(source==='osrs'?'#gh-panel-osrs .gp-guide-header':'#gh-panel-gw2 .app');
-    const touch=x=>new Touch({identifier:41,target:node,clientX:x,clientY:180});
-    node.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[touch(x0)],changedTouches:[touch(x0)],targetTouches:[touch(x0)]}));
-    node.dispatchEvent(new TouchEvent('touchend',{bubbles:true,touches:[],changedTouches:[touch(x1)],targetTouches:[]}));
-    return {moving:document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'),
-      animated:document.querySelector('#gh-panel-'+source).getAnimations().length>0};
-   },{source,x0,x1});
-   assert.equal(result.moving,true,'swiping should trigger visible slide, not just swap content');
-   assert.equal(result.animated,true,'outgoing page must be actively animating horizontally');
-   await page.waitForFunction(t=>window.GoldenDualHub?.diagnostics().game===t&&
-      !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'),target);
-   assert.equal(await page.locator('#gh-panel-'+target).isVisible(),true);
-   assert.equal(await page.locator('#gh-panel-'+source).isVisible(),false);
+  // Finger-tracked transition tests: the two full pages move while pointer
+  // is STILL DOWN, stop mid-way when the finger stops, and reverse on demand.
+  const trace=async(source,selector,x0,steps,release=true)=>{
+   return page.evaluate(({source,selector,x0,steps,release})=>{
+    const node=document.querySelector(selector),from=document.querySelector('#gh-panel-'+source),
+     other=document.querySelector('#gh-panel-'+(source==='gw2'?'osrs':'gw2'));
+    assertNode(node,'test gesture target');
+    const dispatch=(type,x,y=180)=>{
+      node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:41,pointerType:'touch',
+       isPrimary:true,clientX:x,clientY:y,button:0,buttons:type==='pointerup'?0:1}));
+    };
+    function assertNode(el,label){if(!el)throw Error(label+' missing');}
+    dispatch('pointerdown',x0);
+    const records=[];
+    for(const x of steps){
+      dispatch('pointermove',x);
+      records.push({x,out:from.style.transform,other:other.style.transform,
+       sideBySide:!other.hidden,moving:document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'),
+       state:window.GoldenDualHub.diagnostics()});
+    }
+    if(release)dispatch('pointerup',steps.at(-1));
+    return records;
+   },{source,selector,x0,steps,release});
   };
-  await swipe('osrs','gw2',80,300);
-  await swipe('gw2','osrs',300,80);
+  const half=await trace('osrs','#gh-panel-osrs .gp-guide-header',65,[125,215],false);
+  assert.equal(half[1].moving,true,'touch drag should open adjacent game while finger is DOWN');
+  assert.equal(half[1].sideBySide,true,'both complete pages remain mounted halfway through');
+  assert.match(half[1].out,/translate3d\(150px,0,0\)/);
+  assert.match(half[1].other,/translate3d\(-240px,0,0\)/);
+  assert.equal(half[1].state.game,'osrs','selected game must not change before finger release');
+  const paused=await page.locator('#gh-panel-osrs').evaluate(n=>n.style.transform);
+  await page.waitForTimeout(120);
+  assert.equal(await page.locator('#gh-panel-osrs').evaluate(n=>n.style.transform),paused,
+    'held finger must hold the page still at half transition');
+  const reverse=await page.evaluate(()=>{
+    const node=document.querySelector('#gh-panel-osrs .gp-guide-header');
+    const dispatch=(type,x)=>node.dispatchEvent(new PointerEvent(type,{
+      bubbles:true,cancelable:true,pointerId:41,pointerType:'touch',isPrimary:true,clientX:x,clientY:180,button:0,buttons:type==='pointerup'?0:1}));
+    dispatch('pointermove',125);
+    const transform=document.querySelector('#gh-panel-osrs').style.transform;
+    dispatch('pointermove',270);
+    dispatch('pointerup',270);
+    return {transform};
+  });
+  assert.match(reverse.transform,/translate3d\(60px,0,0\)/,'dragging backward must reverse the page live');
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='gw2' &&
+   !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
+  assert.equal(await page.locator('#gh-panel-gw2').isVisible(),true);
+  assert.equal(await page.locator('#gh-panel-osrs').isVisible(),false);
+  // Vertical swipes leave the game unchanged and keep native page scrolling.
+  await page.evaluate(()=>{
+    const node=document.querySelector('#gh-panel-gw2 .app');
+    const fire=(type,x,y)=>node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,
+      pointerId:42,pointerType:'touch',isPrimary:true,clientX:x,clientY:y,button:0}));
+    fire('pointerdown',250,160);fire('pointermove',252,235);fire('pointerup',252,235);
+  });
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).dragging,false);
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
+  // Reversed short swipe: should settle back, not change games.
+  const back=await trace('gw2','#gh-panel-gw2 .app',325,[170,303]);
+  assert.equal(back[0].sideBySide,true);
+  assert.match(back[1].out,/translate3d\(-22px,0,0\)/);
+  await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
+  assert.equal((await page.evaluate(()=>window.GoldenDualHub.diagnostics())).game,'gw2');
+  // Complete GW2 -> OSRS from the whole page and then OSRS -> GW2 over a
+  // button, verifying the larger touch area. Both preserve the ledger.
+  await trace('gw2','#gh-panel-gw2 .app',330,[220,80]);
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='osrs' &&
+   !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
+  await trace('osrs','#gh-next',70,[145,270]);
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics().game==='gw2' &&
+   !document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   await page.locator('#gh-tab-gw2').click();
   await page.waitForFunction(()=>!document.querySelector('#gh-game-stage').classList.contains('gh-stage-moving'));
   assert.equal(await page.locator('#gh-tab-gw2').getAttribute('aria-selected'),'true');
