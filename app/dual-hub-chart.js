@@ -5,7 +5,7 @@
 const API='https://prices.runescape.wiki/api/v2/osrs/',NS='http://www.w3.org/2000/svg';
 // v2 timeseries accepts lookback, not timestep. 3d is filtered from 7d.
 const periods={six:['6h','6h',21600],day:['24h','24h',86400],three:['3d','7d',259200],week:['7d','7d',604800],month:['30d','30d',2592000]};
-let dialog=null,item=null,rows=[],range='week',size=0,offset=0,selected=0,sequence=0,gesture=null;
+let dialog=null,item=null,rows=[],range='week',size=0,offset=0,selected=0,sequence=0,gesture=null,pendingRestore=null,controller=null;
 const touch=new Map(),cache=new Map();
 const e=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
 const svg=(tag,props,text)=>{const n=doc.createElementNS(NS,tag);for(const [k,v] of Object.entries(props||{}))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=String(text);return n};
@@ -36,7 +36,15 @@ function ensure(){
  dialog.addEventListener('pointerdown',pointerDown);dialog.addEventListener('pointermove',pointerMove);
  dialog.addEventListener('pointerup',pointerUp);dialog.addEventListener('pointercancel',pointerUp);
  dialog.addEventListener('wheel',wheel,{passive:false});
- dialog.addEventListener('close',()=>{touch.clear();gesture=null;sequence++});
+ dialog.addEventListener('close',()=>{touch.clear();gesture=null;sequence++;controller?.abort();controller=null;notify()});
+ win.addEventListener('resize',()=>{touch.clear();gesture=null});
+}
+function notify(){win.dispatchEvent(new Event('gh-osrs-chart-changed'))}
+function snapshot(){return dialog?.open&&item?{item:{...item},range,size,offset,selectedTime:rows[selected]?.timestamp??null,scrollTop:dialog.scrollTop}:null}
+function restore(saved){
+ if(!Number.isSafeInteger(saved?.item?.id)||!Object.hasOwn(periods,saved.range))return false;
+ const item={id:saved.item.id,name:typeof saved.item.name==='string'?saved.item.name.slice(0,180):'Item #'+saved.item.id,icon:typeof saved.item.icon==='string'?saved.item.icon:'',valueTier:saved.item.valueTier};
+ pendingRestore=saved;return open(item,saved.range);
 }
 function bounds(){const count=Math.max(2,Math.min(rows.length,size||rows.length)),off=Math.max(0,Math.min(rows.length-count,offset));return [rows.length-count-off,rows.length-off]}
 function select(i){if(!rows.length)return;selected=Math.max(0,Math.min(rows.length-1,Math.round(i)));const [a,b]=bounds();if(selected<a)offset=rows.length-(b-a)-selected;if(selected>=b)offset=rows.length-1-selected;render()}
@@ -93,33 +101,47 @@ function render(){
  }
  for(let k=0;k<3;k++)chart.append(svg('text',{x:L+k*sx/2,y:H-15,'text-anchor':k===0?'start':k===2?'end':'middle',fill:'#c8d4c6','font-size':15},date(first+(last-first)*k/2)));
  if(q&&q.timestamp>=first&&q.timestamp<=last){const xx=X(q.timestamp);chart.append(svg('line',{x1:xx,x2:xx,y1:T,y2:H-B,stroke:'#e7d7b6','stroke-dasharray':'5 7'}));for(const [key,color] of [['avgLowPrice','#75d4b1'],['avgHighPrice','#eccc7c']])chart.append(svg('circle',{cx:xx,cy:Y(q[key]),r:6,fill:color,stroke:'#112318','stroke-width':3}));}
- plot.append(chart);
+ plot.append(chart);notify();
 }
 async function load(key){
- if(!item)return;range=periods[key]?key:'week';const [label,step,horizon]=periods[range],ref=item.id+'-'+step,token=++sequence;
+ if(!item)return;range=Object.hasOwn(periods,key)?key:'week';const [label,step,horizon]=periods[range],ref=item.id+'-'+step,token=++sequence;
+ controller?.abort();controller=new AbortController();
+ const requestController=controller,timer=win.setTimeout(()=>requestController.abort(),17000);
  rows=[];size=0;offset=0;selected=0;render();
  dialog.querySelector('#gh-research-status').textContent='Loading '+label+' of RuneScape Wiki market observations…';
  try{
   let entry=cache.get(ref);
   if(!entry||Date.now()-entry.at>300000){
-   const response=await win.fetch(API+'timeseries?id='+encodeURIComponent(item.id)+'&lookback='+step,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(17000)});
+   const response=await win.fetch(API+'timeseries?id='+encodeURIComponent(item.id)+'&lookback='+step,{headers:{Accept:'application/json'},signal:requestController.signal});
    if(!response.ok)throw Error('Wiki HTTP '+response.status);
    const data=await response.json();
    if(!Array.isArray(data?.data))throw Error('Unexpected response');
-   entry={at:Date.now(),timestep:Number.isSafeInteger(data.timestep)?data.timestep:null,rows:data.data.filter(r=>Number.isSafeInteger(r?.timestamp)&&r.timestamp>0&&Number.isFinite(r.avgLowPrice)&&Number.isFinite(r.avgHighPrice)&&r.avgLowPrice>0&&r.avgHighPrice>0).sort((a,b)=>a.timestamp-b.timestamp)};
+   const seen=new Map();
+   for(const r of data.data)if(Number.isSafeInteger(r?.timestamp)&&r.timestamp>0&&r.timestamp<=Date.now()/1000+60&&Number.isFinite(r.avgLowPrice)&&Number.isFinite(r.avgHighPrice)&&r.avgLowPrice>0&&r.avgHighPrice>0)seen.set(r.timestamp,r);
+   entry={at:Date.now(),timestep:Number.isSafeInteger(data.timestep)?data.timestep:null,rows:[...seen.values()].sort((a,b)=>a.timestamp-b.timestamp)};
    cache.set(ref,entry);
+   while(cache.size>32)cache.delete(cache.keys().next().value);
   }
   if(token!==sequence||!dialog.open)return;
   rows=entry.rows.filter(r=>r.timestamp>=Math.floor(Date.now()/1000)-horizon).slice(-1000);
   if(rows.length<2)throw Error('Insufficient recent observations');
   size=rows.length;offset=0;selected=rows.length-1;
+  const saved=pendingRestore;pendingRestore=null;
+  if(saved?.item?.id===item.id&&saved.range===range){
+   if(Number.isInteger(saved.size)&&saved.size>=2)size=Math.min(rows.length,saved.size);
+   if(Number.isInteger(saved.offset)&&saved.offset>=0)offset=Math.min(rows.length-size,saved.offset);
+   const index=rows.findIndex(row=>row.timestamp===saved.selectedTime);if(index>=0)selected=index;
+   if(Number.isFinite(saved.scrollTop))win.requestAnimationFrame(()=>{if(dialog.open)dialog.scrollTop=saved.scrollTop});
+  }
   dialog.querySelector('#gh-research-status').textContent=label+' · '+rows.length+' observed buckets · '+(entry.timestep?Math.round(entry.timestep/60)+'-minute ':'API-selected ')+'averages';
   render();
  }catch(error){if(token!==sequence||!dialog.open)return;rows=[];dialog.querySelector('#gh-research-status').textContent='Chart unavailable: '+error.message+' · try another range';render();}
+ finally{win.clearTimeout(timer);if(controller===requestController)controller=null;}
 }
-function open(next){
+function open(next,key='week'){
  if(!Number.isSafeInteger(next?.id)||next.id<=0)return false;
- ensure();item={id:next.id,name:String(next.name||'Item #'+next.id),icon:next.icon};
+ ensure();if(dialog.open&&item?.id===next.id&&!pendingRestore)return true;
+ item={id:next.id,name:String(next.name||'Item #'+next.id).slice(0,180),icon:next.icon,valueTier:next.valueTier};
  const title=dialog.querySelector('#gh-research-item');
  title.textContent=item.name;
  const tier=next.valueTier;
@@ -128,7 +150,7 @@ function open(next){
  const imageBox=dialog.querySelector('#gh-research-icon');imageBox.replaceChildren();
  const src=iconUrl(item.icon);
  if(src){const img=e('img');img.src=src;img.alt='';img.referrerPolicy='no-referrer';img.onerror=()=>{imageBox.textContent='▥'};imageBox.append(img)}else imageBox.textContent='▥';
- if(!dialog.open)dialog.showModal();void load('week');return true;
+ if(!dialog.open)dialog.showModal();void load(key);return true;
 }
 function chartIndex(clientX){
  const chart=dialog.querySelector('#gh-research-plot svg');if(!chart||!rows.length)return -1;
@@ -149,5 +171,5 @@ function pointerMove(ev){
 }
 function pointerUp(ev){if(!touch.has(ev.pointerId))return;const inspect=gesture&&!gesture.used&&!gesture.pinch&&touch.size===1;touch.delete(ev.pointerId);if(inspect){const i=chartIndex(ev.clientX);if(i>=0)select(i)}if(!touch.size)gesture=null}
 function wheel(ev){if(!ev.ctrlKey||!ev.target?.closest?.('#gh-research-plot svg')||rows.length<8)return;ev.preventDefault();const s=Math.max(8,Math.min(rows.length,size+(ev.deltaY>0?8:-8)));if(s!==size){size=s;offset=Math.min(offset,rows.length-size);render();}}
-win.GoldenOSRSChart={open,close:()=>dialog?.close(),diagnostics:()=>({id:item?.id||null,points:rows.length,range,selected,visible:bounds()})};
+win.GoldenOSRSChart={open,restore,snapshot,close:()=>dialog?.close(),diagnostics:()=>({id:item?.id||null,points:rows.length,range,selected,visible:bounds()})};
 })(window,document);

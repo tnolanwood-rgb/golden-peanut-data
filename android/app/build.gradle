@@ -9,10 +9,22 @@ android {
         minSdk 26
         // Private preview: target 34 until Android 15 edge-to-edge insets receive device testing.
         targetSdk 34
-        versionCode 1
-        versionName '0.2-preview'
+        versionCode 2
+        versionName '0.3-audit-preview'
     }
     buildFeatures { buildConfig true }
+    sourceSets { main.assets.srcDir layout.buildDirectory.dir('generated/hubAssets') }
+    signingConfigs {
+        debug {
+            def key = System.getenv('GOLDEN_HUB_DEBUG_KEYSTORE')
+            if (key) {
+                storeFile file(key)
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
     buildTypes {
         debug {
             buildConfigField 'String', 'HUB_URL', '"https://private-dual-hub-preview.thegoldenpeanut.pages.dev/"'
@@ -27,3 +39,14 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+dependencies { testImplementation 'junit:junit:4.13.2' }
+
+// Ship the exact reviewed frontend with the APK, at the unchanged HTTPS origin.
+// Public live data and authenticated requests still use their existing endpoints.
+def bundleHub = tasks.register('bundleHub', Sync) {
+    from rootProject.file('../app')
+    into layout.buildDirectory.dir('generated/hubAssets/hub')
+    exclude '_headers'
+}
+tasks.named('preBuild').configure { dependsOn bundleHub }

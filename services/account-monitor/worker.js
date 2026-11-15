@@ -46,7 +46,7 @@ class MonitorFault extends Error{
 async function gw2(key,path){
  let r;
  try{
-  r=await fetch(API+path,{headers:{Authorization:'Bearer '+key,Accept:'application/json'},redirect:'error'});
+  r=await fetch(API+path,{headers:{Authorization:'Bearer '+key,Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(20000)});
  }catch{throw new MonitorFault('ARENA_NET_UNREACHABLE','Cloudflare cannot currently contact the Guild Wars 2 API.',502);}
  if(!r.ok){
   const code=r.status===401||r.status===403?'ARENA_NET_KEY_REJECTED':
@@ -71,15 +71,15 @@ async function validatedMonitorHealth(env){
  return {keyReady,dbReady};
 }
 async function paginated(key,path,{maxPages,stopAtExisting=null,db=null,account=null,side=null}={}){
- const all=[];let complete=false,highWaterPage=-1;
+ const all=[];let complete=false,highWaterPage=-1,coverage='cap';
  for(let page=0;page<maxPages;page++){
   const url=API+path+'?page='+page+'&page_size='+PAGE_SIZE;
-  const res=await fetch(url,{headers:{Authorization:'Bearer '+key,Accept:'application/json','User-Agent':'GoldenPeanutMonitor/1.0'}});
+  const res=await fetch(url,{headers:{Authorization:'Bearer '+key,Accept:'application/json','User-Agent':'GoldenPeanutMonitor/1.0'},redirect:'error',signal:AbortSignal.timeout(20000)});
   if(!res.ok)throw Error('GW2 transaction endpoint status '+res.status);
   const rows=await res.json();
   if(!Array.isArray(rows))throw Error('Unexpected GW2 transactions shape');
   const totalPages=Number(res.headers.get('X-Page-Total'));
-  if(Number.isFinite(totalPages)&&totalPages>0&&page+1>=totalPages)complete=true;
+  if(Number.isFinite(totalPages)&&totalPages>0&&page+1>=totalPages){complete=true;coverage='api-end';}
   if(stopAtExisting&&rows.length){
    // Historical pages are ordered recent-first. After reaching already
    // imported transactions we still inspect the whole current page, then
@@ -91,13 +91,13 @@ async function paginated(key,path,{maxPages,stopAtExisting=null,db=null,account=
      .bind(account,side,row.id).first();
     if(exists){seen=true;break;}
    }
-   if(seen&&page>=1){all.push(...rows);complete=true;break;}
+   if(seen&&page>=1&&!complete){all.push(...rows);complete=true;coverage='known-overlap';break;}
   }
   all.push(...rows);
   highWaterPage=page;
-  if(complete||rows.length<PAGE_SIZE){complete=true;break;}
+  if(complete||rows.length<PAGE_SIZE){complete=true;coverage='api-end';break;}
  }
- return {rows:all,complete,highWaterPage};
+ return {rows:all,complete,highWaterPage,coverage};
 }
 const eventInsert=(env,account,type,side,orderId,item,price,quantity,at,previousRemaining=null,newRemaining=null,keySuffix='')=>{
  const eventKey=[type,side,orderId,keySuffix||at].join(':');
@@ -110,7 +110,10 @@ async function batches(promises,limit=20){
 async function monitorAccount(env,row){
  const stamp=now(),account=row.account_id,key=await unseal(env,row);
  const current={},history={},sideNames=['buys','sells'];
+ let previousGap=false;
  try{
+  const priorCoverage=await env.DB.prepare('SELECT last_error FROM gp_monitor_credentials WHERE account_id=?').bind(account).first();
+  previousGap=/history_backfill_incomplete|historical 90-day backfill/.test(priorCoverage?.last_error||'');
   // Do not mark missing orders cancelled unless BOTH full current books were
   // fetched with complete pagination and no API errors.
   for(const side of sideNames){
@@ -127,6 +130,7 @@ async function monitorAccount(env,row){
    const got=await paginated(key,'/commerce/transactions/history/'+side,{maxPages:pages,
     stopAtExisting:true,db:env.DB,account,side});
    history[side]=got.rows;
+   history[side+'_coverage']=got.coverage;
    // More than 60 pages before reaching history means the poll cannot claim
    // exhaustive coverage. Persist the observed pages and report gap risk.
    if(!got.complete)history[side+'_incomplete']=true; // Old backlog partial; continue sampling NEW trades.
@@ -183,15 +187,16 @@ async function monitorAccount(env,row){
   }
   await env.DB.prepare('INSERT OR IGNORE INTO gp_monitor_polls(account_id,polled_at,buy_count,sell_count) VALUES(?,?,?,?)')
    .bind(account,stamp,current.buys.length,current.sells.length).run();
-  const historyWarning=sideNames.some(x=>history[x+'_incomplete'])?
-   'Recent completed trades saved; historical 90-day backfill exceeds per-run page budget':null;
+  const reachedEnd=sideNames.every(x=>history[x+'_coverage']==='api-end');
+  const historyWarning=sideNames.some(x=>history[x+'_incomplete'])||previousGap&&!reachedEnd?
+   'history_backfill_incomplete: Recent completed trades saved; historical 90-day backfill exceeds per-run page budget':null;
   await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0 WHERE account_id=?')
    .bind(stamp,stamp,historyWarning,account).run();
   await finalizeNights(env,account,stamp);
   return {ok:true,account,orders:current.buys.length+current.sells.length,trades:tradeChanges,partials:partiallyFilled,newOrders,closedUnknown,
    historyComplete:!historyWarning};
  }catch(e){
-  const code=String(e.message||'Unknown monitor failure').slice(0,140);
+  const code=(previousGap?'history_backfill_incomplete: ':'')+String(e.message||'Unknown monitor failure').slice(0,140);
   await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_error=?,consecutive_failures=consecutive_failures+1 WHERE account_id=?')
    .bind(stamp,code,account).run();
   // Never emit credential details or account trading records into public logs.
@@ -247,7 +252,7 @@ async function handle(request,env,ctx){
   const health=await validatedMonitorHealth(env);
   let gw2Ready=false,gw2Status='unreachable';
   try{
-   const r=await fetch(API+'/build',{headers:{Accept:'application/json'}});
+   const r=await fetch(API+'/build',{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(7000)});
    gw2Ready=r.ok;gw2Status=r.ok?'accessible':'HTTP_'+r.status;
   }catch{}
   return response(request,200,{ok:true,dbReady:health.dbReady,keyReady:health.keyReady,

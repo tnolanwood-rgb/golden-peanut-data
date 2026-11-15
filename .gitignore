@@ -9,3 +9,8 @@ playwright-report/
 *.db
 *Backup*
 *KEEP_PRIVATE*
+android/.gradle/
+android/**/build/
+android/local.properties
+*.jks
+*.keystore

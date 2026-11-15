@@ -39,4 +39,24 @@ class DeploymentPathTests(unittest.TestCase):
         self.assertIn('Cache-Control: no-cache, must-revalidate',headers)
         self.assertNotIn('no-store',headers)
 
+
+class HubDeliveryGuards(unittest.TestCase):
+    def test_manual_production_deploys_require_main(self):
+        for filename, job in [('guided-ui-production.yml','validate-and-deploy'),('account-monitor-deploy.yml','deploy-monitor')]:
+            doc=yaml.load((WORKFLOWS/filename).read_text(),Loader=yaml.BaseLoader)
+            self.assertEqual(doc['jobs'][job]['if'], "github.ref == 'refs/heads/main'")
+    def test_android_build_tests_and_delivers_the_reviewed_frontend_without_deployment(self):
+        workflow=(WORKFLOWS/'private-hub-android.yml').read_text()
+        self.assertIn('pull_request:',workflow)
+        self.assertIn(':app:testDebugUnitTest :app:lintDebug',workflow)
+        self.assertIn('bash ./gradlew',workflow)
+        self.assertNotIn('wrangler',workflow)
+        self.assertNotIn('adb install',workflow)
+        gradle=(ROOT/'android/app/build.gradle').read_text()
+        self.assertIn("applicationId 'com.goldenhub.dual.preview'",gradle)
+        self.assertIn("tasks.register('bundleHub', Sync)",gradle)
+        self.assertIn("from rootProject.file('../app')",gradle)
+        props=(ROOT/'android/gradle/wrapper/gradle-wrapper.properties').read_text()
+        self.assertRegex(props,r'distributionSha256Sum=[0-9a-f]{64}')
+
 if __name__=='__main__':unittest.main()

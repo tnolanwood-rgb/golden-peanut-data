@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   deploy-monitor:
+    if: github.ref == 'refs/heads/main'
     name: Deploy isolated encrypted trading-history monitor
     runs-on: ubuntu-latest
     timeout-minutes: 20
