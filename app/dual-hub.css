@@ -85,3 +85,23 @@ body.gh-show-osrs #gh-osrs-root{display:block}
   #gh-game-nav button{font-size:12px;padding-inline:4px;min-height:44px}
   .gh-field-grid{grid-template-columns:1fr}
 }
+
+/* v0.3 — the navigation dock stays at exactly the same Y coordinate across
+ * changing trade titles, descriptions and prices. Long text scrolls in its own
+ * accessible region, never underneath the buttons. Charts are separate dialogs. */
+#gh-osrs-root .gp-guide-idea{display:flex;flex-direction:column;gap:0;min-height:0}
+#gh-osrs-root .gh-trade-shell{height:clamp(570px,74dvh,740px);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#gh-osrs-root .gh-trade-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#708369 #203528;padding:0 7px 9px 0}
+#gh-osrs-root .gh-trade-scroll .gp-guide-idea-top{margin-bottom:13px}
+#gh-osrs-root .gh-trade-scroll .gp-guide-item-icon{margin-bottom:15px}
+#gh-osrs-root .gh-trade-scroll .gp-guide-totals{margin:16px 0 11px}
+#gh-osrs-root .gh-action-dock{flex:none;margin-top:auto;background:#222d21;box-shadow:0 -8px 15px #18291e;z-index:1;border-top:1px solid #687454;padding:15px 0 1px}
+#gh-osrs-root .gh-action-dock .gp-guide-controls{margin:0 0 10px}
+#gh-osrs-root .gh-action-dock .gh-actions{margin:0}
+#gh-osrs-root .gh-trade-scroll:focus-visible{outline:2px solid #e9c887;outline-offset:-2px}
+#gh-osrs-root .gh-coin-amount{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+#gh-osrs-root .gh-coin-amount img{width:22px;height:22px;object-fit:contain;flex:none}
+#gh-osrs-root .gh-coin-amount span{overflow-wrap:anywhere}
+#gh-osrs-root .gp-guide-item-icon img{image-rendering:auto}
+#gh-osrs-root .gh-action-dock button{min-height:48px}
+@media(max-width:450px){#gh-osrs-root .gh-trade-shell{height:clamp(570px,74dvh,730px)}#gh-osrs-root .gh-trade-scroll{padding-right:3px}}
