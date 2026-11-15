@@ -8,8 +8,7 @@ const $=id=>document.getElementById(id);
 const KEY='gp-guided-mode-v1', LEGACY_SKIPS='gp-guided-skips-v1';
 const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
-let installed=false, current=null, priceChart=null, chartOpen=false;
-let chartDays=21, chartOffset=0, fingerprint='', renderTimer=0;
+let installed=false, current=null, fingerprint='', renderTimer=0;
 let ideasCache=null;
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
 const save=(k,v)=>{try{localStorage.setItem(k,v);}catch{}};
@@ -62,8 +61,9 @@ function ideas(s){
  ideasCache={parts,rows:out};
  return out;
 }
-function setCurrent(id){current=id;priceChart=null;chartOpen=false;chartDays=21;chartOffset=0;}
+function setCurrent(id){current=id;}
 function navigate(action){
+ root.GPGuidedPriceChart?.close?.();
  const state=root.GoldenPeanutClean?.State,rows=ideas(state);
  const view=deck.move(rows,state?.account,action);
  if(view.id!==current)setCurrent(view.id);
@@ -78,6 +78,7 @@ function guided(enabled){
  if(enabled){render(true);window.scrollTo({top:0,behavior:'instant'});}
 }
 function advanced(toTrades=false){
+ root.GPGuidedPriceChart?.close?.();
  guided(false);
  if(toTrades)document.querySelector('[data-focus-nav="trades"]')?.click();
  window.scrollTo({top:0,behavior:'instant'});
@@ -219,54 +220,10 @@ function buildIdea(host,s,view){
  }
  host.append(section);
 }
-function renderChartArea(host){
- const wrap=el('section','gp-guide-chart-section');wrap.id='gp-guide-chart-section';wrap.hidden=!chartOpen;
- const top=el('div','gp-guide-chart-head');
- add(top,el('h2','','Price history · zoom & move'),button('Close',()=>{chartOpen=false;render(true);},'gp-guide-light'));
- const tools=el('div','gp-guide-chart-controls');
- add(tools,button('− Zoom out',()=>zoom(false),'gp-guide-light'),button('+ Zoom in',()=>zoom(true),'gp-guide-light'),
-  button('← Earlier',()=>pan(true),'gp-guide-light'),button('Later →',()=>pan(false),'gp-guide-light'),button('Reset',()=>{chartDays=21;chartOffset=0;drawChart();},'gp-guide-light'));
- const description=el('p','gp-guide-muted','Daily public bid/ask snapshots, not completed trade prices or sales volume. Missing dates are not interpolated.');
- const chart=el('div','gp-guide-chart-body');chart.id='gp-guide-chart-body';
- add(wrap,top,tools,description,chart);host.append(wrap);if(chartOpen)drawChart();
-}
+/* The chart lives outside the guided home renderer so background refreshes
+ * cannot replace or close a user's active inspection. */
 function showChart(choice){
- chartOpen=true;chartDays=21;chartOffset=0;priceChart=null;render(true);
- const area=$('gp-guide-chart-section');area?.scrollIntoView({block:'start',behavior:'smooth'});
- if(!root.GPMarketFeed?.loadItemHistory){$('gp-guide-chart-body').textContent='A compatible price-history feed is not available.';return;}
- root.GPMarketFeed.loadItemHistory(choice.id).then(data=>{
-  if(!chartOpen||current!==choice.id)return;
-  const rows=data?.entries?.get(choice.id)||[];
-  priceChart={id:choice.id,source:data?.source||'',rows:rows.filter(r=>Array.isArray(r)&&r.length>=3&&r[1]>0&&r[2]>0)};
-  drawChart();
- }).catch(()=>{if($('gp-guide-chart-body'))$('gp-guide-chart-body').textContent='Could not load public price history. You can continue without a chart.';});
-}
-function zoom(inward){if(!priceChart)return;chartDays=Math.max(5,Math.min(21,chartDays+(inward?-7:7)));chartOffset=Math.min(chartOffset,Math.max(0,priceChart.rows.length-chartDays));drawChart();}
-function pan(earlier){if(!priceChart)return;chartOffset=Math.max(0,Math.min(Math.max(0,priceChart.rows.length-chartDays),chartOffset+(earlier?3:-3)));drawChart();}
-function drawChart(){
- const mount=$('gp-guide-chart-body');if(!mount||!chartOpen)return;mount.replaceChildren();
- if(!priceChart){mount.append(el('p','gp-guide-muted','Loading historical price observations…'));return;}
- const rows=priceChart.rows,n=rows.length;
- if(n<2){mount.append(el('p','gp-guide-muted','No sufficient recent daily price history exists for this item. This is not evidence of zero trades.'));return;}
- const last=Math.max(0,n-chartOffset),first=Math.max(0,last-chartDays),sample=rows.slice(first,last);
- if(sample.length<2){mount.append(el('p','gp-guide-muted','Not enough observations at this zoom level.'));return;}
- const minimum=Math.min(...sample.map(r=>Math.min(r[1],r[2]))),maximum=Math.max(...sample.map(r=>Math.max(r[1],r[2])));
- const pad=Math.max(1,(maximum-minimum)*.07),low=Math.max(0,minimum-pad),high=maximum+pad,span=Math.max(1,high-low);
- const chartPrice=v=>v>=10000?(v/10000).toFixed(v>=100000?0:2)+'g':v>=100?(v/100).toFixed(1)+'s':Math.round(v)+'c';
- const start=sample[0][0],end=sample[sample.length-1][0],x=r=>58+(r[0]-start)/Math.max(1,end-start)*544;
- const y=v=>155-(v-low)/span*132;
- const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 640 210');svg.setAttribute('class','gp-guide-chart');svg.setAttribute('role','img');svg.setAttribute('aria-label','Historical daily public bid and ask snapshots. Use zoom and earlier or later buttons to move around.');
- const ns='http://www.w3.org/2000/svg';
- const svgText=(xx,yy,str,anchor)=>{const t=document.createElementNS(ns,'text');t.setAttribute('x',xx);t.setAttribute('y',yy);t.setAttribute('fill','#c4d7ca');t.setAttribute('font-size','13');if(anchor)t.setAttribute('text-anchor',anchor);t.textContent=str;svg.append(t);};
- const line=(d,color,width=2)=>{const p=document.createElementNS(ns,'path');p.setAttribute('d',d);p.setAttribute('fill','none');p.setAttribute('stroke',color);p.setAttribute('stroke-width',width);p.setAttribute('stroke-linejoin','round');svg.append(p);};
- for(let i=0;i<3;i++){const yy=28+i*63;line('M58 '+yy+' H602','#345344',1);}
- const path=index=>sample.map((r,i)=>((i&&r[0]-sample[i-1][0]>1)?'M':i?'L':'M')+x(r).toFixed(2)+' '+y(r[index]).toFixed(2)).join(' ');
- line(path(1),'#9ce1b4',3);line(path(2),'#eac77e',3);
- svgText(5,35,chartPrice(high));svgText(5,165,chartPrice(low));
- svgText(58,199,new Date(start*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}));
- svgText(602,199,new Date(end*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'}),'end');
- mount.append(svg,el('div','gp-guide-chart-key','● Bid reference (green)     ● Ask reference (gold)'));
- mount.append(el('p','gp-guide-muted',sample.length+' observations · '+priceChart.source+' · '+(first+1)+'–'+last+' of '+n+' recorded days'));
+ root.GPGuidedPriceChart?.open?.({id:choice.id,name:choice.label});
 }
 function render(force=false){
  if(!installed||!document.body.classList.contains('gp-guided-active'))return;
@@ -277,7 +234,7 @@ function render(force=false){
  const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
   s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,
   view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
-  s?.meta?.[view.id]?.icon,$('focus-delivery-total')?.textContent||'',chartOpen,chartDays,chartOffset]);
+  s?.meta?.[view.id]?.icon,$('focus-delivery-total')?.textContent||'']);
  if(!force&&sig===fingerprint)return;fingerprint=sig;
  const host=$('gp-guided-root');if(!host)return;
  const oldY=window.scrollY;
@@ -289,7 +246,7 @@ function render(force=false){
  const drawer=host.querySelector('.gp-guide-delivery-drawer');
  if(drawer){drawer.open=openDelivery;drawer.querySelector('.gp-guide-delivery-list').scrollTop=deliveryScroll;}
  buildIdea(content,s,view);
- renderChartArea(content);
+ 
  const footer=el('footer','gp-guide-foot');
  add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
   button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
