@@ -1,3 +1,13 @@
+# Latest verified delivery — 15 November 2026, 22:53 UTC
+
+PR #56 merge `247dab5cc78c370027e578954c1f4559c1a23a7e`; full exact-head regression check `43771445550` successful. Approved Worker/D1 release `43771653374` successful. Private read-only follow-up `43771726600` successful, `RECENT_WRITES_VERIFIED`: 1 active/fresh monitor, 49 recent polls, 197 recent trade records, 299 recent events, 0 monitor warnings, 0 observed complete order nights. Private D1 opt-out SQL triggers and GitHub-only fallback Worker mode are now deployed. Existing user trading history remains; no live order actions.
+
+The current Cloudflare Pages UI was successfully checksum-verified at run `43768703959` for commit `bbb4c958f9f2ba5b38531875cfb239e91acfce69`. Later main changes are backend/docs only. The separate Android debug preview is **not** an in-place replacement for an original installed app. Major unresolved acceptance gates: physical-device checks, original package/signing continuity, complete OSRS v4 migration/feature parity, long-run live user evidence and held-out calibration. Remain honest about those gates.
+
+Next safe work: preserve source/data as-is, perform non-destructive phone/profile checks when accessible, and implement versioned OSRS v4 migrations only with the complete source/export schema; never discard unknown fields. Keep the GitHub fallback monitor singular. Re-run aggregate readback after a **new** scheduled GitHub poll, since this same-minute check proves data preservation but not a fresh post-migration poll. No extra D1 migration or release needed for PR #56.
+
+---
+
 # Current release / Codex resume — 15 November 2026, 21:00 UTC
 
 **PR #52 MERGED AND PRODUCTION PAGES VERIFIED.** It merged as `441c528f30bb033cb7c2623888540ffb3026f107` into `main`.
