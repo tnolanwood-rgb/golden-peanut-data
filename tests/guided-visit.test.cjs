@@ -8,7 +8,7 @@ test('Android WebView recreation resumes only UI position, selection and non-sen
  const s=store(),v=Visit.create(s,()=>1000000);
  assert.equal(v.save('Fixture.1234',deck,915,{id:202,range:'all',viewSize:14,offset:0,selectedDay:20771,expanded:true}),true);
  const saved=JSON.parse(s.getItem(v.key));
- assert.equal('Fixture.1234' in JSON.stringify(saved),false);
+ assert.equal(JSON.stringify(saved).includes('Fixture.1234'),false);
  assert.equal(/api.key|wallet|quote|price|ledger|trade/i.test(JSON.stringify(saved)),false);
  const reread=Visit.create(s,()=>1002500).load('Fixture.1234');
  assert.deepEqual(reread.deck,deck);
