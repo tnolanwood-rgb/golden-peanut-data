@@ -16,6 +16,39 @@ const el=(tag,cls,text)=>{const x=doc.createElement(tag);if(cls)x.className=cls;
 const txt=(id,v)=>{const a=doc.getElementById(id);if(a)a.textContent=safe(v)};
 const get=(id)=>doc.getElementById(id);
 const tax=(price,name)=>{const sell=Math.floor(n(price));const key=safe(name).trim().toLowerCase();if(EXEMPT.has(key)||/^energy potion\([1-4]\)$/.test(key)||/^old school bonds?( \(untradeable\))?$/.test(key))return 0;return Math.min(5000000,Math.floor(Math.max(0,sell)/50))};
+/* Actual official OSRS Mobile / Steam ground-items overlay defaults.
+ * This is a *value* colour, not a fixed item rarity. Source:
+ * https://oldschool.runescape.wiki/w/Settings#Ground_Items_Overlay
+ * Live OSRS Wiki high/low observations do not equal the Jagex GE guide price,
+ * so the Hub labels its midpoint-based classification as an estimate. */
+const OFFICIAL_OSRS_TIERS=Object.freeze([
+ Object.freeze({tier:5,min:10000000,name:"Tier 5 · 10m+ GP",color:"#ff66b2"}),
+ Object.freeze({tier:4,min:1000000,name:"Tier 4 · 1m–9,999,999 GP",color:"#ff9600"}),
+ Object.freeze({tier:3,min:100000,name:"Tier 3 · 100k–999,999 GP",color:"#99ff99"}),
+ Object.freeze({tier:2,min:20000,name:"Tier 2 · 20k–99,999 GP",color:"#66b2ff"}),
+ Object.freeze({tier:1,min:0,name:"Tier 1 · under 20k GP",color:"#ffffff"})
+]);
+function classifyValueTier(price){
+ if(!Number.isSafeInteger(price)||price<0)return null;
+ return OFFICIAL_OSRS_TIERS.find(t=>price>=t.min)||null;
+}
+function ideaValueTier(idea){
+ const low=idea?.observedBuy,high=idea?.observedSell;
+ if(!Number.isSafeInteger(low)||!Number.isSafeInteger(high)||low<=0||high<=0||low>high)return null;
+ const midpoint=Math.round(low+(high-low)/2);
+ const tier=classifyValueTier(midpoint);
+ return tier?{...tier,midpoint}:null;
+}
+function renderValueTier(idea){
+ const heading=get("gh-item-name"),note=get("gh-value-tier");
+ if(!heading||!note)return;
+ delete heading.dataset.osrsValueTier;
+ const t=ideaValueTier(idea);
+ note.hidden=!t;
+ note.textContent=t?`Ground-item value colour · Tier ${t.tier} · ~${gp(t.midpoint)} observed midpoint`:"";
+ if(t)heading.dataset.osrsValueTier=String(t.tier);
+}
+win.GoldenOSRSValueTiers=Object.freeze({classify:classifyValueTier});
 const state={mappingById:new Map(),game:"gw2",budget:100000000,mode:"f2p",restricted:"unknown",records:[],snap:null,ideas:[],index:0,loading:false,builtAt:0,chartOpen:false,chartRange:"7d",chartRows:[],chartVisible:null,lastResult:"",historicalCache:{},stale:false};
 function loadUser(){
  const c=read(CFG,{});
@@ -65,6 +98,7 @@ function blank(){
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
+  <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <div class="gp-guide-instructions">
     <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
     <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
@@ -116,6 +150,17 @@ function blank(){
     </div>
     <button id="gh-apply" type="button" class="gp-guide-primary">Apply settings</button>
     <p>Prices sourced from the OSRS Wiki v2 API. This app never places in-game orders. OSRS account values and trade records are separate from GW2.</p>
+    <div class="gh-tier-key" aria-label="OSRS official mobile ground item value colour defaults">
+      <strong>OSRS ground-item colour defaults</strong>
+      <div class="gh-tier-key-grid">
+        <span data-osrs-value-tier="1">White · below 20k</span>
+        <span data-osrs-value-tier="2">Blue · 20k+</span>
+        <span data-osrs-value-tier="3">Green · 100k+</span>
+        <span data-osrs-value-tier="4">Orange · 1m+</span>
+        <span data-osrs-value-tier="5">Pink · 10m+</span>
+      </div>
+      <small>Official mobile/Steam colour thresholds. The Hub estimates the tier from the midpoint of recent observed GE trades, not Jagex's exact guide price. This is not an item rarity.</small>
+    </div>
   </div>
  </details>
  <details class="gh-osrs-ledger" id="gh-ledger">
@@ -176,7 +221,10 @@ function activateOsrs(){
  get("gh-next").addEventListener("click",()=>navigate(1));
  get("gh-show-chart").addEventListener("click",()=>{
   const current=state.ideas[state.index],meta=state.mappingById.get(current?.id);
-  if(current&&win.GoldenOSRSChart?.open){win.GoldenOSRSChart.open({id:current.id,name:current.name,icon:meta?.icon});return}
+  if(current&&win.GoldenOSRSChart?.open){
+   win.GoldenOSRSChart.open({id:current.id,name:current.name,icon:meta?.icon,
+    valueTier:ideaValueTier(current)?.tier});return
+  }
   get("gh-chart").hidden=!get("gh-chart").hidden;state.chartOpen=!get("gh-chart").hidden;if(state.chartOpen)loadChart();
  });
  for(const b of root.querySelectorAll("[data-gh-range]"))b.addEventListener("click",()=>{state.chartRange=b.dataset.ghRange;state.chartVisible=null;loadChart()});
@@ -556,6 +604,7 @@ function render(){
  const totals=ledgerTotals();txt("gh-today",gp(totals.today));txt("gh-week",gp(totals.lastWeek));
  get("gh-budget-input").value=String(state.budget);get("gh-mode").value=state.mode;get("gh-restricted").value=state.restricted;
  const current=state.ideas[state.index];
+ renderValueTier(current);
  if(!current){
   txt("gh-position",state.snap?"0 eligible verified candidates":"Market data not loaded");
   txt("gh-item-name",state.loading?"Checking markets…":"No verified trade ideas yet");
