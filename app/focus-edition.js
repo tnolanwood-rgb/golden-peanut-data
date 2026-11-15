@@ -99,7 +99,19 @@ function artwork(id,large=false){const wrap=h('span','focus-item-art '+(large?'f
 function queueMeta(ids,retry=false){const s=State();if(!s?.api||!s?.db)return;for(const x of ids){const id=Number(x);if(!Number.isInteger(id)||id<=0||metaInFlight.has(id))continue;const until=iconMissing.get(id)||0;if(!retry&&until===-1)continue;if(until>3)continue;metaQueue.add(id);}if(!metaBusy&&metaQueue.size)window.setTimeout(flushMeta,100);}
 async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();if(!s?.api||!s?.db)return;const batch=[...metaQueue].slice(0,35);for(const id of batch){metaQueue.delete(id);metaInFlight.add(id);}metaBusy=true;
  let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
- try{await fetchPart(batch);if(Object.keys(found).length){Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});}for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
+ try{await fetchPart(batch);if(Object.keys(found).length){
+  // An older metadata request can finish after a newer, verified icon was
+  // loaded into State. Never downgrade official artwork to an empty icon
+  // while an Android screen is returning or a batch is in flight.
+  for(const [key,item] of Object.entries(found)){
+   if(!validIcon(item)&&validIcon(s.meta[Number(key)]))
+    found[key]={...item,icon:s.meta[Number(key)].icon};
+  }
+  Object.assign(s.meta,found);metaRevision++;await s.db.putMetadataBatch(found).catch(()=>{});
+  // The guided screen does not render Focus item rows, so its icon/title
+  // must be told when verified API artwork arrives.
+  window.dispatchEvent(new Event('gp-item-metadata-updated'));
+ }for(const id of batch)if(!validIcon(s.meta[id])){const n=iconMissing.get(id)||0;iconMissing.set(id,n+1);}}finally{for(const id of batch)metaInFlight.delete(id);metaBusy=false; if(metaQueue.size)window.setTimeout(flushMeta,500);schedule();}}
 function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch{return null;}}
 /* Persist navigation and visible research during Android WebView Activity
  * recreation (including a rotation-induced page reload). No account key,
@@ -362,7 +374,13 @@ function install(){if(started)return;started=true;load();document.body.classList
   setTimeout(restoreScroll,250);
  }
  window.setTimeout(schedule,350);
- root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>renderVisible(),cash};
+ root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>renderVisible(),cash,
+  ensureItemArtwork:ids=>{
+   const missing=[...new Set((Array.isArray(ids)?ids:[]).map(Number).filter(id=>
+    Number.isSafeInteger(id)&&id>0&&!validIcon(currentMeta(id))))];
+   if(missing.length)queueMeta(missing);
+  },
+  validItemIcon:validIcon};
  try{
   // Preserve the real initial history entry. Chromium skips startup-generated
   // pushState entries without user activation on Android physical Back.
@@ -1748,10 +1766,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  * is loaded before the home UI; its dialog is independent of home rerenders. */
 (function(){
  const chart=document.createElement('script');
- chart.src='./guided-price-chart.js?v=20261115-persistent-osrs-v1';
+ chart.src='./guided-price-chart.js?v=20261115-icons-resume-v1';
  const start=()=>{
   const guided=document.createElement('script');
-  guided.src='./guided-peanut.js?v=20261115-persistent-osrs-v1';
+  guided.src='./guided-peanut.js?v=20261115-icons-resume-v1';
   guided.async=true;
   document.head.append(guided);
  };

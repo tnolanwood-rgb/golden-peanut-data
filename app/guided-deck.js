@@ -45,6 +45,24 @@ function create(){
    item,unavailable:id!==null&&!item,started,
    newIdeas:additions,canPrevious:position>0,canNext:deck.length>0&&position<deck.length-1});
  }
+ function snapshot(accountId=''){
+  if(account!==String(accountId||'')||!deck.length)return null;
+  return {v:1,ids:deck.slice(),position,started};
+ }
+ function restore(data,accountId=''){
+  if(!data||data.v!==1||!Array.isArray(data.ids)||data.ids.length<1||
+     data.ids.length>35||!Number.isSafeInteger(data.position)||
+     data.position<0||data.position>=data.ids.length||
+     data.ids.some(id=>!validId(id))||
+     new Set(data.ids).size!==data.ids.length)return false;
+  account=String(accountId||'');
+  deck=data.ids.slice();
+  position=data.position;
+  // Lock the restored order; a background reprioritisation must not move
+  // an item just because Android recreated its WebView.
+  started=true;
+  return true;
+ }
  function move(rows,accountId,action){
   view(rows,accountId);
   if(!deck.length)return view(rows,accountId);
@@ -57,7 +75,7 @@ function create(){
   else throw Error('Unsupported guided action');
   return view(rows,accountId);
  }
- return Object.freeze({view,move,reset});
+ return Object.freeze({view,move,reset,snapshot,restore});
 }
 const api=Object.freeze({create,uniqueIds});
 root.GPGuidedDeck=api;

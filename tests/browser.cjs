@@ -9,7 +9,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin)return route.continue();
   if(u.hostname==='render.guildwars2.com'&&u.pathname.endsWith('.png'))return route.fulfill({
    status:200,contentType:'image/png',
-   body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Yp4HJEAAAAASUVORK5CYII=','base64')
+   body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8v4SVgYGBiYGBgYGBAQAVBAGs/fab0gAAAABJRU5ErkJggg==','base64')
   });
   const now=Math.floor(Date.now()/1000),day=Math.floor(now/86400);let data=[];
   if(u.pathname.endsWith('market_public.json'))data={schema:'golden-peanut-public-v1',generated_at:now,count:1100,items:Array.from({length:1100},(_,i)=>[i+1,i<2?'Fixture opportunity '+(i+1):'Catalogue family '+(i+1),'Weapon','Exotic',99,201,100,100])};
@@ -30,7 +30,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   else if(u.pathname.endsWith('/commerce/listings'))data=[];
   await route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*','x-page-total':'1','x-result-total':String(Array.isArray(data)?data.length:0)},body:JSON.stringify(data)});
  });
- await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));localStorage.setItem('gp-guided-mode-v1','advanced');localStorage.setItem('gp-guided-skips-v1','[1,2,999]');});
+ await page.addInitScript(()=>{if(!localStorage.getItem('gp-focus-ui-v1'))localStorage.setItem('gp-focus-ui-v1',JSON.stringify({version:2,marketResearchLot:250}));if(!localStorage.getItem('gp-guided-mode-v1'))localStorage.setItem('gp-guided-mode-v1','advanced');if(!localStorage.getItem('gp-guided-visit-test-bootstrapped')){localStorage.setItem('gp-guided-skips-v1','[1,2,999]');localStorage.setItem('gp-guided-visit-test-bootstrapped','1');}});
  await page.goto(origin);await page.waitForFunction(()=>window.GPFocus&&window.GoldenPeanutClean?.State?.db?.db);
  assert.match(await page.locator('#gp-build-integrity').innerText(),/components verified/);
  // Never rely on an activation-less startup pushState: Android skips it.
@@ -66,6 +66,56 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   finally{GPMarketBoard.build=before;}
  });
  assert.ok(guideBuilds<=1,'six unchanged guided repaints should not rebuild the opportunity board six times');
+ // A compact public index has only names, type and rarity. On the visible
+ // guided card we MUST request verified ArenaNet icon metadata from the
+ // existing Focus fetch queue, even though all Focus rows are hidden.
+ // Verify the actual guided UI requests missing official item art, then
+ // simulate a completed, verified metadata response. Do not race a previous
+ // in-flight API request or mistake an <img> tag for a loaded image.
+ const artResolution=await page.evaluate(()=>{
+  const state=GoldenPeanutClean.State,id=GPGuided.navigation().id;
+  const original=GPFocus.ensureItemArtwork;
+  const requests=[];
+  GPFocus.ensureItemArtwork=(ids)=>{requests.push(...ids);return original(ids);};
+  state.meta[id]={...(state.meta[id]||{}),id,rarity:'Exotic',icon:''};
+  GPGuided.render();
+  GPFocus.ensureItemArtwork=original;
+  return {id,requests};
+ });
+ assert.ok(artResolution.requests.includes(artResolution.id),
+   'guided screen must explicitly request a verified ArenaNet icon when the lightweight index has no artwork');
+ await page.evaluate(id=>{
+  const s=GoldenPeanutClean.State;
+  s.meta[id]={...(s.meta[id]||{}),id,name:s.meta[id]?.name||'Official fixture',
+   rarity:'Exotic',icon:'https://render.guildwars2.com/file/aabbcc/'+id+'.png'};
+  dispatchEvent(new Event('gp-item-metadata-updated'));
+ },artResolution.id);
+ try{
+  await page.waitForFunction(()=>{
+   const img=document.querySelector('.gp-guide-item-icon img');
+   return img&&img.complete&&img.naturalWidth>0&&
+    document.querySelector('.gp-guide-item-name.gp-rarity-exotic');
+  },null,{timeout:8000});
+ }catch(err){
+  // Synthetic fixture only. Never dump any live account values or keys.
+  const dbg=await page.evaluate(()=>{
+   const n=document.querySelector('.gp-guide-item-icon'),img=n?.querySelector('img');
+   const id=GPGuided?.navigation?.()?.id;
+   return {id,html:n?.outerHTML?.slice(0,500),src:img?.src,complete:img?.complete,
+    width:img?.naturalWidth,rarity:document.querySelector('.gp-guide-item-name')?.className,
+    metadata:GoldenPeanutClean?.State?.meta?.[id]?.icon,
+    pageErrors:window.__uiImageError||''};
+  });
+  console.error('Synthetic item-art regression diagnostic',JSON.stringify(dbg));
+  throw err;
+ }
+ assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
+   'buy and sell instructions use full GW2 gold/silver/copper artwork, not plain letters');
+ assert.equal(await page.locator('.gp-guide-instructions img[src*="gw2-"]').count(),6);
+ const instructionsCurrency=await page.locator('.gp-guide-instructions .gp-guide-denom-g').first().evaluate(el=>getComputedStyle(el).color);
+ assert.equal(instructionsCurrency,'rgb(251, 209, 100)','instructions show native gold colouring');
+ const itemColor=await page.locator('.gp-guide-item-name').evaluate(el=>getComputedStyle(el).color);
+ assert.equal(itemColor,'rgb(255, 164, 5)','the selected exotic item label uses actual GW2 rarity');
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
  // swaps priorities, even before the user presses Next.
@@ -169,6 +219,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await modal.getByRole('button',{name:'All recorded'}).click();
  await modal.locator('.gp-price-slider').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));});
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2);
+ assert.equal(await modal.locator('.gp-price-heading-icon img').count(),1,'chart displays verified official item artwork');
+ assert.equal(await modal.locator('.gp-price-heading h2.gp-rarity-exotic').count(),1,'chart title retains native GW2 rarity');
  assert.equal(await modal.locator('.gp-price-quote').count(),2);
  assert.equal(await modal.locator('.gp-price-money img').count(),6,'both quotes show official GW2 gold/silver/copper icons');
  await modal.getByRole('button',{name:'Expand chart'}).click();
@@ -828,15 +880,68 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
  assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
- // Fresh page/navigation session MUST reset to the first market and clear obsolete skips.
- await page.evaluate(()=>localStorage.setItem('gp-guided-skips-v1','[1,2,999]'));
+ // Android can recreate a WebView after the user opens another app.
+ // Rebuild the app in the SAME origin using the saved public UI-only context:
+ // exact numbered deck position, scroll and independently opened chart.
+ await page.evaluate(async()=>{
+  const state=GoldenPeanutClean.State;
+  localStorage.setItem('gp-clean-selected-account','Fixture.1234');
+  localStorage.setItem('gp-guided-skips-v1','[1,2,999]');
+  const original=(await state.db.get('snapshots','Fixture.1234','last'))?.value;
+  if(original)state.snapshot=original;
+  const learning=(await state.db.get('config','Fixture.1234','execution-learning-v1'))?.value;
+  if(learning)state.executionLearning=learning;
+  state.opportunityDeepPaused=true;
+  await GPOpportunity.refresh(state,{phase:'quick'});
+  GPGuided.open();GPGuided.render();
+ });
+ const originalCard=await page.evaluate(()=>GPGuided.navigation());
+ assert.ok(originalCard.total>0,'a recorded trading deck is available before Android reconstruction');
+ await page.evaluate(()=>{
+  const current=GPGuided.navigation().id,state=GoldenPeanutClean.State;
+  const name=state.meta[current]?.name||'Observed price history';
+  GPGuidedPriceChart.open({id:current,name});
+ });
+ await page.waitForFunction(()=>GPGuidedPriceChart.isOpen());
+ await page.evaluate(()=>{window.scrollTo({top:260,behavior:'instant'});GPGuided.remember();});
+ const savedView=await page.evaluate(()=>({
+  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot(),
+  persisted:GPGuidedVisit.create(localStorage).load('Fixture.1234')
+ }));
+ assert.equal(savedView.persisted.deck.ids[savedView.persisted.deck.position],savedView.deck.id);
+ assert.equal(savedView.persisted.chart.id,savedView.deck.id);
+ assert.ok(savedView.persisted.scroll>=100);
  await page.reload();
  await page.waitForFunction(()=>window.GPGuided?.navigation&&window.GoldenPeanutClean?.State?.db?.db);
  assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
-   'reload clears any migrated legacy skip-bin state without touching account storage');
- const freshlyOpened=await page.evaluate(()=>GPGuided.navigation());
- assert.equal(freshlyOpened.position,freshlyOpened.total?1:0,'reload starts at first idea, not prior rank 18');
- assert.equal(freshlyOpened.started,false,'new document must not inherit a browsing session');
+   'obsolete skipped bin still cleared on reload');
+ await page.evaluate(async()=>{
+  const state=GoldenPeanutClean.State;
+  if(state.account!=='Fixture.1234')state.account='Fixture.1234';
+  const snap=(await state.db.get('snapshots','Fixture.1234','last'))?.value;
+  if(snap)state.snapshot=snap;
+  const model=(await state.db.get('config','Fixture.1234','execution-learning-v1'))?.value;
+  if(model)state.executionLearning=model;
+  state.opportunityDeepPaused=true;
+  await GPOpportunity.refresh(state,{phase:'quick'});
+  // This test intentionally forces advanced mode at every document load for
+  // legacy Focus browser coverage. Simulate the user's return to the guided
+  // screen after Android reconstructs that document.
+  GPGuided.open();GPGuided.render();
+ });
+ await page.waitForFunction(expected=>{
+  const v=GPGuided?.navigation?.();
+  return v?.id===expected.id&&v?.position===expected.position&&
+   window.GPGuidedPriceChart?.isOpen?.();
+ },{id:savedView.deck.id,position:savedView.deck.position},{timeout:12000});
+ const resumed=await page.evaluate(()=>({
+  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot()
+ }));
+ assert.equal(resumed.deck.position,savedView.deck.position,'same numbered trade card on Android app return');
+ assert.equal(resumed.deck.total,savedView.deck.total,'background recreation does not reset idea count');
+ assert.equal(resumed.chart.id,savedView.chart.id,'open price chart survives WebView recreation');
+ assert.equal(await page.locator('#gp-price-dialog').isVisible(),true);
+ assert.deepEqual(errors,[]);
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; stable guided deck, reload, detail/search/legendary/backup guards`);
  await context.close();
 }}finally{await browser.close();server.close();}

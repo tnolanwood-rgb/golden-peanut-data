@@ -9,7 +9,9 @@ const KEY='gp-guided-mode-v1', LEGACY_SKIPS='gp-guided-skips-v1';
 const DAY=86400000;
 const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, fingerprint='', renderTimer=0;
-let ideasCache=null;
+let ideasCache=null,restoredAccount=null,restoredScroll=null,restoredChart=null,saveScrollTimer=0;
+let visit=null;
+try{visit=root.GPGuidedVisit?.create?.(root.localStorage);}catch{/* Private browsing/storage denial must never break UI. */}
 const read=(k,fallback)=>{try{return localStorage.getItem(k)||fallback;}catch{return fallback;}};
 const save=(k,v)=>{try{localStorage.setItem(k,v);}catch{}};
 const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
@@ -61,13 +63,45 @@ function ideas(s){
  ideasCache={parts,rows:out};
  return out;
 }
+function rememberView(){
+ const s=root.GoldenPeanutClean?.State;
+ if(!visit||!s?.account||!document.body.classList.contains('gp-guided-active'))return;
+ const state=deck?.snapshot?.(s.account);
+ if(!state)return;
+ visit.save(s.account,state,Math.max(0,window.scrollY||0),
+  root.GPGuidedPriceChart?.snapshot?.()||null);
+}
+function maybeRestoreView(s,rows){
+ if(!visit||!s?.account||!rows?.length||restoredAccount===s.account)return;
+ restoredAccount=s.account;
+ const saved=visit.load(s.account);
+ if(!saved||!deck?.restore?.(saved.deck,s.account))return;
+ restoredScroll=saved.scroll;
+ // Restore only an inspector showing the same numbered idea; a chart from
+ // an unrelated account or card must never silently reappear.
+ restoredChart=saved.chart?.id===saved.deck.ids[saved.deck.position]?saved.chart:null;
+}
+function restoreVisiblePosition(){
+ if(restoredScroll!==null){
+  const y=restoredScroll;restoredScroll=null;
+  for(const delay of [130,380,850])window.setTimeout(()=>{
+   if(document.body.classList.contains('gp-guided-active')&&window.scrollY<y-12)
+    window.scrollTo({top:y,behavior:'instant'});
+  },delay);
+ }
+ if(restoredChart){
+  const chart=restoredChart;restoredChart=null;
+  window.setTimeout(()=>{if(document.body.classList.contains('gp-guided-active'))
+   root.GPGuidedPriceChart?.restore?.(chart);},260);
+ }
+}
 function setCurrent(id){current=id;}
 function navigate(action){
  root.GPGuidedPriceChart?.close?.();
  const state=root.GoldenPeanutClean?.State,rows=ideas(state);
  const view=deck.move(rows,state?.account,action);
  if(view.id!==current)setCurrent(view.id);
- render(true);
+ render(true);rememberView();
 }
 function guided(enabled){
  if(!installed)return;
@@ -179,20 +213,37 @@ function buildIdea(host,s,view){
  }else{
   const tier=choice.tier;
   const state=tier==='forecast'?'Evidence-backed 24h estimate':tier==='history'?'History-backed · conditional':'Public quote · research only';
-  add(section,el('p','gp-guide-tier',state),el('h2','gp-guide-item-name',choice.label));
-  const art=el('div','gp-guide-item-icon');const m=s.meta?.[choice.id];
-  if(typeof m?.icon==='string'&&/^https:\/\/render\.guildwars2\.com\/file\/[a-f0-9]+\/\d+\.(png|jpe?g|webp)$/i.test(m.icon)){
-   const img=el('img');img.src=m.icon;img.alt='';art.append(img);
-  }else art.textContent=choice.label.slice(0,1).toUpperCase();
-  section.querySelector('h2').before(art);
-  const instructions=el('div','gp-guide-instructions');
-  if(tier==='research'){
-   add(instructions,el('p','gp-guide-instruction','Research a single unit at '+coin(choice.buy)+' buy reference.'),
-    el('p','gp-guide-instruction-sub','Current sell reference: '+coin(choice.exit)+' per item.'));
+  const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',choice.label);
+  root.GPRarity?.apply?.(heading,m?.rarity);
+  add(section,el('p','gp-guide-tier',state),heading);
+  const art=el('div','gp-guide-item-icon');
+  root.GPRarity?.apply?.(art,m?.rarity);
+  if(root.GPFocus?.validItemIcon?.(m)){
+   const img=el('img');img.src=m.icon;img.alt='';img.loading='eager';img.decoding='async';
+   img.onerror=()=>{art.textContent=choice.label.slice(0,1).toUpperCase();};
+   art.append(img);
   }else{
-   add(instructions,el('p','gp-guide-instruction','Buy '+choice.qty.toLocaleString('en-GB')+' × '+coin(choice.buy)+' each.'),
-    el('p','gp-guide-instruction-sub','Then consider selling at '+coin(choice.exit)+' each.'));
+   art.textContent=choice.label.slice(0,1).toUpperCase();
+   // The compact startup feed intentionally contains names/rarities but no
+   // icons. Request the REAL ArenaNet item artwork on the visible card,
+   // even while Focus Edition's own market rows are hidden.
+   root.GPFocus?.ensureItemArtwork?.([choice.id]);
   }
+  heading.before(art);
+  const instructions=el('div','gp-guide-instructions');
+  const buyLine=el('p','gp-guide-instruction'),sellLine=el('p','gp-guide-instruction-sub');
+  if(tier==='research'){
+   add(buyLine,document.createTextNode('Research a single unit at '),
+    coinArtwork(choice.buy),document.createTextNode(' buy reference.'));
+   add(sellLine,document.createTextNode('Current sell reference: '),
+    coinArtwork(choice.exit),document.createTextNode(' per item.'));
+  }else{
+   add(buyLine,document.createTextNode('Buy '+choice.qty.toLocaleString('en-GB')+' × '),
+    coinArtwork(choice.buy),document.createTextNode(' each.'));
+   add(sellLine,document.createTextNode('Then consider selling at '),
+    coinArtwork(choice.exit),document.createTextNode(' each.'));
+  }
+  add(instructions,buyLine,sellLine);
   section.append(instructions);
   const totals=el('div','gp-guide-totals');
   add(totals,moneyMetric(tier==='research'?'Net spread per item, if filled':tier==='forecast'?'Modelled 24h profit, uncertain':'Net profit if entire lot resells',coinArtwork(choice.profit),tier==='research'?'No quantity or future fill rate established':tier==='forecast'?'Not guaranteed or live-tested for accuracy':'Not an overnight profit prediction'),
@@ -227,14 +278,16 @@ function showChart(choice){
 }
 function render(force=false){
  if(!installed||!document.body.classList.contains('gp-guided-active'))return;
- const s=root.GoldenPeanutClean?.State,rows=ideas(s),view=deck.view(rows,s?.account);
+ const s=root.GoldenPeanutClean?.State,rows=ideas(s);
+ maybeRestoreView(s,rows);
+ const view=deck.view(rows,s?.account);
  if(view.id!==current)setCurrent(view.id);
  // Compare the active quote, not merely array lengths; rankings can be rebuilt
  // or repriced without changing their counts.
  const sig=JSON.stringify([s?.account,s?.snapshot?.walletAt,s?.snapshot?.at,s?.summary?.weekP100,s?.summary?.totalRecords,
   s?.opportunityAt,s?.opportunityDeepBusy,view.id,view.position,view.total,view.newIdeas,
   view.item?.buy,view.item?.exit,view.item?.profit,view.item?.quantity,view.item?.label,
-  s?.meta?.[view.id]?.icon,$('focus-delivery-total')?.textContent||'']);
+  s?.meta?.[view.id]?.icon,s?.meta?.[view.id]?.rarity,$('focus-delivery-total')?.textContent||'']);
  if(!force&&sig===fingerprint)return;fingerprint=sig;
  const host=$('gp-guided-root');if(!host)return;
  const oldY=window.scrollY;
@@ -252,6 +305,7 @@ function render(force=false){
   button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));
  content.append(footer);
  if(force)window.scrollTo({top:oldY,behavior:'instant'});
+ restoreVisiblePosition();
 }
 function schedule(force=false){clearTimeout(renderTimer);renderTimer=setTimeout(()=>render(force),250);}
 function install(){
@@ -268,9 +322,22 @@ function install(){
  const source=$('focus-wallet'),delivery=$('focus-delivery-total');
  const observer=new MutationObserver(()=>schedule());
  for(const node of [source,delivery])if(node)observer.observe(node,{childList:true,subtree:true,characterData:true});
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule(true);});
- setInterval(()=>schedule(),20000);
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)rememberView();
+  else schedule(); // Avoid needless full card reconstruction on every Android app switch.
+ });
+ window.addEventListener('pagehide',rememberView);
+ window.addEventListener('gp-item-metadata-updated',()=>schedule(true));
+ window.addEventListener('gp-account-changed',()=>schedule(true));
+ window.addEventListener('scroll',()=>{
+  if(!document.body.classList.contains('gp-guided-active'))return;
+  if(saveScrollTimer)clearTimeout(saveScrollTimer);
+  saveScrollTimer=setTimeout(()=>{saveScrollTimer=0;rememberView();},220);
+ },{passive:true});
+ window.addEventListener('gp-guided-chart-changed',rememberView);
+ setInterval(()=>{if(!document.hidden)schedule();},20000);
  root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
+  remember:rememberView,
   navigation:()=>deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account)};
  return true;
 }
