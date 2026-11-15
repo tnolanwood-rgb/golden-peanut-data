@@ -270,6 +270,14 @@ function install(){
  doc.addEventListener("pointermove",moveGesture,{passive:false,capture:true});
  doc.addEventListener("pointerup",endGesture,{passive:true,capture:true});
  doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
+ // Android WebView may let a nested overflow:auto list consume the pointer
+ // stream before it reaches the outer panel. Keep the list's native VERTICAL
+ // scroll, while explicitly recovering HORIZONTAL drags from touch events.
+ // Event listeners do not run on ordinary content outside the suggestion box.
+ doc.addEventListener("touchstart",startScrollTouch,{passive:true,capture:true});
+ doc.addEventListener("touchmove",moveScrollTouch,{passive:false,capture:true});
+ doc.addEventListener("touchend",endScrollTouch,{passive:true,capture:true});
+ doc.addEventListener("touchcancel",cancelScrollTouch,{passive:true,capture:true});
  doc.addEventListener("click",guardDragClick,true);
  win.addEventListener("resize",cancelOnResize,{passive:true});
  doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
@@ -543,6 +551,63 @@ function switchGame(game,userAction){
  // Touch dragging continues to track the finger continuously before release.
  settleScene(scene,true);
 }
+let scrollTouch=null;
+function scrollTouchPoint(event){
+ const touch=scrollTouch;
+ if(!touch)return null;
+ return [...(event.changedTouches||[]),...(event.touches||[])].find(t=>t.identifier===touch.id)||null;
+}
+function startScrollTouch(event){
+ if(transitioning||event.touches?.length!==1||scrollTouch)return;
+ const node=event.target?.nodeType===1?event.target:event.target?.parentElement;
+ if(!node?.closest?.("#gh-osrs-root .gh-trade-scroll"))return;
+ // Scrollable suggestion text is a swipe target, but form inputs/charts
+ // retain their own native gestures.
+ if(node.closest("input,textarea,select,svg,canvas,video,iframe,[contenteditable],[role=slider],.gh-chart-card,[data-no-game-swipe]"))return;
+ const point=event.touches[0];
+ scrollTouch={id:point.identifier,node,startX:point.clientX,startY:point.clientY,vertical:false,horizontal:false};
+}
+function moveScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point||event.touches?.length!==1||transitioning)return;
+ const dx=point.clientX-t.startX,dy=point.clientY-t.startY;
+ if(!t.horizontal){
+  if(t.vertical)return;
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){t.vertical=true;return;}
+  if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
+  if((dx<0&&state.game!=='gw2')||(dx>0&&state.game!=='osrs'))return;
+  t.horizontal=true;
+ }
+ // Pointer Events normally provide the same gesture. When WebView cancels
+ // pointer capture within a scroller, recreate it with the stored touch start.
+ if(!gesture){
+  startGesture({target:t.node,pointerId:'scroll-touch-'+t.id,pointerType:'touch',
+   isPrimary:true,clientX:t.startX,clientY:t.startY});
+ }
+ if(gesture){
+  moveGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY,
+   cancelable:false});
+  // Only horizontal navigation blocks the native stream. Vertical card
+  // scrolling stays untouched, including when the finger begins on text.
+  if(gesture.scene&&event.cancelable)event.preventDefault();
+ }
+}
+function endScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point)return;
+ scrollTouch=null;
+ if(t.horizontal&&gesture&&gesture.scene){
+  endGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY});
+ }else if(gesture?.pointerId==='scroll-touch-'+t.id){
+  gesture=null;
+ }
+}
+function cancelScrollTouch(event){
+ const t=scrollTouch,point=scrollTouchPoint(event);
+ if(!t||!point)return;
+ scrollTouch=null;
+ if(gesture?.scene)cancelGesture({pointerId:gesture.pointerId});
+}
 function startGesture(ev){
  if(transitioning||gesture||!ev.isPrimary||!["touch","pen"].includes(ev.pointerType)||doc.querySelector("dialog[open]"))return;
  const node=ev.target?.nodeType===1?ev.target:ev.target?.parentElement;
@@ -594,10 +659,14 @@ function endGesture(ev){
 function cancelGesture(ev){
  const g=gesture;
  if(!g||(ev&&ev.pointerId!==g.pointerId))return;
+ // WebView can cancel the pointer stream for a nested scroller even as
+ // touchmove/touchend continue. Let the touch fallback complete the swipe.
+ if(ev&&scrollTouch?.horizontal&&g.scene)return;
  gesture=null;
  if(g.scene)settleScene(g.scene,false);
 }
 function cancelOnResize(){
+ scrollTouch=null;
  if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
  if(activeAnimation){
   const {a,b,height,scene,commit}=activeAnimation;activeAnimation=null;
