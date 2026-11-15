@@ -109,6 +109,8 @@ function setSelected(index){
  if(plot)plot.replaceWith(mainPlot(visible()));
  const panel=dialog?.querySelector('.gp-price-selection');
  if(panel)panel.replaceWith(selectedPanel(visible()));
+ const summary=dialog?.querySelector('.gp-price-range-summary');
+ if(summary)summary.replaceWith(rangeSummary(visible()));
  const slider=dialog?.querySelector('.gp-price-slider');
  if(slider)slider.value=String(selected);
  notify();
