@@ -66,6 +66,35 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   finally{GPMarketBoard.build=before;}
  });
  assert.ok(guideBuilds<=1,'six unchanged guided repaints should not rebuild the opportunity board six times');
+ // A compact public index has only names, type and rarity. On the visible
+ // guided card we MUST request verified ArenaNet icon metadata from the
+ // existing Focus fetch queue, even though all Focus rows are hidden.
+ await page.evaluate(()=>{
+  const state=GoldenPeanutClean.State,id=GPGuided.navigation().id;
+  const existing=state.meta[id]||{};
+  state.meta[id]={...existing,id,rarity:'Exotic',icon:''};
+  const original=state.api.itemMetadata.bind(state.api);
+  window.__originalGuidedMeta=original;
+  state.api.itemMetadata=async ids=>Object.fromEntries(ids.map(n=>[n,{
+   ...state.meta[n],id:n,name:state.meta[n]?.name||'Official fixture '+n,
+   type:state.meta[n]?.type||'Weapon',rarity:'Exotic',
+   icon:'https://render.guildwars2.com/file/aabbcc/'+n+'.png'
+  }]));
+  GPGuided.render();
+  GPFocus.ensureItemArtwork([id]);
+ });
+ await page.waitForFunction(()=>{
+  const i=document.querySelector('.gp-guide-item-icon img');
+  return i&&i.complete&&i.naturalWidth>0&&
+   document.querySelector('.gp-guide-item-name.gp-rarity-exotic');
+ },null,{timeout:15000});
+ assert.equal(await page.locator('.gp-guide-instructions .gp-guide-coinset').count(),2,
+   'buy and sell instructions use full GW2 gold/silver/copper artwork, not plain letters');
+ assert.equal(await page.locator('.gp-guide-instructions img[src*="gw2-"]').count(),6);
+ const instructionsCurrency=await page.locator('.gp-guide-instructions .gp-guide-denom-g').first().evaluate(el=>getComputedStyle(el).color);
+ assert.equal(instructionsCurrency,'rgb(251, 209, 100)','instructions show native gold colouring');
+ const itemColor=await page.locator('.gp-guide-item-name').evaluate(el=>getComputedStyle(el).color);
+ assert.equal(itemColor,'rgb(255, 164, 5)','the selected exotic item label uses actual GW2 rarity');
  const firstIdea=await page.locator('.gp-guide-item-name').innerText();
  // The first visible card must not change while the researcher asynchronously
  // swaps priorities, even before the user presses Next.
@@ -169,6 +198,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await modal.getByRole('button',{name:'All recorded'}).click();
  await modal.locator('.gp-price-slider').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));});
  assert.equal((await page.evaluate(()=>GPGuidedPriceChart.state())).selected,2);
+ assert.equal(await modal.locator('.gp-price-heading-icon img').count(),1,'chart displays verified official item artwork');
+ assert.equal(await modal.locator('.gp-price-heading h2.gp-rarity-exotic').count(),1,'chart title retains native GW2 rarity');
  assert.equal(await modal.locator('.gp-price-quote').count(),2);
  assert.equal(await modal.locator('.gp-price-money img').count(),6,'both quotes show official GW2 gold/silver/copper icons');
  await modal.getByRole('button',{name:'Expand chart'}).click();
