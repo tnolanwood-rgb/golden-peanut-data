@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'app/**'
+      - '.github/production-release-request.txt'
       - '.github/workflows/guided-ui-production.yml'
   workflow_dispatch:
 
