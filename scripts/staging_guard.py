@@ -40,8 +40,8 @@ def validate(payload):
     if payload.get("source") not in (None, {}, {"type": None}):
         raise StagingUnsafe("Git-linked staging auto-deploy source not independently cleared")
     hosts = payload.get("domains")
-    if not isinstance(hosts, list):
-        raise StagingUnsafe("Full project domains must be reported")
+    if not isinstance(hosts, list) or STAGING_NAME + ".pages.dev" not in hosts:
+        raise StagingUnsafe("The exact independent staging domain must be reported")
     for hostname in hosts:
         if not isinstance(hostname, str) or hostname.lower().rstrip(".") != STAGING_NAME + ".pages.dev":
             raise StagingUnsafe("Unexpected staging hostname or production domain")
