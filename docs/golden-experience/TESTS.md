@@ -1,5 +1,9 @@
 ## GE-07 independent repeated-session CI — 16 November 2026
 
+## Latest full automated acceptance — 16 November 2026
+[CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) **PASS** on implementation `8662a06c61721443f419a9a4d4207bf4c5360e23`: complete source validation, Python/JS suites, all 10 browser scripts including new exact 250m budget fragmented-text guard at 320px with 24px root font, normal/200% responsive secondary metric geometry, compact GW2 seven-day card size, history DOM/coin image retention and changed-value rerender, swipe/cancel/inner-scroll, data/backup, cold profile, strict repeated 100-cycle retention and actionlint. Screenshot evidence artifact **14233731101**. Earlier previous full pass 43881637564 on source `90a9e4d`; last commit `8662a06` only made OSRS enlarged-font screenshot start at scroll top. No real-phone/WebView test run, no Cloudflare staging test, no claims of user-observed FPS.
+
+
 ## 16 November 2026 — latest exact current CI
 Exact source `4e377852dab66d837b86f6c4b112a8560c3f33a5` [CI 43877907764](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43877907764) **PASS** source/Python/JS/ten browser programs, synthetic 16-state visual coverage, 26-case touch gestures, paired cold CPU profiler, strict 100-cycle and three repeat synthetic retained-session probes, actionlint. Populated synthetic GW2 guided/advanced/enlarged-font screenshots from real browser fixture: artifact **14231456749**. Prior CI 43875843978 failed an incorrectly early baseline due to lazy first Focus Today render; 43877197639 and latest run passed after priming *once*, recording mount separately while keeping strict growth assertions. No actual Android device or staging acceptance.
 

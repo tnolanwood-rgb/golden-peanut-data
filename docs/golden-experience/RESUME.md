@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Latest executable handoff — 16 November 2026
+Protected feature `feature/golden-experience`, draft PR #65. Exact tested source `8662a06c61721443f419a9a4d4207bf4c5360e23` full [CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) **PASS**; main `097f012c1f912411790dd7dce21434a9cdc497d2` unchanged. Resume from GE-02 visual finishing, GE-07 native/long-history measurement and GE-08 deep form QA, not release: GE-09 isolated staging and GE-10 freeze/rollback are TODO. Current implementation and tests: responsive full-width cards for 200% Android-style fonts, compact GW2 seven-day card/flex direction, stable GW2 history DOM and accurate change invalidation, exact 250m OSRS budget string at 320px, screenshot start at scroll top. See STATE.md for full evidence and artifact 14233731101. **Do not merge/deploy or modify production/Cloudflare/native APK** until user authorises “Implement” after READY FOR IMPLEMENT gate. If current CI source differs, inspect branch and restart from newest.
+
+
 ## 16 November 2026 — latest protected visual and synthetic data checkpoint
 **STATUS: IN PROGRESS; latest implementation TESTED, not READY FOR IMPLEMENT.**
 - Branch `feature/golden-experience`, draft PR #65, source `4e377852dab66d837b86f6c4b112a8560c3f33a5`. [CI 43877907764](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43877907764) **SUCCESS**. Production main independently checked unchanged at `097f012c1f912411790dd7dce21434a9cdc497d2`; no deploy, merge, Cloudflare/worker/D1, native APK, data or signing change.

@@ -1,5 +1,9 @@
 # Golden Experience — acceptance evidence 16 November 2026
 
+## Latest inspected financial design — 16 November 2026
+The browser-generated visual screens were inspected rather than automatically approved. A real screenshot showed an oversized empty GW2 seven-day card from a missed inherited `flex-direction:column`; fixed to a wrapping `row` layout, with height guard. At default 390px, GW2 Today/Wallet remain two columns; 390px enlarged fonts place the supporting gauges on distinct full-width rows. 320px/24px OSRS manually entered budget displays **250,000,000 gp** in one uninterrupted number; test uses a DOM text range to reject a lonely final digit line. Latest exact head full [CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) passed; screenshot artifact **14233731101**. No broad artistic signoff: old dense research/advanced widgets and real-device rendering still require substantial visual and performance QA.
+
+
 ## Populated-account advanced visual coverage — new current evidence
 Current development visual commit `4e377852dab66d837b86f6c4b112a8560c3f33a5` passed [CI 43877907764](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43877907764), screenshot artifact **14231456749**. Screenshots now include eight synthetic Delivery Box items, FIFO-supported profit estimates, fully populated GW2 guided screen, 390px enlarged 200% font and advanced account desk, in addition to 16 earlier GW2/OSRS viewports. Reviewed design hierarchy in default and prior landscape; the newest populated screenshots still need thorough manual close inspection rather than claiming finished quality. Added higher-cohesion advanced GW2 CSS and bounded large-font layout. The data are synthetic, not owner's API credentials; no production write, native device or live deployment. Maintain priority on dramatic precision-engineered visual finish and clean long names, widgets, overlays.
 

@@ -1,5 +1,9 @@
 # Performance evidence
 
+## GE-02/07 adaptive text and history DOM optimisation — 16 November 2026
+Current code `8662a06c61721443f419a9a4d4207bf4c5360e23` retains unchanged GW2 seven-day DOM nodes/currency icons on refresh; test proves exact same-node identity and true changed historical profit rendering. This avoids 7-row reallocation in unchanged Focus Today redraws, but has NOT been assigned a claimed ms/FPS performance benefit without before/after instrumentation. Rem-responsive financial grids and scoped 320px budget font produce nonoverlapping visual layouts; these are visual correctness, not Android throughput measurements. Full [CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) passed including existing synthetic cold profile and 400 100-cycle totals; still need real WebView render/battery/scroll and physical phone before final readiness.
+
+
 ## GE-01/02 dramatic visual design vs runtime performance — 16 November 2026
 Visual fascia batch adds approximately **11,390 CSS characters** to the existing combined stylesheet; the new styling adds **zero network requests**, external resources, JS timers, runtime dependencies, live-data calculations, touch handler changes, SVG data transformations or native dependencies. These are code properties, not measured speed gains. [CI 43874452456](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43874452456) passed synthetic gestures and long-session retention across all strict suite assertions; this does NOT establish zero native stutter, Android p95 or production load improvements. Compare fresh startup/switch distributions against earlier pinned baseline only after identical repeated profile conditions; static background raster cost and battery need physical WebView evidence. The real first content metric for unconnected GW2 isn't representative of authenticated portfolio loading.
 
