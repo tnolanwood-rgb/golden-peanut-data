@@ -34,3 +34,5 @@
   request by appending the premium layer to existing dual-hub.css. Load chart CSS
   before that shared stylesheet to retain the tested final cascade. All source and
   nine browser programs pass. No bundler/runtime dependency or duplicate stylesheet.
+
+- GE-07: add a CPU-sampled paired baseline diagnostic in CI rather than prematurely rewrite either game engine. The synthetic first-idea benchmark does not represent a loaded real GW2 account. Preserve one failed DOM-growth observation alongside a passing rerun; failure-only DOM subtree/tag evidence now saved by the repeated-session test. No runtime assets or trading code were changed in this continuation.

@@ -84,3 +84,7 @@ assertions pass. Max Y discontinuity0px for both. Per-case rAF gap p95 spans16.7
 both revisions; observed gaps>34ms total11 before /8 after. Those are sampled frame
 intervals across tests, NOT measured physical drops or evidence of 60FPS. JSON:
 evidence/slow-swipe-before.json and slow-swipe-after.json. Native phone still BLOCKED.
+
+## Paired CPU-sampled OSRS cold investigation — 16 November 2026
+
+Added `scripts/profile_golden_experience_cold.cjs`. Uses Git pinned main baseline, identical asset intercepts, ABBA serial fresh contexts, six runs per source per CI job, two repeat jobs. Baseline→development median/maximum readiness: run 43854807834 288.6/365.1→281.6/321.6 ms; run 43855536154 357/387.4→343.4/361.1 ms. These CPU-instrumented values are NOT comparable directly with prior unprofiled figures; n=6 p95 equals maximum and weakens tail inference. Dominant CPU samples were Chromium program/idle/anonymous startup rather than a clear OSRS calculation hotspot. Cross-run medians varied widely; do not assert mobile speed or root-cause resolution. One follow-on session-retention CI failed node-growth and next passed, so long-session stability remains OPEN. Structured evidence and run identifiers in evidence/osrs-cold-cpu-paired-20261116.json; raw samples attached to each GitHub Actions run.

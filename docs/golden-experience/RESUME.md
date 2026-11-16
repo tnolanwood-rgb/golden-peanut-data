@@ -1,5 +1,10 @@
 # Resume Golden Experience
 
+## Latest continuation: GE-07 diagnostics
+Branch `feature/golden-experience`, draft PR #65. New paired OSRS cold-start CPU profiler `scripts/profile_golden_experience_cold.cjs`; its PR CI job now fetches pinned baseline history, runs six paired trials per revision and uploads synthetic artifact JSON. Two completed runs: 43854807834 (CPU probe PASS, retention FAIL DOM growth), 43855536154 (full PR CI PASS including retention). Evidence: `docs/golden-experience/evidence/osrs-cold-cpu-paired-20261116.json`. Do not call the intermittent failure resolved. Source/runtime app implementation is still 51e95269e3cbfd5873e9772539160f8ef28bafc9; only profiling/test/CI/documentation changes followed.
+First act: reproduce intermittent growth with retained tag/subtree output from failed test (new diagnostic writes report on failure). Then quantify press/navigation/scroll/chart and longer sessions; continue visual/accessibility populated/error states and native isolated staging/release gates. Treat device/production verification as OPEN. Never merge/deploy until final owner Implement authorization. Recheck main/feature SHAs, PR checks and live identity before any release-related action.
+
+
 Read AGENTS.md, BRIEF.md, STATE.md, ROADMAP.md, TESTS.md, BENCHMARKS.md and ISOLATION.md
 here. Verify local edits, actual origin refs, PR #65 checks and live build-info first.
 Branch feature/golden-experience, draft PR #65, tested implementation 51e95269e3cbfd5873e9772539160f8ef28bafc9.

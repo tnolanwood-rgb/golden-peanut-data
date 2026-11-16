@@ -1,3 +1,7 @@
+## 16 November GE-07 continuation
+
+Exact PR CI 43854807834: profiling PASSED but overall FAILED at accelerated DOM-growth assertion. After adding failure-only DOM subtree/tag diagnostics, CI 43855536154 PASSED all existing source/Python/JS/nine browser checks, synthetic profiler, 100 cached cycles, actionlint. This is a single passing rerun, not proof intermittent growth is gone. Browser profiling uses synthetic data and CPU instrumentation; physical Android remains BLOCKED. See evidence/osrs-cold-cpu-paired-20261116.json.
+
 # Verification matrix — authoritative current results
 
 Tested intermediate source 51e95269e3cbfd5873e9772539160f8ef28bafc9 (not a frozen RC).

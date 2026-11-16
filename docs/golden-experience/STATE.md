@@ -1,5 +1,13 @@
 # Golden Experience — authoritative checkpoint
 
+## GE-07 continuation — 16 November 2026, protected branch
+**STATUS IN PROGRESS — NO RELEASE AUTHORITY.** Added CPU-sampled paired OSRS cold-start tool `scripts/profile_golden_experience_cold.cjs` and read-only PR CI step; no web/runtime asset, ledger, account, Android, Cloudflare or production configuration change. Both 6+6 paired CPU profiling runs succeeded.
+CI [43854807834](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43854807834) FAILED in the subsequent 100-cycle retention assertion (>10 DOM nodes); diagnostic instrumentation was added, without weakening that gate. Follow-up exact-branch PR CI [43855536154](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43855536154) PASSED full baseline, cold profiler, 100-cycle retention and actionlint. An intermittent node-growth issue is not closed by one green rerun.
+Measured profiler readiness median baseline→candidate 288.6→281.6 ms (first job) and 357→343.4 ms (second); maxima 365.1→321.6 and 387.4→361.1 ms. Sampling and runner variation prevent definitive native speed claims. Dominant sampled work was browser startup/program/idle; no isolated OSRS trading algorithm bottleneck proven. Exact synthetic summary/hotspots in [evidence](evidence/osrs-cold-cpu-paired-20261116.json); full raw probe JSON stored in job artifacts. Separate earlier comparable no-profiler benchmark remains authoritative for broader before/after.
+Branch after this checkpoint: discover with `git log -1 -- docs/golden-experience/STATE.md`; last observed GitHub main 097f012. Live hostname was not independently accessible in this connector session; earlier Cloudflare live verification remains recorded in ISOLATION.md. Do not imply new live readback. Draft PR #65 is NOT to be merged or auto-merged.
+**FIRST UNFINISHED:** reproduce and diagnose intermittent retention node growth using saved subtree/tag diagnostics on failure, then measure press, scroll, item-navigation, large-history and long-duration performance, close visual/a11y matrix and representative Android/staging/release gates. No READY FOR IMPLEMENT declaration.
+
+
 Date: 2026-11-16. STATUS: IN PROGRESS. Release incomplete; no implementation approval.
 Branch: `feature/golden-experience`. Draft PR: https://github.com/tnolanwood-rgb/golden-peanut-data/pull/65
 DO NOT MERGE / DEPLOY / ENABLE AUTO-MERGE. Historical global audit release authority
