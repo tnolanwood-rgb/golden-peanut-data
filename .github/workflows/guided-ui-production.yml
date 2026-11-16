@@ -96,3 +96,10 @@ jobs:
         shell: bash
         run: |
           python3 scripts/verify_live_release.py --origin https://thegoldenpeanut.pages.dev --attempts 10
+      - name: Verify real production touch navigation
+        run: node scripts/verify_swipe_production.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-swipe-verification
+          path: artifacts/audit/swipe-production/

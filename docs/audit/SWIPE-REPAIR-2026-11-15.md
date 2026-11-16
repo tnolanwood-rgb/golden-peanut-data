@@ -134,3 +134,42 @@ app against the deployed website, including slow and interrupted swipes and both
 gesture directions inside the OSRS recommendation box. The session has no attached
 physical phone or available recording, so it cannot claim owner-phone smoothness,
 device frame timings, or real hardware orientation/lifecycle acceptance.
+
+## Production startup follow-up — 16 November 2026
+
+Core PR [#58](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/58) merged as
+`ffa5dece1414297aae6bace492df468ebcc5ebff` after exact-head CI
+[43778305615](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43778305615)
+passed. Pages release
+[43778510487](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43778510487)
+passed all checks. Independent task-environment readback matched **38 exact asset
+SHA-256 values**, including the generated release identity, following normal Pages
+redirects. The unrelated Android preview was cancelled before its build step.
+
+The live touch check caught an intermittent remaining startup race: the OSRS desk
+could be visible before dynamically loaded GW2 Guided initialization finished;
+`guided(true)` then unconditionally reset the shared document scroll to zero.
+This could move the recommendation box away from the physical touch target.
+The first production smoke therefore did not pass and the task continued.
+
+The follow-up loads the GW2 chart and Guided scripts as ordered deferred assets,
+in parallel with the existing dependencies, before either desk accepts input.
+Standalone Focus retains its dynamic fallback. Hidden GW2 activation cannot reset
+OSRS document scroll, and delayed installation waits through active navigation.
+A delayed-script regression checks that both desks remain behind the boot screen
+until initialization is ready. Existing native gesture cases remain unchanged.
+
+The existing Pages workflow also runs a fresh-profile native Chromium smoke
+against the actual deployed origin after exact asset verification: six repeated
+game swipes (all OSRS starts inside the recommendation box), rendered Y continuity,
+selected-item preservation, and actual vertical scrolling in the same box.
+It uploads screenshots, frame samples and the report even on failure. Website-only
+pull requests no longer invoke an APK build; the Android source/manual workflow
+and its existing test/build commands remain available.
+
+The cloud workspace disconnected during this follow-up. The source was safely
+reconstructed from the verified GitHub commit and committed using repository tools.
+Final checks and production browser verification run on GitHub Actions; this does
+not turn browser automation into a physical-phone test.
+
+Follow-up exact-head CI, final merge, production run and smoke evidence: PENDING.
