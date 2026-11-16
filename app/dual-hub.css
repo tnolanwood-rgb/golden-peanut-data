@@ -994,3 +994,16 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  #gh-panel-gw2 .focus-market-values{max-width:40%;flex-basis:38%}
  #gh-panel-gw2 .focus-item-art{flex-shrink:0}
 }
+
+/* GE-02: Android enlarged-font status control. The advanced GW2 research
+ * notice is secondary explanatory text, not a giant full-screen hero.
+ * Preserve every word/price and a generously tappable research action while
+ * capping only these nonfinancial chrome labels at 200% root scaling. */
+#gh-panel-gw2 #focus-deep-progress{
+ font-size:min(.875rem,20px);line-height:1.55;
+ padding:12px 10px 14px;overflow-wrap:break-word;
+}
+#gh-panel-gw2 .focus-deep-actions .focus-button{
+ font-size:min(.875rem,19px);line-height:1.4;
+ min-height:48px;padding:11px 15px;
+}

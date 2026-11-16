@@ -498,6 +498,18 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   }));
   assert.ok(large.detail>=16,'GW2 advanced labels must scale at 200% text: '+JSON.stringify(large));
   assert.ok(large.scroll<=large.width+1,'GW2 advanced large text must not overflow');
+  const secondary=await page.evaluate(()=>{
+   const p=document.querySelector('#gh-panel-gw2 #focus-deep-progress');
+   const action=document.querySelector('#gh-panel-gw2 #focus-deep-retry');
+   return {noticeFont:parseFloat(getComputedStyle(p).fontSize),
+    buttonFont:parseFloat(getComputedStyle(action).fontSize),
+    noticeContent:p.textContent};
+  });
+  assert.ok(secondary.noticeFont>=16&&secondary.noticeFont<=21,
+   '200% text needs a legible but bounded explanatory research status: '+JSON.stringify(secondary));
+  assert.ok(secondary.buttonFont>=16&&secondary.buttonFont<=20,
+   '200% text needs readable research button without giant chrome: '+JSON.stringify(secondary));
+  assert.match(secondary.noticeContent,/Wider discovery is optional/);
   await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
   await page.screenshot({path:geDir+'/gw2-advanced-390-large-font.png',fullPage:true});
   await page.evaluate(()=>document.documentElement.style.fontSize='');
