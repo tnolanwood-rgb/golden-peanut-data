@@ -560,7 +560,7 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  const at=snap?.walletAt||snap?.at;labelText('focus-account-at',at?'Account checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved account · tap ↻ to check');
  labelText('focus-capital-note',snap?.buys?.length?'Already invested in buy orders: '+cash(root.PeanutCore.committedBuys(snap.buys))+' · '+num(snap.buys.length)+' active · tap below to inspect':'No standing buy orders currently verified.');
  renderGrowthGoal();
- const target=$('focus-next-action');target.replaceChildren();let title='',description='',action='',fn=()=>{};
+ const target=$('focus-next-action');let title='',description='',action='',fn=()=>{};
  if(!snap){title='Check your account';description='Load your wallet, orders and recent trades.';action='Check account';fn=syncNow;}
  else if(Number(snap.delivery?.coins)>0){title='Collect your Delivery Box';description='Ready in-game: '+cash(snap.delivery.coins)+'. Not spendable until collected.';action='Open delivery details';fn=()=>showResearch('gp57-delivery-detail');}
  else{const p=s.opportunityPlan,valid=p?.orders?.length&&Date.now()-s.opportunityAt<=25*60*1000;
