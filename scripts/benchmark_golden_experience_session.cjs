@@ -44,16 +44,29 @@ const out=process.env.GE_SESSION_OUTPUT||'artifacts/audit/golden-experience/sess
      counts[selector]=document.querySelector(selector)?.querySelectorAll('*').length??null;
     }
     const tags={};for(const el of document.querySelectorAll('*'))tags[el.tagName]=(tags[el.tagName]||0)+1;
-    return {nodes:document.querySelectorAll('*').length,counts,tags,
+    // ID-scoped counts show precisely where an eventual paint differs from
+    // the baseline, without altering production DOM or excluding any nodes.
+    const gw2Ids={};
+    for(const el of document.querySelectorAll('#gh-panel-gw2 [id]'))
+     if(el.id)gw2Ids[el.id]=el.querySelectorAll('*').length;
+    return {nodes:document.querySelectorAll('*').length,counts,tags,gw2Ids,
      ledgerRows:GoldenDualHub.diagnostics().ledgerRows,game:GoldenDualHub.diagnostics().game,
      marker:localStorage.getItem('ge-synthetic-continuity')};
    });
    assert.equal(state.ledgerRows,0);assert.equal(state.marker,'untouched');
    samples.push({cycles:batch*25,heapUsedBytes:heap.usedSize,...state});
    if(state.nodes>samples[0].nodes+10){
+    const before=samples[0].gw2Ids,after=samples.at(-1).gw2Ids;
+    const gw2Delta=[...new Set([...Object.keys(before),...Object.keys(after)])]
+     .map(id=>({id,before:before[id]??null,after:after[id]??null,
+      delta:(after[id]??0)-(before[id]??0)}))
+     .filter(x=>x.delta!==0).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
     fs.mkdirSync(require('node:path').dirname(out),{recursive:true});
-    fs.writeFileSync(out,JSON.stringify({status:'FAILED_DOM_GROWTH',conditions:'Synthetic retained-session diagnostic; no real account data',warmup,samples,calls:f.calls},null,2)+'\n');
-    assert.fail('DOM nodes grow across repeated cached navigation: '+JSON.stringify({baseline:samples[0],current:samples.at(-1)}));
+    fs.writeFileSync(out,JSON.stringify({status:'FAILED_DOM_GROWTH',conditions:'Synthetic retained-session diagnostic; no real account data',warmup,gw2Delta,samples,calls:f.calls},null,2)+'\n');
+    assert.fail('DOM nodes grow across repeated cached navigation: '+JSON.stringify({
+      baseline:{cycles:samples[0].cycles,nodes:samples[0].nodes,counts:samples[0].counts},
+      current:{cycles:samples.at(-1).cycles,nodes:samples.at(-1).nodes,counts:samples.at(-1).counts},
+      gw2Delta:gw2Delta.slice(0,30)}));
    }
   }
   assert.equal(f.calls.timeseries,1,'bounded chart cache survives repeated navigation');
