@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November — GW2 action hierarchy upgraded and verified
+**Verified** source `e178eabc07c50ab5dc46566e0d68e247fb662af8`; [browser CI 43955710086 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710086), [separate Android CI 43955710065 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710065). GE-02 GW2 first-screen composition now **TESTED**: protected Delivery Box hero, adjacent trade with compact 70px icon/title and first buy guidance above fold, then wallet and realised-profit gauges, all preserved. Earlier grid overlaps and icon regression corrected. GE-03/07/08 browser/swipe/session checks remain green; native hardware and complete deep-screen visual QA still OPEN. GE-09 integrated synthetic staging and GE-10 release readiness/rollback remain TODO. Overall **NOT READY FOR IMPLEMENT**; production frozen.
+
+
 ## 16 November — OSRS primary action now above fold
 Exact verified `e654b1d496e8582c9176a2cd5db29506842e5d4f` [CI 43944884562 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884562), Android preview [43944884652 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884652). GE-02 first-screen OSRS action-first geometry TESTED: main item name and full buy instruction inside initial 390×844 screen, mode tabs integrated in card, all earlier financial/research sections retained below. GE-03 swipe interaction regressions TESTED with actual hit-test and native vertical-scroll assertion, but real Android hardware open. GE-09/GE-10 still TODO; production frozen.
 
