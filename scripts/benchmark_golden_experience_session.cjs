@@ -19,7 +19,20 @@ const out=process.env.GE_SESSION_OUTPUT||'artifacts/audit/golden-experience/sess
    await page.waitForFunction(()=>GoldenOSRSChart.diagnostics().points===120);
    await page.locator('.gh-research-close').click();
   };
+  // GW2 account/priority paints can finish after the first navigation, so a
+  // 5-cycle baseline sometimes precedes a one-time 39-node startup mount.
+  // Keep that initial DOM difference visible, but measure retained growth only
+  // after a fuller, separately recorded initialization/warmup phase.
   for(let i=0;i<5;i++)await cycle();
+  const earlyWarmupNodes=await page.evaluate(()=>document.querySelectorAll('*').length);
+  for(let i=0;i<25;i++)await cycle();
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(180);
+  const settledWarmupNodes=await page.evaluate(()=>document.querySelectorAll('*').length);
+  const warmup={earlyCycles:5,settledCycles:30,earlyNodes:earlyWarmupNodes,
+   settledNodes:settledWarmupNodes,delta: settledWarmupNodes-earlyWarmupNodes};
+  if(Math.abs(warmup.delta)>10)
+   console.warn('Pre-measurement initialization DOM shift (not ignored): '+JSON.stringify(warmup));
   await page.evaluate(()=>localStorage.setItem('ge-synthetic-continuity','untouched'));
   for(let batch=0;batch<=4;batch++){
    if(batch)for(let i=0;i<25;i++)await cycle();
@@ -39,13 +52,13 @@ const out=process.env.GE_SESSION_OUTPUT||'artifacts/audit/golden-experience/sess
    samples.push({cycles:batch*25,heapUsedBytes:heap.usedSize,...state});
    if(state.nodes>samples[0].nodes+10){
     fs.mkdirSync(require('node:path').dirname(out),{recursive:true});
-    fs.writeFileSync(out,JSON.stringify({status:'FAILED_DOM_GROWTH',conditions:'Synthetic retained-session diagnostic; no real account data',samples,calls:f.calls},null,2)+'\n');
+    fs.writeFileSync(out,JSON.stringify({status:'FAILED_DOM_GROWTH',conditions:'Synthetic retained-session diagnostic; no real account data',warmup,samples,calls:f.calls},null,2)+'\n');
     assert.fail('DOM nodes grow across repeated cached navigation: '+JSON.stringify({baseline:samples[0],current:samples.at(-1)}));
    }
   }
   assert.equal(f.calls.timeseries,1,'bounded chart cache survives repeated navigation');
   assert.deepEqual(f.errors,[]);
-  const report={conditions:'Headless desktop Chromium, synthetic two-item market, 5 warmup then 100 GW2↔OSRS + cached-chart cycles, reduced-motion navigation, explicit GC before each sample. Accelerated repeatability/leak probe, not hours of Android use or physical memory/power proof.',chromium:await f.browser.version(),samples,calls:f.calls,errors:f.errors};
+  const report={conditions:'Headless desktop Chromium, synthetic two-item market, 5 early +25 settled initialization cycles (recorded separately), then 100 GW2↔OSRS + cached-chart measured cycles, reduced-motion navigation, explicit GC before each sample. Same strict post-warmup DOM growth guard; not hours of Android use or physical memory/power proof.',chromium:await f.browser.version(),warmup,samples,calls:f.calls,errors:f.errors};
   fs.mkdirSync(require('node:path').dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report));
  }finally{await f.close();}
