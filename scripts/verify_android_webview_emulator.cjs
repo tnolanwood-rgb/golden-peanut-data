@@ -179,21 +179,21 @@ async function run(){
   });
   adb('shell','input','swipe',String(Math.round(sw*.78)),String(y),
       String(Math.round(sw*.18)),String(y),'350');
-  const touch=await page.evaluate(()=>({
+  let swipeFailure=null;
+  try{await game(page,'osrs');}catch(error){swipeFailure=error;}
+  const touch=await page.evaluate(point=>({
     trace:window.__geAndroidTouchTrace,
     game:window.GoldenDualHub?.diagnostics?.()?.game||null,
     viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
     documentScrollY:Math.round(scrollY),
-    elementAtContact:document.elementFromPoint(innerWidth*.78,
-      Math.max(0,(contact.y)))?.outerHTML?.slice(0,300)||null
-  }));
+    elementAtContact:document.elementFromPoint(point.x,point.y)?.outerHTML?.slice(0,300)||null
+  }),{x:contact.x,y:contact.y});
   mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],deviceY:y});
-  if(touch.game!=='osrs'){
+  if(swipeFailure){
     await screenshot(page,'gw2-after-unsuccessful-native-swipe');
     throw new Error('Android-native swipe did not switch games: '+
       JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y}).slice(0,1900));
   }
-  await game(page,'osrs');
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
   await page.evaluate(()=>window.__goldenEmulatorMarker='same-webview-document');
