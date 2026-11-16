@@ -36,10 +36,13 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
  // that the hit-test is inside the game/eligible scroll panel, never a control.
  const contactY=async(from,x)=>page.evaluate(({from,x})=>{
   const selectors=from==='osrs'?
-   ['#gh-panel-osrs .gh-trade-scroll','#gh-panel-osrs .gp-guide-idea']:
-   ['#gh-panel-gw2 .gp-guide-idea','#gh-panel-gw2 .gp-guide-metrics'];
+   ['#gh-panel-osrs .gh-trade-scroll','#gh-panel-osrs .gp-guide-idea',
+    '#gh-panel-osrs .gh-market-lab','#gh-panel-osrs .gp-guide-metrics',
+    '#gh-panel-osrs .gp-guide-header']:
+   ['#gh-panel-gw2 .gp-guide-idea','#gh-panel-gw2 .gp-guide-metrics',
+    '#gh-panel-gw2 .gp-guide-header'];
   for(const selector of selectors){
-   const panel=document.querySelector(selector);if(!panel)return null;
+   const panel=document.querySelector(selector);if(!panel)continue;
    const rect=panel.getBoundingClientRect();
    for(let y=Math.max(155,Math.ceil(rect.top)+12);y<Math.min(innerHeight-40,rect.bottom-8);y+=12){
     const hit=document.elementFromPoint(x,y);
@@ -225,12 +228,14 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await drag('different-scroll-slow-gw2','gw2',[325,310,295,280,265,250,235,220,205,190,175,160,145,130,115],{pause:24});
   assert.ok(Math.abs(await page.evaluate(()=>scrollY)-480)<2,'OSRS document position restored');
 
-  // The target point must really be inside the overflow scroller, not just
-  // dispatched at one of its DOM nodes while it is offscreen.
-  const inside=await page.evaluate(()=>document.elementFromPoint(80,420)?.closest('.gh-trade-scroll')!==null);
+  // This is a real rendered recommendation hit-test; a fixed 420px starts
+  // in the research controls when the premium header is taller.
+  const nestedY=await contactY('osrs',80);
+  assert.ok(Number.isFinite(nestedY),'recommendation scroller must have a visible touch contact point');
+  const inside=await page.evaluate(y=>document.elementFromPoint(80,y)?.closest('.gh-trade-scroll')!==null,nestedY);
   assert.equal(inside,true,'native touch must start inside the recommendation box');
   const nestedBefore=await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop);
-  await drag('nested-card-horizontal','osrs',[65,90,120,155,190,225,265],{y:420});
+  await drag('nested-card-horizontal','osrs',[65,90,120,155,190,225,265],{y:nestedY});
   await switchTo('osrs');
   assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),nestedBefore,'horizontal card swipe preserves its vertical position');
   const docBefore=await page.evaluate(()=>scrollY);
