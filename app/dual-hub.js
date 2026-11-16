@@ -33,7 +33,7 @@ function parseItemStats(html){
  if(requirement&&items.length<=1&&tables.length<=1)basic.unshift(['Equip requirement',requirement]);
  return {basic,combat,ambiguous:items.length>1||tables.length>1};
 }
-const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
+const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null,itemContextTimer=0;
 function renderItemStats(item,details){
  const box=get('gh-item-stats');box.replaceChildren();
  const metadata=state.mappingById?.get(item.id),properties=new Map();
@@ -52,24 +52,38 @@ function renderItemStats(item,details){
 }
 function renderItemContext(item){
  const panel=get('gh-item-context');if(!panel)return;
- panel.hidden=!item;if(!item){itemContextID=null;itemContextRequest?.abort();return;}
+ panel.hidden=!item;
+ if(!item){
+  itemContextID=null;clearTimeout(itemContextTimer);itemContextTimer=0;
+  itemContextRequest?.abort();itemContextRequest=null;
+  return;
+ }
  if(itemContextID===item.id)return;
- itemContextID=item.id;itemContextRequest?.abort();
+ itemContextID=item.id;
+ clearTimeout(itemContextTimer);itemContextTimer=0;
+ itemContextRequest?.abort();itemContextRequest=null;
  get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
  const show=details=>{renderItemStats(item,details);txt('gh-item-description',details.ambiguous?'This Wiki page has multiple item variants. Check the full guide for the correct requirements and bonuses.':'');};
  const cached=itemContextCache.get(item.name);if(cached){show(cached);return;}
+ // The market and account calculations update instantly. Extra Wiki stat
+ // parsing is secondary: fetch only the item the user settles on, rather
+ // than issuing an abortable 1.5MB parse request for every rapid Next click.
  renderItemStats(item);txt('gh-item-description','Loading item stats from the OSRS Wiki…');
- const controller=new AbortController();itemContextRequest=controller;
- const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
- const query=new URLSearchParams({action:'parse',prop:'text',page:name,redirects:'1',format:'json',origin:'*'});
- fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
- .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>1500000)throw Error('Oversized Wiki response');return JSON.parse(text);})
- .then(data=>{const html=data?.parse?.text?.['*'];if(typeof html!=='string')throw Error('Missing Wiki stats');
-  const details=parseItemStats(html);if(!details.basic.length&&!details.combat.length&&!details.ambiguous)throw Error('Missing Wiki stats');
-  itemContextCache.set(name,details);if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
-  if(itemContextID===item.id&&!controller.signal.aborted)show(details);
- }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Additional item stats are unavailable right now. Open the Wiki guide for verified details.');})
- .finally(()=>clearTimeout(deadline));
+ itemContextTimer=setTimeout(()=>{
+  itemContextTimer=0;
+  if(itemContextID!==item.id)return;
+  const controller=new AbortController();itemContextRequest=controller;
+  const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
+  const query=new URLSearchParams({action:'parse',prop:'text',page:name,redirects:'1',format:'json',origin:'*'});
+  fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
+  .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>1500000)throw Error('Oversized Wiki response');return JSON.parse(text);})
+  .then(data=>{const html=data?.parse?.text?.['*'];if(typeof html!=='string')throw Error('Missing Wiki stats');
+   const details=parseItemStats(html);if(!details.basic.length&&!details.combat.length&&!details.ambiguous)throw Error('Missing Wiki stats');
+   itemContextCache.set(name,details);if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
+   if(itemContextID===item.id&&!controller.signal.aborted)show(details);
+  }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Additional item stats are unavailable right now. Open the Wiki guide for verified details.');})
+  .finally(()=>clearTimeout(deadline));
+ },160);
 }
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";

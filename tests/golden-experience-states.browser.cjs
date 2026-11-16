@@ -17,6 +17,13 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   const startingItem=await page.locator('#gh-item-name').innerText();
   // Synchronous handler+DOM cost is an instrumentation proxy, NOT first finger-to-paint latency.
   const latencies=await page.evaluate(()=>{
+   const realFetch=window.fetch;
+   window.__geOriginalFetch=realFetch;
+   window.__geStatsFetches=0;
+   window.fetch=function(resource,...args){
+    if(String(resource).startsWith('https://oldschool.runescape.wiki/api.php?'))window.__geStatsFetches++;
+    return realFetch.call(this,resource,...args);
+   };
    const next=document.querySelector('#gh-next'),prev=document.querySelector('#gh-previous');
    const rows=[];
    for(let i=0;i<40;i++){
@@ -32,6 +39,17 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    }
    return rows;
   });
+  // Fast card changes are synchronous; supplementary Wiki requests should
+  // be coalesced rather than dispatched for every transient card.
+  await page.waitForTimeout(220);
+  const wikiStatsFetches=await page.evaluate(()=>{
+   const count=window.__geStatsFetches;
+   window.fetch=window.__geOriginalFetch;
+   delete window.__geOriginalFetch;delete window.__geStatsFetches;
+   return count;
+  });
+  assert.ok(wikiStatsFetches<=1,
+   '40 rapid Next/Previous changes must cause <=1 optional Wiki stat request, got '+wikiStatsFetches);
   const percentile=(a,p)=>[...a].sort((x,y)=>x-y)[Math.min(a.length-1,Math.ceil(a.length*p)-1)];
   const ms=latencies.map(x=>x.synchronousMs);
   samples.push({metric:'osrs-click-handler-plus-sync-render',units:'ms',
@@ -39,7 +57,7 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    note:'Synthetic JS click handler duration only; not user-perceived tap response or native frame time'});
   assert.equal(await page.locator('#gh-item-name').innerText(),startingItem,'repeated Next/Previous returns to exact starting item');
   assert.equal(await page.locator('#gh-previous').isDisabled(),true);
-  states.push({state:'repeated-navigation',game:'osrs',iterations:40,startingItem,ledgerRows:0});
+  states.push({state:'repeated-navigation',game:'osrs',iterations:40,startingItem,ledgerRows:0,wikiStatsFetches});
 
   // Real settings controls and valuable metadata must remain usable in portrait.
   await page.locator('#gh-settings-toggle').click();
