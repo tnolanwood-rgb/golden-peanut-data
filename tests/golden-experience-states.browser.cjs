@@ -14,6 +14,19 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   await page.waitForFunction(()=>GoldenDualHub?.diagnostics().game==='osrs'&&GoldenDualHub.diagnostics().ideas>0);
   assert.equal(await page.locator('#gh-tab-osrs').getAttribute('aria-selected'),'true');
 
+  // The primary trade plan must precede optional Wiki item properties and
+  // detailed quote references, both visually and in accessible DOM order.
+  const hierarchy=await page.evaluate(()=>{
+   const box=document.querySelector('#gh-osrs-root .gh-trade-scroll');
+   const selectors=['#gh-item-name','.gh-research-evidence','.gp-guide-instructions',
+    '.gp-guide-totals','#gh-caution','#gh-watch-toggle','#gh-order-guide','#gh-item-context'];
+   return selectors.map(sel=>({selector:sel,index:[...box.children].indexOf(box.querySelector(sel))}));
+  });
+  assert.ok(hierarchy.every(x=>x.index>=0),'The original trade panels must all remain: '+JSON.stringify(hierarchy));
+  assert.deepEqual(hierarchy.map(x=>x.index),[...hierarchy.map(x=>x.index)].sort((a,b)=>a-b),
+   'Primary buy/sell instructions must precede optional market and Wiki panels: '+JSON.stringify(hierarchy));
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:path.join(out,'osrs-action-first-390.png'),fullPage:true});
   const startingItem=await page.locator('#gh-item-name').innerText();
   // Synchronous handler+DOM cost is an instrumentation proxy, NOT first finger-to-paint latency.
   const latencies=await page.evaluate(()=>{

@@ -245,15 +245,20 @@ function blank(){
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
-  <section id="gh-item-context" class="gh-item-context" hidden>
-   <h3>Item stats</h3>
-   <div id="gh-item-stats"></div>
-   <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
-   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
-   <small><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">OSRS Wiki · CC BY-NC-SA 3.0</a></small>
-  </section>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
+  <div class="gp-guide-instructions">
+    <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
+    <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
+  </div>
+  <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
+  <div class="gp-guide-totals">
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-margin-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-total-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
+  </div>
+  <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
+  <button type="button" id="gh-watch-toggle" class="gp-guide-secondary gh-watch-toggle" hidden aria-pressed="false">☆ Watch market</button>
+  <!-- Primary guidance first; optional references follow. -->
   <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
    <h3>What prices should I enter into the GE?</h3>
    <p class="gh-quote-intro">OSRS does not publish a live order book. These are recent <strong>completed transactions</strong> and experimental limit-order targets, not outstanding offers.</p>
@@ -269,17 +274,13 @@ function blank(){
    <p id="gh-quote-meta" class="gh-quote-meta"></p>
    <p id="gh-quote-warning" class="gh-quote-warning"></p>
   </section>
-  <div class="gp-guide-instructions">
-    <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
-    <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
-  </div>
-  <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
-  <div class="gp-guide-totals">
-   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-margin-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
-   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-total-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
-  </div>
-  <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
-  <button type="button" id="gh-watch-toggle" class="gp-guide-secondary gh-watch-toggle" hidden aria-pressed="false">☆ Watch market</button>
+  <section id="gh-item-context" class="gh-item-context" hidden>
+   <h3>Item stats</h3>
+   <div id="gh-item-stats"></div>
+   <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
+   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
+   <small><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">OSRS Wiki · CC BY-NC-SA 3.0</a></small>
+  </section>
   </div><div class="gh-action-dock"><div class="gp-guide-controls">
     <button type="button" id="gh-previous" class="gp-guide-secondary" disabled>← Previous</button>
     <button type="button" id="gh-next" class="gp-guide-primary" disabled>Next →</button>
