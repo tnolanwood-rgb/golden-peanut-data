@@ -87,6 +87,36 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-idea').count(),1);
  assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics .gp-guide-metric').count(),4);
  assert.match(await page.locator('#gh-panel-gw2 .gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ // GW2 action-first: preserve the user's top-priority Delivery Box, but the
+ // item and real buy guidance must be visible before the secondary wallet
+ // cluster. DOM order and geometry must match (no visual-only CSS reordering).
+ if(viewport.width===390){
+  const firstScreen=await page.evaluate(()=>{
+   const root=document.querySelector('#gp-guided-root'),
+    grid=root.querySelector('.gp-guide-metrics'),
+    delivery=grid.querySelector('.gp-guide-delivery-summary'),
+    card=grid.querySelector('.gp-guide-idea'),
+    title=card.querySelector('.gp-guide-item-name'),
+    buy=card.querySelector('.gp-guide-instruction'),
+    today=grid.querySelectorAll('.gp-guide-metric')[1],
+    art=card.querySelector('.gp-guide-item-icon'),
+    row=card.querySelector('.gp-guide-item-identity');
+   const rect=n=>{const r=n?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right}:null;};
+   return {height:innerHeight,grid:rect(grid),delivery:rect(delivery),card:rect(card),
+    title:rect(title),buy:rect(buy),today:rect(today),art:rect(art),row:rect(row),
+    position:[...grid.children].map(n=>n.className),amounts:grid.querySelectorAll('.gp-guide-metric').length,
+    width:document.documentElement.scrollWidth};
+  });
+  assert.ok(firstScreen.delivery.bottom<firstScreen.card.top&&firstScreen.card.bottom<=firstScreen.today.top,
+   'GW2 delivery, trade, then wallet/profits must use real visual/DOM order: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.title&&firstScreen.title.top<firstScreen.height-35,
+   'GW2 qualified item should be visible on the first phone screen: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.buy&&firstScreen.buy.top<firstScreen.height,
+   'GW2 buy guidance should start on the first phone screen: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.art.top<firstScreen.row.bottom&&firstScreen.title.left>firstScreen.art.left,
+   'GW2 item identity is a compact one-row premium instrument: '+JSON.stringify(firstScreen));
+  assert.equal(firstScreen.amounts,4,'All four original finance readouts remain');
+ }
  // Repeated guided repaints and navigation must reuse the same opportunity
  // evaluation instead of rescreening thousands of markets for every tap.
  const guideBuilds=await page.evaluate(()=>{
