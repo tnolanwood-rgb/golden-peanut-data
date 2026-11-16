@@ -35,6 +35,8 @@ jobs:
         run: |
           mkdir -p artifacts/audit
           node scripts/benchmark_startup.cjs > artifacts/audit/startup-benchmark.json
+      - name: Synthetic repeated-session retention probe
+        run: node scripts/benchmark_golden_experience_session.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

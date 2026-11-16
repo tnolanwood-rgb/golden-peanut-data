@@ -10,12 +10,15 @@ assert.ok(Number.isInteger(runs)&&runs>=1&&runs<=50);
 fs.mkdirSync(out,{recursive:true});
 const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
 const assets=new Map();
-if(ref)for(const file of git('ls-tree','-r','--name-only',ref,'app').split('\n')){
- if(/\.(html|css|js)$/.test(file))assets.set('/'+file.slice(4),execFileSync('git',['show',ref+':'+file]));
+// Identical interception for both revisions avoids comparing in-memory historical
+// responses against a local HTTP server only for the candidate.
+for(const file of git('ls-tree','-r','--name-only',ref||'HEAD','app').split('\n')){
+ if(/\.(html|css|js)$/.test(file))assets.set('/'+file.slice(4),ref?execFileSync('git',['show',ref+':'+file]):fs.readFileSync(file));
 }
 const report={schema:'golden-experience-browser-benchmark-v1',source:ref?git('rev-parse',ref):git('rev-parse','HEAD'),
  dirty:!!git('status','--porcelain'),node:process.version,platform:process.platform,runs,
- conditions:'Headless desktop Chromium, 390x844 touch emulation, synthetic two-item OSRS fixture; external responses intercepted, no private/live APIs. Cold=fresh browser/context/storage; warm=same context reload with retained app cache. GW2 useful-content metric is the unconnected desk shell, not account data. Timing from navigation start; no CPU/network throttle. No physical Android, WebView, power or real network claims.',samples:[],summary:{}};
+ assetHashes:Object.fromEntries([...assets].map(([name,body])=>[name,require('node:crypto').createHash('sha256').update(body).digest('hex')])),
+ conditions:'Headless desktop Chromium, 390x844 touch emulation, synthetic two-item OSRS fixture; identical in-memory static-text interception for both revisions, external responses intercepted, HTTP cache disabled by routing, no private/live APIs. Cold=fresh browser/context/storage; warm=same context reload with retained app data cache. GW2 useful-content metric is the unconnected desk shell, not account data. Timing from navigation start; no CPU/network throttle. No physical Android, WebView, power or real network claims.',samples:[],summary:{}};
 const quantile=(values,p)=>[...values].sort((a,b)=>a-b)[Math.min(values.length-1,Math.ceil(values.length*p)-1)];
 async function measure(f,game,phase,index){
  const {page,origin}=f;
@@ -45,7 +48,7 @@ async function measure(f,game,phase,index){
   const f=await fixture();
   try{
    report.chromium=await f.browser.version();
-   if(ref)await f.page.route(url=>url.origin===f.origin,route=>{
+   await f.page.route(url=>url.origin===f.origin,route=>{
     const name=new URL(route.request().url()).pathname,body=assets.get(name==='/'?'/index.html':name);
     return body?route.fulfill({body,contentType:name.endsWith('.css')?'text/css':name.endsWith('.js')?'text/javascript':'text/html'}):route.fallback();
    });

@@ -289,8 +289,8 @@ function blank(){
    </div>
    <p class="gh-trade-note">Record only confirmed Grand Exchange fills. Sales match recorded purchases FIFO; unmatched sales are rejected. Without actual sale tax, today's tax rule is an explicit assumption, including older trades.</p>
    <div class="gh-trade-row"><button type="submit" class="gp-guide-primary">Save fill</button><button type="button" id="gh-cancel-fill" class="gp-guide-light">Cancel</button></div>
-   <p class="gh-inline-status" id="gh-fill-feedback" aria-live="polite"></p>
   </form>
+  <p class="gh-inline-status" id="gh-fill-feedback" role="status" aria-live="polite"></p>
  </section>
  <details class="gh-osrs-settings" id="gh-settings">
   <summary>Account, budget and research settings</summary>
@@ -1366,6 +1366,7 @@ function openFill(item,side,qty,price){
  get("gh-fill-qty").value=qty;
  get('gh-fill-tax').value='';
  txt("gh-fill-feedback","");
+ delete get('gh-fill-feedback').dataset.state;
  f.scrollIntoView({behavior:"smooth",block:"nearest"});
  saveView();
 }
@@ -1402,6 +1403,7 @@ function recordFill(e){
  state.records=updated;
  // A second submit of the same completed form cannot manufacture a duplicate fill.
  get('gh-fill-form').hidden=true;state.fillItem=null;saveView();
+ get('gh-fill-feedback').dataset.state='saved';
  txt("gh-fill-feedback",side==="sell"?"Recorded verified sale · realised "+gp(updated.find(r=>r.rid===row.rid).gain):"Recorded purchase · waiting for a matching sale");
  render();
 }

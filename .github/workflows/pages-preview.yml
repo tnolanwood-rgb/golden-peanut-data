@@ -77,6 +77,17 @@ jobs:
               print('Existing Cloudflare Pages projects (names only; no secrets):')
               for row in projects:
                   print(' - ' + str(row.get('name', '?')) + ' [production branch: ' + str(row.get('production_branch') or 'unknown') + ']')
+                  # Report trigger/binding metadata only, never environment values.
+                  source = row.get('source') or {}
+                  config = source.get('config') or {}
+                  bindings = {}
+                  for mode, deployment in (row.get('deployment_configs') or {}).items():
+                      bindings[mode] = {key: bool(deployment.get(key)) for key in
+                          ('d1_databases', 'kv_namespaces', 'r2_buckets', 'services', 'durable_object_namespaces', 'env_vars')}
+                  print(json.dumps({'project': row.get('name'), 'source_type': source.get('type'),
+                      'git_triggers': {key: config.get(key) for key in
+                          ('production_branch', 'production_deployments_enabled', 'preview_deployment_setting', 'preview_branch_includes', 'preview_branch_excludes')},
+                      'binding_presence': bindings}, sort_keys=True))
               print('No deployment attempted. Confirm the matching project before running preview.')
               sys.exit(0)
           if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', project):

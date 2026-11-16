@@ -10,7 +10,7 @@ const btn=(text,fn,cls='gp-price-button')=>{const b=node('button',cls,text);b.ty
 const date=d=>new Date(d*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const coin=v=>{if(!Number.isSafeInteger(v)||v<0)return 'Not available';return Math.floor(v/10000).toLocaleString('en-GB')+'g '+String(Math.floor(v%10000/100)).padStart(2,'0')+'s '+String(v%100).padStart(2,'0')+'c';};
 const shortCoin=v=>v>=10000?(v/10000).toFixed(v>=100000?1:2)+'g':v>=100?(v/100).toFixed(1)+'s':v+'c';
-let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null,pendingRestore=null,renderFrame=0;
+let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null,pendingRestore=null,renderFrame=0,chartWidth=680;
 function cancelRender(){if(renderFrame)root.cancelAnimationFrame(renderFrame);renderFrame=0;}
 function requestRender(){
  if(renderFrame)return;
@@ -81,6 +81,7 @@ function ensure(){
  // deliberately do NOT close a chart a user is reading.
  document.body.append(dialog);
  root.addEventListener?.('gp-item-metadata-updated',updateArtwork);
+ root.addEventListener?.('resize',()=>{fingers.clear();gesture=null;if(dialog?.open)requestRender();});
 }
 function close(){cancelRender();if(dialog?.open)dialog.close();active=null;drag=null;pendingRestore=null;version++;notify();}
 function availableDays(){return active?.rows?.length?active.rows.at(-1)[0]-active.rows[0][0]+1:0;}
@@ -129,7 +130,7 @@ function svg(tag,attrs={},text){
 function mainPlot(rows){
  const frame=node('div','gp-price-plot');
  if(!rows.length)return frame;
- const W=680,H=332,L=94,R=20,T=24,B=52,px=W-L-R,py=H-T-B;
+ const W=chartWidth,H=332,L=94,R=20,T=24,B=52,px=W-L-R,py=H-T-B;
  const lows=rows.map(r=>Math.min(r[1],r[2])),highs=rows.map(r=>Math.max(r[1],r[2]));
  let lo=Math.min(...lows),hi=Math.max(...highs);
  const pad=Math.max(1,Math.ceil((hi-lo)*.09));
@@ -180,7 +181,7 @@ function dayAtClientX(clientX){
  if(!active?.rows?.length)return -1;
  const plot=dialog?.querySelector('.gp-price-svg'),rows=visible();
  if(!plot||!rows.length)return -1;
- const rect=plot.getBoundingClientRect(),W=680,L=94,R=20,span=W-L-R;
+ const rect=plot.getBoundingClientRect(),W=plot.viewBox.baseVal.width,L=94,R=20,span=W-L-R;
  const logical=(clientX-rect.left)*W/Math.max(1,rect.width);
  const first=rows[0][0],last=rows.at(-1)[0];
  let nearest=rows[0],distance=Infinity;
@@ -271,6 +272,8 @@ function render(){
  cancelRender();
  if(!dialog?.open||!active)return;
  dialog.classList.toggle('is-expanded',expanded);
+ const style=root.getComputedStyle(dialog);
+ chartWidth=Math.max(280,Math.min(680,dialog.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-10));
  dialog.replaceChildren();
  const heading=node('div','gp-price-heading');
  const headingText=node('div','gp-price-heading-text');
@@ -292,7 +295,9 @@ function render(){
  dialog.append(heading,controls,legend,caption);
  updateArtwork();
  if(active.status==='loading'){
-  dialog.append(node('p','gp-price-wait','Loading recorded GW2 price snapshots…'));return;
+  const placeholder=node('div','gp-price-plot');
+  placeholder.append(node('p','gp-price-wait','Loading recorded GW2 price snapshots…'));
+  dialog.append(placeholder);return;
  }
  if(active.status==='error'){
   dialog.append(node('p','gp-price-wait','The price history could not load. The chart has been left open so you can retry.'));

@@ -37,7 +37,7 @@ function ensure(){
  dialog.addEventListener('pointerup',pointerUp);dialog.addEventListener('pointercancel',pointerUp);
  dialog.addEventListener('wheel',wheel,{passive:false});
  dialog.addEventListener('close',()=>{touch.clear();gesture=null;sequence++;controller?.abort();controller=null;cancelRender();notify()});
- win.addEventListener('resize',()=>{touch.clear();gesture=null});
+ win.addEventListener('resize',()=>{touch.clear();gesture=null;if(dialog?.open)requestRender()});
 }
 function notify(){win.dispatchEvent(new Event('gh-osrs-chart-changed'))}
 function cancelRender(){if(renderFrame)win.cancelAnimationFrame(renderFrame);renderFrame=0;}
@@ -75,6 +75,10 @@ function renderRange(){
 function render(){
  cancelRender();
  if(!dialog)return;
+ // Match the logical canvas to its displayed width so 15-unit axis labels
+ // remain readable on phones instead of shrinking a 700-unit desktop chart.
+ const plot=dialog.querySelector('#gh-research-plot');
+ const W=Math.max(280,Math.min(700,(plot.clientWidth||712)-12));
  dialog.querySelectorAll('[data-gh-period]').forEach(b=>b.classList.toggle('is-selected',b.dataset.ghPeriod===range));
  const slider=dialog.querySelector('#gh-research-slider');slider.max=String(Math.max(0,rows.length-1));slider.value=String(selected);slider.disabled=rows.length<2;
  const pane=dialog.querySelector('#gh-research-selected');pane.replaceChildren();
@@ -88,9 +92,9 @@ function render(){
   pane.append(pair);
   pane.append(e('p','gh-research-volume','Bucket volumes: '+Number(q.lowPriceVolume||0).toLocaleString('en-GB')+' instant-sold / '+Number(q.highPriceVolume||0).toLocaleString('en-GB')+' instant-bought'));
  }else pane.append(e('p','','No observations available.'));
- const plot=dialog.querySelector('#gh-research-plot');plot.replaceChildren();renderRange();
+ plot.replaceChildren();renderRange();
  if(rows.length<2){plot.append(e('p','gh-research-empty','No usable two-sided historical buckets.'));return}
- const [a,b]=bounds(),view=rows.slice(a,b),W=700,H=330,L=100,R=20,T=24,B=57;
+ const [a,b]=bounds(),view=rows.slice(a,b),H=330,L=100,R=20,T=24,B=57;
  if(view.length<2)return;
  const all=view.flatMap(x=>[x.avgLowPrice,x.avgHighPrice]);let low=Math.min(...all),high=Math.max(...all);
  const pad=Math.max(1,(high-low)*.08);low=Math.max(0,low-pad);high+=pad;
@@ -160,7 +164,7 @@ function open(next,key='week'){
 }
 function chartIndex(clientX){
  const chart=dialog.querySelector('#gh-research-plot svg');if(!chart||!rows.length)return -1;
- const b=chart.getBoundingClientRect(),x=((clientX-b.left)/Math.max(1,b.width)*700-100)/(700-100-20),[a,end]=bounds();
+ const b=chart.getBoundingClientRect(),width=chart.viewBox.baseVal.width,x=((clientX-b.left)/Math.max(1,b.width)*width-100)/(width-100-20),[a,end]=bounds();
  return Math.max(a,Math.min(end-1,Math.round(a+x*(end-a-1))));
 }
 function pointerDown(ev){

@@ -45,12 +45,21 @@ const baseline=process.env.GE_CHART_BASELINE==='1';
     const selected=after.selected;
     send('pointerdown',73,120,dialog.querySelector('svg'));send('pointercancel',73,360);
     await new Promise(resolve=>requestAnimationFrame(resolve));
-    return {game,events:60,renders,synchronousMs,initial,after,cancelSelected:state().selected,selected,open:dialog.open,desk:GoldenDualHub.diagnostics().game};
+    const cancelSelected=state().selected,plot=dialog.querySelector('svg'),rect=plot.getBoundingClientRect(),width=plot.viewBox.baseVal.width;
+    const left=game==='osrs'?100:94,right=20,x=rect.left+(left+(width-left-right)/2)*rect.width/width;
+    send('pointerdown',74,x,plot);send('pointerup',74,x);
+    const labelPx=parseFloat(getComputedStyle(dialog.querySelector('svg text')).fontSize)*rect.width/width;
+    return {game,events:60,renders,synchronousMs,initial,after,cancelSelected,selected,pointSelected:state().selected,labelPx,open:dialog.open,desk:GoldenDualHub.diagnostics().game};
    },game);
    assert.equal(result.open,true,'chart interaction must not close modal');
    if(game==='gw2')assert.equal(result.after.viewSize,11,'pinch preserves exact final daily window');
    else assert.equal(result.after.visible[1]-result.after.visible[0],14,'pinch preserves exact final bucket window');
-   if(!baseline){assert.ok(result.renders<=1,'at most one chart rebuild per frame: '+JSON.stringify(result));assert.equal(result.cancelSelected,result.selected,'cancel is not point selection');}
+   if(!baseline){
+    assert.ok(result.renders<=1,'at most one chart rebuild per frame: '+JSON.stringify(result));
+    assert.equal(result.cancelSelected,result.selected,'cancel is not point selection');
+    assert.equal(result.pointSelected,game==='osrs'?113:84,'adaptive chart geometry maps taps to the exact observation');
+    assert.ok(result.labelPx>=12,'chart axis labels must remain readable at phone width');
+   }
    results.push(result);
   }
   assert.deepEqual(f.errors,[]);

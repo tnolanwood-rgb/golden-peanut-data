@@ -68,6 +68,8 @@ const assert=require('node:assert/strict'),{fixture}=require('./helpers/hub-fixt
   assert.equal(ledger.length,1);assert.equal(ledger[0].name,prior);assert.equal(ledger[0].qty,7);
   await page.locator('#gh-fill-form').evaluate(n=>n.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true})));
   assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).ledgerRows,1,'repeat submit cannot create a phantom fill');
+  assert.equal(await page.locator('#gh-fill-feedback').isVisible(),true,'confirmed-save feedback remains visible after the form closes');
+  assert.match(await page.locator('#gh-fill-feedback').innerText(),/Recorded purchase.*waiting for a matching sale/,'purchase feedback cannot imply realised sale proceeds');
   // Immediate input save survives reload without requiring blur/change.
   await page.locator('#gh-market-search').fill('Second research');await page.reload();
   await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading&&GoldenDualHub.diagnostics().ideas===1);
