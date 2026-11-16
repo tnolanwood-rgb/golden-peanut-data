@@ -120,16 +120,9 @@ async function screenshot(page,name){
 async function run(){
  const apk='android/app/build/outputs/apk/debug/app-debug.apk';
  assert.ok(fs.existsSync(apk),'Missing independently built Android preview APK');
- // Calibrate the host/emulator ADB input scheduler BEFORE the app starts.
- // A nominal 350ms input command has sometimes taken >3000ms in CI,
- // producing an Android touchcancel even on the original touch target.
- // Never mistake a stalled injector for an app-level gesture pass.
- result.adbInputCalibrationMs=[];
- for(let i=0;i<2;i++){
-   const start=Date.now();
-   adb('shell','input','swipe','200','1100','700','1100','350');
-   result.adbInputCalibrationMs.push(Date.now()-start);
- }
+ // Do not warm the system launcher with synthetic input: it has produced
+ // a NexusLauncher ANR modal that steals all subsequent WebView touches.
+ // Device-level input timing is measured on the app's actual gesture below.
  adb('install','-r',apk);
  adb('shell','am','force-stop',APP);
  const start=adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
@@ -148,17 +141,27 @@ async function run(){
   // CDP can see a loaded WebView before Android has actually focused the
   // Activity window. Input injected at that point can reach no DOM target at
   // all, a harness failure that cannot be confused with app touchcancel.
-  let windowFocus='';
+  let windowFocus='',launcherRecoveryAttempted=false;
   for(let i=0;i<24;i++){
     const lines=adb('shell','dumpsys','window').split('\n');
     windowFocus=lines.find(x=>x.includes('mCurrentFocus='))||'focus line unavailable';
     if(windowFocus.includes(APP))break;
+    if(!launcherRecoveryAttempted&&/Application Not Responding: com\.google\.android\.apps\.nexuslauncher/.test(windowFocus)){
+      // OS infrastructure fault (not this APK): a launcher ANR window can
+      // consume every ADB touch while CDP still shows the WebView normally.
+      // Recover the *launcher only*, once, then demand the QA Activity truly
+      // owns native focus. Never dismiss an ANR belonging to Golden Hub.
+      launcherRecoveryAttempted=true;
+      result.launcherAnrRecoveryAttempted=true;
+      adb('shell','am','force-stop','com.google.android.apps.nexuslauncher');
+      adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
+    }
     await sleep(200);
   }
   assert.ok(windowFocus.includes(APP),'Android preview Activity never received native input focus: '+windowFocus);
   await page.waitForFunction(()=>document.visibilityState==='visible',null,{timeout:15000});
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  mark('native-window-focus',{focusedApp:APP});
+  mark('native-window-focus',{focusedApp:APP,launcherRecoveryAttempted});
   if(initial.game!=='gw2')await page.evaluate(()=>GoldenDualHub.switchGame('gw2'));
   await game(page,'gw2');
   // Do not invoke CDP GPU screenshot capture immediately before Android's
