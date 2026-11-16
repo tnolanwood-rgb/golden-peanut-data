@@ -749,10 +749,14 @@ function moveGesture(ev){
   g.horizontal=true;
  }
  if(!g.scene){
+  // Native Android WebView can cancel the touch target when creating the
+  // moving scene changes panel layout. Claim the *stable* stage pointer
+  // before making those DOM/style changes, and only after a deliberate
+  // horizontal threshold (normal taps and vertical scrolling stay native).
+  if(g.input==='pointer')try{get("gh-game-stage")?.setPointerCapture?.(ev.pointerId);}catch{}
   scrollPositions[g.from]=win.scrollY||0;
   g.scene=createScene(g.from,g.from==="gw2"?"osrs":"gw2");
   if(!g.scene){gesture=null;return;}
-  if(g.input==='pointer')try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
  }
  const now=gestureTime(ev);
  if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}
