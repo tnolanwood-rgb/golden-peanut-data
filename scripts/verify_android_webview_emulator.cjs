@@ -7,7 +7,6 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
-const {chromium}=require('playwright-core');
 const APP='com.goldenhub.dual.preview';
 const ACTIVITY='com.goldenhub.dual.MainActivity';
 const OUTPUT='artifacts/audit/golden-experience/android-emulator';
@@ -19,6 +18,78 @@ const result={schema:'golden-experience-android-webview-emulator-v1',
 const adb=(...args)=>execFileSync('adb',args,{encoding:'utf8',timeout:30000}).trim();
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const mark=(name,detail)=>result.cases.push({name,pass:true,detail});
+// Android WebView exposes a PAGE CDP target, not a full Chromium browser.
+// Playwright connectOverCDP sends Browser.setDownloadBehavior and is rejected;
+// use Node 22's native WebSocket directly so testing stays on the real WebView.
+class AndroidWebViewPage {
+ constructor(socket,url) {
+  this.socket=socket;this.pageUrl=url;this.next=1;this.pending=new Map();
+  socket.addEventListener('message',event=>{
+   let message;
+   try{message=JSON.parse(String(event.data));}catch{return;}
+   if(!message.id)return;
+   const task=this.pending.get(message.id);if(!task)return;
+   this.pending.delete(message.id);clearTimeout(task.timer);
+   if(message.error)task.reject(new Error('CDP '+task.method+': '+JSON.stringify(message.error)));
+   else task.resolve(message.result||{});
+  });
+  socket.addEventListener('close',()=>{
+   for(const task of this.pending.values()){
+    clearTimeout(task.timer);task.reject(new Error('WebView debugging connection closed'));
+   }
+   this.pending.clear();
+  });
+ }
+ static async connect(rawUrl,pageUrl) {
+  const address=new URL(rawUrl);
+  address.hostname='127.0.0.1';address.port='9222';
+  const socket=new WebSocket(address.href);
+  await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(new Error('WebView CDP socket timed out')),5000);
+   socket.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
+   socket.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('WebView CDP socket error'));},{once:true});
+  });
+  const page=new AndroidWebViewPage(socket,pageUrl);
+  await page.send('Runtime.enable');
+  await page.send('Page.enable');
+  return page;
+ }
+ send(method,params={}) {
+  const id=this.next++;
+  return new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>{
+    this.pending.delete(id);reject(new Error('WebView CDP '+method+' timed out'));
+   },15000);
+   this.pending.set(id,{method,timer,resolve,reject});
+   this.socket.send(JSON.stringify({id,method,params}));
+  });
+ }
+ url(){return this.pageUrl;}
+ async evaluate(fn,arg) {
+  const input=typeof fn==='function'
+   ? '('+fn.toString()+')('+(arguments.length>1?JSON.stringify(arg):'')+')'
+   : String(fn);
+  const response=await this.send('Runtime.evaluate',{
+   expression:input,returnByValue:true,awaitPromise:true});
+  if(response.exceptionDetails)
+   throw new Error('WebView JavaScript exception: '+JSON.stringify(response.exceptionDetails).slice(0,500));
+  return response.result?.value;
+ }
+ async waitForFunction(fn,arg,options={}) {
+  const started=Date.now(),limit=options.timeout||15000;
+  while(Date.now()-started<limit){
+   if(await this.evaluate(fn,arg))return;
+   await sleep(150);
+  }
+  throw new Error('Android WebView waitForFunction timed out');
+ }
+ async screenshot({path:destination}) {
+  const screenshot=await this.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+  assert.ok(screenshot.data,'WebView screenshot empty');
+  fs.writeFileSync(destination,Buffer.from(screenshot.data,'base64'));
+ }
+ async close(){this.socket.close();}
+}
 async function locateWebView(){
  let last='unknown';
  for(let i=0;i<40;i++){
@@ -26,12 +97,14 @@ async function locateWebView(){
    const current=adb('shell','pidof',APP).split(/\s+/)[0];
    if(!/^\d+$/.test(current))throw Error('Android preview process not started');
    adb('forward','tcp:9222','localabstract:webview_devtools_remote_'+current);
-   const browser=await chromium.connectOverCDP('http://127.0.0.1:9222',{timeout:3000});
-   const pages=browser.contexts().flatMap(context=>context.pages());
-   const page=pages.find(p=>p.url().includes('private-dual-hub-preview.thegoldenpeanut.pages.dev'))||pages[0];
-   if(page)return {browser,page,processId:current};
-   await browser.close();
-   last='WebView browser target not exposed';
+   const response=await fetch('http://127.0.0.1:9222/json/list',{signal:AbortSignal.timeout(3000)});
+   if(!response.ok)throw Error('WebView CDP HTTP '+response.status);
+   const targets=await response.json();
+   const found=targets.find(t=>t.url?.includes('private-dual-hub-preview.thegoldenpeanut.pages.dev'))
+    ||targets.find(t=>t.type==='page');
+   if(!found?.webSocketDebuggerUrl)throw Error('Android WebView page target is unavailable');
+   const page=await AndroidWebViewPage.connect(found.webSocketDebuggerUrl,found.url);
+   return {browser:{close:()=>page.close()},page,processId:current};
   }catch(error){last=String(error?.message||error).slice(0,240);}
   await sleep(750);
  }
