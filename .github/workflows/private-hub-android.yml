@@ -1,7 +1,8 @@
 name: Golden Hub — Build Separate Android Preview
 on:
   pull_request:
-    paths: ['android/**', 'app/**', '.github/workflows/private-hub-android.yml']
+    # Website-only releases update the existing WebView origin without an APK.
+    paths: ['android/**']
   push:
     branches: [feat/private-dual-game-hub-20261115]
     paths: ['android/**', '.github/workflows/private-hub-android.yml']
