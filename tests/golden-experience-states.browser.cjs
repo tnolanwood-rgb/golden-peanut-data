@@ -63,6 +63,18 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
     settingsOpen:form.open};
   });
   assert.ok(layout.scrollWidth<=layout.width+1,'OSRS settings must not overflow small-phone viewport');
+  // Exact visible money must be readable as a single number at 320px with
+  // enlarged Android-style text, not "250,000,00" followed by a lonely "0".
+  const moneyGlyphs=await page.locator('#gh-budget-metric .gh-coin-amount span, #gh-budget-metric.gh-coin-amount span')
+   .first().evaluate(span=>{
+    const text=span.firstChild?.textContent||'',value='250,000,000';
+    const range=document.createRange();range.setStart(span.firstChild,0);range.setEnd(span.firstChild,value.length);
+    const boxes=[...range.getClientRects()].map(r=>({top:r.top,width:r.width}));
+    return {text,boxes};
+   });
+  assert.ok(moneyGlyphs.text.startsWith('250,000,000 gp'),'the exact manually entered GP value remains visible');
+  assert.equal(moneyGlyphs.boxes.length,1,
+   '250,000,000 must remain a single intact readout at 320px enlarged font: '+JSON.stringify(moneyGlyphs));
   assert.equal(layout.settingsOpen,true);
   assert.ok(layout.touched.length>=4,'Settings controls remain present');
   states.push({state:'settings-visual',viewport:'320x740',font:'24px',layout});
