@@ -111,7 +111,11 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-game-stage>.gh-game-panel{display:flow-root;width:100%;min-width:0}
 #gh-game-stage>.gh-game-panel[hidden]{display:none!important}
 #gh-game-stage.gh-stage-moving{isolation:isolate}
-#gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:none;will-change:transform;backface-visibility:hidden}
+/* Keep the original Android WebView touch target alive throughout a drag.
+ * Pointer-events:none on the moving panels invalidates the touch stream
+ * mid-gesture on Android (touchcancel before finger release). Incoming panel
+ * is already inert; final click is guarded by guardDragClick(). */
+#gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:auto;will-change:transform;backface-visibility:hidden}
 #gh-game-nav .gh-swipe-hint{text-align:center;color:#aabdae;font-size:11px;letter-spacing:.025em;line-height:1.25;margin:6px 0 0}
 @media(prefers-reduced-motion:reduce){#gh-game-stage>.gh-game-panel{transition:none!important;animation:none!important}}
 
