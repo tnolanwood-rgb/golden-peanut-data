@@ -1,0 +1,841 @@
+{
+  "schema": "golden-experience-browser-benchmark-v1",
+  "source": "f05a47fb9e9209b987ceb4b04e71d9d32b6a22b3",
+  "dirty": false,
+  "node": "v24.22.1",
+  "platform": "linux",
+  "runs": 10,
+  "assetHashes": {
+    "/account-monitor-client.js": "440d441dc8385ceb01deab81004446853ef04a7af748481913f4c9436c4a3846",
+    "/capacity-intelligence.js": "60c19a39582f61049a1f80bce2758a0e079b013979f7b817af4a825a3503bf87",
+    "/dual-hub-chart.css": "0509c2888768fd7f36051bcae483c601e2e85901fad01de654acc9ce974dc3c0",
+    "/dual-hub-chart.js": "2a9623162e9f33abde9b6daf929bc284327fb81a326d4cadbdf9473fcb6ba4ad",
+    "/dual-hub.css": "bda37b012021ae3f06ed5bcf2d92cfafe27111ea6c0880935cac1f26ad954731",
+    "/dual-hub.js": "17980edd26cdfc1455dd0f1742f0a78820f1fcc1c96d2c5c51ee15469cd141fa",
+    "/execution-engine.js": "262d01c9ddc3e755706e2f015e8e45af29b5cb4fcb6d47b8072c71786fd2db16",
+    "/focus-edition.css": "42e4b98d3bda96151842173379a14e8f70f47d42410264f9e55ffc964ca8b9e9",
+    "/focus-edition.js": "4b21a079e0c5f7920a9a32e90eef6593fda38b7e34e00dc27cea0efe69592831",
+    "/golden-experience.css": "ff66d3f6c69c27961092a4f1e338f10dbdc2ca51c8e10daf1ad3e808fb07f2bf",
+    "/growth-intelligence.js": "a5e5512292e7b059af823a794993179158de1b1497c9573a8ab35a601cde3403",
+    "/guided-deck.js": "58a8d497057f82b58b8ad8ed0f67771e89e43f5a84bded67c46611174f028f6a",
+    "/guided-peanut.css": "28f9efa9b293ef3a6d42c0211a0caac2062fa3c1e956f3979000edaf535e220a",
+    "/guided-peanut.js": "035469d79b540ac47fc2360b48c288f44be9edca3cb5621302cc92cb933dc02f",
+    "/guided-price-chart.css": "b76698ff20cc8725744dc6f294b00fc77b09509f4bc7b18780151bf8c48900dd",
+    "/guided-price-chart.js": "cdde011ccd8ea00062a267332097160d8919d55108de691937586c0012ba9dca",
+    "/guided-visit.js": "8c9de21c8a553f9794bf51c49888f6e998c67ca994f0ae632fd13bfabbbaa4c9",
+    "/gw2-rarity.js": "6193792bdbfe145f8aee8bf66a23aac1380e28b94e1c8bf0174cd2ab0bf83d49",
+    "/index.html": "f73106eba4b4ca92b07fbd4ddada06a7c61573a1704ca6ed8e70acc8de25f99d",
+    "/legendary-planner.js": "87381b29974f1447586eee33f52d353470eb1f3dd081b0ec26c49a088fef92d1",
+    "/legendary-recipe-engine.js": "045dc84549c5170422a6b04107fb71f0c36501aea5c0df7038723f3ab400fd3b",
+    "/market-board.js": "6517cc05cf3915d99dfeeb00797d56e86fbe9f4494878248c582e9bafb8d011a",
+    "/opportunity-engine.js": "ac455e70c9c811f0274749752dbc576f94598a7a41e2790fc68f2b2e3ee323f5",
+    "/portfolio-intelligence.js": "d19ee78c08e18a8d8ef7cea886350606c298f30d6d0ee330e639968d71a46ef2",
+    "/public-market-feed.js": "59dfd21902f080185e3653532ff9f248802bbd1b884b5fcfb3128c9ef72c7ad2"
+  },
+  "conditions": "Headless desktop Chromium, 390x844 touch emulation, synthetic two-item OSRS fixture; identical in-memory static-text interception for both revisions, external responses intercepted, HTTP cache disabled by routing, no private/live APIs. Cold=fresh browser/context/storage; warm=same context reload with retained app data cache. GW2 useful-content metric is the unconnected desk shell, not account data. Timing from navigation start; no CPU/network throttle. No physical Android, WebView, power or real network claims.",
+  "samples": [
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 0,
+      "readyMs": 686.3000000000466,
+      "fcpMs": 500,
+      "domContentMs": 579.1000000000931,
+      "requests": 28,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 238.30000000004657,
+          "duration": 96
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3555689
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 0,
+      "readyMs": 168.69999999995343,
+      "fcpMs": 68,
+      "domContentMs": 144.60000000009313,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 5369761
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 1,
+      "readyMs": 518.3000000000466,
+      "fcpMs": 288,
+      "domContentMs": 422.30000000004657,
+      "requests": 29,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 3559425
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 1,
+      "readyMs": 269.29999999981374,
+      "fcpMs": 144,
+      "domContentMs": 201.39999999990687,
+      "requests": 27,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4232229
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 2,
+      "readyMs": 598.0999999998603,
+      "fcpMs": 348,
+      "domContentMs": 513.1999999999534,
+      "requests": 29,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [
+        {
+          "start": 422.39999999990687,
+          "duration": 67
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3577811
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 2,
+      "readyMs": 241.70000000018626,
+      "fcpMs": 136,
+      "domContentMs": 210.30000000004657,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4189929
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 3,
+      "readyMs": 599,
+      "fcpMs": 392,
+      "domContentMs": 516.5999999998603,
+      "requests": 27,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 3550649
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 3,
+      "readyMs": 183,
+      "fcpMs": 104,
+      "domContentMs": 156.60000000009313,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4197405
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 4,
+      "readyMs": 545.9000000001397,
+      "fcpMs": 332,
+      "domContentMs": 462.20000000018626,
+      "requests": 27,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [
+        {
+          "start": 92.9000000001397,
+          "duration": 72
+        },
+        {
+          "start": 359.9000000001397,
+          "duration": 77
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3565687
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 4,
+      "readyMs": 297.0999999998603,
+      "fcpMs": 172,
+      "domContentMs": 232.5999999998603,
+      "requests": 30,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4225337
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 5,
+      "readyMs": 637.2999999998137,
+      "fcpMs": 408,
+      "domContentMs": 545.1999999999534,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 3567729
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 5,
+      "readyMs": 150.60000000009313,
+      "fcpMs": 88,
+      "domContentMs": 110.69999999995343,
+      "requests": 27,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4194321
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 6,
+      "readyMs": 590.6999999999534,
+      "fcpMs": 420,
+      "domContentMs": 507.19999999995343,
+      "requests": 28,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 126.69999999995343,
+          "duration": 101
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3554681
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 6,
+      "readyMs": 229.19999999995343,
+      "fcpMs": 132,
+      "domContentMs": 199.10000000009313,
+      "requests": 28,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4270533
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 7,
+      "readyMs": 678.1000000000931,
+      "fcpMs": 340,
+      "domContentMs": 580.1000000000931,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 3567729
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 7,
+      "readyMs": 246.30000000004657,
+      "fcpMs": 120,
+      "domContentMs": 212.9000000001397,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4252473
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 8,
+      "readyMs": 567.1999999999534,
+      "fcpMs": 372,
+      "domContentMs": 484.89999999990687,
+      "requests": 28,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 118.5999999998603,
+          "duration": 80
+        },
+        {
+          "start": 410.5999999998603,
+          "duration": 58
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3554885
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 8,
+      "readyMs": 245.5999999998603,
+      "fcpMs": 132,
+      "domContentMs": 201.79999999981374,
+      "requests": 31,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4207805
+    },
+    {
+      "game": "gw2",
+      "phase": "cold",
+      "index": 9,
+      "readyMs": 546.0999999998603,
+      "fcpMs": 400,
+      "domContentMs": 493.69999999995343,
+      "requests": 28,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 401.0999999998603,
+          "duration": 51
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3499442
+    },
+    {
+      "game": "gw2",
+      "phase": "warm",
+      "index": 9,
+      "readyMs": 259.4000000001397,
+      "fcpMs": 160,
+      "domContentMs": 202.9000000001397,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4284305
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 0,
+      "readyMs": 644.8999999999069,
+      "fcpMs": 420,
+      "domContentMs": 535.5,
+      "requests": 34,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 191.60000000009313,
+          "duration": 99
+        },
+        {
+          "start": 465.5,
+          "duration": 90
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3540979
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 0,
+      "readyMs": 171.30000000004657,
+      "fcpMs": 80,
+      "domContentMs": 124.4000000001397,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 5429947
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 1,
+      "readyMs": 717,
+      "fcpMs": 316,
+      "domContentMs": 599.4000000001397,
+      "requests": 34,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 448.30000000004657,
+          "duration": 80
+        },
+        {
+          "start": 542.3000000000466,
+          "duration": 66
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3529692
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 1,
+      "readyMs": 325,
+      "fcpMs": 216,
+      "domContentMs": 284.39999999990687,
+      "requests": 31,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 4337279
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 2,
+      "readyMs": 606,
+      "fcpMs": 424,
+      "domContentMs": 525.5,
+      "requests": 35,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 491.19999999995343,
+          "duration": 50
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3529548
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 2,
+      "readyMs": 224.5,
+      "fcpMs": 76,
+      "domContentMs": 155,
+      "requests": 31,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 105.5,
+          "duration": 68
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 4334619
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 3,
+      "readyMs": 680,
+      "fcpMs": 436,
+      "domContentMs": 561.3999999999069,
+      "requests": 35,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 518.8000000000466,
+          "duration": 59
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3568660
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 3,
+      "readyMs": 223.5999999998603,
+      "fcpMs": 96,
+      "domContentMs": 180.5,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 4355043
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 4,
+      "readyMs": 721.0999999998603,
+      "fcpMs": 372,
+      "domContentMs": 534.6999999999534,
+      "requests": 35,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 492.89999999990687,
+          "duration": 79
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3575103
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 4,
+      "readyMs": 233.5999999998603,
+      "fcpMs": 136,
+      "domContentMs": 177,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4329643
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 5,
+      "readyMs": 715.9000000001397,
+      "fcpMs": 396,
+      "domContentMs": 586.6000000000931,
+      "requests": 34,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [
+        {
+          "start": 427.60000000009313,
+          "duration": 91
+        },
+        {
+          "start": 520.6999999999534,
+          "duration": 77
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3569676
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 5,
+      "readyMs": 278.19999999995343,
+      "fcpMs": 152,
+      "domContentMs": 249.30000000004657,
+      "requests": 30,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 4253879
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 6,
+      "readyMs": 643.5,
+      "fcpMs": 376,
+      "domContentMs": 504.30000000004657,
+      "requests": 34,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 137,
+          "duration": 54
+        },
+        {
+          "start": 395.69999999995343,
+          "duration": 69
+        },
+        {
+          "start": 465.10000000009313,
+          "duration": 77
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3574739
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 6,
+      "readyMs": 297.60000000009313,
+      "fcpMs": 160,
+      "domContentMs": 251.4000000001397,
+      "requests": 29,
+      "encodedBytes": 768067,
+      "decodedBytes": 768067,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 4355943
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 7,
+      "readyMs": 669.7000000001863,
+      "fcpMs": 380,
+      "domContentMs": 581.3000000000466,
+      "requests": 34,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 347.60000000009313,
+          "duration": 55
+        },
+        {
+          "start": 517.9000000001397,
+          "duration": 79
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3530116
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 7,
+      "readyMs": 172.5,
+      "fcpMs": 92,
+      "domContentMs": 140.20000000018626,
+      "requests": 32,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4319027
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 8,
+      "readyMs": 647.6999999999534,
+      "fcpMs": 384,
+      "domContentMs": 517,
+      "requests": 34,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 3563556
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 8,
+      "readyMs": 223.80000000004657,
+      "fcpMs": 112,
+      "domContentMs": 187.19999999995343,
+      "requests": 31,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0,
+      "heapBytes": 4354383
+    },
+    {
+      "game": "osrs",
+      "phase": "cold",
+      "index": 9,
+      "readyMs": 625.6999999999534,
+      "fcpMs": 304,
+      "domContentMs": 509.5999999998603,
+      "requests": 35,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [
+        {
+          "start": 422.5999999998603,
+          "duration": 99
+        }
+      ],
+      "cls": 0,
+      "heapBytes": 3569224
+    },
+    {
+      "game": "osrs",
+      "phase": "warm",
+      "index": 9,
+      "readyMs": 230.5999999998603,
+      "fcpMs": 140,
+      "domContentMs": 172.5,
+      "requests": 31,
+      "encodedBytes": 774624,
+      "decodedBytes": 774624,
+      "longTasks": [],
+      "cls": 0.0008768550018746557,
+      "heapBytes": 4262847
+    }
+  ],
+  "summary": {
+    "gw2-cold": {
+      "readyMs": {
+        "median": 590.6999999999534,
+        "p95": 686.3000000000466,
+        "p99": 686.3000000000466
+      },
+      "fcpMs": {
+        "median": 372,
+        "p95": 500,
+        "p99": 500
+      },
+      "requests": {
+        "median": 28,
+        "p95": 30,
+        "p99": 30
+      },
+      "encodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "decodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "cls": {
+        "median": 0,
+        "p95": 0,
+        "p99": 0
+      }
+    },
+    "gw2-warm": {
+      "readyMs": {
+        "median": 241.70000000018626,
+        "p95": 297.0999999998603,
+        "p99": 297.0999999998603
+      },
+      "fcpMs": {
+        "median": 132,
+        "p95": 172,
+        "p99": 172
+      },
+      "requests": {
+        "median": 30,
+        "p95": 31,
+        "p99": 31
+      },
+      "encodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "decodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "cls": {
+        "median": 0,
+        "p95": 0,
+        "p99": 0
+      }
+    },
+    "osrs-cold": {
+      "readyMs": {
+        "median": 647.6999999999534,
+        "p95": 721.0999999998603,
+        "p99": 721.0999999998603
+      },
+      "fcpMs": {
+        "median": 380,
+        "p95": 436,
+        "p99": 436
+      },
+      "requests": {
+        "median": 34,
+        "p95": 35,
+        "p99": 35
+      },
+      "encodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "decodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "cls": {
+        "median": 0,
+        "p95": 0,
+        "p99": 0
+      }
+    },
+    "osrs-warm": {
+      "readyMs": {
+        "median": 224.5,
+        "p95": 325,
+        "p99": 325
+      },
+      "fcpMs": {
+        "median": 112,
+        "p95": 216,
+        "p99": 216
+      },
+      "requests": {
+        "median": 30,
+        "p95": 32,
+        "p99": 32
+      },
+      "encodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "decodedBytes": {
+        "median": 774624,
+        "p95": 774624,
+        "p99": 774624
+      },
+      "cls": {
+        "median": 0.0008768550018746557,
+        "p95": 0.0008768550018746557,
+        "p99": 0.0008768550018746557
+      }
+    }
+  },
+  "chromium": "156.0.8078.79"
+}

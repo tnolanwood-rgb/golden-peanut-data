@@ -29,3 +29,8 @@
   after durable validated ledger save. Preserve accounting and duplicate guard.
 - Correct startup benchmark transport symmetry before acceptance; retain flawed
   exploratory samples with explicit limitations instead of disguising them.
+
+- GE-05 supersedes initial separate-stylesheet decision: remove one new render-blocking
+  request by appending the premium layer to existing dual-hub.css. Load chart CSS
+  before that shared stylesheet to retain the tested final cascade. All source and
+  nine browser programs pass. No bundler/runtime dependency or duplicate stylesheet.

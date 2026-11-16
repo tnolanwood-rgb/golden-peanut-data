@@ -52,7 +52,35 @@ hashes, conditions, raw samples and nearest-rank quantiles. Final serial run pen
 HTTP caching is disabled by routing; warm means retained APPLICATION data cache only.
 
 Repeated-session probe: five warmups +100 reduced-motion GW2↔OSRS/cached-chart cycles,
-Chromium156.0.8078.79. DOM961 at all five samples; each API fixture called once; no
+Chromium 156.0.8078.79. DOM961 at all five samples; each API fixture called once; no
 ledger mutation, lost sentinel or page error. Explicit-GC heap 2,865,140→3,007,264
 bytes (+142,124; ~5%). This short accelerated test cannot exclude long-lived leaks
 or prove native/battery/CPU behavior. See evidence/session-100-cycles.json.
+
+## Current controlled browser evidence (51e9526)
+
+Corrected harness, identical in-memory static-text interception, separate serial
+runs, ten fresh contexts and ten retained-app-cache reloads per game per revision.
+No concurrent local browser suite. Warm HTTP cache is disabled by interception.
+All raw samples, source identities and static text hashes are in evidence/serial-*.json.
+
+| Useful-content readiness ms | Base median/p95 | Separate stylesheet | Consolidated current |
+|---|---|---|---|
+| GW2 unconnected shell cold |611/797|591/686|550/674|
+| GW2 shell warm reload |230/293|242/297|244/305|
+| OSRS fixture cold |671/726|648/721|645/798|
+| OSRS fixture warm reload |190/311|224/325|198/307|
+
+Mixed tails; no universal speed/no-regression claim. n=10 nearest-rank p95 and p99
+both select max and are weak tail estimates. OSRS cold p95 remains an OPEN profiling
+item. Current warm DCL medians GW2/OSRS192/160ms vs 190/153ms baseline; largest
+observed startup long task current98ms vs baseline138ms (not a latency distribution).
+Static mocked payload median774,626 vs760,246 bytes (+14,380; ~1.9%); actual mobile
+compression/network not measured. Added stylesheet request eliminated; same original
+number of linked stylesheet requests. Performance budget not closed on hardware.
+
+CPU 4 native-Chromium-touch replay:26 cases per revision; all geometry/content-write
+assertions pass. Max Y discontinuity0px for both. Per-case rAF gap p95 spans16.7–33.4ms
+both revisions; observed gaps>34ms total11 before /8 after. Those are sampled frame
+intervals across tests, NOT measured physical drops or evidence of 60FPS. JSON:
+evidence/slow-swipe-before.json and slow-swipe-after.json. Native phone still BLOCKED.

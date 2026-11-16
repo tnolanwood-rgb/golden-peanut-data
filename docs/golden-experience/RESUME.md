@@ -1,33 +1,43 @@
 # Resume Golden Experience
 
-Read AGENTS and this directory BRIEF/STATE/ROADMAP/TESTS/ISOLATION. Verify git status,
-origin branches/current live build-info. Branch feature/golden-experience; base main/
-live 097f012. Implementation c775c4ec3f0efb22cf95455941156190579e635a; PR #65 DRAFT, DO NOT MERGE. Checkpoint:
-git log -1 -- docs/golden-experience/STATE.md. Production freeze supersedes historical
-audit release permissions. Never touch release requests, private services/data,
-original APK, origin, databases or collectors; never enable auto-merge.
+Read AGENTS.md, BRIEF.md, STATE.md, ROADMAP.md, TESTS.md, BENCHMARKS.md and ISOLATION.md
+here. Verify local edits, actual origin refs, PR #65 checks and live build-info first.
+Branch feature/golden-experience, draft PR #65, tested implementation 51e95269e3cbfd5873e9772539160f8ef28bafc9.
+Checkpoint: git log -1 -- docs/golden-experience/STATE.md. Main/live 097f012 at last
+readback. Production freeze applies: no merge/deploy/auto-merge, release requests,
+native identity/origin/storage, Worker/D1/private monitor/collector changes. Do not
+follow historical global-audit release NEXTs or restart completed audit batches.
 
-Completed locally tested batches: contract/discovery/initial baseline; shared design
-and press feedback; chart render coalescing (40/35→1 rebuild), cancel correctness;
-adaptive readable axes/exact tap mapping, stable loading, cached reopen; visible
-confirmed-fill feedback; advanced token bridge; 16 viewport/font/game visual checks;
-100 synthetic cached navigation cycles. All source/Python/JS/NINE browser programs
-passed. Last remote CI for 0307e68 passed; latest ref must be checked independently.
+FIRST UNFINISHED: GE-07 profile
+OSRS cold-start tail. Corrected serial evidence: current cold median/p95 645/798ms
+vs original 671/726ms, n=10; no no-regression claim. Warm current 198/307 vs 190/311.
+Use same transport/fixture/runtime and randomized/repeated order; collect traces/
+long tasks, diagnose actual cause. Measure press/scroll/item/chart latency and longer
+sessions. Then finish full populated-account/form/error/advanced visual/accessibility
+matrix (see TESTS) and independent native/staging/release gates.
 
-FIRST UNFINISHED: run corrected benchmark serially (no concurrent local browser work),
-GE_ASSET_REF=097f012 then current assets, GE_RUNS=10, separate GE_OUTPUT dirs. Corrected
-harness routes static text identically for both revisions and records hashes.
-Old exploratory reports are not acceptance (different response paths/concurrent load).
-Then run branch-only pages-preview.yml operation=inspect to read sanitized actual
-Cloudflare source/trigger/binding presence; no preview/deploy operation is authorized.
-Check exact-head PR CI. Save evidence and precise next actions to this directory.
+Completed: contract/discovery/isolation; shared tokens/press/Delivery Box hierarchy;
+chart one-frame scheduling/cancel correctness/adaptive readable axes/exact taps/
+stable loading/cache; visible confirmed-fill feedback; one stylesheet request saved.
+Design layer now lives at the END of app/dual-hub.css, not a separate file. Preserve
+existing rarity/value tiers, engines, lifecycle, data, owned sales and swipe repairs.
+No runtime dependency or lock change. Exact implementation CI 43852759439 passed (including actionlint/session probe).
+Original full baseline and updated nine browser
+programs passed; 26 CPU 4 swipe cases passed for both sources; 100 cached-cycle probe
+recorded stable DOM/requests and +~5% heap, not native leak-free proof.
 
-Remaining: complete visual/functional accessibility/gesture/large-data acceptance,
-representative Android performance/lifecycle/signing evidence, isolated synthetic
-staging, integrated candidate freeze and rehearsed release/rollback. Haptics cannot be
-promised by the existing wrapper: no vibration permission/native bridge; keep graceful
-no-haptics and avoid native changes. OSRS v4 parity/migration remains separate audit.
+Tools installed: /usr/bin/chromium, Playwright-core 1.58.2, PyYAML 6.0.3. Full tests:
+python scripts/audit_baseline.py --output artifacts/audit/golden-experience/<batch>.
+Benchmark: GE_ASSET_REF=097f012 GE_OUTPUT=artifacts/audit/golden-experience/<before>
+node scripts/benchmark_golden_experience.cjs; omit ref for current. Run serially.
+CPU 4 replay: SWIPE_CPU_RATE=4 [SWIPE_ASSET_REF=097f012] SWIPE_OUTPUT=<dir>
+node tests/swipe.browser.cjs. Retention: node scripts/benchmark_golden_experience_session.cjs.
+Use synthetic credentials only. Existing staging projects have NOT been created;
+Cloudflare read-only inspection is available through branch pages-preview workflow
+operation=inspect ONLY. No preview/deploy dispatch until staging isolation checked.
 
-Tools ready: /usr/bin/chromium, locked Playwright1.58.2, PyYAML6.0.3. Full check:
-python scripts/audit_baseline.py. Maintain actual tests/source SHA, commit/push each
-completed batch, verify unchanged production. No readiness declaration while open.
+Native device/signer/emulator unavailable, haptics not enabled; don't invent support
+or install debug QA over original app. Complete OSRS v4 migration/parity remains a
+separate audit. Preserve all unknown legacy fields. No readiness declaration while
+any source/acceptance/performance/native/staging/release gate remains open. Save
+actual checks/SHAs/evidence/next actions and commit/push each completed batch.

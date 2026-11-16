@@ -31,3 +31,15 @@ Staging is not yet configured. Full Pages source/build settings, preview write
 isolation and production wrapper compatibility need evidence. Do not reuse private
 monitor credentials/CORS or bind staging to production D1. No readiness declaration
 or deployment command is authorized by this document.
+
+## Current preparation checkpoint
+
+Intermediate implementation 51e95269e3cbfd5873e9772539160f8ef28bafc9/tree 181340c1cc538feedd27f6e7034b60fdf8e8a656
+has37 source distributable assets (generated build-info adds one at deployment),
+exact hashes and unchanged lock identity in evidence/implementation-identity.json.
+This is NOT the final candidate manifest. Main/live 097f012 is the current predecessor,
+not a permanently pinned rollback target; recheck intervening releases at readiness.
+No staging, frozen candidate or executable rehearsed release operation exists yet.
+Original package/signer unavailable; source repository Android package is separate
+QA and must never be substituted for installed-app compatibility proof. No native
+source change required by current web implementation. All production data protected.

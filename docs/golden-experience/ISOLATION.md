@@ -38,3 +38,14 @@ Freeze verification: record live build identity and remote main before/after eac
 checkpoint; changes from independent maintenance must be identified, never reverted.
 Do not edit global audit state, production release requests, Workers/D1/collectors or
 original Android package/signing/origin. Never merge or enable auto-merge.
+
+## Expanded read-only inspection
+
+Run43851667207 at f05a47f, job133245493740, operation=inspect: Cloudflare Pages
+production branch main, source_type=null and no listed preview/production D1/KV/R2/
+service/durable-object/env bindings. Git trigger fields null with no source reported.
+Checkout/validation/deployment skipped. Sanitized result:
+evidence/cloudflare-isolation.json. Existing main workflow unmodified; only this
+branch's inspect output was expanded, never settings. This strengthens the earlier
+limited branch evidence; it does not authorize deploying into the production project.
+New staging still requires a distinct project/origin with no private write access.

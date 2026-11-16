@@ -1,18 +1,19 @@
 # Golden Experience roadmap
 
-| Batch | Status | Dependency / remaining acceptance |
+| Batch | Status | Evidence / remaining dependency |
 |---|---|---|
-| GE-00 Discovery/isolation/baseline | TESTED | Production main identified; all Actions inspected; Cloudflare main confirmed. Full baseline passed; physical Android measurement BLOCKED. |
-| GE-01 Shared design system | TESTED | 0288a66; full baseline/16 viewport-font states, contrast, visual review; final Android acceptance open |
-| GE-02 Main interface refinement | IN PROGRESS | GE-01; headers/metrics/Delivery Box/cards/details/controls, preserve functionality |
-| GE-03 Motion and gestures | IN PROGRESS | Retain swipe fixes; press/card/interruption/reduced motion; repeated tests |
-| GE-04 Charts | IN PROGRESS | Profile existing SVG engines; optimize only diagnosed issues; feed-supported ranges |
-| GE-05 Startup/loading | IN PROGRESS | Compare startup/requests/cache/imagery with baseline |
-| GE-06 Signature details | IN PROGRESS | Confirmed feedback, no-haptics fallback/support investigation |
-| GE-07 Performance | IN PROGRESS | Before/after distributions, long sessions, Android evidence |
-| GE-08 Regression/accessibility | IN PROGRESS | Complete matrix in TESTS, screenshot review and device lifecycle |
-| GE-09 Integrated candidate | TODO | All preceding source integrated; synthetic isolated staging verified |
-| GE-10 Final readiness | TODO | Freeze commit/tree/hashes, rehearsed release/rollback, no blockers |
+| GE-00 Discovery/isolation/baseline | TESTED | Actual main/live 097f012; all 11 Actions and read-only CF inspection; full baseline. Hardware measurements BLOCKED. |
+| GE-01 Shared design system | TESTED | Tokens/surfaces/type/focus/press, official colours preserved,16 browser visual states. Whole-product/native acceptance remains. |
+| GE-02 Main interface | IN PROGRESS | Both main desks/Delivery Box/controls/advanced token bridge done; populated-account/detailed/forms/error visual acceptance open. |
+| GE-03 Motion/gestures | IN PROGRESS | Existing swipe retained; press/reduced motion,26-case CPU 1+CPU 4 proofs; physical feel/press latency/complete motion review open. |
+| GE-04 Charts | IN PROGRESS | Frame coalescing/cancel/axes/exact tap/loading/cache tested; real touch feel/large-history performance/complete accessibility open. |
+| GE-05 Startup/loading | IN PROGRESS | Existing caches preserved, new stylesheet request removed; mixed startup tails and real lifecycle remain open. |
+| GE-06 Signature details | IN PROGRESS | Visible confirmed-save feedback, no duplicate writes; graceful no-haptics. Remaining confirmation/interaction acceptance open. |
+| GE-07 Performance | IN PROGRESS | Serial distributions/CPU 4/100-cycle probe; OSRS cold tail, quantitative press/scroll/item and native long-session tests open. |
+| GE-08 Regression/a11y | IN PROGRESS | Full source/56 Python/129 JS/nine browser programs pass; full principal-state visual/a11y and real Android remain. |
+| GE-09 Integrated candidate | TODO | Distinct synthetic staging, complete integration/acceptance, incorporate newer main without losing fixes. |
+| GE-10 Final readiness | TODO | Freeze exact complete candidate, asset/dependency preflight/drift detection, tested release/rollback; no blockers allowed. |
 
-Physical-device portions of discovery may remain BLOCKED while independently safe
-local work proceeds. No batch is VERIFIED solely because source is implemented.
+TESTED means the listed local sub-batch evidence exists, not that physical/platform
+or whole-product acceptance is VERIFIED. No phase is READY. Preserve compatibility;
+OSRS v4 parity/import and calibration remain separate audit work.

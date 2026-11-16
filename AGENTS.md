@@ -21,3 +21,16 @@ where permitted. Record the tested implementation SHA and pending tests honestly
 Keep the state file's self-referential checkpoint SHA discoverable using
 `git log -1 -- docs/audit/STATE.md` rather than inventing its own future commit hash.
 Report BATCH, STATUS, FIXED, TESTED, EVIDENCE, NEXT and CHECKPOINT concisely.
+
+## Golden Experience redesign
+
+For GOLDEN EXPERIENCE work, also read `docs/golden-experience/STATE.md`,
+`RESUME.md` and `BRIEF.md`. Continue its first unfinished batch on the dedicated
+feature branch and keep its checkpoints separate from the global audit files.
+This project's production freeze supersedes historical release instructions:
+no merge, deployment, production release-request, installed-app/storage/origin or
+Worker/D1/collector change before the complete readiness gate and the owner's
+subsequent explicit Implement. A draft development PR is not release approval.
+Inspect deployment triggers before creating/pushing branches; preserve concurrent
+maintenance and all existing audit/performance/swipe repairs. Record unavailable
+Android/staging evidence honestly and never equate browser emulation with a phone.
