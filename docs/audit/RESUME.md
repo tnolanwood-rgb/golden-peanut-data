@@ -1,8 +1,10 @@
-# Active navigation delivery — 16 November 2026
+# Latest navigation delivery — 16 November 2026
 
-Resume SWIPE-R2 at remote exact-head CI and release, preserving the existing Android WebView origin and all storage. Local full baseline passes (129 JavaScript, 56 Python, four browser programs, release integrity). Native-touch tests reject old main at a measured 360px scroll handoff and pass 26 current cases. See [repair report](SWIPE-REPAIR-2026-11-15.md) and aggregate evidence.
+SWIPE-R2 web repair is complete and deployed: PRs #58/#59, production `99fcd36ac9eed80a56362f8a5de465052a5367f2`. Exact-head CI 43780386225 and existing Pages production workflow 43780619441 passed. All 129 JavaScript, 56 Python, release and four browser programs passed, including 26 native-touch cases and delayed loading of each desk script. The final production job adds native-touch smoke and publishes its artifact.
 
-The user explicitly requested merge and Cloudflare Pages production deployment for this repair; do not end at a draft PR. Verify the deployed bytes and browser behavior. Do not build/install a replacement APK or modify identity, signing, credentials, origin or storage namespaces. Physical Android acceptance still needs the original app; emulation is not phone proof.
+Independent production readback matched all 38 asset hashes. Actions and the task browser each completed six switches (OSRS gestures started inside the recommendation box), with 0px vertical discontinuity, retained selected item, 225px native vertical scrolling in the same box and no page errors. See [report](SWIPE-REPAIR-2026-11-15.md) and [evidence](SWIPE-EVIDENCE-2026-11-15.json).
+
+Physical Android feel/frames remain unverified; reopen the existing app at the unchanged Cloudflare origin for that acceptance. No replacement APK or storage/identity change is needed or authorized. Do not repeat the completed source release or claim the broader audit/OSRS v4 migration complete. Earlier unrelated audit gates below remain separate.
 
 ---
 

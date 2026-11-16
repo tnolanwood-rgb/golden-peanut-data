@@ -76,4 +76,4 @@ Saved implementation `54313199b2921822d7ba706c30d3551d97181c31`; [PR #52](https:
 
 ## SWIPE-R2 — user-prioritized navigation repair, 16 November 2026
 
-Local implementation VERIFIED by 26 native-touch cases and the full existing baseline. Old main fails at a measured 360px completion discontinuity. Remote exact-head CI and the explicitly authorized Pages production deployment/readback are pending; physical Android smoothness remains OPEN. See [repair report](SWIPE-REPAIR-2026-11-15.md). No broader audit phase is closed by this repair.
+Automated web release VERIFIED: PRs #58/#59 merged; exact-head CI 43780386225 and Pages 43780619441 passed. All source/Python/JavaScript/browser suites, 26 motion cases and both delayed-script startup cases pass. All 38 served hashes independently matched. Two browser vantage points each performed six live switches with 0px discontinuity and 225px native vertical recommendation scrolling. Physical Android smoothness remains OPEN; no broader audit phase closes here. See [repair report](SWIPE-REPAIR-2026-11-15.md).

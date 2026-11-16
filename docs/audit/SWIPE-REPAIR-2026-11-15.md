@@ -1,8 +1,9 @@
 # GW2 ↔ OSRS navigation repair
 
-Status: local implementation and all automated acceptance suites verified.
-Exact-head CI, merge and production verification are pending below. Physical
-Android acceptance remains separate.
+Status: **DEPLOYED AND AUTOMATICALLY VERIFIED** at the existing production origin.
+PRs #58 and #59 are merged; final production commit is
+`99fcd36ac9eed80a56362f8a5de465052a5367f2`. Physical Android acceptance remains
+separate from the browser and asset verification below.
 
 The user reported visible jumps, shifts and snapping after merged PR #57, including
 when starting a horizontal swipe inside the OSRS recommendation scroller. The
@@ -116,13 +117,13 @@ device FPS measurements or proof of compositor behavior on the owner's phone.
 
 | Evidence | Final value |
 |---|---|
-| Tested implementation commit | **PENDING** |
-| Pull request / exact-head CI | **PENDING** |
-| Merge commit | **PENDING** |
-| Existing `guided-ui-production.yml` deployment run | **PENDING** |
-| Exact deployed asset checksum verification | **PENDING** |
-| Browser smoke verification against production | **PENDING** |
-| Final native-touch report / trace | **PENDING** |
+| Tested implementation commit | Core `400b43e`; final startup head `cc0af3e1029df2ee2d4114a8f90fba562daf75a0` |
+| Pull request / exact-head CI | [#58](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/58), [#59](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/59); [final CI 43780386225](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780386225) succeeded |
+| Merge commit | `99fcd36ac9eed80a56362f8a5de465052a5367f2` |
+| Existing `guided-ui-production.yml` deployment run | [43780619441](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780619441) succeeded |
+| Exact deployed asset checksum verification | 38 exact SHA-256 matches, including build identity, independently repeated from the task environment |
+| Browser smoke verification against production | Six native-touch switches from GitHub Actions plus six independent task-browser switches; every measured vertical jump 0px; vertical card scroll 225px in each run; selected item preserved; no page errors |
+| Final native-touch report / trace | All 26 motion cases and both delayed-script boot cases pass; CI uploads raw traces. [Production screenshots/frames/report](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780619441/artifacts/14188561398) |
 
 Production verification must compare the served assets and release identity with
 the merged source, then repeat the relevant navigation checks at the existing
@@ -172,4 +173,24 @@ reconstructed from the verified GitHub commit and committed using repository too
 Final checks and production browser verification run on GitHub Actions; this does
 not turn browser automation into a physical-phone test.
 
-Follow-up exact-head CI, final merge, production run and smoke evidence: PENDING.
+Follow-up exact-head CI **43780386225 PASSED** at `cc0af3e`; PR #59 merged as
+`99fcd36`. Production run **43780619441 PASSED**, including all existing suites,
+38 exact asset hashes, six actual deployed native-touch switches with **0px**
+vertical discontinuity, selected-item preservation, and **225px** vertical scroll
+in the recommendation box. An independent task-browser run repeated all six
+switches with the same 0px result and 225px vertical scroll. Neither browser run
+had page errors. The task environment independently matched all 38 asset hashes.
+
+The boot release now also requires both initialized desk APIs. Regressions hold
+Guided and Dual Hub independently so neither loading order can expose a partial
+screen. The final local baseline passed again after the last test-harness change;
+its old-source replay still fails at the original **360px** handoff. Replay routes
+are preserved when temporary startup delays are removed, so the old-asset control
+cannot accidentally run current files.
+
+The final instrumented local run recorded 749 frames, no unexpected Y movement,
+no active content rebuilds or storage writes, and a maximum frame interval of
+33.4ms (per-case p95 at most 33.3ms). Earlier normal and isolated 4× CPU traces
+are retained above and in the JSON; these are automation measurements, not phone
+FPS. No replacement APK was built or installed. The original origin, package,
+signing, credentials, storage namespaces and account/trading data remain intact.

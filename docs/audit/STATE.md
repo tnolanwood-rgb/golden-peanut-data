@@ -1,10 +1,10 @@
-# Navigation repair checkpoint — 16 November 2026
+# Navigation repair released — 16 November 2026
 
-BATCH: SWIPE-R2. STATUS: full local verification passed; exact-head CI, merge and Pages production readback pending. The user explicitly authorized this navigation repair through merge/deploy at the existing origin, and prohibited replacement APK/package/storage/signing/credential changes.
+BATCH: SWIPE-R2. STATUS: DEPLOYED AND AUTOMATICALLY VERIFIED. PRs #58 and #59 are merged; production commit `99fcd36ac9eed80a56362f8a5de465052a5367f2` at `https://thegoldenpeanut.pages.dev/`. Final exact-head CI [43780386225](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780386225) and Pages run [43780619441](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780619441) succeeded.
 
-FIXED: incoming per-game scroll geometry (old code reproduced a 360px completion jump), exclusive pointer/touch fallback, interruptible settling, cached first swipe, hidden nested scroll, outgoing GW2 resume, and deferred presentation/cache/ranking work during gestures. TESTED: 129 JavaScript, 56 Python, release integrity, all four browser programs including 26 native-touch cases. EVIDENCE: [repair report](SWIPE-REPAIR-2026-11-15.md), [aggregate evidence](SWIPE-EVIDENCE-2026-11-15.json).
+FIXED: scroll-compensated full-screen movement, single pointer/touch ownership and fallback, interruption/reversal, nested recommendation scrolling, hidden-scroll and GW2 resume persistence, deferred expensive work, and complete two-desk startup before exposure. TESTED: 129 JavaScript, 56 Python, release integrity, all four browser programs, 26 native motion cases plus both delayed-script boot cases. Production: 38 exact served hashes independently repeated; six deployed switches in Actions plus six independent browser switches, all 0px vertical discontinuity, vertical card scroll 225px, selected item retained, no page errors.
 
-NEXT: verify exact-head CI, merge and run existing Pages workflow, compare every asset/hash and build identity, then real production native-touch smoke. Physical-phone acceptance and the broader audit remain OPEN. CHECKPOINT: discover via `git log -1 -- docs/audit/STATE.md`.
+EVIDENCE: [repair report](SWIPE-REPAIR-2026-11-15.md), [aggregate evidence](SWIPE-EVIDENCE-2026-11-15.json), [production screenshots/frames/report](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780619441/artifacts/14188561398). No replacement APK, signing/package/origin/credential/storage changes, data reset or in-game order action. NEXT: physical-phone acceptance in the original Android app remains OPEN; browser automation is not physical WebView FPS. The broader audit remains open. CHECKPOINT: discover via `git log -1 -- docs/audit/STATE.md`.
 
 ---
 

@@ -1,12 +1,12 @@
 {
   "schema": "golden-hub-swipe-repair-v1",
-  "recorded_at": "2026-11-16T00:04:56.977814+00:00",
+  "recorded_at": "2026-11-16T00:35:49.123877+00:00",
   "source_files": {
-    "app/dual-hub.js": "97fbe813839d254a4bde2609a5619227f9868fa75ba2dcddf9a5d25d61d66b3e",
+    "app/dual-hub.js": "888705d76bc7f7882cbdbda08310758ad8b302db0186b1593754b7c46dc58850",
     "app/dual-hub.css": "4e855ddfdb39718058b197acf8afaee92b3c3b519adcfd14fe4c51b0be347f61",
-    "app/guided-peanut.js": "6308c6252799608e669075789fd0ff3446ebee8c194c75b8d4042bd6f4b739af",
-    "app/focus-edition.js": "f1deb3cf155739838ccdc8f704ec42e83ea9ffd507e259a129d95f4d120d1088",
-    "app/index.html": "b0ab5e24d29731fba3c2db4af4305906fb900432f1f5be280426fb6470e8666a"
+    "app/guided-peanut.js": "7cad010ffbe99d40f0f3d36be32e4f13faf775d451f384fa4a5734b685185959",
+    "app/focus-edition.js": "fcabec53623e013f457b090b001c83a1fb42863b921bea911803ff524ac2576b",
+    "app/index.html": "72a607cfe019a832b22e05a59e01d4da86a95af015a5edd428479a83e31e04ce"
   },
   "baseline": {
     "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
@@ -804,7 +804,25 @@
     "4x full suite overlapped other test processes; do not treat its timings as isolated phone FPS"
   ],
   "release": {
-    "status": "pending exact-head CI and production"
+    "status": "DEPLOYED_AND_VERIFIED",
+    "implementation_heads": [
+      "400b43ef3d03392dc605dfcc59a4d11e7ad60bc7",
+      "cc0af3e1029df2ee2d4114a8f90fba562daf75a0"
+    ],
+    "pull_requests": [
+      58,
+      59
+    ],
+    "production_commit": "99fcd36ac9eed80a56362f8a5de465052a5367f2",
+    "ci_runs": [
+      43778305615,
+      43780386225
+    ],
+    "production_run": 43780619441,
+    "production_artifact": 14188561398,
+    "origin": "https://thegoldenpeanut.pages.dev",
+    "exact_asset_sha256_matches": 38,
+    "physical_phone": "UNVERIFIED"
   },
   "cpu4_isolated_comparison": {
     "conditions": "Single headless Chromium browser,390x844 mobile/hasTouch, synthetic data,4x DevTools CPU throttle. rAF timestamps only except named geometry-control. No phone/GPU FPS claims; trace and input injection add overhead.",
@@ -1184,5 +1202,594 @@
     "scope": "Steady active horizontal drag only: first100ms after gesture acquisition and final animation/cleanup are excluded from event/frame aggregates. Each run sends38 native touchMove updates after acquisition. rAF reads only timestamps except geometry-control.",
     "recommendation": "No additional CSS change justified: baseline already showed0 Layout/0 Paint during the measured steady drag; containment, opaque nav, layer promotion and overflow:clip showed no material improvement. All variants preserved header handoff geometry.",
     "limits": "Chromium156.0.8078.79 headless emulation with4x DevTools CPU throttle; renderer uses software/headless compositing. rAF timing and trace counts are browser automation evidence, not physical Android frame delivery or GPU performance. Initial/final layout costs are deliberately outside the steady-drag comparison. Broad acceptance-suite trace includes different fixture state, setup, settling, cleanup and forced geometry sampling; recurring events there were not reproduced in this focused path, so their attribution is unresolved."
+  },
+  "final_native_suite": {
+    "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
+    "assetRef": "working tree",
+    "cpuRate": 1,
+    "cases": [
+      {
+        "name": "different-scroll-slow-osrs",
+        "frames": 63,
+        "activeFrames": 57,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000273,
+        "frameMax": 16.799999999999727,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "different-scroll-slow-gw2",
+        "frames": 63,
+        "activeFrames": 57,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999727,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "nested-card-horizontal",
+        "frames": 36,
+        "activeFrames": 31,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "cancelled-touch",
+        "frames": 28,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "reversal-to-origin",
+        "frames": 32,
+        "activeFrames": 27,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3821758329868317e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.699999999999818,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "reversal-past-origin",
+        "frames": 23,
+        "activeFrames": 19,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 0,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.699999999999818,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "quick-flick",
+        "frames": 21,
+        "activeFrames": 16,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "quick-flick-back",
+        "frames": 21,
+        "activeFrames": 16,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "webview-pointer-cancel-fallback",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.481175422668457e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "pen-finger-ownership",
+        "frames": 18,
+        "activeFrames": 14,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3947486877441406e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "interrupted-settle",
+        "frames": 25,
+        "activeFrames": 20,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "vertical-interrupts-settle",
+        "frames": 32,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": true,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-0",
+        "frames": 29,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 33.399999999999636,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-1",
+        "frames": 27,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.29999999999927,
+        "frameMax": 33.29999999999927,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-2",
+        "frames": 29,
+        "activeFrames": 24,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4781951904296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-3",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4781951904296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-4",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 33.30000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-5",
+        "frames": 24,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.30000000000109,
+        "frameMax": 33.30000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-6",
+        "frames": 29,
+        "activeFrames": 24,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4781951904296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-7",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3709068298339844e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-8",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.2814998626708984e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-9",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4230608940124512e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "rapid-tab-reversal",
+        "frames": 26,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "resized-412",
+        "frames": 33,
+        "activeFrames": 28,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4543533325195312e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "response-during-held-drag",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "cached-nested-scroll-restore",
+        "frames": 17,
+        "activeFrames": 12,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4543533325195312e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000045,
+        "frameMax": 16.700000000000045,
+        "framesOver34ms": 0
+      }
+    ],
+    "status": "PASS",
+    "trace": {
+      "Layout": {
+        "count": 711,
+        "totalMs": 171.86399999999983,
+        "maxMs": 8.898
+      },
+      "UpdateLayoutTree": {
+        "count": 765,
+        "totalMs": 260.09499999999997,
+        "maxMs": 7.405
+      },
+      "Paint": {
+        "count": 1159,
+        "totalMs": 509.04599999999994,
+        "maxMs": 6.905
+      },
+      "FunctionCall": {
+        "count": 2475,
+        "totalMs": 408.30899999999883,
+        "maxMs": 8.129
+      }
+    },
+    "browser": "156.0.8078.79"
+  },
+  "production_ci": {
+    "origin": "https://thegoldenpeanut.pages.dev",
+    "expected": "99fcd36ac9eed80a56362f8a5de465052a5367f2",
+    "conditions": "Actual public production, fresh Chromium mobile emulation; not a physical phone",
+    "results": [
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 47,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 41,
+        "maxJump": 0
+      }
+    ],
+    "status": "PASS",
+    "browser": "157.0.8103.0",
+    "verticalScrollDelta": 225,
+    "selectedIdPreserved": true,
+    "errors": []
+  },
+  "production_independent_browser": {
+    "origin": "https://thegoldenpeanut.pages.dev",
+    "expected": "99fcd36ac9eed80a56362f8a5de465052a5367f2",
+    "conditions": "Actual public production, fresh Chromium mobile emulation; not a physical phone",
+    "results": [
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 55,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 43,
+        "maxJump": 0
+      },
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 82,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "osrs",
+        "next": "gw2",
+        "frames": 41,
+        "maxJump": 0
+      },
+      {
+        "from": "gw2",
+        "next": "osrs",
+        "frames": 41,
+        "maxJump": 0
+      }
+    ],
+    "status": "PASS",
+    "browser": "156.0.8078.79",
+    "verticalScrollDelta": 225,
+    "selectedIdPreserved": true,
+    "errors": []
+  },
+  "production_independent_asset_readback": {
+    "status": "PASS",
+    "origin": "https://thegoldenpeanut.pages.dev",
+    "commit": "99fcd36ac9eed80a56362f8a5de465052a5367f2",
+    "exact_sha256_matches": 38,
+    "conditions": "Independent task-environment readback of every source asset plus exact generated release identity; normal Pages redirects followed"
+  },
+  "final_baseline_replay": {
+    "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
+    "assetRef": "dd868f7",
+    "cpuRate": 1,
+    "cases": [
+      {
+        "name": "different-scroll-slow-osrs",
+        "frames": 77,
+        "activeFrames": 71,
+        "maxVerticalJump": 360,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000273,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      }
+    ],
+    "status": "FAIL",
+    "error": "different-scroll-slow-osrs: visible content jumped vertically 360px",
+    "trace": {
+      "Layout": {
+        "count": 28,
+        "totalMs": 7.3500000000000005,
+        "maxMs": 4.211
+      },
+      "UpdateLayoutTree": {
+        "count": 30,
+        "totalMs": 7.424000000000001,
+        "maxMs": 1.953
+      },
+      "Paint": {
+        "count": 61,
+        "totalMs": 28.244,
+        "maxMs": 3.643
+      },
+      "FunctionCall": {
+        "count": 154,
+        "totalMs": 29.496999999999996,
+        "maxMs": 8.686
+      }
+    },
+    "browser": "156.0.8078.79"
+  },
+  "final_full_baseline": {
+    "schema": "gp-audit-baseline-v1",
+    "started_at": "2026-11-16T00:32:26.459628+00:00",
+    "commit": "99fcd36ac9eed80a56362f8a5de465052a5367f2",
+    "branch": "main",
+    "dirty": true,
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1",
+    "conditions": "Synthetic local regression; browser emulation, not physical Android or live account validation",
+    "planned_checks": [
+      "source",
+      "python",
+      "javascript",
+      "browser"
+    ],
+    "checks": [
+      {
+        "name": "source",
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+          "scripts/check_release.py"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 1.126,
+        "log": "source.log"
+      },
+      {
+        "name": "python",
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_*.py",
+          "-v"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 1.174,
+        "log": "python.log"
+      },
+      {
+        "name": "javascript",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 2.721,
+        "log": "javascript.log"
+      },
+      {
+        "name": "browser",
+        "command": [
+          "npm",
+          "run",
+          "test:browser"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 49.546,
+        "log": "browser.log"
+      }
+    ],
+    "status": "VERIFIED"
   }
 }

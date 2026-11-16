@@ -141,9 +141,10 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   for(const asset of ['guided-peanut.js','dual-hub.js']){
    let release;
    const pattern='**/'+asset+'*';
-   await page.route(pattern,async route=>{
-    await new Promise(resolve=>release=resolve);await route.continue();
-   });
+   const hold=async route=>{
+    await new Promise(resolve=>release=resolve);await route.fallback();
+   };
+   await page.route(pattern,hold);
    const boot=page.goto(origin+'/?game=osrs');
    while(!release)await page.waitForTimeout(10);
    await page.waitForTimeout(150);
@@ -151,7 +152,7 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
     assert.equal(await page.evaluate(()=>document.body.classList.contains('gp-ui-booting')),true,asset+': partial setup must remain behind the boot screen');
     assert.equal(await page.evaluate(()=>!!window.GoldenDualHub),false,'both desks initialize before accepting gestures');
    }
-   release();await boot;await page.unroute(pattern);
+   release();await boot;await page.unroute(pattern,hold);
    await page.waitForFunction(()=>window.GoldenDualHub&&window.GPGuided&&!document.body.classList.contains('gp-ui-booting'));
   }
   await page.waitForFunction(()=>GoldenDualHub?.diagnostics().ideas===2&&!GoldenDualHub.diagnostics().loading);
