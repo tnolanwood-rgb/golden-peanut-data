@@ -236,6 +236,12 @@ function blank(){
     </div>
   </div>
  </details>
+ <section class="gh-osrs-ledger" id="gh-holdings" hidden aria-label="Purchased items">
+  <div class="gh-settings-body"><h2>Purchased items</h2>
+   <p>Record sales here even when an item is no longer recommended. Quantities are based on your recorded fills.</p>
+   <div id="gh-holdings-list"></div>
+  </div>
+ </section>
  <details class="gh-osrs-ledger" id="gh-ledger">
    <summary>My manually recorded OSRS trades</summary>
    <div class="gh-settings-body">
@@ -1309,10 +1315,14 @@ function navigate(dir){
 }
 function toggleFill(){
  const f=get("gh-fill-form"),item=state.ideas[state.index];if(!item)return;
- f.hidden=!f.hidden;if(f.hidden)return;
+ if(!f.hidden){f.hidden=true;saveView();return;}
+ openFill(item,'buy',Math.max(1,Math.min(item.qty,100)),item.buy);
+}
+function openFill(item,side,qty,price){
+ const f=get('gh-fill-form');f.hidden=false;
  state.fillItem={id:item.id,name:item.name};
- get("gh-fill-item").value=item.name;get("gh-fill-price").value=item.buy;get("gh-fill-side").value="buy";
- get("gh-fill-qty").value=Math.max(1,Math.min(item.qty,100));
+ get("gh-fill-item").value=item.name;get("gh-fill-price").value=price;get("gh-fill-side").value=side;
+ get("gh-fill-qty").value=qty;
  get('gh-fill-tax').value='';
  txt("gh-fill-feedback","");
  f.scrollIntoView({behavior:"smooth",block:"nearest"});
@@ -1358,6 +1368,21 @@ let renderedRecords=null;
 function renderLedger(){
  const target=get("gh-ledger-list");if(!target||renderedRecords===state.records)return;
  renderedRecords=state.records;target.replaceChildren();
+ const holdings=get('gh-holdings-list');holdings.replaceChildren();
+ const owned=new Map();
+ for(const r of state.records){
+  const item=owned.get(r.id)||{id:r.id,name:r.name,qty:0};
+  item.qty+=r.side==='buy'?r.qty:-r.qty;owned.set(r.id,item);
+ }
+ get('gh-holdings').hidden=state.ledgerError||![...owned.values()].some(item=>item.qty>0);
+ for(const item of owned.values())if(item.qty>0){
+  const row=el('div','gh-ledger-row');
+  const label=el('div');label.append(el('strong','',item.name),el('small','',item.qty.toLocaleString('en-GB')+' remaining'));
+  const sell=el('button','gp-guide-light','Record sale');sell.type='button';
+  sell.setAttribute('aria-label','Record sale of '+item.name);
+  sell.addEventListener('click',()=>openFill(item,'sell',item.qty,''));
+  row.append(label,sell);holdings.append(row);
+ }
  if(!state.records.length){target.append(el("p","gh-empty","No recorded OSRS fills yet."));return}
  for(const r of state.records.slice(-20).reverse()){
   const row=el("div","gh-ledger-row");
