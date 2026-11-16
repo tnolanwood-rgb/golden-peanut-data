@@ -30,6 +30,25 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
  const state=()=>page.evaluate(()=>GoldenDualHub.diagnostics());
  const switchTo=async game=>{await page.evaluate(g=>GoldenDualHub.switchGame(g),game);await idle(game);await page.waitForTimeout(80);};
  const scroll=async y=>{await page.evaluate(y=>scrollTo({top:y,behavior:'instant'}),y);await tick();};
+ // The premium header/hero legitimately changes document geometry. At a fixed
+ // document scroll, y=350 can land in a text input, whose swipe is deliberately
+ // guarded. Select an actual visible recommendation surface instead and assert
+ // that the hit-test is inside the game/eligible scroll panel, never a control.
+ const contactY=async(from,x)=>page.evaluate(({from,x})=>{
+  const selectors=from==='osrs'?
+   ['#gh-panel-osrs .gh-trade-scroll','#gh-panel-osrs .gp-guide-idea']:
+   ['#gh-panel-gw2 .gp-guide-idea','#gh-panel-gw2 .gp-guide-metrics'];
+  for(const selector of selectors){
+   const panel=document.querySelector(selector);if(!panel)return null;
+   const rect=panel.getBoundingClientRect();
+   for(let y=Math.max(155,Math.ceil(rect.top)+12);y<Math.min(innerHeight-40,rect.bottom-8);y+=12){
+    const hit=document.elementFromPoint(x,y);
+    if(hit?.closest(selector)&&!hit.closest('button,input,textarea,select,a,summary,label,[role="slider"],[contenteditable]'))
+     return y;
+   }
+  }
+  return null;
+ },{from,x});
  const startRecord=async(name,from)=>page.evaluate(({name,from})=>{
   const other=from==='gw2'?'osrs':'gw2';
   window.__swipeCapture={name,from,other,frames:[],domUpdates:0,domTargets:[],writes:[],recording:true};
@@ -88,11 +107,13 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   assert.deepEqual(data.writes,[],data.name+': no synchronous persistence during movement');
   return data;
  };
- const drag=async(name,from,points,{cancel=false,pause=16,y=350,expected}={})=>{
+ const drag=async(name,from,points,{cancel=false,pause=16,y=null,expected}={})=>{
+  const chosenY=y===null?await contactY(from,points[0]):y;
+  assert.ok(Number.isFinite(chosenY),name+': no visible noninteractive swipe surface at initial touch point');
   await startRecord(name,from);
-  await send('touchStart',points[0],y);
+  await send('touchStart',points[0],chosenY);
   for(const x of points.slice(1)){
-   await send('touchMove',x,y);if(pause)await page.waitForTimeout(pause);
+   await send('touchMove',x,chosenY);if(pause)await page.waitForTimeout(pause);
    // Native input delivery may be coalesced until the next rendering frame.
    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
    const expectedOffset=from==='gw2'?Math.max(-390,Math.min(0,x-points[0])):Math.min(412,Math.max(0,x-points[0]));
@@ -102,16 +123,18 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
     assert.ok(Math.abs(actual.dragOffset-expectedOffset)<1.5,name+': pages must track finger distance: '+actual.dragOffset+' vs '+expectedOffset);
    }
   }
-  await send(cancel?'touchCancel':'touchEnd',points.at(-1),y);
+  await send(cancel?'touchCancel':'touchEnd',points.at(-1),chosenY);
   return endRecord(expected|| (cancel?from:from==='gw2'?'osrs':'gw2'));
  };
  const flick=async(name,from,points)=>{
+  const y=await contactY(from,points[0]);
+  assert.ok(Number.isFinite(y),name+': quick flick must begin on an actual visible recommendation surface');
   await startRecord(name,from);
   // Replay device event timestamps 20ms apart. Assertion/trace overhead must
   // not turn a physical quick flick into a 150ms synthetic slow drag.
   const stamp=Date.now()/1000-.1;
   for(let i=0;i<points.length;i++)await cdp.send('Input.dispatchTouchEvent',{
-   type:i?'touchMove':'touchStart',touchPoints:[{x:points[i],y:350,id:1}],timestamp:stamp+i*.02});
+   type:i?'touchMove':'touchStart',touchPoints:[{x:points[i],y,id:1}],timestamp:stamp+i*.02});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[],timestamp:stamp+points.length*.02});
   await endRecord(from==='gw2'?'osrs':'gw2');
   const release=(await state()).lastRelease;
