@@ -823,3 +823,19 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
 #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>small{
  flex:1 0 100%;min-width:0;
 }
+
+
+/* GE OSRS BUDGET INTEGRITY — keep normal trading budgets visually whole.
+ * The browser used overflow-wrap:anywhere to maroon the last zero of a
+ * 250,000,000 gp budget on a second line at enlarged Android font sizes.
+ * Limit only this prominent long financial readout, not all body text.
+ * Truly exceptional-length figures may still break to avoid clipping. */
+@media(max-width:450px){
+ #gh-osrs-root #gh-budget-metric.gh-coin-amount{
+  font-size:clamp(20px,6.2vw,28px);
+  letter-spacing:-.04em;min-width:0;max-width:100%;
+ }
+ #gh-osrs-root #gh-budget-metric.gh-coin-amount span{
+  overflow-wrap:break-word;word-break:normal;
+ }
+}
