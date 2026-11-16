@@ -1787,10 +1787,16 @@ function renderVisible({background=false}={}){
    if(host){host.replaceChildren();renderAccountWatcher(host,s);}
   }
   if($('focus-capital-settings')?.open){
-   const host=$('focus-deployment-research');
+   const host=$('focus-deployment-research'),t=tradeData('wallet'),p=t.p;
    const editing=host?.contains(document.activeElement)&&
     document.activeElement?.matches?.('.focus-deployment-input');
-   if(host&&!editing){host.replaceChildren();if(tradeData('wallet').valid)renderDeploymentPlanner(host,s);}
+   const keys=[s?.account,p,p?.at,p?.orders,p?.marketChoices,p?.publicResearch,
+    s?.snapshot?.wallet,s?.snapshot?.walletAt,t.valid];
+   const changed=capitalPanelKeys&&keys.some((value,i)=>value!==capitalPanelKeys[i]);
+   if(host&&!editing&&(!host.querySelector('.focus-deployment-lab')||changed)){
+    host.replaceChildren();if(t.valid)renderDeploymentPlanner(host,s);
+   }
+   if(!editing)capitalPanelKeys=keys;
   }
  }
  const s=State(),busy=s?.busy||s?.allocationBusy;
