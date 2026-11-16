@@ -137,7 +137,9 @@ async function run(){
   mark('cold-launch',{processId,initial});
   if(initial.game!=='gw2')await page.evaluate(()=>GoldenDualHub.switchGame('gw2'));
   await game(page,'gw2');
-  await screenshot(page,'gw2-portrait');
+  // Do not invoke CDP GPU screenshot capture immediately before Android's
+  // first touch stream; it can perturb a cold software-rendered emulator.
+  // Capture the original desk after a verified round trip instead.
   const contact=await page.evaluate(()=>{
    const x=innerWidth*.78;
    for(const selector of ['#gh-panel-gw2 .gp-guide-idea',
@@ -170,6 +172,14 @@ async function run(){
     const trace={start:0,move:0,end:0,cancel:0,first:null,last:null,
       pointer:{down:0,move:0,up:0,cancel:0},events:[]};
     window.__geAndroidTouchTrace=trace;
+    window.__geAndroidLongTasks=[];
+    try{
+      new PerformanceObserver(list=>{
+        const rows=window.__geAndroidLongTasks;
+        for(const e of list.getEntries())if(rows.length<32)
+          rows.push({start:Math.round(e.startTime),duration:Math.round(e.duration),name:e.name});
+      }).observe({entryTypes:['longtask']});
+    }catch{}
     const record=(type,event,point)=>{
       const hit=event.target;
       const value={type,x:Math.round(point?.clientX??0),y:Math.round(point?.clientY??0),
@@ -196,8 +206,10 @@ async function run(){
       },{capture:true,passive:true});
     }
   });
+  const nativeSwipeStarted=Date.now();
   adb('shell','input','swipe',String(Math.round(sw*.78)),String(y),
       String(Math.round(sw*.18)),String(y),'350');
+  const nativeSwipeElapsedMs=Date.now()-nativeSwipeStarted;
   let swipeFailure=null;
   try{await game(page,'osrs');}catch(error){swipeFailure=error;}
   const touch=await page.evaluate(point=>{
@@ -212,6 +224,7 @@ async function run(){
     }
     return {
       trace:window.__geAndroidTouchTrace,
+      longTasks:window.__geAndroidLongTasks||[],
       game:window.GoldenDualHub?.diagnostics?.()?.game||null,
       diagnostics:window.GoldenDualHub?.diagnostics?.()||null,
       viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio,
@@ -225,15 +238,16 @@ async function run(){
       elementAtContact:target?.outerHTML?.slice(0,300)||null
     };
   },{x:contact.x,y:contact.y});
-  mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],deviceY:y});
+  mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],
+    deviceY:y,nativeSwipeElapsedMs});
   if(swipeFailure){
     await screenshot(page,'gw2-after-unsuccessful-native-swipe');
     console.error('ANDROID_WEBVIEW_INPUT_TRACE '+JSON.stringify({
-      trace:touch.trace,viewport:touch.viewport,panel:touch.panel,
-      stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y
+      trace:touch.trace,longTasks:touch.longTasks,viewport:touch.viewport,panel:touch.panel,
+      stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs
     }));
     throw new Error('Android-native swipe did not switch games: '+
-      JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y}).slice(0,1900));
+      JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs}).slice(0,1900));
   }
   assert.ok(touch.trace.end>=1 && touch.trace.cancel===0,
     'Android gesture transition cannot pass on a cancelled touch stream: '+JSON.stringify(touch.trace));
@@ -261,6 +275,7 @@ async function run(){
       String(Math.round(sw*.82)),String(reverseY),'350');
   await game(page,'gw2');
   await screenshot(page,'gw2-after-osrs-native-swipe');
+  await screenshot(page,'gw2-portrait');
   mark('native-android-reverse-swipe',{from:'osrs',to:'gw2',contactY:reverseY});
 
   // Create DOM-only overflow in the *actual* OSRS recommendation scroll
