@@ -1,5 +1,11 @@
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
+## 16 Nov 2026 — strict native WebView regression reproduction and release gate
+The source/browser+Android APK builds are green at e3314f8 (CI 43977050401, separate build 43977050518). Native Android emulator 43977050512 then passed GW2→OSRS and OSRS→GW2 horizontal swipes with finger pointer capture removed, but failed nested OSRS vertical scroll (scrollTop=0, body scrollY=0). **Native total FAIL, not a certified pass**.
+Further exact Android run 43978013622 at 22fdf4b, with hit-tested OSRS vertical fixture, failed earlier at first GW2 swipe: 5 touchmoves, 0 touchends, 1 touchcancel, trace showed ~3-second gap between consecutive events. The interrupted input starts on connected original DIV, computed ancestor touch-action pan-y pinch-zoom and no pointer capture. Root cause remains uncertain; possible emulator input starvation/renderer stall versus cancellation, not proven.
+Latest a3af756 harness defers initial GPU/CDP screenshot, records native adb command elapsed time and WebView long tasks; preserve *all* strict native assertions. Latest staging guard test adds missing-domain case. Run exact-head CI and inspect artifacts before marking anything tested. No Android full acceptance or production readiness yet.
+
+
 ## GE-09 Pages staging guard — six synthetic tests
 Test module `tests/test_staging_guard.py` checks valid sandbox metadata, production identity/branch/domain rejection, D1/KV/R2/service/DO/secret binding rejection in both environments, unknown nonempty config, incomplete inventory and unsuccessful/missing metadata. Passed six local Python tests in an isolated scratch directory; exact GitHub CI pending. No actual Cloudflare staging proof from these synthetic tests.
 

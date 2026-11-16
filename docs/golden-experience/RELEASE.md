@@ -1,5 +1,9 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## Owner's 16 November stabilisation / maximum-safe-subset release request
+Stop new feature development. Polish, test and release only existing completed work and its necessary safety prerequisites. No subset is currently certified safe to ship: genuine Android native swipe remains intermittent and vertical nested scroll has failed strict tests, isolated binding-free Cloudflare staging has not been established, original installed Android/storage behaviour is unverified, and a production-safe rehearsal/rollback has not been completed. User wants eventual live launch, but the established **final readiness report followed by explicit Implement** release gate remains in force. Do NOT merge/deploy the current branch or point an Android debug APK at production. Preserve working production website/installed app/credentials/storage.
+
+
 ## Verified incremental Android acceptance — release remains BLOCKED
 At exact source `e538b648d1d2d48eb360b8615f7fbd8707b73486`, full [source CI 43965081086](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081086), [independent preview APK 43965081112](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081112) and [Android 35 emulator 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) passed. Native emulator swipe no longer touch-cancels; rotation/resume succeeded. This is **not** a frozen release candidate, original installed APK signoff, physical-phone performance evidence, distinct Cloudflare staging or tested production rollback. Existing main `097f012c1f912411790dd7dce21434a9cdc497d2` remains frozen. No change permitted to production deployment/origin/credentials/data until all remaining gates and explicit later owner “Implement”.
 

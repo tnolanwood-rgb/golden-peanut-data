@@ -1,5 +1,9 @@
 # Production isolation evidence — 2026-11-16
 
+## 16 November — stricter offline independent-domain gate, no staging deployment
+The offline staging validator at 2434543 now rejects an empty domains list; synthetic test 3d5915b confirms this missing-domain case is blocked. Staging must explicitly report the exact `golden-experience-staging.pages.dev` host in addition to excluding the live domain/branch/project, unknown config, Git auto-deploy and all nonempty private bindings. This is a fail-closed local test only, **not proof that a real Cloudflare staging project exists**. No Cloudflare production/staging deployment or original app modification occurred.
+
+
 ## Cloudflare staging configuration refusal guard — 16 November
 An offline guard now requires a distinct `golden-experience-staging.pages.dev` identity, branch `golden-experience-staging`, no unexpected domain, no Git-linked auto-deploy source and explicitly empty production/preview private resource bindings. Unknown nonempty config fails closed. This is inspection-only: no new project has been created or deployed, and no production tokens, D1 schemas or original website settings were touched. Require real Cloudflare readback before any staging deployment.
 

@@ -1,5 +1,12 @@
 # Resume Golden Experience
 
+## Latest owner instruction — STABILISE FOR SAFE RELEASE, not new features (16 November 2026)
+Owner superseded prior indefinite feature-development request: **pause new features**, finish/polish/test existing Golden Experience and prepare the maximum verified safe release. No main merge, Cloudflare production change, original APK replacement, user-data/key/collector mutation or auto-merge before full readiness report and later explicit **Implement**.
+Android remains OPEN. On exact e3314f8, full CI 43977050401 and preview 43977050518 PASS; native 43977050512 passed forward/reverse horizontal gestures but FAILED vertical nested OSRS scroll (top=0). On exact 22fdf4b Android 43978013622 FAILED first forward with genuine touchcancel after multi-second event stall. Do not treat one green horizontal case as reliable. New a3af756 test defers disruptive CDP screenshot and measures ADB wall time/long tasks; test still PENDING. The staging guard now rejects missing separate domain; isolated Cloudflare staging NOT CREATED.
+**Next:** inspect exact latest Android CI and underlying touch timings, fix real cause rather than suppressing errors; retain strict >80px vertical nested scroll and zero outer-document jump; repeatedly verify native forward/reverse/vertical/rotation/resume plus full browser+Android APK checks; then do release-focused deep UI and data QA. Inspect isolated Pages project/bindings and stage with synthetic accounts only (never the live project). Finish frozen candidate and rollback rehearsal; provide readiness report. Do not deploy/merge.
+Protected branch feature/golden-experience; draft PR #65. Latest docs continuation and owner scope mirrored in PR comment 6932322561. Production main 097f012c1f912411790dd7dce21434a9cdc497d2 at last readback. No production mutation.
+
+
 ## Staging safety preparatory batch — offline only
 Check source `scripts/staging_guard.py` and `tests/test_staging_guard.py` on feature branch. Run all six synthetic test cases and full CI. This tool DOES NOT contact Cloudflare or prove that an isolated project actually exists; it only rejects unsafe metadata. Next obtain trusted read-only metadata for a distinct Pages project, reject production bindings, then separate synthetic deployment, screenshots, hashed served bytes and rollback rehearsal. Never use the existing `thegoldenpeanut` project as dedicated staging. Keep production frozen.
 
