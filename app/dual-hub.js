@@ -752,7 +752,13 @@ function moveGesture(ev){
   scrollPositions[g.from]=win.scrollY||0;
   g.scene=createScene(g.from,g.from==="gw2"?"osrs":"gw2");
   if(!g.scene){gesture=null;return;}
-  if(g.input==='pointer')try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
+  // Document capture-phase listeners already own the gesture. Retargeting
+  // a live touch pointer to the moving stage can produce an Android WebView
+  // pointercancel/touchcancel stream mid-drag; avoid native pointer capture
+  // for fingers. Preserve capture for pen input, whose pointer may leave
+  // the original element and has no Touch Events fallback.
+  if(g.input==='pointer'&&g.pointerType==='pen')
+   try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
  }
  const now=gestureTime(ev);
  if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}
