@@ -52,3 +52,8 @@
 - GE-07 seven-day historical repaint: use seven exact day/value fingerprints to preserve physical DOM/coin images on refresh, while invalidating on actual trade changes and UK day rollover. No storage or accounting schema change.
 - OSRS budget exactness: cap only the long manually entered headline on narrow devices; maintain an uninterrupted `250,000,000` visual token at 320px/24px enlarged font; very extreme values remain eligible for wrapping rather than clipping.
 - CI screenshot captures of a sticky dock must start from the document top to avoid false overlap evidence from a retained scrolled position.
+
+- Owner withdrew early partial-release request; resume protected full design engineering, no production deploy until final READY FOR IMPLEMENT followed by explicit “Implement”.
+- GW2 Advanced unchanged wallet/week currency DOM should survive background updates, but real amounts must repaint. Preserve the value signature and already-decoded coin art.
+- Large synthetic item labels fully wrap in both game desks and GW2 advanced at enlarged fonts. Never silently ellipsize item metadata.
+- OSRS trade scroll is a named keyboard focusable region and scrolls vertically independent of persistent action dock. When navigating to a new item, reset *inner* scroll to top without resetting the whole game/page, and do not consume cross-game horizontal touch swipes.

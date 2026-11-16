@@ -1,5 +1,9 @@
 # Golden Experience — acceptance evidence 16 November 2026
 
+## 16 November — full long-name and interactive scroll critique
+Visually reviewed 320px/200%-font OSRS/GW2 extreme synthetic names from CI artifact 14241952075. The full 100+-character name wraps inside card bounds without ellipsis or horizontal overflow. The OSRS trade details intentionally have finite internal vertical viewport to leave Previous/Next/Chart/Record actions stationary; a screenshot from initial scroll shows only the beginning of a giant label, not the end. Separate scroll-reachability regression confirms the end can be brought into the same scroll viewport; keyboard PageDown works with `role=region`, `aria-label`, `tabindex=0`. A subsequent concurrent commit resets the inner scroller when the user navigates to a new idea. Nothing about the fixture demonstrates real market fill accuracy or production-linked account results. Full combined CI 43902534973 green. Next visual review must cover actual large historical data, charts, settings, stale/offline and native device.
+
+
 ## Latest re-inspected enlarged-font GW2 financial research — 16 November 2026
 [CI 43891226109](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43891226109) PASS on `df9ba69b4a8eb2bf6dc4a81b9ba10225eeddbd1c`, artifact 14237111960. Compared actual 390px/200%-font GW2 populated advanced screenshot against earlier artifact 14235738208. Formerly disproportionately oversized "Focused market checks complete…" paragraph is now bounded at 20px and research button at 19px, both still fully readable. Every notice word remains and the recommendation's larger item/financial text stays large. New computed browser font and no-overflow assertions pass. This corrects the specific prior visual issue described in the older section below; additional app-wide/native visual acceptance remains OPEN.
 

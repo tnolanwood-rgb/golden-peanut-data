@@ -1,5 +1,9 @@
 # Performance evidence
 
+## Latest DOM and interaction constraints — 16 November 2026
+`93e7aa9184072f275121fabb513b01d567deb929` [CI 43902534973](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43902534973) passed after avoiding unnecessary GW2 Advanced wallet/week DOM+coin image rebuilding. Exact UI refresh identity is tested and refresh still invalidates on real data. This removes avoidable DOM allocation but no quantifiable Android FPS, battery or startup improvement is claimed. Long name wrapping, focusable OSRS inner scroll and per-idea reset have no external network/framework/runtime dependencies; synthetic Chromium touch/keyboard and 400 cached session cycles passed. Hardware WebView measurements remain required.
+
+
 ## GE-02 deep styling (no performance inference) — 16 November 2026
 Source `d76ed0fd43200b4b9ea1eb5d0b4242a16437c740` modifies static CSS only and Chromium geometry tests. No added JS handlers, timer, dependency, API calls or data-format change. CI 43889263582 passed existing startup and strict synthetic session probes, not on-device FPS, p95 touch-to-paint, energy or paint area comparison. Larger row type/padding could increase scroll-paint cost; measure on physical Android before claiming speed or full visual success.
 
