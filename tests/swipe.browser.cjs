@@ -252,11 +252,28 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await switchTo('osrs');
   assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),nestedBefore,'horizontal card swipe preserves its vertical position');
   const docBefore=await page.evaluate(()=>scrollY);
-  await send('touchStart',180,690);
-  for(let y=675;y>=450;y-=15){await send('touchMove',181,y);await page.waitForTimeout(20);}
-  await page.waitForTimeout(120);await send('touchEnd',181,450);await page.waitForTimeout(180);
+  // The action-first screen moves the trade card above the budget dashboard.
+  // A fixed y=690 now lands outside the scroller. Hit-test a visible,
+  // noninteractive point on the actual trade content instead.
+  const verticalY=await page.evaluate(()=>{
+   const area=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+   const rect=area.getBoundingClientRect(),x=180;
+   const floor=Math.max(155,Math.ceil(rect.top)+25);
+   for(let y=Math.min(innerHeight-60,Math.floor(rect.bottom)-32);y>=floor;y-=10){
+    const hit=document.elementFromPoint(x,y);
+    if(hit?.closest('.gh-trade-scroll')&&!hit.closest('button,input,textarea,select,a,summary,label,[role="slider"]'))return y;
+   }
+   return null;
+  });
+  assert.ok(Number.isFinite(verticalY)&&verticalY>=155,
+   'Vertical native gesture must start on the visible recommendation content');
+  const verticalEnd=Math.max(85,verticalY-225);
+  await send('touchStart',180,verticalY);
+  for(let y=verticalY-15;y>=verticalEnd;y-=15){await send('touchMove',181,y);await page.waitForTimeout(20);}
+  await page.waitForTimeout(120);await send('touchEnd',181,verticalEnd);await page.waitForTimeout(180);
   assert.equal((await state()).game,'osrs');assert.equal((await state()).dragging,false);
-  assert.ok(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop)>nestedBefore+80,'vertical native touch must actually scroll recommendation content');
+  assert.ok(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop)>nestedBefore+80,
+   'vertical native touch must actually scroll recommendation content');
   assert.ok(Math.abs(await page.evaluate(()=>scrollY)-docBefore)<2,'contained vertical scrolling must not move the document');
 
   await drag('cancelled-touch','osrs',[65,100,145,195],{cancel:true,expected:'osrs'});
