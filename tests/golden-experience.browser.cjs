@@ -34,6 +34,22 @@ const cases=[],contrast=(a,b)=>{
       navBlur:getComputedStyle(nav).backdropFilter,selected:tab.id};
     },game);
     assert.ok(result.contentWidth<=result.pageWidth+1,game+' horizontal page overflow '+JSON.stringify({viewport,fontScale,result}));
+    // Financial readouts must reflow as a *unit* when Android doubles text.
+    // A 160px half-card containing three currency denominations is not a
+    // premium accessible experience even when scrollWidth happens to fit.
+    if(viewport.width===390){
+     const layout=await page.evaluate(g=>{
+      const cards=[...document.querySelectorAll('#gh-panel-'+g+' .gp-guide-metrics > .gp-guide-metric')];
+      const a=cards[1]?.getBoundingClientRect(),b=cards[2]?.getBoundingClientRect();
+      return a&&b?{secondY:a.y,thirdY:b.y,secondBottom:a.bottom,columns:getComputedStyle(cards[1].parentElement).gridTemplateColumns}:null;
+     },game);
+     if(layout){
+      if(fontScale===2)assert.ok(layout.thirdY>=layout.secondBottom-1,
+       game+' 200% text requires full-width financial readouts: '+JSON.stringify(layout));
+      else assert.ok(Math.abs(layout.secondY-layout.thirdY)<=1,
+       game+' regular text should preserve the compact balanced financial cluster: '+JSON.stringify(layout));
+     }
+    }
     assert.ok(result.minButtonHeight>=44,game+' touch targets must be at least 44px');
     for(const tab of result.tabWidths)assert.ok(tab.scroll<=tab.width+1,'clipped game tab at '+fontScale+'x');
     for(const amount of result.amounts)assert.ok(amount.scroll<=amount.width+1,'clipped amount: '+amount.text);
