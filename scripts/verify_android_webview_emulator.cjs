@@ -279,26 +279,67 @@ async function run(){
     region.scrollTop=0;
     const rect=region.getBoundingClientRect();
     const upper=Math.max(140,rect.top+40),lower=Math.min(innerHeight-85,rect.bottom-35);
-    if(lower-upper<140)return null;
-    return {x:innerWidth*.69,startY:lower-10,endY:upper+10,
+    if(lower-upper<160)return null;
+    // A fixed coordinate can hit an action button or a sticky dock. Only
+    // accept a point visibly owned by the native scroll region, well below
+    // its top edge, and never reinterpret a non-scroll as a passing swipe.
+    const xs=[innerWidth*.69,innerWidth*.38,innerWidth*.17];
+    const ignored='button,input,textarea,a,select,summary,label,svg,canvas,[role="slider"],[data-no-game-swipe],.gh-action-dock';
+    let contact=null;
+    for(let y=lower-10;y>upper+150&&!contact;y-=10){
+      for(const x of xs){
+        const hit=document.elementFromPoint(x,y);
+        if(hit?.closest('.gh-trade-scroll')&&!hit.closest(ignored)){
+          contact={x,y,hit:hit.tagName,className:String(hit.className||'').slice(0,65)};
+          break;
+        }
+      }
+    }
+    if(!contact)return {invalid:true,rect:rect.toJSON(),upper,lower,
+      bodyY:scrollY,scrollHeight:region.scrollHeight,clientHeight:region.clientHeight};
+    return {x:contact.x,startY:contact.y,endY:upper+10,hit:contact,
       before:region.scrollTop,bodyY:scrollY,scrollHeight:region.scrollHeight,
       clientHeight:region.clientHeight};
   });
-  assert.ok(vertical && vertical.scrollHeight>vertical.clientHeight+300,
-    'OSRS scroll surface must contain overflow test content');
+  assert.ok(vertical && !vertical.invalid && vertical.scrollHeight>vertical.clientHeight+300,
+    'OSRS scroll surface must contain visible, noninteractive overflow content: '+JSON.stringify(vertical));
+  await page.evaluate(()=>{
+    const trace={start:0,move:0,end:0,cancel:0,samples:[]};
+    window.__geVerticalTrace=trace;
+    for(const phase of ['start','move','end','cancel']){
+      document.addEventListener('touch'+phase,event=>{
+        const hit=event.target;
+        if(!hit?.closest?.('#gh-panel-osrs'))return;
+        const p=event.changedTouches?.[0];
+        trace[phase]++;
+        if(trace.samples.length<16)trace.samples.push({phase,x:Math.round(p?.clientX||0),
+          y:Math.round(p?.clientY||0),target:hit?.tagName||'',
+          className:String(hit?.className||'').slice(0,65),
+          defaultPrevented:event.defaultPrevented,
+          scrollerTop:Math.round(document.querySelector('#gh-panel-osrs .gh-trade-scroll')?.scrollTop||0)});
+      },{capture:true,passive:true});
+    }
+  });
   const startV=Math.round(verticalInset+vertical.startY*ratio);
   const endV=Math.round(verticalInset+vertical.endY*ratio);
+  const nativeStart=Date.now();
   adb('shell','input','swipe',String(Math.round(vertical.x*ratio)),String(startV),
       String(Math.round(vertical.x*ratio)),String(endV),'400');
+  const nativeElapsedMs=Date.now()-nativeStart;
   const scrolling=await page.evaluate(()=>{
     const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
-    const state={top:region?.scrollTop||0,bodyY:scrollY,game:window.GoldenDualHub?.diagnostics?.()?.game};
+    const state={top:region?.scrollTop||0,bodyY:scrollY,
+      game:window.GoldenDualHub?.diagnostics?.()?.game,
+      trace:window.__geVerticalTrace};
     document.getElementById('ge-emulator-scroll-fixture')?.remove();
     return state;
   });
+  mark('native-osrs-vertical-diagnostics',{scrolling,vertical,startV,endV,nativeElapsedMs});
+  if(scrolling.top<=80)await screenshot(page,'osrs-vertical-scroll-failure');
   assert.equal(scrolling.game,'osrs','Vertical recommendation scroll must not switch games');
   assert.ok(scrolling.top>80,
-    'Android swipe must move OSRS nested scroll rather than trapping the gesture: '+JSON.stringify(scrolling));
+    'Android swipe must move OSRS nested scroll rather than trapping the gesture: '+
+    JSON.stringify({scrolling,vertical,startV,endV,nativeElapsedMs}));
   assert.ok(Math.abs(scrolling.bodyY-vertical.bodyY)<3,
     'Vertical nested swipe must not jump outer document');
   mark('native-osrs-vertical-scroll',{scrollTop:scrolling.top,documentY:scrolling.bodyY});
