@@ -1,3 +1,9 @@
+# Purchased-item sale entry repair — 16 November 2026
+
+BATCH: OWNED-SALES. STATUS: implementation verified locally; full baseline/CI and Pages verification pending. User could not record a Maple logs sale after the item left recommendations. Added a persistent Purchased items list derived from all existing ledger records, with sale entry independent of recommendations/search/GE purchase limits. Partial sales and reload retain remaining quantity; original FIFO validation and storage keys unchanged. No user trade data or credentials accessed or edited. Synthetic browser regression passes; see `tests/owned-sales.browser.cjs`. NEXT: finish checks, publish the website fix, verify assets; no APK change.
+
+---
+
 # Latest navigation delivery — 16 November 2026
 
 SWIPE-R2 web repair is complete and deployed: PRs #58/#59, production `99fcd36ac9eed80a56362f8a5de465052a5367f2`. Exact-head CI 43780386225 and existing Pages production workflow 43780619441 passed. All 129 JavaScript, 56 Python, release and four browser programs passed, including 26 native-touch cases and delayed loading of each desk script. The final production job adds native-touch smoke and publishes its artifact.

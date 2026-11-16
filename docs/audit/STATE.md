@@ -1,3 +1,9 @@
+# Purchased-item sale entry repair — 16 November 2026
+
+BATCH: OWNED-SALES. STATUS: implementation verified locally; full baseline/CI and Pages verification pending. User could not record a Maple logs sale after the item left recommendations. Added a persistent Purchased items list derived from all existing ledger records, with sale entry independent of recommendations/search/GE purchase limits. Partial sales and reload retain remaining quantity; original FIFO validation and storage keys unchanged. No user trade data or credentials accessed or edited. Synthetic browser regression passes; see `tests/owned-sales.browser.cjs`. NEXT: finish checks, publish the website fix, verify assets; no APK change.
+
+---
+
 # Navigation repair released — 16 November 2026
 
 BATCH: SWIPE-R2. STATUS: DEPLOYED AND AUTOMATICALLY VERIFIED. PRs #58 and #59 are merged; production commit `99fcd36ac9eed80a56362f8a5de465052a5367f2` at `https://thegoldenpeanut.pages.dev/`. Final exact-head CI [43780386225](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780386225) and Pages run [43780619441](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43780619441) succeeded.
