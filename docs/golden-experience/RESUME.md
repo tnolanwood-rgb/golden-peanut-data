@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Most recent — retained-session four-pass CI
+PR #65 remains draft, production frozen. CI 43860812627 PASSED at 889f383: ten browser suites and original+three repeated 100-cycle retention runs all pass (400 cycles across four independent Chromium sessions). The intermittent 43854807834 DOM-growth failure remains unresolved; do not delete its evidence or assert native leak-free. Resume from GE-07 diagnosis (full-session/scroll/large-history/press), GE-08 populated GW2 and advanced accessibility states, then GE-09/10 isolated staging/integration/release rehearsal. No native device/signer or isolated staging verified. Current state in STATE.md; runtime code unchanged since 51e9526.
+
+
 ## Most recent green acceptance checkpoint
 
 Exact source `c803e4fa5ba269a6bc248d69820a6389555a970a` passed PR CI 43857515705 (source/Python/JS/ten browser programs, CPU profiling, retained session, actionlint). New protected acceptance test `tests/golden-experience-states.browser.cjs` covers OSRS settings, 40 recommendation round trips, purchase ledger persistence, 320px enlarged fonts, cross-game switch, failed Wiki feed and recovery. `docs/golden-experience/VISUAL-QA.md` records screenshot review and actual limitations. No main release. Next: diagnose intermittent DOM-growth failure from run 43854807834 (diagnostics are installed), continue quantitative press/scroll/long history, full GW2 populated view and native/staging/release gates. No READY FOR IMPLEMENT until all are proven.

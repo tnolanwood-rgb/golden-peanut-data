@@ -92,3 +92,7 @@ Added `scripts/profile_golden_experience_cold.cjs`. Uses Git pinned main baselin
 ## Measured synthetic OSRS recommendation callback — 16 November
 
 New 40 consecutive alternating Next/Previous clicks in headless Chromium fixture, after initial content ready: synchronous click-handler plus DOM response median 0.9ms, p95 1.7ms, maximum 3.2ms. Time begins immediately before calling `button.click()` and ends after return; excludes hardware touch event dispatch, frame compositing, actual rendered paint, other devices, network latency, long account histories, and real-world tap responsiveness. This is lower-level profiling evidence ONLY; original <100ms p95 user-contact target remains UNVERIFIED on Android. Source and screenshots linked in VISUAL-QA.md; exact green PR CI 43857515705.
+
+## Extra retained-session repeatability — 16 November 2026
+
+CI 43860812627 ran the original 100-cycle retained session and three fresh 100-cycle replay sessions with unchanged strict node-growth/continuity/page-error guards: all four passed. Independent contexts reduce the chance that one favourable run masks sporadic growth, but cannot guarantee absence of leaks. Current synthetic measurements cannot be generalised to hours-long real Android usage. Earlier intermittent CI 43854807834 failure still requires diagnosis if it recurs. No runtime app change.
