@@ -1,3 +1,15 @@
+## 2026-11-16 design batch actual results
+
+Implementation 0288a66: full source, 56 Python, 129 JS and all seven browser
+programs passed locally (new visual suite included). Baseline reports record the
+precommit dirty tree honestly; no implementation changed between checks and commit.
+Source/assets and lockfile unchanged except explicitly added stylesheet/test command.
+16 states: 320/390/480 portrait and 844 landscape, 100%/200% root font with reduced
+motion on larger font, both games. Contrast/touch targets/page-money-tab overflow,
+keyboard and large-budget settings pass. Actual original physical Android remains
+BLOCKED. Full visual acceptance of every principal advanced/form/chart/error state
+is not complete. Exploratory benchmarks do not close performance gates.
+
 # Verification matrix and actual results
 
 Current baseline at initial main 097f012: source, Python and JavaScript passed;

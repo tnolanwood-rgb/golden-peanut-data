@@ -20,3 +20,15 @@ require representative Android evidence before final acceptance.
 Unavailable here: original installed Android device, adb/emulator and signer, real
 WebView cold/warm/frame/battery/rotation/process-restoration measurements. All remain
 BLOCKED and prevent final readiness. Desktop viewport/CPU throttling is not a phone.
+
+## Exploratory design comparison (not acceptance)
+
+10 fresh-context +10 same-context reload samples per game; all raw samples committed
+in evidence/startup-before-exploratory.json and startup-design-exploratory.json.
+Ready median/p95 ms: GW2 before cold 658/1195, warm 302/699; initial design cold
+599/734, warm 222/294. OSRS before cold 781/1160, warm 284/466; initial design
+cold 628/1118, warm 250/513. One added stylesheet. Initial baseline overlapped local
+checks and final responsive font-grid changes postdate these design samples. Treat
+as exploratory only, no causal improvement or no-regression claim; repeat serially.
+Small sample p95/p99 both select maximum; cannot estimate population tail reliably.
+GW2 ready means unconnected shell; requests depend on readiness sampling instant.

@@ -1,24 +1,30 @@
 # Resume Golden Experience
 
-Read AGENTS.md, this directory's BRIEF.md, STATE.md, ROADMAP.md, TESTS.md and
-ISOLATION.md. Then verify `git status`, origin refs and actual live build-info.
-Do not restart the global audit or obey its historical production-release NEXTs.
-This project's absolute production freeze supersedes historical authorizations.
+Read AGENTS.md, BRIEF.md, STATE.md, ROADMAP.md, TESTS.md and ISOLATION.md here.
+Verify git status/origin refs/current production build-info; preserve existing edits.
+Branch feature/golden-experience, base main 097f012, design implementation 0288a66.
+Checkpoint: git log -1 -- docs/golden-experience/STATE.md. No merge/deploy/auto-merge,
+production request, native identity, storage, D1/Worker/collector changes. Production
+freeze supersedes historical global audit authorizations. Do not restart that audit.
 
-Branch `feature/golden-experience`, base 097f012. Use
-`git log -1 -- docs/golden-experience/STATE.md` for the latest actual checkpoint.
-No merge/deploy/production request/native identity/storage/D1/Worker/collector change.
-Feature pushes do not match any repository deployment trigger; Cloudflare main
-confirmed by read-only run 43847842746. Full webhook/source settings not accessible.
+Completed: dedicated project contract/preservation/verification/release skeleton;
+original full baseline; shared design CSS tokens and surfaces, immediate browser
+press feedback; full design baseline including 16 design/accessibility states passed.
+Preserve swipe/startup/owned-sale/stats fixes and official colours/icon dimensions.
 
-First unfinished action at initial checkpoint: collect existing baseline process
-results from artifacts/audit/golden-experience/baseline, save sanitized summary,
-capture before screenshots/repeated synthetic performance and implement GE-01.
-Existing dependencies installed; Chromium /usr/bin/chromium; npm ci --ignore-scripts,
-PyYAML 6.0.3. Run `python scripts/audit_baseline.py` for whole-app acceptance.
-Preserve prior swipe/startup/owned-sale/compact-stats fixes; do not rewrite engines.
-Keep synthetic fixtures/local staging free of real credentials and private APIs.
+First unfinished task: GE-04 chart main-thread work. Source profile confirmed
+60 synchronous pointermoves cause 40 OSRS/35 GW2 full plot rebuilds. Local test
+`tests/chart-frame.browser.cjs` is uncommitted for next batch; baseline output at
+artifacts/audit/golden-experience/chart-before.json. Queue at most one chart render
+per requestAnimationFrame, cache width on gesture start, cancel pending work on
+close and prevent pointercancel selecting a point. Keep state updates synchronous,
+existing APIs/accuracy/modal persistence intact. Run new test (without baseline
+flag), existing browser chart/gesture suites, then checkpoint that batch.
 
-Update state/evidence after each tested batch, commit/push safely, record exact tested
-implementation SHA/PR and next task. Native Android acceptance unavailable here;
-never label browser emulation as real WebView FPS or declare readiness prematurely.
+Dependencies available: npm ci --ignore-scripts, PyYAML 6.0.3, Chromium
+/usr/bin/chromium, locked Playwright 1.58.2. Full check:
+python scripts/audit_baseline.py --output artifacts/audit/golden-experience/<batch>.
+Final serial performance comparison is still required; exploratory JSON is labelled
+and not Android proof. Native hardware/signer/staging unavailable; never claim them.
+Finish independent work, maintain all affected project docs, commit/push each tested
+batch and record precise next actions. No READY declaration while gates remain open.

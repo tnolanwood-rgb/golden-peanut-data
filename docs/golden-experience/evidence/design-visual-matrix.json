@@ -1,0 +1,734 @@
+{
+  "conditions": "Synthetic headless Chromium viewport/font/reduced-motion checks; not physical Android or full accessibility certification",
+  "cases": [
+    {
+      "name": "gw2-320x740-1x",
+      "pageWidth": 320,
+      "contentWidth": 320,
+      "minButtonHeight": 48,
+      "amounts": [
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "—"
+        },
+        {
+          "width": 122,
+          "scroll": 122,
+          "text": "—"
+        },
+        {
+          "width": 122,
+          "scroll": 122,
+          "text": "—"
+        },
+        {
+          "width": 122,
+          "scroll": 122,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 138,
+          "scroll": 138
+        },
+        {
+          "width": 138,
+          "scroll": 138
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-320x740-1x",
+      "pageWidth": 320,
+      "contentWidth": 320,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 122,
+          "scroll": 122,
+          "text": "0 gp"
+        },
+        {
+          "width": 122,
+          "scroll": 122,
+          "text": "0 gp"
+        },
+        {
+          "width": 129,
+          "scroll": 129,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 129,
+          "scroll": 129,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 138,
+          "scroll": 138
+        },
+        {
+          "width": 138,
+          "scroll": 138
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-320x740-2x",
+      "pageWidth": 320,
+      "contentWidth": 320,
+      "minButtonHeight": 62.390625,
+      "amounts": [
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "—"
+        },
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "—"
+        },
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "—"
+        },
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 284,
+          "scroll": 284
+        },
+        {
+          "width": 284,
+          "scroll": 284
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-320x740-2x",
+      "pageWidth": 320,
+      "contentWidth": 320,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "0 gp"
+        },
+        {
+          "width": 278,
+          "scroll": 278,
+          "text": "0 gp"
+        },
+        {
+          "width": 129,
+          "scroll": 129,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 129,
+          "scroll": 129,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 284,
+          "scroll": 284
+        },
+        {
+          "width": 284,
+          "scroll": 284
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-390x844-1x",
+      "pageWidth": 390,
+      "contentWidth": 390,
+      "minButtonHeight": 48,
+      "amounts": [
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "—"
+        },
+        {
+          "width": 157,
+          "scroll": 157,
+          "text": "—"
+        },
+        {
+          "width": 157,
+          "scroll": 157,
+          "text": "—"
+        },
+        {
+          "width": 157,
+          "scroll": 157,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 173,
+          "scroll": 173
+        },
+        {
+          "width": 173,
+          "scroll": 173
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-390x844-1x",
+      "pageWidth": 390,
+      "contentWidth": 390,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 157,
+          "scroll": 157,
+          "text": "0 gp"
+        },
+        {
+          "width": 157,
+          "scroll": 157,
+          "text": "0 gp"
+        },
+        {
+          "width": 164,
+          "scroll": 164,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 164,
+          "scroll": 164,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 173,
+          "scroll": 173
+        },
+        {
+          "width": 173,
+          "scroll": 173
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-390x844-2x",
+      "pageWidth": 390,
+      "contentWidth": 390,
+      "minButtonHeight": 62.390625,
+      "amounts": [
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "—"
+        },
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "—"
+        },
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "—"
+        },
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 354,
+          "scroll": 354
+        },
+        {
+          "width": 354,
+          "scroll": 354
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-390x844-2x",
+      "pageWidth": 390,
+      "contentWidth": 390,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "0 gp"
+        },
+        {
+          "width": 348,
+          "scroll": 348,
+          "text": "0 gp"
+        },
+        {
+          "width": 164,
+          "scroll": 164,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 164,
+          "scroll": 164,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 354,
+          "scroll": 354
+        },
+        {
+          "width": 354,
+          "scroll": 354
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-480x960-1x",
+      "pageWidth": 480,
+      "contentWidth": 480,
+      "minButtonHeight": 48,
+      "amounts": [
+        {
+          "width": 422,
+          "scroll": 422,
+          "text": "—"
+        },
+        {
+          "width": 115,
+          "scroll": 115,
+          "text": "—"
+        },
+        {
+          "width": 115,
+          "scroll": 115,
+          "text": "—"
+        },
+        {
+          "width": 115,
+          "scroll": 115,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 218,
+          "scroll": 218
+        },
+        {
+          "width": 218,
+          "scroll": 218
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-480x960-1x",
+      "pageWidth": 480,
+      "contentWidth": 480,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 422,
+          "scroll": 422,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 115,
+          "scroll": 115,
+          "text": "0 gp"
+        },
+        {
+          "width": 115,
+          "scroll": 115,
+          "text": "0 gp"
+        },
+        {
+          "width": 200,
+          "scroll": 200,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 200,
+          "scroll": 200,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 218,
+          "scroll": 218
+        },
+        {
+          "width": 218,
+          "scroll": 218
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-480x960-2x",
+      "pageWidth": 480,
+      "contentWidth": 480,
+      "minButtonHeight": 62.390625,
+      "amounts": [
+        {
+          "width": 422,
+          "scroll": 422,
+          "text": "—"
+        },
+        {
+          "width": 426,
+          "scroll": 426,
+          "text": "—"
+        },
+        {
+          "width": 426,
+          "scroll": 426,
+          "text": "—"
+        },
+        {
+          "width": 426,
+          "scroll": 426,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 444,
+          "scroll": 444
+        },
+        {
+          "width": 444,
+          "scroll": 444
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-480x960-2x",
+      "pageWidth": 480,
+      "contentWidth": 480,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 422,
+          "scroll": 422,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 426,
+          "scroll": 426,
+          "text": "0 gp"
+        },
+        {
+          "width": 426,
+          "scroll": 426,
+          "text": "0 gp"
+        },
+        {
+          "width": 200,
+          "scroll": 200,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 200,
+          "scroll": 200,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 444,
+          "scroll": 444
+        },
+        {
+          "width": 444,
+          "scroll": 444
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-844x390-1x",
+      "pageWidth": 844,
+      "contentWidth": 844,
+      "minButtonHeight": 48,
+      "amounts": [
+        {
+          "width": 722,
+          "scroll": 722,
+          "text": "—"
+        },
+        {
+          "width": 113,
+          "scroll": 113,
+          "text": "—"
+        },
+        {
+          "width": 113,
+          "scroll": 113,
+          "text": "—"
+        },
+        {
+          "width": 113,
+          "scroll": 113,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 370,
+          "scroll": 370
+        },
+        {
+          "width": 370,
+          "scroll": 370
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-844x390-1x",
+      "pageWidth": 844,
+      "contentWidth": 844,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 722,
+          "scroll": 722,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 113,
+          "scroll": 113,
+          "text": "0 gp"
+        },
+        {
+          "width": 113,
+          "scroll": 113,
+          "text": "0 gp"
+        },
+        {
+          "width": 350,
+          "scroll": 350,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 350,
+          "scroll": 350,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 370,
+          "scroll": 370
+        },
+        {
+          "width": 370,
+          "scroll": 370
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    },
+    {
+      "name": "gw2-844x390-2x",
+      "pageWidth": 844,
+      "contentWidth": 844,
+      "minButtonHeight": 62.390625,
+      "amounts": [
+        {
+          "width": 722,
+          "scroll": 722,
+          "text": "—"
+        },
+        {
+          "width": 343,
+          "scroll": 343,
+          "text": "—"
+        },
+        {
+          "width": 343,
+          "scroll": 343,
+          "text": "—"
+        },
+        {
+          "width": 343,
+          "scroll": 343,
+          "text": "—"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 370,
+          "scroll": 370
+        },
+        {
+          "width": 370,
+          "scroll": 370
+        }
+      ],
+      "labelColor": "rgb(226, 190, 120)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-gw2",
+      "labelContrast": 7.8430139493838675
+    },
+    {
+      "name": "osrs-844x390-2x",
+      "pageWidth": 844,
+      "contentWidth": 844,
+      "minButtonHeight": 44,
+      "amounts": [
+        {
+          "width": 722,
+          "scroll": 722,
+          "text": "100,000,000 gp"
+        },
+        {
+          "width": 343,
+          "scroll": 343,
+          "text": "0 gp"
+        },
+        {
+          "width": 343,
+          "scroll": 343,
+          "text": "0 gp"
+        },
+        {
+          "width": 350,
+          "scroll": 350,
+          "text": "254,000 gp / item"
+        },
+        {
+          "width": 350,
+          "scroll": 350,
+          "text": "10,160,000 gp"
+        }
+      ],
+      "tabWidths": [
+        {
+          "width": 370,
+          "scroll": 370
+        },
+        {
+          "width": 370,
+          "scroll": 370
+        }
+      ],
+      "labelColor": "rgb(169, 184, 174)",
+      "surfaceColor": "rgb(32, 48, 39)",
+      "navBlur": "none",
+      "selected": "gh-tab-osrs",
+      "labelContrast": 6.70924711405267
+    }
+  ],
+  "errors": []
+}

@@ -2,11 +2,11 @@
 
 | Batch | Status | Dependency / remaining acceptance |
 |---|---|---|
-| GE-00 Discovery/isolation/baseline | IN PROGRESS | Production main identified; all Actions inspected; Cloudflare main confirmed. Browser baseline running; physical Android unavailable. |
-| GE-01 Shared design system | TODO | Reusable tokens, both-game cascade, contrast/large fonts, visual review |
-| GE-02 Main interface refinement | TODO | GE-01; headers/metrics/Delivery Box/cards/details/controls, preserve functionality |
-| GE-03 Motion and gestures | TODO | Retain swipe fixes; press/card/interruption/reduced motion; repeated tests |
-| GE-04 Charts | TODO | Profile existing SVG engines; optimize only diagnosed issues; feed-supported ranges |
+| GE-00 Discovery/isolation/baseline | TESTED | Production main identified; all Actions inspected; Cloudflare main confirmed. Full baseline passed; physical Android measurement BLOCKED. |
+| GE-01 Shared design system | TESTED | 0288a66; full baseline/16 viewport-font states, contrast, visual review; final Android acceptance open |
+| GE-02 Main interface refinement | IN PROGRESS | GE-01; headers/metrics/Delivery Box/cards/details/controls, preserve functionality |
+| GE-03 Motion and gestures | IN PROGRESS | Retain swipe fixes; press/card/interruption/reduced motion; repeated tests |
+| GE-04 Charts | IN PROGRESS | Profile existing SVG engines; optimize only diagnosed issues; feed-supported ranges |
 | GE-05 Startup/loading | TODO | Compare startup/requests/cache/imagery with baseline |
 | GE-06 Signature details | TODO | Confirmed feedback, no-haptics fallback/support investigation |
 | GE-07 Performance | TODO | Before/after distributions, long sessions, Android evidence |
