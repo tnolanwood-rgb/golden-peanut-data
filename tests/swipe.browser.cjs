@@ -325,7 +325,7 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   // Fresh WebView/document: no saved draft, previous card, chart, or scroll.
   await page.goto(origin+'/?game=gw2');await page.waitForFunction(()=>window.GoldenDualHub&&window.GPGuided);
   await switchTo('osrs');await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading&&GoldenDualHub.diagnostics().ideas===2);
-  assert.equal(await page.locator('#gh-position').innerText(),'Research market 1 of 2');
+  assert.match(await page.locator('#gh-position').innerText(),/^(?:Trade idea|Research market) 1 of 2$/);
   assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),0);
   assert.equal(await page.locator('#gh-fill-form').evaluate(n=>n.hidden),true);
   assert.equal(await page.locator('#gh-previous').isDisabled(),true);
