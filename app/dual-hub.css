@@ -1071,3 +1071,7 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  background:linear-gradient(145deg,#343121,#252a1e);
  color:#f4e2bb;
 }
+
+/* Preserve the meaningful semantic status stripe after each state's shorthand
+ * border-color; no gradients/animation/opacity dependency for recognition. */
+#gh-panel-osrs #gh-status[data-state]{border-left-color:var(--ge-status)}
