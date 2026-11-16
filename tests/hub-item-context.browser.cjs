@@ -7,7 +7,13 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{fixture}=requi
  if(mode==='outage')return route.fulfill({status:503,body:'{}'}).catch(()=>{});
  await route.fulfill({json:{parse:{text:{'*':html+'<script>throw Error("untrusted")</script>'}}}}).catch(()=>{});
  });
+ // The first Wiki fetch can be deferred while the visible trade card paints.
+ // Wait for that request to be genuinely in flight before switching items;
+ // otherwise the fixture's hold could accidentally block the SECOND item.
+ // This preserves the stale-response race test rather than weakening it.
+ const firstWikiRequest=page.waitForRequest(req=>req.url().startsWith('https://oldschool.runescape.wiki/api.php?'),{timeout:15000});
  await page.goto(origin+'/?game=osrs');await page.waitForFunction(()=>GoldenDualHub?.diagnostics().ideas>0);
+ await firstWikiRequest;
  assert.equal(await page.locator('#gh-item-context').isVisible(),true);
  assert.equal(await page.locator('#gh-item-context h3').innerText(),'Item stats');
  await page.locator('#gh-next').click();
