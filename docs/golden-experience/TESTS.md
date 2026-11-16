@@ -1,5 +1,9 @@
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
+## GE-09 Pages staging guard — six synthetic tests
+Test module `tests/test_staging_guard.py` checks valid sandbox metadata, production identity/branch/domain rejection, D1/KV/R2/service/DO/secret binding rejection in both environments, unknown nonempty config, incomplete inventory and unsuccessful/missing metadata. Passed six local Python tests in an isolated scratch directory; exact GitHub CI pending. No actual Cloudflare staging proof from these synthetic tests.
+
+
 ## A/B native interaction perturbation test — pending
 Native reference 43965081137 succeeded with one ADB swipe and touchend=1. Revised tests added an ADB tap immediately beforehand; retries including run 43971116706 failed with touchcancel=1, even after an 800ms gap. The test now performs the original native swipe without extra tap and still captures touchstart/move/end/cancel; its extended OSRS reverse/vertical assertions remain. Await exact green emulator evidence.
 

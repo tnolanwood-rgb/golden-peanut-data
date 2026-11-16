@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## GE-09 isolation gate added — offline configuration validation
+Deterministic staging preflight and six synthetic tests cover distinct Pages project identity, production branch/domain exclusions and private binding/unknown-config denial. Remote project verification, synthetic-only deployment and exact-byte staging checks still TODO. Does not affect Android/WebView integration or production app. Overall NOT READY.
+
+
 ## 16 November — GE-03 native swipe fixed; GE-08 emulator lifecycle TESTED
 At exact `e538b648d1d2d48eb360b8615f7fbd8707b73486`, full CI [43965081086](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081086) PASS, Android build [43965081112](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081112) PASS, Android 35 native emulator [43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) PASS. An actual Android touchcancel regression was observed and corrected by retaining pointer events on the dragging panel. Native ADB horizontal swipe, screen rotation and Home/resume succeeded; artifact 14277315133. **GE-03 and GE-08 remain IN PROGRESS overall** pending physical phone, deeply populated/error/chart and lifecycle testing. **GE-09 separate synthetic Cloudflare staging and GE-10 RC/rollback remain TODO**. Production frozen; owner has NOT said Implement.
 

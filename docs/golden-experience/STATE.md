@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — distinct Cloudflare staging configuration guard prepared (offline TESTED; remote staging BLOCKED)
+Added a fail-closed offline Pages project metadata validator and six synthetic Python tests. It only accepts distinct `golden-experience-staging` project/branch/domain and requires explicit empty preview+production D1/KV/R2/service/DO/environment bindings; unknown nonempty bindings and incomplete inventories fail. Locally exercised six synthetic tests; exact full PR CI must confirm after this commit. No staging project was created, no deployment or production configuration was changed. Real Cloudflare read-only project metadata and independent staging deploy/rollback remain OPEN. Production freeze continues. The concurrent native-emulator run must be evaluated separately.
+
+
 ## 16 November 2026 — remove intrusive native focus-tap probe (CI pending)
 The 800ms-delayed preflight still reproduced `touchcancel` in Android run 43971116706; full CI 43971116702 and preview APK 43971116747 passed. Added tap was absent from exact native green 43965081137 and its timing was not proven causal; remove the entire extra ADB preflight interaction, preserving capture-phase native touchstart/move/end/cancel assertions and the expanded native OSRS reverse/vertical tests. This is a controlled A/B source-identical comparison, NOT a verified fix. Do not weaken the existing swipe requirements or claim READY. Production main frozen.
 

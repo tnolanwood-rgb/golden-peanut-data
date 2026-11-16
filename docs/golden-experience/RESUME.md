@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Staging safety preparatory batch — offline only
+Check source `scripts/staging_guard.py` and `tests/test_staging_guard.py` on feature branch. Run all six synthetic test cases and full CI. This tool DOES NOT contact Cloudflare or prove that an isolated project actually exists; it only rejects unsafe metadata. Next obtain trusted read-only metadata for a distinct Pages project, reject production bindings, then separate synthetic deployment, screenshots, hashed served bytes and rollback rehearsal. Never use the existing `thegoldenpeanut` project as dedicated staging. Keep production frozen.
+
+
 ## First unfinished — native emulator test without extra focus tap (CI pending)
 Green app gesture source remains exactly e538b648; new preflight tap sequence introduced after the verified Android 35 run and produced 3 failures despite tried code adjustments and 800ms cooldown. New source removes only the extra ADB focus tap while keeping native touch event proof and forward/reverse/vertical, rotation and resume checks. Check exact run; if still failing, investigate app WebView gesture state/OS input, not desktop results. No production changes, no release.
 
