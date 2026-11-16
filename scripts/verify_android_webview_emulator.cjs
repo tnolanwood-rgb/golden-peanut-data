@@ -164,19 +164,35 @@ async function run(){
   // reached WebView. Do not precede it with ADB tap on the same touch surface:
   // that extra OS gesture changed the stream in otherwise identical native runs.
   await page.evaluate(()=>{
-    const trace={start:0,move:0,end:0,cancel:0,first:null,last:null};
+    // Capture the native event stream without forced layout, synchronous
+    // computed styles or DOM writes inside handlers. The 64-event ring is
+    // diagnostic only; never change touch behaviour to make CI green.
+    const trace={start:0,move:0,end:0,cancel:0,first:null,last:null,
+      pointer:{down:0,move:0,up:0,cancel:0},events:[]};
     window.__geAndroidTouchTrace=trace;
+    const record=(type,event,point)=>{
+      const hit=event.target;
+      const value={type,x:Math.round(point?.clientX??0),y:Math.round(point?.clientY??0),
+        time:Math.round(performance.now()),target:hit?.tagName||'',
+        className:String(hit?.className||'').slice(0,80),
+        connected:hit?.isConnected!==false,scrolling:Math.round(scrollY),
+        cancelable:event.cancelable,
+        game:window.GoldenDualHub?.diagnostics?.()?.game||null,
+        drag:Math.round(window.GoldenDualHub?.diagnostics?.()?.dragOffset||0)};
+      if(!trace.first)trace.first=value;
+      trace.last=value;
+      if(trace.events.length<64)trace.events.push(value);
+    };
     for(const phase of ['start','move','end','cancel']){
       addEventListener('touch'+phase,event=>{
         trace[phase]++;
-        const t=event.changedTouches?.[0];
-        if(!t)return;
-        const hit=event.target;
-        const value={phase,x:Math.round(t.clientX),y:Math.round(t.clientY),
-          target:hit?.tagName||'',className:String(hit?.className||'').slice(0,80),
-          scrolling:Math.round(scrollY)};
-        if(!trace.first)trace.first=value;
-        trace.last=value;
+        record('touch'+phase,event,event.changedTouches?.[0]);
+      },{capture:true,passive:true});
+    }
+    for(const phase of ['down','move','up','cancel']){
+      addEventListener('pointer'+phase,event=>{
+        trace.pointer[phase]++;
+        if(event.pointerType==='touch')record('pointer'+phase,event,event);
       },{capture:true,passive:true});
     }
   });
@@ -184,19 +200,43 @@ async function run(){
       String(Math.round(sw*.18)),String(y),'350');
   let swipeFailure=null;
   try{await game(page,'osrs');}catch(error){swipeFailure=error;}
-  const touch=await page.evaluate(point=>({
-    trace:window.__geAndroidTouchTrace,
-    game:window.GoldenDualHub?.diagnostics?.()?.game||null,
-    viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
-    documentScrollY:Math.round(scrollY),
-    elementAtContact:document.elementFromPoint(point.x,point.y)?.outerHTML?.slice(0,300)||null
-  }),{x:contact.x,y:contact.y});
+  const touch=await page.evaluate(point=>{
+    const target=document.elementFromPoint(point.x,point.y);
+    const panel=document.querySelector('#gh-panel-gw2');
+    const stage=document.querySelector('#gh-game-stage');
+    const ancestors=[];
+    for(let node=target;node&&ancestors.length<8;node=node.parentElement){
+      const css=getComputedStyle(node);
+      ancestors.push({tag:node.tagName,id:node.id||'',className:String(node.className||'').slice(0,65),
+        touchAction:css.touchAction,overflowY:css.overflowY,pointerEvents:css.pointerEvents});
+    }
+    return {
+      trace:window.__geAndroidTouchTrace,
+      game:window.GoldenDualHub?.diagnostics?.()?.game||null,
+      diagnostics:window.GoldenDualHub?.diagnostics?.()||null,
+      viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio,
+        visualWidth:visualViewport?.width||null,visualHeight:visualViewport?.height||null,
+        visualOffsetTop:visualViewport?.offsetTop||0,visualScale:visualViewport?.scale||1},
+      documentScrollY:Math.round(scrollY),
+      panel:{hidden:panel?.hidden,inert:panel?.inert,connected:panel?.isConnected,
+        transform:panel?.style.transform,rect:panel?.getBoundingClientRect().toJSON()},
+      stage:{height:stage?.style.height,moving:stage?.classList.contains('gh-stage-moving')},
+      ancestors,
+      elementAtContact:target?.outerHTML?.slice(0,300)||null
+    };
+  },{x:contact.x,y:contact.y});
   mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],deviceY:y});
   if(swipeFailure){
     await screenshot(page,'gw2-after-unsuccessful-native-swipe');
+    console.error('ANDROID_WEBVIEW_INPUT_TRACE '+JSON.stringify({
+      trace:touch.trace,viewport:touch.viewport,panel:touch.panel,
+      stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y
+    }));
     throw new Error('Android-native swipe did not switch games: '+
       JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y}).slice(0,1900));
   }
+  assert.ok(touch.trace.end>=1 && touch.trace.cancel===0,
+    'Android gesture transition cannot pass on a cancelled touch stream: '+JSON.stringify(touch.trace));
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
 
