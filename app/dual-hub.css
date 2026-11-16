@@ -280,3 +280,178 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 
 #gh-osrs-root .gh-item-stats-status:empty{display:none}
 #gh-osrs-root .gh-item-context small{display:block;font-size:.65rem;margin-top:6px;opacity:.7}
+
+
+/* GOLDEN EXPERIENCE: shared, inexpensive surfaces and interaction tokens.
+ * Layer after existing game styles. No rarity, value-tier, currency or gesture
+ * geometry overrides: those remain game-native contracts. */
+:root{
+ --ge-bg:#0c1110;--ge-surface:#15231d;--ge-raised:#203027;
+ --ge-inset:#101a15;--ge-line:#35483d;--ge-line-strong:#637b69;
+ --ge-gold:#e2be78;--ge-ivory:#f3efe3;--ge-muted:#a9b8ae;
+ --ge-profit:#93d2ab;--ge-caution:#e9a09a;
+ --ge-font:system-ui,-apple-system,'Segoe UI',sans-serif;
+ --ge-text-xs:.75rem;--ge-text-sm:.875rem;--ge-text-base:1rem;
+ --ge-text-lg:1.25rem;--ge-text-xl:1.5rem;--ge-text-display:2rem;
+ --ge-space-1:4px;--ge-space-2:8px;--ge-space-3:12px;
+ --ge-space-4:16px;--ge-space-5:24px;--ge-space-6:32px;
+ --ge-radius-sm:10px;--ge-radius-md:16px;--ge-radius-lg:22px;
+ --ge-shadow:0 4px 14px #0003;--ge-inset-light:inset 0 1px 0 #ffffff08;
+ --ge-press:90ms;--ge-state:150ms;--ge-card:200ms;
+ --ge-ease:cubic-bezier(.2,.7,.25,1);
+ /* Bridge older research views to the same palette. */
+ --bg:var(--ge-bg);--panel:var(--ge-surface);--panel2:var(--ge-raised);
+ --line:var(--ge-line);--ink:var(--ge-ivory);--muted:var(--ge-muted);
+ --gold:var(--ge-gold);--mint:var(--ge-profit);--red:var(--ge-caution);
+ --focus-bg:var(--ge-bg);--focus-card:var(--ge-surface);--focus-card2:var(--ge-raised);
+ --focus-border:var(--ge-line);--focus-text:var(--ge-ivory);--focus-dim:var(--ge-muted);
+ --focus-accent:var(--ge-gold);--focus-good:var(--ge-profit);--focus-danger:var(--ge-caution);
+ --gh-bg:var(--ge-bg);--gh-panel:var(--ge-surface);--gh-border:var(--ge-line);
+ --gh-accent:var(--ge-gold);--gh-text:var(--ge-ivory);--gh-muted:var(--ge-muted);
+ color-scheme:dark;
+}
+body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
+ background:var(--ge-bg)!important;color:var(--ge-ivory)!important;
+}
+.gp-guided-root,#gh-osrs-root{font-family:var(--ge-font);color:var(--ge-ivory)}
+/* Opaque dock avoids backdrop compositing while the whole desk moves beneath it. */
+#gh-game-nav{background:var(--ge-bg);border-bottom-color:var(--ge-line);backdrop-filter:none}
+#gh-game-nav .gh-nav-inner{background:var(--ge-inset);border-color:var(--ge-line);padding:4px;border-radius:var(--ge-radius-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+#gh-game-nav button{color:var(--ge-muted);border-radius:12px;font-weight:650;font-size:var(--ge-text-sm);overflow-wrap:anywhere}
+#gh-game-nav button[aria-selected="true"]{background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-gold);box-shadow:var(--ge-inset-light)}
+#gh-game-nav .gh-swipe-hint{font-size:var(--ge-text-xs);color:var(--ge-muted);letter-spacing:0;margin-top:8px}
+
+.gp-guide-content{gap:var(--ge-space-4)}
+.gp-guide-header,#gh-osrs-root .gp-guide-header{
+ background:var(--ge-surface);border-color:var(--ge-line);border-top:0;
+ border-radius:0 0 var(--ge-radius-lg) var(--ge-radius-lg);padding:20px 16px;
+ box-shadow:var(--ge-inset-light);
+}
+.gp-guide-logo,#gh-osrs-root .gp-guide-logo{
+ background:var(--ge-inset);border-color:var(--ge-line);border-radius:var(--ge-radius-md);color:var(--ge-gold);
+}
+.gp-guide-title h1,#gh-osrs-root .gp-guide-title h1{
+ color:var(--ge-ivory);font-weight:750;letter-spacing:-.035em;font-size:clamp(1.375rem,5vw,1.875rem);
+}
+.gp-guide-title p,#gh-osrs-root .gp-guide-title p{color:var(--ge-muted);font-size:var(--ge-text-sm);line-height:1.45}
+.gp-guide-head-actions{gap:8px;margin-top:12px}
+.gp-guide-metrics{gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+.gp-guide-metric,#gh-osrs-root .gp-guide-metric{
+ background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-md);
+ padding:16px 14px;gap:10px;box-shadow:var(--ge-inset-light);
+}
+.gp-guide-label,#gh-osrs-root .gp-guide-label{color:var(--ge-muted);font-size:var(--ge-text-xs);font-weight:650;letter-spacing:.015em;line-height:1.5}
+.gp-guide-number{color:var(--ge-ivory);font-size:clamp(1.125rem,4.4vw,1.625rem);font-weight:750;line-height:1.35;letter-spacing:-.025em}
+.gp-guide-number,.money-inline,.money-value,.gh-coin-amount,.gh-ledger-row,.gp-price-money,.gh-research-value strong{
+ font-variant-numeric:tabular-nums lining-nums;
+}
+.gp-guide-muted,.gp-guide-metric small,.gp-guide-update,.gp-guide-position,
+#gh-osrs-root .gp-guide-muted,#gh-osrs-root .gp-guide-metric small,
+#gh-osrs-root .gp-guide-update,#gh-osrs-root .gp-guide-position{
+ color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6;
+}
+.gp-guide-delivery-summary,#gh-osrs-root .gp-guide-delivery-summary{
+ background:var(--ge-raised);border-color:var(--ge-line-strong);padding:18px 16px;
+}
+.gp-guide-delivery-summary>.gp-guide-label{color:var(--ge-gold)}
+.gp-guide-delivery-summary>.gp-guide-number{font-size:clamp(1.375rem,5.5vw,1.875rem)}
+.gp-guide-delivery-drawer{background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-md)}
+.gp-guide-delivery-drawer summary{color:var(--ge-ivory);padding:16px;min-height:48px}
+.gp-guide-delivery-drawer[open] summary{border-color:var(--ge-line)}
+.gp-guide-delivery-list{padding:8px 16px}
+
+.gp-guide-idea,#gh-osrs-root .gp-guide-idea{
+ background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-lg);
+ box-shadow:var(--ge-shadow),var(--ge-inset-light);padding:24px 18px 18px;
+}
+.gp-guide-idea h2,#gh-osrs-root .gp-guide-idea h2{
+ font-family:var(--ge-font);font-size:clamp(1.625rem,6vw,2.125rem);font-weight:750;line-height:1.25;letter-spacing:-.035em;
+}
+.gp-guide-item-icon,#gh-osrs-root .gp-guide-item-icon{background:var(--ge-inset);border-radius:14px}
+.gp-guide-tier{background:var(--ge-raised);color:var(--ge-ivory);font-size:var(--ge-text-xs);line-height:1.5;padding:6px 10px;border-radius:8px}
+.gp-guide-instruction{color:var(--ge-ivory);font-size:clamp(1.25rem,5vw,1.75rem);font-weight:700;line-height:1.5}
+.gp-guide-instruction-sub{color:var(--ge-ivory);font-size:clamp(1rem,4vw,1.25rem);line-height:1.6}
+.gp-guide-totals,#gh-osrs-root .gp-guide-totals{border-color:var(--ge-line);gap:12px}
+.gp-guide-totals .gp-guide-metric,#gh-osrs-root .gp-guide-totals .gp-guide-metric{background:transparent;border:0;box-shadow:none;padding:6px 0}
+.gp-guide-totals .gp-guide-number,#gh-osrs-root .gp-guide-totals .gp-guide-number{color:var(--ge-profit)}
+.gp-guide-caution{color:var(--ge-muted);font-size:var(--ge-text-sm);line-height:1.65}
+.gp-guide-foot{border-color:var(--ge-line)}
+#gh-osrs-root .gh-action-dock{background:var(--ge-surface);border-color:var(--ge-line);box-shadow:none;padding-top:16px}
+#gh-osrs-root .gh-trade-scroll{scrollbar-color:var(--ge-line-strong) var(--ge-inset)}
+
+.gp-guide-primary,#gh-osrs-root .gp-guide-primary{
+ background:var(--ge-gold);border-color:var(--ge-gold);color:var(--ge-bg);box-shadow:var(--ge-inset-light);
+}
+.gp-guide-secondary,.gp-guide-light,#gh-osrs-root .gp-guide-secondary,#gh-osrs-root .gp-guide-light{
+ background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory);box-shadow:var(--ge-inset-light);
+}
+.gp-guide-text{color:var(--ge-gold)}
+.gp-guide-primary,.gp-guide-secondary,.gp-guide-light,.gp-guide-text{
+ min-height:48px;border-radius:12px;font-size:var(--ge-text-sm);font-weight:650;
+}
+/* :active is delivered by the browser immediately, without adding input handlers
+ * or delaying clicks/submissions. Never use transition:all or an idle animation. */
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button{
+ touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+ transition:transform var(--ge-press) var(--ge-ease),filter var(--ge-state) var(--ge-ease);
+}
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button:active:not(:disabled){
+ transform:translateY(1px) scale(.985);filter:brightness(.93);
+}
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) :is(button,a,input,select,summary):focus-visible{
+ outline:2px solid var(--ge-gold);outline-offset:3px;
+}
+
+#gh-osrs-root .gh-market-lab,#gh-osrs-root .gh-order-guide,#gh-osrs-root .gh-item-context,
+.gh-osrs-settings,.gh-osrs-ledger{background:var(--ge-inset);border-color:var(--ge-line);border-radius:var(--ge-radius-md)}
+#gh-osrs-root .gh-market-tabs{background:var(--ge-bg);border-color:var(--ge-line);grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+#gh-osrs-root .gh-market-tabs button{color:var(--ge-muted);font-size:var(--ge-text-sm)}
+#gh-osrs-root .gh-market-tabs button[aria-pressed="true"]{background:var(--ge-raised);color:var(--ge-gold);border-color:var(--ge-line-strong)}
+#gh-osrs-root .gh-market-controls>label,#gh-osrs-root .gh-market-counts,#gh-osrs-root .gh-watch-filter{font-size:var(--ge-text-xs)}
+#gh-osrs-root .gh-market-controls input,#gh-osrs-root .gh-market-controls select{font-size:var(--ge-text-base)}
+#gh-osrs-root input,#gh-osrs-root select{background:var(--ge-bg);border-color:var(--ge-line-strong);color:var(--ge-ivory);border-radius:var(--ge-radius-sm)}
+#gh-osrs-root .gh-quote-grid>div,#gh-osrs-root .gh-quote-targets>div{background:var(--ge-surface);border-color:var(--ge-line)}
+#gh-osrs-root .gh-ledger-row{border-color:var(--ge-line)}
+#gh-osrs-root .gh-ledger-row small,#gh-osrs-root .gh-inline-status,
+#gh-osrs-root .gh-meta,#gh-osrs-root .gh-trade-note,.gh-osrs-settings p,.gh-osrs-ledger p{
+ color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6;
+}
+#gh-osrs-root .gh-inline-error{color:var(--ge-caution)}
+#gh-osrs-root #gh-fill-feedback:empty{display:none}
+#gh-osrs-root #gh-fill-feedback[data-state="saved"]{padding:12px 14px;border-left:3px solid var(--ge-profit);border-radius:0 10px 10px 0;background:var(--ge-raised);color:var(--ge-ivory);font-size:var(--ge-text-sm)}
+#gh-osrs-root .gh-research-evidence{background:var(--ge-raised);color:var(--ge-profit);border-color:var(--ge-profit)}
+#gh-osrs-root .gh-item-properties dt{opacity:1;color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.5}
+#gh-osrs-root .gh-item-context small{opacity:1;color:var(--ge-muted);font-size:var(--ge-text-xs)}
+#gh-osrs-root .gh-tier-key{border-color:var(--ge-line)}
+
+/* Shared chart surfaces; existing plot/axes and exact game colours remain intact. */
+.gp-price-dialog,.gh-research-dialog{background:var(--ge-bg);color:var(--ge-ivory);border-color:var(--ge-line-strong);box-shadow:0 16px 48px #0008;height:min(840px,calc(100dvh - 18px))}
+.gp-price-dialog::backdrop,.gh-research-dialog::backdrop{background:#000b;backdrop-filter:none}
+.gp-price-selection,.gp-price-range-summary,.gh-research-selected,.gh-range-summary{background:var(--ge-surface);border-color:var(--ge-line)}
+.gp-price-plot,.gh-research-plot{background:var(--ge-inset);border-color:var(--ge-line);min-height:235px}
+.gp-price-controls .gp-price-button,.gh-research-ranges button{border-radius:var(--ge-radius-sm);background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory);font-size:var(--ge-text-sm);min-height:46px}
+.gp-price-controls .gp-price-button.is-selected,.gh-research-ranges button.is-selected{background:var(--ge-gold);border-color:var(--ge-gold);color:var(--ge-bg)}
+.gp-price-close,.gh-research-close{background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory)}
+.gp-price-dialog .gp-price-muted,.gp-price-dialog .gp-price-footnote,.gh-research-note,.gh-research-foot{color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6}
+.gp-price-controls,.gh-research-ranges{grid-template-columns:repeat(auto-fit,minmax(min(100%,5rem),1fr))}
+/* The detailed workstation inherits the same tokens without restructuring tools. */
+.focus-edition .hero h1{color:var(--ge-ivory);text-shadow:none}
+.focus-edition .hero::after{height:1px;background:var(--ge-line);opacity:1}
+.focus-edition .focus-primary-nav{background:var(--ge-surface);box-shadow:0 -4px 14px #0003}
+.focus-edition .focus-nav-button.is-active{background:var(--ge-raised);color:var(--ge-gold)}
+.focus-edition .panel{background:var(--ge-surface);border-color:var(--ge-line);box-shadow:var(--ge-inset-light)}
+.focus-edition .focus-big-money{white-space:normal;overflow:visible;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.focus-edition .focus-big-money .focus-money{white-space:normal;flex-wrap:wrap}
+
+@media(max-width:390px){
+ .gp-guide-header,#gh-osrs-root .gp-guide-header{padding:16px 12px}
+ .gp-guide-idea,#gh-osrs-root .gp-guide-idea{padding:20px 14px 16px}
+ .gp-guide-metric,#gh-osrs-root .gp-guide-metric{padding:13px 11px}
+ .gp-guide-number{font-size:1.125rem}
+ .gp-guide-controls button,#gh-osrs-root .gp-guide-controls button{font-size:var(--ge-text-sm)}
+ #gh-game-nav button{font-size:.8125rem}
+}
+@media(prefers-reduced-motion:reduce){
+ :root{--ge-press:0ms;--ge-state:0ms;--ge-card:0ms}
+ :is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button:active:not(:disabled){transform:none}
+}

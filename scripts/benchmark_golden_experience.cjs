@@ -12,7 +12,9 @@ const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
 const assets=new Map();
 // Identical interception for both revisions avoids comparing in-memory historical
 // responses against a local HTTP server only for the candidate.
-for(const file of git('ls-tree','-r','--name-only',ref||'HEAD','app').split('\n')){
+const sourceFiles=ref?git('ls-tree','-r','--name-only',ref,'app').split('\n'):
+ fs.readdirSync('app',{recursive:true}).map(file=>'app/'+file);
+for(const file of sourceFiles){
  if(/\.(html|css|js)$/.test(file))assets.set('/'+file.slice(4),ref?execFileSync('git',['show',ref+':'+file]):fs.readFileSync(file));
 }
 const report={schema:'golden-experience-browser-benchmark-v1',source:ref?git('rev-parse',ref):git('rev-parse','HEAD'),
