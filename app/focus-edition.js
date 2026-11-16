@@ -292,7 +292,19 @@ function installEdgeSwipeBack(){
  },{passive:true});
  document.addEventListener('touchcancel',()=>{touch=null;},{passive:true});
 }
-function labelText(id,value){const x=$(id);if(x)x.textContent=value;}
+function labelText(id,value){const x=$(id);if(x&&x.textContent!==String(value))x.textContent=String(value);}
+// Repeated account/metadata updates used to recreate six image/denomination
+// nodes per unchanged wallet or week figure in the hidden Advanced home.
+// Retain their decoded image nodes and focus unless the actual amount changes.
+// No value, precision, accounting, or cache schema changes.
+function stableTodayMoney(id,value){
+ const host=$(id);if(!host)return;
+ const signature=Number.isFinite(value)?String(value):'not-verified';
+ if(host.dataset.geTodayMoney===signature&&host.childElementCount===1&&
+    host.firstElementChild?.classList.contains('focus-money'))return;
+ host.replaceChildren(money(value,'focus-money-big'));
+ host.dataset.geTodayMoney=signature;
+}
 function button(text,fn,cls='focus-button'){const b=h('button',cls,text);b.type='button';b.addEventListener('click',fn);return b;}
 function syncNow(){const b=$('gp57-refresh');if(b&&!b.disabled){b.click();labelText('focus-sync-state','Checking account and opportunities…');}else labelText('focus-sync-state',"Account isn't ready to refresh yet.");}
 function showResearch(section){if($('focus-research')?.hidden)pushHistoryForResearch();lastResearchFocus=document.activeElement;const box=$('focus-research');box.hidden=false;document.body.classList.add('focus-modal-open');const engine=$('focus-engine');engine.hidden=false;const adv=$('gp57-advanced');if(adv)adv.open=true;
@@ -520,8 +532,8 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  const day=root.PeanutCore?.ukDay?.(Date.now());
  renderDeliveryBox();
  renderSevenDayProfitStrip(s,day);
- $('focus-wallet').replaceChildren(money(Number.isFinite(snap?.wallet)?snap.wallet:NaN,'focus-money-big'));
- $('focus-week').replaceChildren(money(Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN,'focus-money-big'));
+ stableTodayMoney('focus-wallet',Number.isFinite(snap?.wallet)?snap.wallet:NaN);
+ stableTodayMoney('focus-week',Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN);
  const at=snap?.walletAt||snap?.at;labelText('focus-account-at',at?'Account checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved account · tap ↻ to check');
  labelText('focus-capital-note',snap?.buys?.length?'Already invested in buy orders: '+cash(root.PeanutCore.committedBuys(snap.buys))+' · '+num(snap.buys.length)+' active · tap below to inspect':'No standing buy orders currently verified.');
  renderGrowthGoal();

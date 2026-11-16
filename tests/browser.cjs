@@ -588,6 +588,38 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   };
   GPFocus.goto('today');GPFocus.render();
  });
+ // GW2 Today: preserve decoded currency images and existing live nodes when
+ // repeated refreshes yield identical wallet/week values. Real changes must
+ // still invalidate immediately, with exact coin totals and no fake profit.
+ const stableToday=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,
+   wallet=document.querySelector('#focus-wallet'),week=document.querySelector('#focus-week'),
+   beforeW=wallet.firstElementChild,beforeP=week.firstElementChild,
+   beforeWImg=wallet.querySelector('img'),beforePImg=week.querySelector('img'),
+   initialWallet=s.snapshot.wallet,initialWeek=s.summary.weekP100;
+  for(let i=0;i<6;i++)GPFocus.render();
+  const unchanged={wallet:wallet.firstElementChild===beforeW,
+   week:week.firstElementChild===beforeP,
+   walletIcon:wallet.querySelector('img')===beforeWImg,
+   weekIcon:week.querySelector('img')===beforePImg};
+  s.snapshot={...s.snapshot,wallet:initialWallet+10000};
+  GPFocus.render();
+  const changedWallet=wallet.firstElementChild!==beforeW&&
+   wallet.querySelector('.focus-money')?.title!==beforeW.title;
+  const preservedWeek=week.firstElementChild===beforeP;
+  const walletUpdated=wallet.firstElementChild;
+  s.summary.weekP100=initialWeek+10000;
+  GPFocus.render();
+  const changedWeek=week.firstElementChild!==beforeP;
+  const preservedWallet=wallet.firstElementChild===walletUpdated;
+  s.snapshot={...s.snapshot,wallet:initialWallet};
+  s.summary.weekP100=initialWeek;
+  GPFocus.render();
+  return {...unchanged,changedWallet,preservedWeek,changedWeek,preservedWallet};
+ });
+ assert.deepEqual(stableToday,{wallet:true,week:true,walletIcon:true,weekIcon:true,
+  changedWallet:true,preservedWeek:true,changedWeek:true,preservedWallet:true},
+  'unchanged home financial art should remain mounted while real changes repaint');
  const seven=page.locator('#focus-week-strip-list'),days=seven.locator('.focus-week-strip-row');
  assert.equal(await days.count(),7);
  assert.equal(await days.nth(0).locator('.focus-week-strip-day').innerText(),'Today');
