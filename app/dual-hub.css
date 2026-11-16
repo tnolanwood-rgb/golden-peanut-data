@@ -1156,9 +1156,9 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
 #gh-panel-gw2 .gp-guide-item-identity .gp-guide-item-icon{margin:0}
 #gh-panel-gw2 .gp-guide-item-identity h2{min-width:0;margin:0;overflow-wrap:anywhere}
 @media(max-width:390px){
- #gh-panel-gw2 .gp-guide-item-identity{grid-template-columns:62px minmax(0,1fr);gap:12px}
+ #gh-panel-gw2 .gp-guide-item-identity{grid-template-columns:70px minmax(0,1fr);gap:10px}
  #gh-panel-gw2 .gp-guide-item-identity .gp-guide-item-icon{
-  width:62px;height:62px;flex-basis:62px;
+  width:70px;height:70px;flex-basis:70px;
  }
 }
 @media(min-width:700px){
