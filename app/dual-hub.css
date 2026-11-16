@@ -116,6 +116,13 @@ body.gh-show-osrs #gh-osrs-root{display:block}
  * mid-gesture on Android (touchcancel before finger release). Incoming panel
  * is already inert; final click is guarded by guardDragClick(). */
 #gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:auto;will-change:transform;backface-visibility:hidden}
+/* Android WebView touch targets must not be removed from normal flow
+ * halfway through a horizontal drag. Keep the outgoing panel's layout
+ * box stable; only the incoming, inert sibling floats above the stage. */
+#gh-game-stage.gh-stage-moving>.gh-game-panel.gh-swiping-out{
+ position:relative;inset:auto;
+}
+
 #gh-game-nav .gh-swipe-hint{text-align:center;color:#aabdae;font-size:11px;letter-spacing:.025em;line-height:1.25;margin:6px 0 0}
 @media(prefers-reduced-motion:reduce){#gh-game-stage>.gh-game-panel{transition:none!important;animation:none!important}}
 

@@ -555,6 +555,9 @@ function createScene(from,next){
  const height=Math.max(1,out.getBoundingClientRect().height);
  const direction=next==="osrs"?1:-1; // destination starts right (OSRS) or left (GW2).
  stage.style.height=height+"px";
+ // Keep the actively touched element's containing panel in normal flow.
+ // Abruptly making this element absolute cancels Android touch streams.
+ out.classList.add("gh-swiping-out");
  stage.classList.add("gh-stage-moving");
  incoming.hidden=false;
  // Apply remembered nested scrolling before the incoming content is painted.
@@ -604,6 +607,7 @@ function finishScene(scene,commit){
  scene.out.style.transform="";scene.incoming.style.transform="";
  scene.incoming.style.top="";
  scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
+ scene.out.classList.remove("gh-swiping-out");
  // remember() must still see the outgoing GW2 view before it is hidden or
  // made inert; otherwise its older resume snapshot can undo this scroll.
  setActiveGame(next);
