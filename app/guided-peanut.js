@@ -81,6 +81,9 @@ function navigate(action){
 }
 function guided(enabled){
  if(!installed)return;
+ // Returning from Advanced/Research must actually release its modal overlay,
+ // otherwise an invisible research layer intercepts every Next/Previous tap.
+ if(enabled&&!$('focus-research')?.hidden)root.GPFocus?.closeResearch?.();
  document.body.classList.toggle('gp-guided-active',enabled);
  $('gp-guided-root').hidden=!enabled;
  $('gp-return-guided').hidden=enabled;
