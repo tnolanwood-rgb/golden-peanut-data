@@ -196,6 +196,70 @@ async function run(){
   }
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
+
+  // A sideways gesture inside the native vertically scrollable OSRS idea
+  // must return to GW2, not be swallowed by the inner scroll container.
+  const reverse=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    if(!region)return null;
+    const rect=region.getBoundingClientRect(),x=innerWidth*.22;
+    for(let y=Math.max(150,rect.top+24);
+        y<Math.min(innerHeight-65,rect.bottom-24);y+=12){
+      const hit=document.elementFromPoint(x,y);
+      if(hit?.closest('.gh-trade-scroll') &&
+         !hit.closest('button,input,textarea,a,select,summary,label,svg,canvas,[role="slider"],[data-no-game-swipe]'))
+        return {x,y};
+    }
+    return null;
+  });
+  assert.ok(reverse,'No safe visible OSRS inner-scroll swipe surface');
+  const reverseY=Math.min(sh-80,Math.max(100,Math.round(verticalInset+reverse.y*ratio)));
+  adb('shell','input','swipe',String(Math.round(sw*.22)),String(reverseY),
+      String(Math.round(sw*.82)),String(reverseY),'350');
+  await game(page,'gw2');
+  await screenshot(page,'gw2-after-osrs-native-swipe');
+  mark('native-android-reverse-swipe',{from:'osrs',to:'gw2',contactY:reverseY});
+
+  // Create DOM-only overflow in the *actual* OSRS recommendation scroll
+  // surface, not fake trading data. Verify native vertical scrolling stays
+  // inside the panel rather than switching games or scrolling the document.
+  await page.evaluate(()=>window.GoldenDualHub.switchGame('osrs'));
+  await game(page,'osrs');
+  const vertical=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    if(!region)return null;
+    const fixture=document.createElement('div');
+    fixture.id='ge-emulator-scroll-fixture';
+    fixture.style.height='1400px';
+    fixture.setAttribute('aria-hidden','true');
+    region.append(fixture);
+    region.scrollTop=0;
+    const rect=region.getBoundingClientRect();
+    const upper=Math.max(140,rect.top+40),lower=Math.min(innerHeight-85,rect.bottom-35);
+    if(lower-upper<140)return null;
+    return {x:innerWidth*.69,startY:lower-10,endY:upper+10,
+      before:region.scrollTop,bodyY:scrollY,scrollHeight:region.scrollHeight,
+      clientHeight:region.clientHeight};
+  });
+  assert.ok(vertical && vertical.scrollHeight>vertical.clientHeight+300,
+    'OSRS scroll surface must contain overflow test content');
+  const startV=Math.round(verticalInset+vertical.startY*ratio);
+  const endV=Math.round(verticalInset+vertical.endY*ratio);
+  adb('shell','input','swipe',String(Math.round(vertical.x*ratio)),String(startV),
+      String(Math.round(vertical.x*ratio)),String(endV),'400');
+  const scrolling=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    const state={top:region?.scrollTop||0,bodyY:scrollY,game:window.GoldenDualHub?.diagnostics?.()?.game};
+    document.getElementById('ge-emulator-scroll-fixture')?.remove();
+    return state;
+  });
+  assert.equal(scrolling.game,'osrs','Vertical recommendation scroll must not switch games');
+  assert.ok(scrolling.top>80,
+    'Android swipe must move OSRS nested scroll rather than trapping the gesture: '+JSON.stringify(scrolling));
+  assert.ok(Math.abs(scrolling.bodyY-vertical.bodyY)<3,
+    'Vertical nested swipe must not jump outer document');
+  mark('native-osrs-vertical-scroll',{scrollTop:scrolling.top,documentY:scrolling.bodyY});
+
   await page.evaluate(()=>window.__goldenEmulatorMarker='same-webview-document');
   adb('shell','settings','put','system','accelerometer_rotation','0');
   adb('shell','settings','put','system','user_rotation','1');
