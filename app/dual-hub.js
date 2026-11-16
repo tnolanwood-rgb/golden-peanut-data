@@ -555,9 +555,6 @@ function createScene(from,next){
  const height=Math.max(1,out.getBoundingClientRect().height);
  const direction=next==="osrs"?1:-1; // destination starts right (OSRS) or left (GW2).
  stage.style.height=height+"px";
- // Keep the actively touched element's containing panel in normal flow.
- // Abruptly making this element absolute cancels Android touch streams.
- out.classList.add("gh-swiping-out");
  stage.classList.add("gh-stage-moving");
  incoming.hidden=false;
  // Apply remembered nested scrolling before the incoming content is painted.
@@ -607,7 +604,6 @@ function finishScene(scene,commit){
  scene.out.style.transform="";scene.incoming.style.transform="";
  scene.incoming.style.top="";
  scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
- scene.out.classList.remove("gh-swiping-out");
  // remember() must still see the outgoing GW2 view before it is hidden or
  // made inert; otherwise its older resume snapshot can undo this scroll.
  setActiveGame(next);
@@ -753,14 +749,10 @@ function moveGesture(ev){
   g.horizontal=true;
  }
  if(!g.scene){
-  // Native Android WebView can cancel the touch target when creating the
-  // moving scene changes panel layout. Claim the *stable* stage pointer
-  // before making those DOM/style changes, and only after a deliberate
-  // horizontal threshold (normal taps and vertical scrolling stay native).
-  if(g.input==='pointer')try{get("gh-game-stage")?.setPointerCapture?.(ev.pointerId);}catch{}
   scrollPositions[g.from]=win.scrollY||0;
   g.scene=createScene(g.from,g.from==="gw2"?"osrs":"gw2");
   if(!g.scene){gesture=null;return;}
+  if(g.input==='pointer')try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
  }
  const now=gestureTime(ev);
  if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}

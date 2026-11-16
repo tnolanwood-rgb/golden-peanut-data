@@ -1,5 +1,9 @@
 # Decisions
 
+## Conservative gesture regression response
+Post-e538 modifications to outgoing panel layout and premature capture made native touchcancel recur. Use exact known native emulator green gesture/CSS blobs instead of layering speculative workarounds; keep newer acceptance assertions. Changed gesture code must demonstrate real Android WebView touchstart/move/end and game state under CI. No production changes.
+
+
 ## Android WebView touch ownership during stage movement — 16 November 2026
 Keep the outgoing moving game panel pointer-interactive during the gesture; `pointer-events:none` invalidated the Android touch target before release (observed WebView `touchcancel`). The incoming panel is already marked `inert`, and the existing drag-click guard prevents accidental clicks. Retain compositor transforms and native vertical scroll semantics; no gesture controller rewrite or animation dependency. Evidence: before [run 43963187603](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43963187603) failed on a genuine Android native swipe; after [run 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) passed, at source `e538b648d1d2d48eb360b8615f7fbd8707b73486`. CI screenshot/JSON artifact 14277315133. Keep physical Android acceptance open.
 
