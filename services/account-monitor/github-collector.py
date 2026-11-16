@@ -93,10 +93,13 @@ def request_json(url, *, headers=None, payload=None, max_retries=2):
 
 def arena(path):
     global GW2_KEY
+    if ACTIVE_LEASE:
+        ACTIVE_LEASE.renew()
+        ACTIVE_LEASE.assert_valid()
     return request_json(API + path, headers={'Authorization': 'Bearer ' + GW2_KEY})
 
 
-def db(sql, params=()):
+def raw_db(sql, params=()):
     global D1_ROWS_WRITTEN
     # Private verification run: classify D1 errors without logging queries.
     url = 'https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query' % (
@@ -134,12 +137,80 @@ def db(sql, params=()):
     return groups[0].get('results', []) if groups else []
 
 
+# Shared D1 lease protocol with worker.js. Never trust a caller's clock for
+# lock ownership; the predicate is evaluated atomically with each mutation.
+DB_NOW = "CAST(strftime('%s','now') AS INTEGER)*1000"
+LEASE_MS = 120000
+LEASE_VALID = ('EXISTS (SELECT 1 FROM gp_monitor_leases l JOIN gp_monitor_credentials c '
+               'ON c.account_id=l.account_id WHERE l.account_id=? AND l.owner=? '
+               'AND c.token_digest=? AND c.enabled=1 AND l.expires_at>' + DB_NOW + ')')
+ACTIVE_LEASE = None
+
+
+def fence_sql(sql):
+    import re
+    match = re.fullmatch(r'(INSERT(?: OR IGNORE)? INTO gp_monitor_\w+\s*\(([^)]+)\))\s+VALUES\s*(.+?)(\s+ON CONFLICT.+)?', sql.strip(), re.I | re.S)
+    if match:
+        columns = ','.join('column%d' % (i + 1) for i, _ in enumerate(match[2].split(',')))
+        return match[1] + ' SELECT ' + columns + ' FROM (VALUES ' + match[3] + ') WHERE ' + LEASE_VALID[:-1] + ' AND l.account_id=column1)' + (match[4] or '')
+    if re.match(r'UPDATE gp_monitor_\w+ SET ', sql.strip(), re.I) and re.search(r'\bWHERE\b', sql, re.I):
+        return sql + ' AND ' + LEASE_VALID[:-1] + ' AND l.account_id=' + re.match(r'UPDATE (gp_monitor_\w+)', sql.strip(), re.I)[1] + '.account_id)'
+    raise MonitorProblem('Unsupported private monitor write; refusing unfenced mutation')
+
+
+class MonitorLease:
+    def __init__(self, account, digest, owner):
+        self.account, self.digest, self.owner = account, digest, owner
+        self.touched = time.monotonic()
+
+    @property
+    def args(self):
+        return [self.account, self.owner, self.digest]
+
+    def assert_valid(self):
+        if not raw_db('SELECT 1 AS valid WHERE ' + LEASE_VALID, self.args):
+            raise MonitorProblem('Monitor lease lost or consent withdrawn; results discarded')
+
+    def renew(self):
+        if time.monotonic() - self.touched < 30:
+            return
+        rows = raw_db('UPDATE gp_monitor_leases SET expires_at=' + DB_NOW + '+' + str(LEASE_MS) +
+                      ' WHERE account_id=? AND owner=? AND expires_at>' + DB_NOW +
+                      ' AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=1) RETURNING owner',
+                      [self.account, self.owner, self.account, self.digest])
+        if not rows or rows[0].get('owner') != self.owner:
+            raise MonitorProblem('Monitor lease expired or consent withdrawn')
+        self.touched = time.monotonic()
+
+    def release(self):
+        raw_db('DELETE FROM gp_monitor_leases WHERE account_id=? AND owner=?', [self.account, self.owner])
+
+
+def acquire_lease(account, digest):
+    import uuid
+    owner = str(uuid.uuid4())
+    rows = raw_db('INSERT INTO gp_monitor_leases(account_id,owner,expires_at) SELECT ?,?,' + DB_NOW + '+' + str(LEASE_MS) +
+                  ' WHERE EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=1) '
+                  'ON CONFLICT(account_id) DO UPDATE SET owner=excluded.owner,expires_at=excluded.expires_at '
+                  'WHERE gp_monitor_leases.expires_at<=' + DB_NOW + ' RETURNING owner',
+                  [account, owner, account, digest])
+    return MonitorLease(account, digest, owner) if rows and rows[0].get('owner') == owner else None
+
+
+def db(sql, params=()):
+    if ACTIVE_LEASE:
+        ACTIVE_LEASE.renew()
+        if sql.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
+            return raw_db(fence_sql(sql), list(params) + ACTIVE_LEASE.args)
+    return raw_db(sql, params)
+
+
 def put_many(sql_prefix, records, width, suffix=''):
     if not records:
         return
     if width <= 0 or width > MAX_D1_PARAMS:
         raise MonitorProblem('D1 batch row width exceeds supported bindings')
-    batch_size = min(QUERY_BATCH, MAX_D1_PARAMS // width)
+    batch_size = min(QUERY_BATCH, (MAX_D1_PARAMS - (3 if ACTIVE_LEASE else 0)) // width)
     for start in range(0, len(records), batch_size):
         rows = records[start:start + batch_size]
         # Keep NULLs as SQL literals so the REST API never receives JSON
@@ -235,11 +306,12 @@ def bootstrap(account, digest):
       iv=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.iv ELSE NULL END,
       encrypted=CASE WHEN gp_monitor_credentials.token_digest=excluded.token_digest THEN gp_monitor_credentials.encrypted ELSE NULL END,
       enabled=1
-      WHERE gp_monitor_credentials.account_name IS NOT excluded.account_name
-         OR gp_monitor_credentials.token_digest IS NOT excluded.token_digest
-         OR gp_monitor_credentials.enabled<>1''',
+      WHERE gp_monitor_credentials.enabled=1 AND gp_monitor_credentials.token_digest=excluded.token_digest AND
+        (gp_monitor_credentials.account_name IS NOT excluded.account_name
+         OR gp_monitor_credentials.token_digest IS NOT excluded.token_digest)''',
       [account['id'], account['name'], digest, NOW()])
-    return True
+    stored = db('SELECT enabled,token_digest FROM gp_monitor_credentials WHERE account_id=?', [account['id']])
+    return bool(stored and stored[0]['enabled'] == 1 and stored[0]['token_digest'] == digest)
 
 
 def validate_trade(x):
@@ -341,9 +413,6 @@ def poll(account):
       (account_id,side,trade_id,item_id,price,quantity,created_at,purchased_at,first_observed_at) VALUES ''',
       trade_rows, 9,
       'ON CONFLICT(account_id,side,trade_id) DO UPDATE SET quantity=MAX(quantity,excluded.quantity)')
-    put_many('''INSERT OR IGNORE INTO gp_monitor_events
-      (account_id,event_key,kind,side,order_id,item_id,price,quantity,observed_at,previous_remaining,new_remaining) VALUES ''',
-      events, 11)
     put_many('''INSERT INTO gp_monitor_orders
       (account_id,side,order_id,item_id,price,remaining,first_seen_at,last_changed_at,closed_at) VALUES ''',
       [x + (None,) for x in orders], 9,
@@ -418,7 +487,8 @@ def run():
     Every attempted collection failure is nonzero, even when its diagnostic
     cannot be persisted. Actions must not mistake a handled error for success.
     """
-    global GW2_KEY
+    global GW2_KEY, ACTIVE_LEASE
+    ACTIVE_LEASE = None
     GW2_KEY = os.environ.get('GW2_PRIVATE_MONITOR_KEY', '').strip()
     if not GW2_KEY:
         print('No private GW2 monitor key configured. No account connection attempted.')
@@ -443,7 +513,12 @@ def run():
             raise MonitorProblem('ArenaNet did not return a valid account identity')
         if not bootstrap(account, digest):
             return 0
+        ACTIVE_LEASE = acquire_lease(account['id'], digest)
+        if ACTIVE_LEASE is None:
+            print('Private monitoring skipped: another collector holds the account lease or consent changed.')
+            return 0
         metrics, buys, sells = poll(account)
+        ACTIVE_LEASE.assert_valid()
         print('Private monitoring successful: %d current buy orders, %d current sell orders, %d updated trade records, %d partially filled units, %d unclassified disappearing orders.' %
               (buys, sells, metrics['newTrades'], metrics['partialUnits'], metrics['unknownClosures']))
         print('D1 rows written by private collector this run: %d' % D1_ROWS_WRITTEN)
@@ -463,6 +538,14 @@ def run():
                 # Unexpected errors here can contain credentials or SQL too.
                 print('Failed to persist monitor error safely; partial writes may remain; poll not verified.')
         return 1
+
+    finally:
+        if ACTIVE_LEASE is not None:
+            try:
+                ACTIVE_LEASE.release()
+            except Exception:
+                print('Monitor lease release unconfirmed; automatic expiry remains enforced.')
+            ACTIVE_LEASE = None
 
 
 if __name__ == '__main__':

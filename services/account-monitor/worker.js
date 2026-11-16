@@ -5,6 +5,7 @@
  * No Trading Post order placement, cancellations or currency movement.
  */
 const API='https://api.guildwars2.com/v2',PUBLIC_ORIGIN='https://thegoldenpeanut.pages.dev';
+const APP_ORIGINS=new Set([PUBLIC_ORIGIN,'https://private-dual-hub-preview.thegoldenpeanut.pages.dev']);
 const PAGE_SIZE=200,MAX_ORDER_PAGES=20,MAX_HISTORY_PAGES=60,DAY=86400000;
 const now=()=>Date.now();
 const encoder=new TextEncoder();
@@ -16,7 +17,7 @@ const headers=(request)=>{
  const origin=request.headers.get('Origin');
  return {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
   'Content-Security-Policy':"default-src 'none'",
-  'Vary':'Origin',...(origin===PUBLIC_ORIGIN?{'Access-Control-Allow-Origin':PUBLIC_ORIGIN,'Access-Control-Allow-Headers':'authorization,cache-control,content-type,x-gp-account','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
+  'Vary':'Origin',...(APP_ORIGINS.has(origin)?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization,cache-control,content-type,x-gp-account','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}:{})};
 };
 function response(request,status,body){return new Response(JSON.stringify(body),{status,headers:{...headers(request),'Content-Type':'application/json;charset=utf-8'}});}
 function accessKey(request){
@@ -66,6 +67,8 @@ async function validatedMonitorHealth(env){
   await env.DB.prepare('SELECT account_id FROM gp_monitor_credentials LIMIT 1').all();
   await env.DB.prepare('SELECT account_id FROM gp_monitor_orders LIMIT 1').all();
   await env.DB.prepare('SELECT account_id FROM gp_monitor_trades LIMIT 1').all();
+  await env.DB.prepare('SELECT account_id FROM gp_monitor_leases LIMIT 1').all();
+  await env.DB.prepare('SELECT generation FROM gp_monitor_consent_epoch WHERE id=1').all();
   dbReady=true;
  }catch{}
  return {keyReady,dbReady};
@@ -107,8 +110,47 @@ const eventInsert=(env,account,type,side,orderId,item,price,quantity,at,previous
 async function batches(promises,limit=20){
  for(let i=0;i<promises.length;i+=limit)await Promise.all(promises.slice(i,i+limit).map(f=>f()));
 }
+/* Shared lease protocol with the GitHub writer. All times come from D1, not
+ * client clocks. A stale holder cannot renew or mutate after takeover/opt-out. */
+const DB_NOW="CAST(strftime('%s','now') AS INTEGER)*1000",LEASE_MS=120000;
+const LEASE_VALID="EXISTS (SELECT 1 FROM gp_monitor_leases l JOIN gp_monitor_credentials c ON c.account_id=l.account_id WHERE l.account_id=? AND l.owner=? AND c.token_digest=? AND c.enabled=1 AND l.expires_at>"+DB_NOW+")";
+function fenceSQL(sql){
+ const insert=/^(INSERT(?: OR IGNORE)? INTO gp_monitor_\w+\s*\(([^)]+)\))\s+VALUES\s*([\s\S]+?)(\s+ON CONFLICT[\s\S]*)?$/i.exec(sql.trim());
+ if(insert){const columns=insert[2].split(',').map((_,i)=>'column'+(i+1)).join(',');return insert[1]+' SELECT '+columns+' FROM (VALUES '+insert[3]+') WHERE '+LEASE_VALID.slice(0,-1)+' AND l.account_id=column1)'+(insert[4]||'');}
+ if(/^UPDATE gp_monitor_\w+ SET /i.test(sql.trim())&&/\bWHERE\b/i.test(sql))return sql+' AND '+LEASE_VALID.slice(0,-1)+' AND l.account_id='+/^UPDATE (gp_monitor_\w+)/i.exec(sql.trim())[1]+'.account_id)';
+ throw Error('Unsupported private monitor write; refusing unfenced mutation');
+}
+async function acquireLease(db,account,tokenDigest){
+ const owner=crypto.randomUUID();
+ const got=await db.prepare('INSERT INTO gp_monitor_leases(account_id,owner,expires_at) SELECT ?,?,'+DB_NOW+'+'+LEASE_MS+' WHERE EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=1) ON CONFLICT(account_id) DO UPDATE SET owner=excluded.owner,expires_at=excluded.expires_at WHERE gp_monitor_leases.expires_at<='+DB_NOW+' RETURNING owner').bind(account,owner,account,tokenDigest).first();
+ if(got?.owner!==owner)return null;
+ const args=[account,owner,tokenDigest];let touched=Date.now();
+ const assert=async()=>{
+  const row=await db.prepare('SELECT 1 AS valid WHERE '+LEASE_VALID).bind(...args).first();
+  if(!row?.valid)throw Error('Monitor lease lost or consent withdrawn; results discarded');
+ };
+ const renew=async()=>{
+  if(Date.now()-touched<30000)return;
+  const row=await db.prepare('UPDATE gp_monitor_leases SET expires_at='+DB_NOW+'+'+LEASE_MS+' WHERE account_id=? AND owner=? AND expires_at>'+DB_NOW+' AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=1) RETURNING owner').bind(account,owner,account,tokenDigest).first();
+  if(row?.owner!==owner)throw Error('Monitor lease expired or consent withdrawn');
+  touched=Date.now();
+ };
+ const guarded={prepare(sql){let params=[];const write=/^\s*(INSERT|UPDATE|DELETE)\b/i.test(sql);return {
+  bind(...values){params=values;return this;},
+  async first(){await renew();return db.prepare(sql).bind(...params).first();},
+  async all(){await renew();return db.prepare(sql).bind(...params).all();},
+  async run(){await renew();if(!write)throw Error('Unexpected monitor operation');return db.prepare(fenceSQL(sql)).bind(...params,...args).run();}
+ };}};
+ return {db:guarded,assert,renew,release:()=>db.prepare('DELETE FROM gp_monitor_leases WHERE account_id=? AND owner=?').bind(account,owner).run()};
+}
+
 async function monitorAccount(env,row){
- const stamp=now(),account=row.account_id,key=await unseal(env,row);
+ const key=await unseal(env,row),lease=await acquireLease(env.DB,row.account_id,await digest(key));
+ if(!lease)return {ok:false,skipped:true,code:"MONITOR_BUSY_OR_DISABLED"};
+ try{return await collectAccount({...env,DB:lease.db},row,key,lease)}finally{await lease.release().catch(()=>{})}
+}
+async function collectAccount(env,row,key,lease){
+ const stamp=now(),account=row.account_id;
  const current={},history={},sideNames=['buys','sells'];
  let previousGap=false;
  try{
@@ -117,6 +159,7 @@ async function monitorAccount(env,row){
   // Do not mark missing orders cancelled unless BOTH full current books were
   // fetched with complete pagination and no API errors.
   for(const side of sideNames){
+   await lease.assert();
    const got=await paginated(key,'/commerce/transactions/current/'+side,{maxPages:MAX_ORDER_PAGES});
    if(!got.complete)throw Error('Current '+side+' has more than '+MAX_ORDER_PAGES+' pages; no order reconciliation');
    current[side]=got.rows;
@@ -127,6 +170,7 @@ async function monitorAccount(env,row){
    // flooding a free Worker with a 90-day backlog of 141k transactions.
    // Subsequent checks get a 60-page safety ceiling for active heavy traders.
    const pages=seenBefore?MAX_HISTORY_PAGES:2;
+   await lease.assert();
    const got=await paginated(key,'/commerce/transactions/history/'+side,{maxPages:pages,
     stopAtExisting:true,db:env.DB,account,side});
    history[side]=got.rows;
@@ -148,7 +192,6 @@ async function monitorAccount(env,row){
     if(quantity>previous){
      await env.DB.prepare('INSERT INTO gp_monitor_trades(account_id,side,trade_id,item_id,price,quantity,created_at,purchased_at,first_observed_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(account_id,side,trade_id) DO UPDATE SET quantity=MAX(quantity,excluded.quantity)')
       .bind(account,side,x.id,x.item_id,x.price,quantity,created,purchased,stamp).run();
-     await eventInsert(env,account,'trade',side,x.id,x.item_id,x.price,quantity-previous,stamp,null,null,purchased);
      tradeChanges++;
     }
    }
@@ -166,11 +209,9 @@ async function monitorAccount(env,row){
     }
     if(prev.item_id!==x.item_id||prev.price!==x.price||x.quantity>prev.remaining){
      // Repriced/changed identity or quantity increased: NOT a fill.
-     await eventInsert(env,account,'changed_unknown',side,x.id,x.item_id,x.price,0,stamp,prev.remaining,x.quantity);
      await env.DB.prepare('UPDATE gp_monitor_orders SET item_id=?,price=?,remaining=?,last_changed_at=? WHERE account_id=? AND side=? AND order_id=?')
       .bind(x.item_id,x.price,x.quantity,stamp,account,side,x.id).run();
     }else if(x.quantity<prev.remaining){
-     await eventInsert(env,account,'partial',side,x.id,x.item_id,x.price,prev.remaining-x.quantity,stamp,prev.remaining,x.quantity);
      await env.DB.prepare('UPDATE gp_monitor_orders SET remaining=?,last_changed_at=? WHERE account_id=? AND side=? AND order_id=?')
       .bind(x.quantity,stamp,account,side,x.id).run();
      partiallyFilled++;
@@ -179,7 +220,6 @@ async function monitorAccount(env,row){
    for(const [key,prev] of prior){
     if(prev.side!==side||seen.has(key))continue;
     // Order disappeared: source does not distinguish cancellation from fill.
-    await eventInsert(env,account,'disappeared_unknown',side,prev.order_id,prev.item_id,prev.price,0,stamp,prev.remaining,0);
     await env.DB.prepare('UPDATE gp_monitor_orders SET closed_at=? WHERE account_id=? AND side=? AND order_id=? AND closed_at IS NULL')
      .bind(stamp,account,side,prev.order_id).run();
     closedUnknown++;
@@ -193,6 +233,7 @@ async function monitorAccount(env,row){
   await env.DB.prepare('UPDATE gp_monitor_credentials SET last_polled_at=?,last_success_at=?,last_error=?,consecutive_failures=0 WHERE account_id=?')
    .bind(stamp,stamp,historyWarning,account).run();
   await finalizeNights(env,account,stamp);
+  await lease.assert();
   return {ok:true,account,orders:current.buys.length+current.sells.length,trades:tradeChanges,partials:partiallyFilled,newOrders,closedUnknown,
    historyComplete:!historyWarning};
  }catch(e){
@@ -233,10 +274,10 @@ async function finalizeNights(env,account,stamp){
 async function handle(request,env,ctx){
  const url=new URL(request.url),pathname=url.pathname;
  if(request.method==='OPTIONS'){
-  if(request.headers.get('Origin')!==PUBLIC_ORIGIN)return response(request,403,{ok:false});
+  if(!APP_ORIGINS.has(request.headers.get('Origin')))return response(request,403,{ok:false});
   return new Response(null,{status:204,headers:headers(request)});
  }
- if(request.headers.get('Origin')&&request.headers.get('Origin')!==PUBLIC_ORIGIN)
+ if(request.headers.get('Origin')&&!APP_ORIGINS.has(request.headers.get('Origin')))
   return response(request,403,{ok:false,error:'Unrecognised app origin'});
  if(pathname==='/health'&&request.method==='GET'){
   const health=await validatedMonitorHealth(env);
@@ -263,6 +304,8 @@ async function handle(request,env,ctx){
  if(pathname==='/enroll'&&request.method==='POST'){
   const requestBody=await request.json().catch(()=>null);
   if(requestBody?.consent!==true)return response(request,400,{ok:false,error:'Explicit background-monitoring consent is required'});
+  const consent=await env.DB.prepare('SELECT generation FROM gp_monitor_consent_epoch WHERE id=1').first();
+  if(!Number.isSafeInteger(consent?.generation))return response(request,503,{ok:false,error:'Private monitor schema needs its reviewed protocol update'});
   let details;
   try{details=await gw2(key,'/tokeninfo');}catch(e){
    if(e instanceof MonitorFault)return response(request,e.status,{ok:false,code:e.code,error:e.message});
@@ -286,8 +329,9 @@ async function handle(request,env,ctx){
    return response(request,503,{ok:false,code:'ENCRYPTION_NOT_READY',error:'Private account-monitor encryption is not ready. No API key has been saved.'});
   }
   try{
-   await env.DB.prepare('INSERT INTO gp_monitor_credentials(account_id,account_name,token_digest,iv,encrypted,enabled,created_at,last_polled_at) VALUES(?,?,?,?,?,1,?,NULL) ON CONFLICT(account_id) DO UPDATE SET account_name=excluded.account_name,token_digest=excluded.token_digest,iv=excluded.iv,encrypted=excluded.encrypted,enabled=1,last_error=NULL')
-    .bind(account.id,account.name,tokenDigest,encrypted.iv,encrypted.encrypted,now()).run();
+   const enrollment=await env.DB.prepare('INSERT INTO gp_monitor_credentials(account_id,account_name,token_digest,iv,encrypted,enabled,created_at,last_polled_at) SELECT ?,?,?,?,?,1,?,NULL WHERE (SELECT generation FROM gp_monitor_consent_epoch WHERE id=1)=? ON CONFLICT(account_id) DO UPDATE SET account_name=excluded.account_name,token_digest=excluded.token_digest,iv=excluded.iv,encrypted=excluded.encrypted,enabled=1,last_error=NULL')
+    .bind(account.id,account.name,tokenDigest,encrypted.iv,encrypted.encrypted,now(),consent.generation).run();
+   if(enrollment.meta?.changes!==1)return response(request,409,{ok:false,code:'CONSENT_CHANGED_RETRY',error:'Monitoring consent changed during verification. Review your choice and retry.'});
   }catch{
    return response(request,503,{ok:false,code:'PRIVATE_DATABASE_UNAVAILABLE',error:'Private monitor database could not save the encrypted connection. Nothing was enrolled.'});
   }
@@ -320,19 +364,22 @@ async function handle(request,env,ctx){
   // Explicit user's erasure request: remove credential AND all private cloud
   // observations, without touching browser IndexedDB or public market tables.
   const account=credentials.account_id;
-  await env.DB.batch([
-   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_events WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_nights WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=?').bind(account),
-   env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=?').bind(account),
+  const stopped=await env.DB.batch([
+   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL WHERE account_id=? AND token_digest=?').bind(account,tokenDigest),
+   env.DB.prepare('UPDATE gp_monitor_consent_epoch SET generation=generation+1 WHERE id=1 AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_leases WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_events WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_nights WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_orders WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_trades WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
+   env.DB.prepare('DELETE FROM gp_monitor_polls WHERE account_id=? AND EXISTS (SELECT 1 FROM gp_monitor_credentials WHERE account_id=? AND token_digest=? AND enabled=0)').bind(account,account,tokenDigest),
    // Always retain a disabled digest tombstone. Deleting a Worker-enrolled
    // account could allow a still-configured GitHub Actions secret to recreate
    // private monitoring on its next scheduled poll. This digest is not a token.
-   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL,account_name=?,last_error=NULL,last_polled_at=NULL,last_success_at=NULL WHERE account_id=?')
-    .bind('[Monitoring stopped]',account)
+   env.DB.prepare('UPDATE gp_monitor_credentials SET enabled=0,encrypted=NULL,iv=NULL,account_name=?,last_error=NULL,last_polled_at=NULL,last_success_at=NULL WHERE account_id=? AND token_digest=?')
+    .bind('[Monitoring stopped]',account,tokenDigest)
   ]);
+  if(stopped[0]?.meta?.changes!==1)return response(request,409,{ok:false,error:'Connection changed; review current monitoring status before retrying'});
   return response(request,200,{ok:true,enabled:false,credentialDeleted:true,cloudRecordsErased:true,
    requiresGithubSecretRemoval:true,
    note:'If a GitHub monitor secret exists, remove it separately; the inactive digest prevents automatic re-enrolment.'});

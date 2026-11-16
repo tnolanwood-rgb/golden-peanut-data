@@ -76,3 +76,48 @@ CREATE TABLE IF NOT EXISTS gp_monitor_nights (
  PRIMARY KEY(account_id,night,side,order_id)
 );
 CREATE INDEX IF NOT EXISTS idx_gp_monitor_nights_item ON gp_monitor_nights(account_id,item_id,night);
+
+-- Additive protocol v2. Existing credentials, trades, learning and public data
+-- remain intact. Both writers must use this protocol before resuming schedules.
+CREATE TABLE IF NOT EXISTS gp_monitor_leases (
+ account_id TEXT PRIMARY KEY,
+ owner TEXT NOT NULL,
+ expires_at INTEGER NOT NULL
+);
+-- Atomic trade/event and order/event pairs survive interruption between HTTP
+-- requests. No historic rows are reinterpreted or backfilled by these triggers.
+CREATE TRIGGER IF NOT EXISTS gp_monitor_trade_insert_event
+AFTER INSERT ON gp_monitor_trades
+BEGIN
+ INSERT OR IGNORE INTO gp_monitor_events(account_id,event_key,kind,side,order_id,item_id,price,quantity,observed_at)
+ VALUES(NEW.account_id,'trade:'||NEW.side||':'||NEW.trade_id||':'||NEW.quantity,'trade',NEW.side,NEW.trade_id,NEW.item_id,NEW.price,NEW.quantity,NEW.first_observed_at);
+END;
+CREATE TRIGGER IF NOT EXISTS gp_monitor_trade_update_event
+AFTER UPDATE OF quantity ON gp_monitor_trades WHEN NEW.quantity>OLD.quantity
+BEGIN
+ INSERT OR IGNORE INTO gp_monitor_events(account_id,event_key,kind,side,order_id,item_id,price,quantity,observed_at)
+ VALUES(NEW.account_id,'trade:'||NEW.side||':'||NEW.trade_id||':'||NEW.quantity,'trade',NEW.side,NEW.trade_id,NEW.item_id,NEW.price,NEW.quantity-OLD.quantity,CAST(strftime('%s','now') AS INTEGER)*1000);
+END;
+CREATE TRIGGER IF NOT EXISTS gp_monitor_order_update_event
+AFTER UPDATE OF remaining,item_id,price ON gp_monitor_orders
+WHEN NEW.remaining<>OLD.remaining OR NEW.item_id<>OLD.item_id OR NEW.price<>OLD.price
+BEGIN
+ INSERT OR IGNORE INTO gp_monitor_events(account_id,event_key,kind,side,order_id,item_id,price,quantity,observed_at,previous_remaining,new_remaining)
+ VALUES(NEW.account_id,'order:'||NEW.side||':'||NEW.order_id||':'||OLD.last_changed_at||':'||OLD.remaining||':'||NEW.remaining||':'||NEW.item_id||':'||NEW.price,
+ CASE WHEN NEW.item_id=OLD.item_id AND NEW.price=OLD.price AND NEW.remaining<OLD.remaining THEN 'partial' ELSE 'changed_unknown' END,
+ NEW.side,NEW.order_id,NEW.item_id,NEW.price,CASE WHEN NEW.item_id=OLD.item_id AND NEW.price=OLD.price AND NEW.remaining<OLD.remaining THEN OLD.remaining-NEW.remaining ELSE 0 END,NEW.last_changed_at,OLD.remaining,NEW.remaining);
+END;
+CREATE TRIGGER IF NOT EXISTS gp_monitor_order_close_event
+AFTER UPDATE OF closed_at ON gp_monitor_orders WHEN OLD.closed_at IS NULL AND NEW.closed_at IS NOT NULL
+BEGIN
+ INSERT OR IGNORE INTO gp_monitor_events(account_id,event_key,kind,side,order_id,item_id,price,quantity,observed_at,previous_remaining,new_remaining)
+ VALUES(NEW.account_id,'closed:'||NEW.side||':'||NEW.order_id||':'||NEW.closed_at,'disappeared_unknown',NEW.side,NEW.order_id,NEW.item_id,NEW.price,0,NEW.closed_at,OLD.remaining,0);
+END;
+-- A disable request invalidates every already-in-flight enrolment. A global
+-- generation is intentionally conservative: another account may need to retry,
+-- but an earlier consent request can never undo a later opt-out.
+CREATE TABLE IF NOT EXISTS gp_monitor_consent_epoch (
+ id INTEGER PRIMARY KEY CHECK(id=1),
+ generation INTEGER NOT NULL
+);
+INSERT OR IGNORE INTO gp_monitor_consent_epoch(id,generation) VALUES(1,0);
