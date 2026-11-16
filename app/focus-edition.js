@@ -1109,7 +1109,7 @@ function renderTopResearch(host,state,board=marketBoard(state)){
  }
  host.append(section);
 }
-let homeResearchKeys=null;
+let homeResearchKeys=null,capitalPanelKeys=null;
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -1136,12 +1136,19 @@ function renderOpportunityHome(){
  }
  const capitalHost=$('focus-deployment-research');
  if(capitalHost&&$('focus-capital-settings')?.open&&$('focus-research')?.hidden===false){
-  // Avoid expensive what-if recalculation and replacing the keyboard-focused
-  // draft whenever a background quote or account update repaints Today.
+  // Never unmount a budget input on routine status/icon refreshes; this was
+  // intercepting touch/keyboard actions in narrow Android layouts.
   const editing=capitalHost.contains(document.activeElement)&&
    document.activeElement?.matches?.('.focus-deployment-input');
-  if(!editing){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
- }
+  const capKeys=[s?.account,p,p?.at,p?.orders,p?.marketChoices,p?.publicResearch,
+   s?.snapshot?.wallet,s?.snapshot?.walletAt,fresh];
+  const needsDataRefresh=capitalPanelKeys&&
+   capKeys.some((key,i)=>key!==capitalPanelKeys[i]);
+  if(!editing&&(!capitalHost.querySelector('.focus-deployment-lab')||needsDataRefresh)){
+   capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);
+  }
+  if(!editing)capitalPanelKeys=capKeys;
+ }else capitalPanelKeys=null;
  // A one-second account/status repaint must not discard and recreate dozens
  // of scrollable result rows. Compare cheap identities/epochs before any DOM
  // mutation; a real plan, wallet, quote or metadata change still refreshes.
