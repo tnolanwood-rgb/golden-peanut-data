@@ -412,13 +412,23 @@ function openHomeMarket(id,kind){
 function userSnapshot(){const s=State();return s?.snapshot?.account===s.account?s.snapshot:null;}
 function renderSevenDayProfitStrip(s,day){
  const host=$('focus-week-strip-list');if(!host||!day)return;
- const previousDay=host.dataset.baseDay,top=host.scrollTop,hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const data=Array.from({length:7},(_,i)=>{
+  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+  return {date,amount:hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN};
+ });
+ // An unchanged account refresh must not replace seven rows and 21+
+ // denomination icons, lose focus or force the browser to relayout. Check
+ // the actual seven displayed day/value pairs, not a timer or object identity.
+ // A completed trade, UK day rollover, or no-history->verified transition
+ // still invalidates immediately and preserves the exact monetary values.
+ const signature=JSON.stringify([day,hasHistory,data.map(x=>[x.date,Number.isFinite(x.amount)?x.amount:null])]);
+ if(host.dataset.geWeekSignature===signature&&host.childElementCount===7)return;
+ const previousDay=host.dataset.baseDay,top=host.scrollTop;
  const formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric'});
  const rows=[];
- for(let i=0;i<7;i++){
-  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+ for(const [i,{date,amount}] of data.entries()){
   const label=i===0?'Today':i===1?'Yesterday':formatter.format(new Date(date+'T12:00:00Z'));
-  const amount=hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN;
   const row=h('div','focus-week-strip-row');
   row.dataset.profitDate=date;
   const name=h('span','focus-week-strip-day',label),value=h('strong','focus-week-strip-amount');
@@ -427,9 +437,8 @@ function renderSevenDayProfitStrip(s,day){
   row.append(name,value);rows.push(row);
  }
  host.replaceChildren(...rows);
- host.dataset.baseDay=day;
- // The global app refreshes frequently. Keep a user's scroll position within
- // the seven-day strip, but jump to Today when the UK calendar day changes.
+ host.dataset.baseDay=day;host.dataset.geWeekSignature=signature;
+ // Preserve an actively scrolled history strip on same-day refresh.
  host.scrollTop=previousDay===day?top:0;
 }
 let deliveryHeroSignature='';
