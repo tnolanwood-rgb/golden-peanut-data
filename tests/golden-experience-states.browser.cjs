@@ -54,6 +54,10 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   await page.evaluate(()=>document.documentElement.style.fontSize='24px');
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.locator('#gh-settings-toggle').click();
+  // Full-page screenshots with a sticky game dock must start at document top;
+  // otherwise Chromium can capture the dock over the upper title from an
+  // earlier scroll position, giving a false visual-overlap diagnosis.
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
   await page.screenshot({path:path.join(out,'osrs-settings-320-large-font.png'),fullPage:true});
   const layout=await page.evaluate(()=>{
    const root=document.documentElement,form=document.querySelector('#gh-settings');
