@@ -41,6 +41,14 @@ jobs:
         run: GE_COLD_RUNS=6 node scripts/profile_golden_experience_cold.cjs
       - name: Synthetic repeated-session retention probe
         run: node scripts/benchmark_golden_experience_session.cjs
+      - name: Reproduce intermittent retained-session DOM growth
+        shell: bash
+        run: |
+          set -euo pipefail
+          for trial in 1 2 3; do
+            GE_SESSION_OUTPUT="artifacts/audit/golden-experience/session-repeat-${trial}.json" \
+              node scripts/benchmark_golden_experience_session.cjs
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
