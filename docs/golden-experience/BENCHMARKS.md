@@ -1,5 +1,9 @@
 # Performance evidence
 
+## GW2 Today DOM allocation fix — 16 November 2026
+Exact source `66eb0b9a4b4cf070b614b82ad565f810f4282010` [CI 43922372800 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43922372800). Next-action card/body/button now preserve object identity through six repeated equal-data renders; a changed recommendation still mutates text and the newest callback in place. Fewer unnecessary element/listener allocations are expected, but **no quantitative physical Android frame-time, memory, or energy savings are claimed**. Full production and native acceptance pending.
+
+
 ## 16 November — OSRS 150%/200% accessibility sizing and interaction evidence
 Exact source `9e6bf9e589c4fbe0d9037257e3e9590a01016ab1` [CI 43913882902](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43913882902) PASS; static CSS height/font adjustments and browser geometry tests only. 320px/32px-root: 1040px card/834.03px inner viewport, first buy instruction bottom 765.81px, evidence 22px; document scrollWidth 320px. 320px/24px-root: 840px card vs 570px default. Secondary Wiki-stats request coalescing, ledger recomputation avoidance and GW2 retained DOM optimisations passed full browser regression. New height changes were not benchmarked as causal speed improvements. The CI's desktop Chromium synthetic cold probes and 400 retained-navigation cycles do **not** constitute Android physical WebView/FPS, battery, RAM or first finger-to-paint acceptance. Remain OPEN.
 

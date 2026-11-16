@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — verified GW2 next-action DOM retention
+**CHECKPOINT SOURCE:** `66eb0b9a4b4cf070b614b82ad565f810f4282010` passed [full CI 43922372800](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43922372800). PR #65 remains **DRAFT**, production main `097f012c1f912411790dd7dce21434a9cdc497d2` unchanged. The GW2 Today action card and action button now stay mounted over six identical refreshes, while changed Delivery Box/account data updates the actual recommendation in place. Latest executable regression: `tests/browser.cjs`. The first attempt `0f91bbe` failed because a prior `replaceChildren()` in `renderToday()` still removed the card; corrective commit `66eb0b9a4b4cf070b614b82ad565f810f4282010` removes it and the exact full suite is GREEN. No production deployment or native APK update. **Overall still IN PROGRESS — NOT READY FOR IMPLEMENT.**
+
+
 ## 16 November 2026 — newest tested accessibility and financial-action checkpoint
 **STATUS: VERIFIED incremental GE-02/GE-08 sub-batch, overall IN PROGRESS; NOT READY FOR IMPLEMENT.**
 Exact source `9e6bf9e589c4fbe0d9037257e3e9590a01016ab1` on draft PR #65 passed complete [CI 43913882902](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43913882902), screenshot artifact **14248134183**. Source only `app/dual-hub.css` and browser test `tests/golden-experience-states.browser.cjs` changed in this latest visual batch. Baseline/main independently verified unchanged `097f012c1f912411790dd7dce21434a9cdc497d2`; no prod deployment/merger, APK/signing, Cloudflare Worker/D1/collector, key or account data change.
