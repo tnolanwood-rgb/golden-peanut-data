@@ -445,6 +445,22 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  // Simple view must retain the official GW2 currency artwork, colours and explicit denomination letters.
  await page.evaluate(()=>GPGuided.open());
+ // Capture genuinely populated *synthetic* GW2 portfolio/Delivery Box state,
+ // rather than judging premium design only with an unconnected empty account.
+ // The existing test already generated eight item types, FIFO ledger and
+ // verified mock public quotes; this adds no real credentials/data/feed calls.
+ const geDir='artifacts/audit/golden-experience/populated';
+ fs.mkdirSync(geDir,{recursive:true});
+ await page.screenshot({path:geDir+'/gw2-guided-'+viewport.width+'.png',fullPage:true});
+ if(viewport.width===390){
+  await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+  await page.screenshot({path:geDir+'/gw2-guided-390-large-font.png',fullPage:true});
+  const bounds=await page.evaluate(()=>({viewport:document.documentElement.clientWidth,
+   scroll:document.documentElement.scrollWidth}));
+  assert.ok(bounds.scroll<=bounds.viewport+1,
+   'populated GW2 at 200% text must not horizontally overflow: '+JSON.stringify(bounds));
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+ }
  const hero=page.locator('#gh-panel-gw2 .gp-guide-delivery-summary .gp-guide-number');
  assert.equal(await hero.locator('.gp-guide-denom').count(),3);
  for(const [unit,metal] of [['g','gold'],['s','silver'],['c','copper']]){
@@ -457,6 +473,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await hero.locator('.gp-guide-coinset').getAttribute('aria-label'),expectedDelivery.label,
   'simple view uses the existing verified gross Delivery Box total, not unverified coin-only balance');
  await page.getByRole('button',{name:'⚙ Details'}).click();
+ if(viewport.width===390)
+  await page.screenshot({path:geDir+'/gw2-advanced-390.png',fullPage:true});
  assert.equal(expectedDelivery.full,true,'all public sell listings should be valued');
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'coins plus full gross ask value, BEFORE listing and exchange fees');
