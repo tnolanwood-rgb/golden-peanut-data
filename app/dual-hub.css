@@ -695,3 +695,108 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
 @media(prefers-reduced-motion:reduce){
  #gh-game-nav button{transition:none}
 }
+
+
+/* GOLDEN EXPERIENCE: Instrument face v1.1 — deep workstation continuity and
+ * legibility at Android's largest text sizes.  No new network assets or
+ * touch-handler changes; all painting is idle, opaque CSS. */
+#gh-panel-gw2 .focus-top{
+ position:relative;margin:10px 0 16px;padding:16px 16px 14px;
+ border:1px solid #4a6651;border-radius:18px;
+ background:
+  linear-gradient(90deg,#bd9b61 0 2px,transparent 2px),
+  linear-gradient(155deg,#21362a 0%,#15251c 100%);
+ box-shadow:inset 0 1px 0 #ffffff17,0 5px 14px #0003;
+}
+#gh-panel-gw2 .focus-top h2{
+ color:#f5efdf;font-weight:790;letter-spacing:-.05em;
+}
+#gh-panel-gw2 .focus-kicker{
+ color:#e5c784;letter-spacing:.18em;font-size:10px;
+}
+#gh-panel-gw2 .focus-icon-button{
+ background:linear-gradient(145deg,#2b4433,#1c2b21);
+ border-color:#60816a;box-shadow:inset 0 1px 0 #ffffff13;
+}
+#gh-panel-gw2 .focus-today-profit{
+ border:1px solid #9b8759;border-radius:18px;
+ background:
+  radial-gradient(ellipse at 100% 0%,#d7bd7d16,transparent 56%),
+  linear-gradient(145deg,#2b4031,#182b20 82%);
+ box-shadow:inset 0 1px 0 #ffffff16,0 5px 15px #0004;
+}
+#gh-panel-gw2 .focus-summary-grid .focus-summary,
+#gh-panel-gw2 .focus-today-best,
+#gh-panel-gw2 .focus-destination-row{
+ border-color:#445d4b;background:linear-gradient(145deg,#1b2e23,#13241b);
+ box-shadow:inset 0 1px 0 #ffffff12;
+}
+#gh-panel-gw2 .focus-today-best-header{
+ border-bottom:1px solid #4b614e;
+ background:linear-gradient(140deg,#283b2c,#192b21);
+ padding:17px 15px;
+}
+#gh-panel-gw2 .focus-today-best-header strong{
+ color:#e8c985;letter-spacing:.09em;
+}
+#gh-panel-gw2 .focus-destination-row{
+ border-radius:15px;box-shadow:inset 0 1px 0 #ffffff18,0 2px 8px #0002;
+}
+#gh-panel-gw2 .focus-primary-nav{
+ border-top:1px solid #57694f;
+ background:linear-gradient(180deg,#1c3024,#101f18);
+ box-shadow:0 -5px 17px #0006;
+}
+#gh-panel-gw2 .focus-nav-button{
+ border:1px solid transparent;
+}
+#gh-panel-gw2 .focus-nav-button.is-active{
+ color:#f5d394;background:linear-gradient(145deg,#314633,#223629);
+ border:1px solid #536e58;box-shadow:inset 0 1px 0 #ffffff1c;
+}
+/* Honour enlarged OS accessibility text without making the fixed game selector
+ * consume half the viewport. Keep logical tap targets and actual values; cap
+ * only chrome/readout typography rather than enforcing truncation. */
+@media(max-width:450px){
+ #gh-game-nav button{font-size:min(.8125rem,20px);line-height:1.28}
+ #gh-game-nav .gh-swipe-hint{font-size:min(.6875rem,14px);line-height:1.35}
+ #gh-panel-gw2 .gp-guide-title h1,
+ #gh-panel-osrs .gp-guide-title h1{font-size:min(1.45rem,34px)}
+ #gh-panel-gw2 .gp-guide-title p,
+ #gh-panel-osrs .gp-guide-title p{font-size:min(.875rem,20px)}
+ #gh-panel-gw2 .gp-guide-head-actions button,
+ #gh-panel-osrs .gp-guide-head-actions button{font-size:min(.875rem,22px);line-height:1.4}
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-number,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-number{
+  font-size:min(clamp(1.9rem,7vw,2.55rem),44px);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-number,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-number{
+  font-size:min(clamp(1.125rem,4.4vw,1.625rem),28px);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-label,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric>.gp-guide-label{
+  font-size:min(.75rem,19px);line-height:1.42;
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric small,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric small{
+  font-size:min(.75rem,19px);line-height:1.48;
+ }
+ #gh-panel-gw2 .gp-guide-idea h2,
+ #gh-panel-osrs .gp-guide-idea h2{font-size:min(clamp(1.6rem,6.1vw,2.45rem),40px)}
+ #gh-panel-gw2 .gp-guide-idea .gp-guide-instruction,
+ #gh-panel-osrs .gp-guide-idea .gp-guide-instruction{
+  font-size:min(clamp(1.19rem,4.4vw,1.7rem),28px);
+ }
+ #gh-panel-gw2 .gp-guide-controls button,
+ #gh-panel-osrs .gp-guide-controls button{font-size:min(.875rem,22px)}
+ #gh-panel-gw2 .gp-guide-idea .gp-guide-label,
+ #gh-panel-osrs .gp-guide-idea .gp-guide-label{font-size:min(.75rem,17px)}
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4){
+  grid-template-columns:minmax(0,1fr) minmax(0,max-content);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>.gp-guide-number{
+  min-width:0;max-width:100%;
+ }
+ #gh-panel-gw2 .focus-top{padding:13px 12px}
+}
