@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November — GE-08 isolated emulator WebView QA IN PROGRESS
+Added dedicated PR-only/manual CI that builds a fresh isolated Android 35 preview and tests native swipe, rotation and Home/resume with WebView CDP reports/screenshots. Await exact CI evidence; native physical handset, production installed APK data continuity, isolated Cloudflare staging, final integrated candidate and rollback still TODO. No production release permitted.
+
+
 ## 16 November — source integrity guard TESTED; working-tree hardening in progress
 GE-09/10 preparatory lock at exact 10a32e1 passed full browser CI 43959179383 and Android preview 43959179409. Follow-on Git checkout identity/clean-tree verification and eighth test pending CI. Entire staging, frozen candidate, physical WebView verification and rollback rehearsals remain TODO. No release.
 

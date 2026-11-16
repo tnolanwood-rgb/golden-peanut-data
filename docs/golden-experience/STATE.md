@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — isolated Android emulator acceptance attempt (CI PENDING)
+**Previous exact green candidate-lock source:** 2b1e436c5e63843b93018eacf8087ce71da92592, [full CI 43960570264 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43960570264) and [Android preview build 43960570183 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43960570183). Subsequent CI wiring for offline lock was added in separate preceding commit b589ee8; check its run. This batch adds a separate Android 35 emulator workflow with a pinned Action, independent debug package, native adb swipe, rotation, resume, screenshots and JSON. Debug-only WebView CDP has no release permissions. **Do not mark TESTED until new exact emulator run passes**; physical device and original installed package remain unverified. Production/Cloudflare/collector unchanged. Overall NOT READY FOR IMPLEMENT.
+
+
 ## 16 November 2026 — offline candidate-lock green + local Git identity hardening
 **Last fully verified exact source** 10a32e1208e42a263aad7d640cd6d4982d5ef765: [full regression CI 43959179383 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179383), [Android preview build 43959179409 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179409). Offline candidate lock and seven synthetic tests are TESTED. New follow-on implementation now also verifies checkout HEAD/tree and a clean Git working tree, and confines candidate metadata to artifacts/; eight-case gate awaits new exact CI. The tool has no deploy function. No main/Cloudflare/account/installed-app change. Staging, native runtime and rollback still OPEN; **NOT READY FOR IMPLEMENT**.
 

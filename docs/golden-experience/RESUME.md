@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Current first unfinished test — Android emulator (CI PENDING)
+Inspect current draft PR #65 head and new workflow golden-experience-emulator.yml on source branch. Inspect its job/logs and artifacts: verify a real Android 35 WebView launch, native swipe, rotation and Home/resume on the separate com.goldenhub.dual.preview package. If failed, diagnose the exact failure, improve source/coordinates without weakening functional assertions, rerun CI. Never install over original com.thegoldenpeanut.mobile. Source-lock 2b1e436 passed full CI 43960570264; independently added CI integration b589ee8 requires run verification. Staging/physical phone/release/rollback still OPEN; no production deployment.
+
+
 ## Newest source-integrity checkpoint — CI pending for Git checkout gate
 Previous exact implementation 10a32e1 passed full CI 43959179383 and Android preview CI 43959179409. Follow-on changes to scripts/golden_experience_candidate.py add Git rev-parse of actual HEAD/tree and a clean-checkout requirement, plus artifact-only manifest output and an additional temporary real Git repository test. First verify current branch HEAD and exact PR #65 CI, repair if needed, update evidence. Still separate frontend integrity tooling, NOT isolated staging, native runtime acceptance, release readiness or permission to deploy. Production main last verified 097f012c1f912411790dd7dce21434a9cdc497d2.
 

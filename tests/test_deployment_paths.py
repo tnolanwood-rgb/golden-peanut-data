@@ -40,6 +40,21 @@ class DeploymentPathTests(unittest.TestCase):
         self.assertNotIn('no-store',headers)
 
 
+    def test_isolated_android_emulator_has_no_cloudflare_deploy_or_credentials(self):
+        workflow=(WORKFLOWS/'golden-experience-emulator.yml').read_text()
+        script=(ROOT/'scripts/verify_android_webview_emulator.cjs').read_text()
+        self.assertIn('reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d', workflow)
+        self.assertIn('contents: read', workflow)
+        self.assertNotIn('wrangler', workflow)
+        self.assertNotIn('CLOUDFLARE_API_TOKEN', workflow)
+        self.assertNotIn('CF_API_TOKEN', workflow)
+        self.assertIn('com.goldenhub.dual.preview', script)
+        self.assertNotIn('com.thegoldenpeanut.mobile', script)
+        self.assertIn('native-android-swipe', script)
+        self.assertIn('rotation-preserves-live-document', script)
+        self.assertIn('background-resume-preserves-live-document', script)
+
+
 class HubDeliveryGuards(unittest.TestCase):
     def test_manual_production_deploys_require_main(self):
         for filename, job in [('guided-ui-production.yml','validate-and-deploy'),('account-monitor-deploy.yml','deploy-monitor')]:

@@ -1,5 +1,9 @@
 
 
+## Real Android emulator WebView automation (pending CI)
+New github workflow golden-experience-emulator.yml and scripts/verify_android_webview_emulator.cjs use a fresh separate preview APK with debug-only WebView inspection, adb OS-level swipe, forced rotation, Activity Home/resume and screenshot/JSON reports. Static regression checks that workflow contains no Cloudflare deploy or secrets. This test is NOT evidence of physical phone responsiveness, native original-package update compatibility or user account persistence. Exact head CI pending; do not declare success without result.
+
+
 ## Candidate manifest tests — verified prior SHA, new test pending
 Exact 10a32e1208e42a263aad7d640cd6d4982d5ef765 passed [full CI 43959179383](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179383) plus [Android CI 43959179409](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179409). Seven new offline guard tests executed as part of full Python suite. The follow-on eighth test creates a genuine temporary Git checkout, exercises prepare/verify CLI with its actual HEAD/tree and rejects uncommitted modifications; **new exact CI pending**. No real-device/staging/live claim.
 

@@ -1,5 +1,9 @@
 # Production isolation evidence — 2026-11-16
 
+## Preview-only Android emulator (new CI pending)
+Workflow golden-experience-emulator.yml uses GitHub contents: read, pinned public emulator action and a fresh runner. Only package com.goldenhub.dual.preview is built/installed; its debug WebView exposes CDP for test inspection, while release builds remain non-debuggable. No Cloudflare production deploy, credentials, D1 writes, production package, user storage, signing or backend configuration is in scope. Physical device proof and synthetic Cloudflare staging are separate outstanding gates.
+
+
 ## 16 November — preview APK verification did not cross the production boundary
 PR #65 DRAFT source `bf84c76e5d4ad68c99cd3fafa3c1235777a4e9e8`: [Android workflow 43941763186 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43941763186) used GitHub Actions to build `com.goldenhub.dual.preview`, package/check 37 static app assets and upload an artifact. It did **not** install an APK, use a production signing key, publish a Cloudflare site, merge main, invoke Worker/D1 operations or touch the existing package. [Source/browser CI 43941763243 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43941763243). Current main held at `097f012c1f912411790dd7dce21434a9cdc497d2`. This is packaging isolation only: staging Cloudflare synthetic environment and physical device isolation tests still OPEN.
 

@@ -46,6 +46,8 @@ public final class MainActivity extends Activity {
     }
 
     private void createDesk(Bundle savedInstanceState) {
+        // Debug-only CDP is for a fresh isolated emulator, never release builds.
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true);
         desk = new WebView(this);
         desk.setBackgroundColor(Color.rgb(14, 25, 20));
         desk.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
