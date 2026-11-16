@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November verified incremental checkpoint
+GW2 finance-panel refresh stability now tested at exact source `4e9574fa0d226ca539db90701b17b2d1d6af30af`, [CI 43935010936 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43935010936): operating-book and trading-outlook nodes stay mounted on unchanged account refresh; in-place scenario/capital changes update; overnight gains labelled conditional. GE-07/08 remain **IN PROGRESS** because Android/WebView, third-party failures, complete visual QA, synthetic staging, integrated RC and rollback are still outstanding. No release or production mutation.
+
+
 | Batch | Status | Evidence / remaining dependency |
 |---|---|---|
 | GE-00 Discovery/isolation/baseline | TESTED | Actual main/live 097f012; all 11 Actions and read-only CF inspection; full baseline. Hardware measurements BLOCKED. |

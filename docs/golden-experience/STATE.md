@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — GW2 financial workspaces verified and retained
+**Latest code** `4e9574fa0d226ca539db90701b17b2d1d6af30af` [full CI 43935010936 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43935010936). Previous source `3934db49390c934bb0f982559bf8c6b3df4b2372` [CI 43934107914 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43934107914). GW2 Today operating book and trading outlook now retain their DOM/buttons across six unchanged refreshes; in-place changes to conditional market profit or unallocated capital still invalidate and update exact displayed figures. The outlook labels overnight returns explicitly **conditional on execution**, never realised/given profit. Full browser/retention/startup regression green; **native Android timing and independent synthetic Cloudflare staging NOT complete**. Feature PR #65 DRAFT, main `097f012c1f912411790dd7dce21434a9cdc497d2` unmodified. **NOT READY FOR IMPLEMENT.**
+
+
 ## 16 November 2026 — verified GW2 next-action DOM retention
 **CHECKPOINT SOURCE:** `66eb0b9a4b4cf070b614b82ad565f810f4282010` passed [full CI 43922372800](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43922372800). PR #65 remains **DRAFT**, production main `097f012c1f912411790dd7dce21434a9cdc497d2` unchanged. The GW2 Today action card and action button now stay mounted over six identical refreshes, while changed Delivery Box/account data updates the actual recommendation in place. Latest executable regression: `tests/browser.cjs`. The first attempt `0f91bbe` failed because a prior `replaceChildren()` in `renderToday()` still removed the card; corrective commit `66eb0b9a4b4cf070b614b82ad565f810f4282010` removes it and the exact full suite is GREEN. No production deployment or native APK update. **Overall still IN PROGRESS — NOT READY FOR IMPLEMENT.**
 

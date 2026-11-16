@@ -1,5 +1,9 @@
 # Performance evidence
 
+## GW2 conditional financial-panel DOM retention — 16 November 2026
+Code `4e9574fa0d226ca539db90701b17b2d1d6af30af` [CI 43935010936 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43935010936). Repeated identical GW2 Today refreshes no longer replace the active-book rows, review control or trading-outlook DOM. Signatures cover visible market name/volume/conditional gold, committed capital/review amount, overnight scenario, wallet allocation, backtest metrics and recent ledger summary; real changed values invalidate. Lower DOM/element allocation expected. **No hardware FPS, power, startup or touch-to-paint delta claimed**. Existing 400 synthetic retained-session checks pass.
+
+
 ## GW2 Today DOM allocation fix — 16 November 2026
 Exact source `66eb0b9a4b4cf070b614b82ad565f810f4282010` [CI 43922372800 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43922372800). Next-action card/body/button now preserve object identity through six repeated equal-data renders; a changed recommendation still mutates text and the newest callback in place. Fewer unnecessary element/listener allocations are expected, but **no quantitative physical Android frame-time, memory, or energy savings are claimed**. Full production and native acceptance pending.
 

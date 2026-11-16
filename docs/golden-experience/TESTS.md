@@ -1,4 +1,8 @@
 
+## GW2 Today active-book and outlook stability — 16 November 2026
+Exact source `4e9574fa0d226ca539db90701b17b2d1d6af30af` passed [complete CI 43935010936](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43935010936); previous active-book-only `3934db4` passed CI 43934107914. `tests/browser.cjs`: the active-orders panel reuses first row and review button over six unchanged refreshes; a changed in-place conditional market profit updates the panel. Outlook similarly keeps its first node over six unchanged renders and updates on an in-place unallocated-capital change; its overnight number is labelled conditional. Full synthetic source, Python, JS, all browser suites, startup and retained-session audits pass. These checks do **not** measure physical Android latency or assert forecast accuracy.
+
+
 ## GW2 Today next-action retention — 16 November 2026
 **GREEN exact source** `66eb0b9a4b4cf070b614b82ad565f810f4282010`, [CI 43922372800](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43922372800). Full regression includes `tests/browser.cjs` six repeated `GPFocus.render()` calls preserving `#focus-next-action` child and the existing action button, plus a real synthetic account/delivery change updating the advice without losing those nodes. Original commit `0f91bbe` **failed** CI 43921884154: the legacy pre-render `target.replaceChildren()` negated retention; corrective source `66eb0b9a4b4cf070b614b82ad565f810f4282010` removed that call, then passed the whole suite. Browser synthetic, not evidence of Android WebView FPS or battery.
 
