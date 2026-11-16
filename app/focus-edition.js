@@ -655,9 +655,7 @@ function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow})
  }
  function scrolled(){
   if(!view.isConnected||deferForHub(scrollKey,scrolled))return;
-  remember();
-  if(sectionScrollSaveTimer)clearTimeout(sectionScrollSaveTimer);
-  sectionScrollSaveTimer=setTimeout(()=>{sectionScrollSaveTimer=null;save();},250);
+  remember(); // Only the live page needs the section scroll state.
   if(cursor<items.length&&view.scrollTop+view.clientHeight>=view.scrollHeight-160)reveal(16);
  }
  view.addEventListener('scroll',scrolled,{passive:true});
