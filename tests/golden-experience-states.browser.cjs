@@ -157,6 +157,7 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    const box=pane.getBoundingClientRect();
    return {height:shell.getBoundingClientRect().height,
     paneHeight:box.height,firstInstructionTop:buy.getBoundingClientRect().top-box.top,
+    firstInstructionBottom:buy.getBoundingClientRect().bottom-box.top,
     instructionVisible:buy.getBoundingClientRect().top<box.bottom-10,
     evidenceFont:parseFloat(getComputedStyle(document.querySelector('#gh-research-evidence')).fontSize),
     valueTierFont:parseFloat(getComputedStyle(document.querySelector('#gh-value-tier')).fontSize),
@@ -169,7 +170,9 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   assert.ok(doubleTextCard.valueTierFont>=18&&doubleTextCard.valueTierFont<=21,
    '200% text must enlarge the observed-value qualification: '+JSON.stringify(doubleTextCard));
   assert.ok(doubleTextCard.instructionVisible,
-   '200% text must expose the beginning of real buy guidance before nested scroll: '+JSON.stringify(doubleTextCard));
+   '200% text must expose real buy guidance before nested scroll: '+JSON.stringify(doubleTextCard));
+  assert.ok(doubleTextCard.firstInstructionBottom<=doubleTextCard.paneHeight-10,
+   'The complete buy amount must be visible before scrolling at 200%: '+JSON.stringify(doubleTextCard));
   assert.ok(doubleTextCard.pageScrollWidth<=doubleTextCard.pageWidth+1,
    '200% OSRS trading details must not cause sideways document overflow');
   await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));

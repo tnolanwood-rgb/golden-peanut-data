@@ -1097,7 +1097,7 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  * This changes no gestures, data, truncation, game scroll or animation. */
 @media(max-width:450px){
  #gh-panel-osrs #gh-osrs-root .gh-trade-shell{
-  height:clamp(570px,max(74dvh,35rem),900px);
+  height:clamp(570px,max(74dvh,35rem),1040px);
  }
 }
 
