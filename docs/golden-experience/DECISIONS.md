@@ -1,5 +1,8 @@
 # Decisions
 
+## 16 November 2026 — keep exact buy action visible with Android type scaling
+Mobile accessible text expands the OSRS card itself rather than truncating, ellipsizing, hiding secondary market evidence, shrinking real money or moving Next/Previous controls unpredictably. CSS uses a root-font-responsive 570px minimum / 1040px maximum `clamp(570px,max(74dvh,35rem),1040px)` only on narrow OSRS desks; default 320px/16px card remains 570px, 24px 840px, 32px 1040px. Critical 200%-text research evidence has 22px type and observed value-tier caption 20px. Real screenshot review discovered partial BUY price even though the first instruction started within the pane; strengthen test to assert the **entire** buy line fits, not just its top edge. No JS, dependency, touch, fee/ledger/API or native change; not proof of Android physical performance. Source `9e6bf9e` CI 43913882902 green. Do not flatten genuine long names or currency values.
+
 ## Deep-tool static hierarchy — 16 November 2026
 - Preserve both engines, OSRS observed completed transactions versus speculative listing targets, GW2 official rarity and financial truth. Scoped styling only, not DOM, state, gesture or accounting changes.
 - Real 320px/200%-font title/quantity/control and 390px GW2 populated/200% label layout assertions are more useful than appearance-only tests. No framework or third-party animation library.

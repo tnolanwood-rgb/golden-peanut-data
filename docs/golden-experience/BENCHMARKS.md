@@ -1,5 +1,8 @@
 # Performance evidence
 
+## 16 November — OSRS 150%/200% accessibility sizing and interaction evidence
+Exact source `9e6bf9e589c4fbe0d9037257e3e9590a01016ab1` [CI 43913882902](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43913882902) PASS; static CSS height/font adjustments and browser geometry tests only. 320px/32px-root: 1040px card/834.03px inner viewport, first buy instruction bottom 765.81px, evidence 22px; document scrollWidth 320px. 320px/24px-root: 840px card vs 570px default. Secondary Wiki-stats request coalescing, ledger recomputation avoidance and GW2 retained DOM optimisations passed full browser regression. New height changes were not benchmarked as causal speed improvements. The CI's desktop Chromium synthetic cold probes and 400 retained-navigation cycles do **not** constitute Android physical WebView/FPS, battery, RAM or first finger-to-paint acceptance. Remain OPEN.
+
 ## Latest DOM and interaction constraints — 16 November 2026
 `93e7aa9184072f275121fabb513b01d567deb929` [CI 43902534973](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43902534973) passed after avoiding unnecessary GW2 Advanced wallet/week DOM+coin image rebuilding. Exact UI refresh identity is tested and refresh still invalidates on real data. This removes avoidable DOM allocation but no quantifiable Android FPS, battery or startup improvement is claimed. Long name wrapping, focusable OSRS inner scroll and per-idea reset have no external network/framework/runtime dependencies; synthetic Chromium touch/keyboard and 400 cached session cycles passed. Hardware WebView measurements remain required.
 
