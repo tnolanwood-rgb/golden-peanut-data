@@ -1819,6 +1819,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* Guided Peanut is an optional presentation-only layer. The market chart
  * is loaded before the home UI; its dialog is independent of home rerenders. */
 (function(){
+ // Initialize both desks in document order before exposing OSRS. The fallback
+ // remains available when Focus is embedded without the assembled index.
+ if(document.querySelector('script[data-gp-guided-static]'))return;
  const chart=document.createElement('script');
  chart.src='./guided-price-chart.js?v=20261115-range-v04';
  const start=()=>{
