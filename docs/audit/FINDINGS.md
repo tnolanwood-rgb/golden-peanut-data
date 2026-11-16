@@ -1,3 +1,14 @@
+# Hosted item guide released — 16 November 2026
+
+BATCH: ITEM-GUIDE-LIVE. STATUS: DEPLOYED AND VERIFIED at https://thegoldenpeanut.pages.dev/.
+FIXED: always-visible What is it?/Where can I get it? section directly below OSRS item name, with examine text, attributed Wiki summary, membership/acquisition guidance and source link. Preserved current swipe/owned-sale behavior. No database, collector, credential, installation or schema changes.
+TESTED: 129 JS, 56 Python and all assembled browser suites; exact-head CI 43832170856 passed. PR #62 merged as `918702e73a64336ce3135249c4fe54acba56bd6e`; production run 43832501313 passed, including exact hashes of every served asset and actual hosted touch navigation. Read-only build-info independently confirmed that same release SHA. Local headless production inspection requires the workspace proxy and is not physical-phone evidence.
+EVIDENCE: https://github.com/tnolanwood-rgb/golden-peanut-data/pull/62 and https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43832501313; ignored `artifacts/audit/item-context-*` and baseline logs. No private records accessed.
+NEXT: user can reopen the hosted app to load the released assets. Do not substitute the embedded test APK for the hosted app. R2 audit PR #52/backend migration is separate and was not merged by this release. Rollback: revert only frontend code through the tested Pages workflow, preserving all storage.
+CHECKPOINT: final release evidence saved on `feat/item-info-production-20261116`; use `git log -1 -- docs/audit/STATE.md` there. This documentation checkpoint does not redeploy or change the served release SHA.
+
+---
+
 # Hosted item guide release — 16 November 2026
 
 BATCH: ITEM-GUIDE-LIVE. STATUS: prepared for the user-authorized production release; confirm the PR and exact served hashes before claiming deployed.
