@@ -1100,3 +1100,17 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
   height:clamp(570px,max(74dvh,35rem),820px);
  }
 }
+
+/* GE-02 accessible decision evidence: these material qualifiers were
+ * fixed at 12px even at 150–200% Android text settings. Scale them with
+ * the reader's type size; do not truncate, abbreviate or hide trade risks. */
+#gh-panel-osrs #gh-osrs-root .gh-research-evidence{
+ font-size:clamp(14px,.85rem,22px);
+ line-height:1.55;
+ overflow-wrap:anywhere;
+}
+#gh-panel-osrs #gh-osrs-root .gh-value-tier-caption{
+ font-size:clamp(14px,.78rem,20px);
+ line-height:1.5;
+ overflow-wrap:anywhere;
+}

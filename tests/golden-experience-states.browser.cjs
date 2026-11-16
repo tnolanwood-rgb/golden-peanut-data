@@ -158,10 +158,16 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    return {height:shell.getBoundingClientRect().height,
     paneHeight:box.height,firstInstructionTop:buy.getBoundingClientRect().top-box.top,
     instructionVisible:buy.getBoundingClientRect().top<box.bottom-10,
+    evidenceFont:parseFloat(getComputedStyle(document.querySelector('#gh-research-evidence')).fontSize),
+    valueTierFont:parseFloat(getComputedStyle(document.querySelector('#gh-value-tier')).fontSize),
     pageWidth:document.documentElement.clientWidth,
     pageScrollWidth:document.documentElement.scrollWidth};
   });
   assert.ok(doubleTextCard.height>=800,'200% text must retain the enlarged recommendation canvas');
+  assert.ok(doubleTextCard.evidenceFont>=20&&doubleTextCard.evidenceFont<=23,
+   '200% text must enlarge evidence/uncertainty qualifiers: '+JSON.stringify(doubleTextCard));
+  assert.ok(doubleTextCard.valueTierFont>=18&&doubleTextCard.valueTierFont<=21,
+   '200% text must enlarge the observed-value qualification: '+JSON.stringify(doubleTextCard));
   assert.ok(doubleTextCard.instructionVisible,
    '200% text must expose the beginning of real buy guidance before nested scroll: '+JSON.stringify(doubleTextCard));
   assert.ok(doubleTextCard.pageScrollWidth<=doubleTextCard.pageWidth+1,
