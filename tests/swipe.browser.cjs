@@ -300,26 +300,37 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await send('touchCancel');await endRecord('osrs');
   await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading);
   assert.deepEqual(await snapshot(),before,'selected items, chart, drafts, account, unrelated data and ledger survive all swipes');
-  await switchTo('gw2');await scroll(480);await page.evaluate(()=>GPGuided.remember());
-  await page.evaluate(()=>{scrollTo({top:120,behavior:'instant'});GoldenDualHub.switchGame('osrs');});await idle('osrs');
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-guided-resume-v2')).scroll),120,
-   'switching immediately after scrolling must update GW2 resume before hiding it');
-  // Cached GW2 startup must pre-render OSRS, and restore its existing draft
-  // before the first swipe instead of leaving the blank checking card.
+  // Position must survive game switches inside a live session, with no disk
+  // snapshot writes on every scroll. A *new document* instead begins at top.
+  await switchTo('gw2');await scroll(480);
+  const currentGwId=await page.evaluate(()=>GPGuided.navigation().id);
+  await page.evaluate(()=>{scrollTo({top:120,behavior:'instant'});GoldenDualHub.switchGame('osrs');});
+  await idle('osrs');
+  assert.equal(await page.evaluate(()=>localStorage.getItem('gh-view-session-v1')),null,
+   'swiping/scrolling no longer serializes transient UI snapshots');
   await page.unroute('**/api/v2/osrs/latest');
   await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop=90);
-  await switchTo('gw2');await page.waitForTimeout(220);
-  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('gh-view-session-v1')).panelScroll['gh-panel-osrs']),90,
-   'a hidden scroller must not overwrite its saved position with zero');
-  await page.goto(origin+'/?game=gw2');await page.waitForFunction(()=>window.GoldenDualHub);
-  await startRecord('cached-nested-scroll-restore','gw2');
+  await switchTo('gw2');await page.waitForTimeout(120);
+  assert.equal(await page.evaluate(()=>GPGuided.navigation().id),currentGwId,
+   'same-session GW2 deck remains on its chosen idea');
+  await startRecord('in-session-nested-scroll-retained','gw2');
   await send('touchStart',325);await send('touchMove',205);
-  assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),90,'nested scroll must be restored before the incoming panel is painted');
+  assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),90,
+   'in-memory nested scroll is restored before the incoming game is painted');
   await send('touchMove',115);await send('touchEnd',115);await endRecord('osrs');
   await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading);
   assert.doesNotMatch(await page.locator('#gh-item-name').innerText(),/Checking|not yet/i);
   assert.equal(await page.locator('#gh-fill-qty').inputValue(),'7');
   assert.equal(await page.locator('#gh-fill-price').inputValue(),'2000001');
+  // Fresh WebView/document: no saved draft, previous card, chart, or scroll.
+  await page.goto(origin+'/?game=gw2');await page.waitForFunction(()=>window.GoldenDualHub&&window.GPGuided);
+  await switchTo('osrs');await page.waitForFunction(()=>!GoldenDualHub.diagnostics().loading&&GoldenDualHub.diagnostics().ideas===2);
+  assert.equal(await page.locator('#gh-position').innerText(),'Research market 1 of 2');
+  assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),0);
+  assert.equal(await page.locator('#gh-fill-form').evaluate(n=>n.hidden),true);
+  assert.equal(await page.locator('#gh-previous').isDisabled(),true);
+  assert.equal(await page.evaluate(()=>GoldenOSRSChart.snapshot()),null);
+  assert.equal(await page.locator('#gh-fill-qty').inputValue(),'1');
   assert.deepEqual(errors,[]);
   report.status='PASS';
  }catch(error){report.status='FAIL';report.error=error.message;throw error;}
