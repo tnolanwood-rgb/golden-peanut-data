@@ -1089,3 +1089,14 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  min-width:0;max-width:100%;overflow-wrap:anywhere;
  word-break:normal;hyphens:auto;
 }
+
+/* GE-02 Android text scaling: a 570px card at 150–200% text can expose
+ * only the market name while concealing the actual trade plan behind its
+ * inner scroll. Grow the steady card viewport with rem-scale typography
+ * while preserving the default-size viewport geometry and fixed action dock.
+ * This changes no gestures, data, truncation, game scroll or animation. */
+@media(max-width:450px){
+ #gh-panel-osrs #gh-osrs-root .gh-trade-shell{
+  height:clamp(570px,max(74dvh,35rem),820px);
+ }
+}

@@ -115,6 +115,36 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   states.push({state:'settings-visual',viewport:'320x740',font:'24px',layout});
   await page.locator('#gh-settings-toggle').click();
 
+  // The original bounded trade viewport swallowed the real buy/sell plan at
+  // large Android text settings. Enlarge the pane rather than truncating
+  // exact amounts or stealing height from Next/Previous actions.
+  const scaledCard=await page.evaluate(()=>{
+   const shell=document.querySelector('#gh-osrs-root .gh-trade-shell');
+   const pane=document.querySelector('#gh-osrs-root .gh-trade-scroll');
+   const guide=document.querySelector('#gh-instruction');
+   const dock=document.querySelector('#gh-osrs-root .gh-action-dock');
+   const enlarged={height:shell.getBoundingClientRect().height,
+    paneHeight:pane.getBoundingClientRect().height,
+    visibleGuidance:guide.getBoundingClientRect().top<pane.getBoundingClientRect().bottom-10,
+    dockHeight:dock.getBoundingClientRect().height};
+   document.documentElement.style.fontSize='16px';
+   const standard={height:shell.getBoundingClientRect().height,
+    dockHeight:dock.getBoundingClientRect().height};
+   document.documentElement.style.fontSize='24px';
+   return {enlarged,standard};
+  });
+  assert.ok(scaledCard.enlarged.height>=760,
+   '24px Android-style text requires generous trading canvas: '+JSON.stringify(scaledCard));
+  assert.ok(scaledCard.enlarged.height>=scaledCard.standard.height+130,
+   'enlarged text must visibly expand the recommendation canvas: '+JSON.stringify(scaledCard));
+  assert.ok(scaledCard.enlarged.visibleGuidance,
+   'visible top of the trade card must reach the real buy/sell instruction: '+JSON.stringify(scaledCard));
+  assert.ok(scaledCard.enlarged.dockHeight>=90,
+   'accessible Next/Previous/Chart/Fill controls remain mounted');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:path.join(out,'osrs-action-320-enlarged-text.png'),fullPage:true});
+  states.push({state:'adaptive-recommendation-height',viewport:'320x740',font:'24px',scaledCard});
+
   // On 320px/24px text, scroll deeply inside a market; Next/Previous must
   // start the *new* item at its name, not inherit the previous item's offset.
   const cardNavigation=await page.evaluate(()=>{
