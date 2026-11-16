@@ -138,18 +138,22 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   if(report.cpuRate>1)await cdp.send('Emulation.setCPUThrottlingRate',{rate:report.cpuRate});
   // A slow GW2 script used to initialize after OSRS was visible and reset
   // its shared scroll. Keep both desks behind the boot screen until ready.
-  let releaseGuided;
-  await page.route('**/guided-peanut.js*',async route=>{
-   await new Promise(resolve=>releaseGuided=resolve);await route.continue();
-  });
-  const boot=page.goto(origin+'/?game=osrs');
-  while(!releaseGuided)await page.waitForTimeout(10);
-  await page.waitForTimeout(100);
-  if(!process.env.SWIPE_ASSET_REF){
-   assert.equal(await page.evaluate(()=>document.body.classList.contains('gp-ui-booting')),true,'delayed GW2 setup must remain behind the boot screen');
-   assert.equal(await page.evaluate(()=>!!window.GoldenDualHub),false,'both desks initialize before accepting gestures');
+  for(const asset of ['guided-peanut.js','dual-hub.js']){
+   let release;
+   const pattern='**/'+asset+'*';
+   await page.route(pattern,async route=>{
+    await new Promise(resolve=>release=resolve);await route.continue();
+   });
+   const boot=page.goto(origin+'/?game=osrs');
+   while(!release)await page.waitForTimeout(10);
+   await page.waitForTimeout(150);
+   if(!process.env.SWIPE_ASSET_REF){
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('gp-ui-booting')),true,asset+': partial setup must remain behind the boot screen');
+    assert.equal(await page.evaluate(()=>!!window.GoldenDualHub),false,'both desks initialize before accepting gestures');
+   }
+   release();await boot;await page.unroute(pattern);
+   await page.waitForFunction(()=>window.GoldenDualHub&&window.GPGuided&&!document.body.classList.contains('gp-ui-booting'));
   }
-  releaseGuided();await boot;await page.unroute('**/guided-peanut.js*');
   await page.waitForFunction(()=>GoldenDualHub?.diagnostics().ideas===2&&!GoldenDualHub.diagnostics().loading);
   await page.waitForFunction(()=>GoldenPeanutClean?.State?.db?.db&&window.GPGuided);
   // Stable, nonempty GW2 selected-item state, independent of external services.

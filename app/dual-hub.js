@@ -311,6 +311,9 @@ function install(){
  render();
  restoreView();
  restoreScrolls();
+ // Guided's earlier RAF may have waited for this module to download. Release
+ // either initial game only after both mounted desks have finished setup.
+ win.__gpReleaseBoot?.();
 }
 function activateOsrs(){
  if(get("gh-refresh"))return;
