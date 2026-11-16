@@ -107,8 +107,8 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 @media(max-width:450px){#gh-osrs-root .gh-trade-shell{height:clamp(570px,74dvh,730px)}#gh-osrs-root .gh-trade-scroll{padding-right:3px}}
 
 /* Slide the *whole* trading desk, never just swap tab text or fade a header. */
-#gh-game-stage{position:relative;width:100%;min-width:0;overflow:hidden}
-#gh-game-stage>.gh-game-panel{width:100%;min-width:0}
+#gh-game-stage{position:relative;width:100%;min-width:0;overflow:hidden;overflow-anchor:none}
+#gh-game-stage>.gh-game-panel{display:flow-root;width:100%;min-width:0}
 #gh-game-stage>.gh-game-panel[hidden]{display:none!important}
 #gh-game-stage.gh-stage-moving{isolation:isolate}
 #gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:none;will-change:transform;backface-visibility:hidden}
@@ -124,6 +124,9 @@ body.gh-show-osrs #gh-osrs-root{display:block}
   transition:none!important;animation:none!important;transform-style:flat;
 }
 #gh-game-stage.gh-stage-moving{overflow:hidden;user-select:none;-webkit-user-select:none}
+/* Keep the document extent and the two independently restored views stable.
+ * The incoming sheet's top compensates for its saved document scroll. */
+#gh-game-stage.gh-stage-moving>.gh-game-panel{contain:layout style}
 
 /* OSRS records are separately exportable: never silently discard local fills. */
 #gh-osrs-root .gh-backup-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0 6px}

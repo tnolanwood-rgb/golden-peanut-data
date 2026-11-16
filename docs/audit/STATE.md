@@ -1,3 +1,13 @@
+# Navigation repair checkpoint — 16 November 2026
+
+BATCH: SWIPE-R2. STATUS: full local verification passed; exact-head CI, merge and Pages production readback pending. The user explicitly authorized this navigation repair through merge/deploy at the existing origin, and prohibited replacement APK/package/storage/signing/credential changes.
+
+FIXED: incoming per-game scroll geometry (old code reproduced a 360px completion jump), exclusive pointer/touch fallback, interruptible settling, cached first swipe, hidden nested scroll, outgoing GW2 resume, and deferred presentation/cache/ranking work during gestures. TESTED: 129 JavaScript, 56 Python, release integrity, all four browser programs including 26 native-touch cases. EVIDENCE: [repair report](SWIPE-REPAIR-2026-11-15.md), [aggregate evidence](SWIPE-EVIDENCE-2026-11-15.json).
+
+NEXT: verify exact-head CI, merge and run existing Pages workflow, compare every asset/hash and build identity, then real production native-touch smoke. Physical-phone acceptance and the broader audit remain OPEN. CHECKPOINT: discover via `git log -1 -- docs/audit/STATE.md`.
+
+---
+
 # Live UI repair checkpoint — 15 November 2026, 23:27 UTC (PR #57)
 
 **PR #57 MERGED, CLOUDFARE PAGES RELEASE VERIFIED:** Merge commit `ec01fea4725ae53534429811f950867561622025`, exact-head regression run `43774621881` successful, Android preview build `43774621875` successful, main-branch production Pages run `43774776938` successful including exact SHA-256 of every deployed asset. Existing website origin `https://thegoldenpeanut.pages.dev/` unchanged; original Android WebView continues to load this URL, so no APK reinstall is required for these website changes.

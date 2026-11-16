@@ -1,3 +1,11 @@
+# Active navigation delivery — 16 November 2026
+
+Resume SWIPE-R2 at remote exact-head CI and release, preserving the existing Android WebView origin and all storage. Local full baseline passes (129 JavaScript, 56 Python, four browser programs, release integrity). Native-touch tests reject old main at a measured 360px scroll handoff and pass 26 current cases. See [repair report](SWIPE-REPAIR-2026-11-15.md) and aggregate evidence.
+
+The user explicitly requested merge and Cloudflare Pages production deployment for this repair; do not end at a draft PR. Verify the deployed bytes and browser behavior. Do not build/install a replacement APK or modify identity, signing, credentials, origin or storage namespaces. Physical Android acceptance still needs the original app; emulation is not phone proof.
+
+---
+
 # Latest tested UI delivery — 15 November 2026, 23:27 UTC
 
 PR #57 merge `ec01fea4725ae53534429811f950867561622025`; exact-head regression `43774621881` succeeded; native preview `43774621875` succeeded; exact hash verified production Pages `43774776938` succeeded. New UI: smoother 145–315ms compositor-only game switching, idle OSRS prewarm, native vertical scroll retained inside OSRS idea box, horizontal swipe from the nested scroll area recovered via Touch Events, no DOM or ledger reset. No original native APK is required for a Cloudflare update. Still request real-phone gesture confirmation before closing physical UX gate.

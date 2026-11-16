@@ -10,6 +10,15 @@ const NAMES={today:'Best trades',trades:'Compare markets',orders:'Open orders',l
 const ICO={today:'⌂',trades:'⌕',orders:'☷',legendaries:'✦'};
 let ui={tab:'today',tradeFilter:'best',bulkLot:5,tradeSearch:'',catalogueLimit:24,tradeAll:false,memoryLimit:14,tradeDetail:null,growthDetail:null,relatedDetail:null,tradeY:0,capitalMode:'wallet',orderLane:'review',orderSearch:'',orderAll:false,orderDetail:null,orderY:0,legendSection:'overview',capacitySelections:{},marketResearchLot:10,portfolioBudgetGold:null,sectionScrolls:{}},started=false,renderTimer=0,viewUpdating=false;
 let rootGuardReady=false;let reviewCache=null,reviewKey='',lastResearchFocus=null,memoryNameLoadKey='',memoryPageItems=[],navReady=false,restoringNav=false;
+let hubSavePending=false,hubRenderPending=false;
+const hubMoving=()=>!!document.querySelector('#gh-game-stage.gh-stage-moving');
+const hubDeferred=new Map();
+let hubInteraction=0;
+function deferForHub(key,work){
+ if(!hubMoving())return false;
+ hubDeferred.set(key,work);return true;
+}
+function waitForHub(key){return new Promise(resolve=>{if(!deferForHub(key,resolve))resolve();});}
 // Preserve the visible history row when asynchronous icon/name refreshes repaint the list.
 // Never rely on the click target to remain mounted while the list is updated.
 function captureHistoryPosition(){
@@ -27,6 +36,7 @@ function restoreHistoryPosition(before){
  window.scrollTo({top:Math.max(0,Math.round(y)),behavior:'instant'});
 }
 function showMoreRemembered(){
+ if(deferForHub('remembered-more',()=>{if(ui.tab==='trades'&&ui.tradeFilter==='memory')showMoreRemembered();}))return;
  const list=$('focus-memory-list'),more=$('focus-more-trades');
  // Add rows in place: replacing the entire history list made mobile browsers jump to top.
  if(!list||!more||ui.tab!=='trades'||ui.tradeFilter!=='memory'){ui.memoryLimit+=30;renderTrades();return;}
@@ -97,9 +107,9 @@ function artwork(id,large=false){const wrap=h('span','focus-item-art '+(large?'f
  else{wrap.append(h('span','focus-item-fallback','◇'));scheduleMetadataWhenVisible(wrap,Number(id));}
  return wrap;}
 function queueMeta(ids,retry=false){const s=State();if(!s?.api||!s?.db)return;for(const x of ids){const id=Number(x);if(!Number.isInteger(id)||id<=0||metaInFlight.has(id))continue;const until=iconMissing.get(id)||0;if(!retry&&until===-1)continue;if(until>3)continue;metaQueue.add(id);}if(!metaBusy&&metaQueue.size)window.setTimeout(flushMeta,100);}
-async function flushMeta(){if(metaBusy||!metaQueue.size)return;const s=State();if(!s?.api||!s?.db)return;const batch=[...metaQueue].slice(0,35);for(const id of batch){metaQueue.delete(id);metaInFlight.add(id);}metaBusy=true;
- let found={};const fetchPart=async ids=>{try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
- try{await fetchPart(batch);if(Object.keys(found).length){
+async function flushMeta(){if(metaBusy||!metaQueue.size)return;if(deferForHub('metadata-flush',flushMeta))return;const s=State();if(!s?.api||!s?.db)return;const batch=[...metaQueue].slice(0,35);for(const id of batch){metaQueue.delete(id);metaInFlight.add(id);}metaBusy=true;
+ let found={};const fetchPart=async ids=>{await waitForHub('metadata-fetch');try{Object.assign(found,await s.api.itemMetadata(ids));}catch{if(ids.length>1){const mid=Math.floor(ids.length/2);await fetchPart(ids.slice(0,mid));await fetchPart(ids.slice(mid));}}};
+ try{await fetchPart(batch);await waitForHub('metadata-result');if(Object.keys(found).length){
   // An older metadata request can finish after a newer, verified icon was
   // loaded into State. Never downgrade official artwork to an empty icon
   // while an Android screen is returning or a batch is in flight.
@@ -140,6 +150,7 @@ function viewMarketSnapshot(){
  return Number.isSafeInteger(snap.buy)&&snap.buy>0&&Number.isSafeInteger(snap.exit)&&snap.exit>snap.buy?snap:null;
 }
 function save(){
+ if(hubMoving()){hubSavePending=true;return;}
  try{
   const persist={version:2};
   for(const key of UI_KEYS)persist[key]=ui[key];
@@ -351,25 +362,39 @@ function install(){if(started)return;started=true;load();document.body.classList
  document.addEventListener('click',()=>window.setTimeout(save,0),{passive:true});
  document.addEventListener('change',()=>window.setTimeout(save,0),{passive:true});
  window.addEventListener('scroll',()=>{
+  if(hubMoving())return;
   if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
   ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));
   if(scrollSaveTimer)clearTimeout(scrollSaveTimer);
   scrollSaveTimer=setTimeout(()=>{scrollSaveTimer=0;save();},180);
  },{passive:true});
- const capture=()=>{if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
+ const capture=()=>{if(hubMoving()){hubSavePending=true;return;}if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
+ const interacted=()=>{hubInteraction++;};
+ document.addEventListener('pointerdown',interacted,{passive:true,capture:true});
+ document.addEventListener('touchstart',interacted,{passive:true,capture:true});
  window.addEventListener('pagehide',capture);
  window.addEventListener('orientationchange',capture,{passive:true});
  document.addEventListener('visibilitychange',()=>{
   if(document.hidden)capture();
   else schedule();
  });
+ document.addEventListener('gh-navigation-idle',()=>{
+  for(const [key,work]of [...hubDeferred]){
+   if(hubMoving())break;
+   hubDeferred.delete(key);work();
+  }
+  if(hubSavePending){hubSavePending=false;save();}
+  if(hubRenderPending){hubRenderPending=false;schedule();}
+ });
  const restoredScroll=ui.scrollY,restoredTab=ui.tab;
  goto(restoredTab,{scroll:false});
  // Content arrives from IndexedDB asynchronously. Restore position after it
  // renders instead of snapping to the beginning or forcing a fresh account sync.
  if(restoredScroll>0){
-  let attempts=0;
+  let attempts=0;const restoreInteraction=hubInteraction;
   const restoreScroll=()=>{
+   if(hubInteraction!==restoreInteraction)return;
+   if(deferForHub('restore-scroll',restoreScroll))return;
    if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
    if(ui.tab!==restoredTab||window.scrollY>=restoredScroll-8)return;
    if(document.documentElement.scrollHeight>restoredScroll+window.innerHeight/2)
@@ -626,7 +651,8 @@ function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow})
   status=h('small','focus-section-count'),
   more=button('Show more markets',()=>reveal(24),'focus-button focus-button-secondary focus-section-more');
  controls.append(status,more);
- let cursor=0;
+ let cursor=0,pendingReveal=0;
+ const revealKey={},fillKey={},scrollKey={},restoreKey={};
  const base=Math.max(1,Math.min(20,Number(initial)||6));
  const update=()=>{
   const remaining=items.length-cursor;
@@ -638,26 +664,47 @@ function appendScrollableSection(host,{id,title,desc,items,initial=6,renderRow})
   if(!ui.sectionScrolls)ui.sectionScrolls={};
   ui.sectionScrolls[key]={loaded:cursor,top:Math.max(0,Math.floor(view.scrollTop))};
  }
- function reveal(size){
+ function reveal(size,initialBuild=false){
+  // Some panels assemble a small initial batch before mounting their wrapper.
+  // Only deferred/scroll-driven work requires an already connected view.
+  if(!initialBuild&&!view.isConnected)return;
+  if(hubMoving()){
+   pendingReveal=Math.max(pendingReveal,size);
+   deferForHub(revealKey,()=>{if(view.isConnected)reveal(pendingReveal);});return;
+  }
+  size=Math.max(size,pendingReveal);pendingReveal=0;
   const target=Math.min(items.length,cursor+size);
   for(;cursor<target;cursor++)content.append(renderRow(items[cursor]));
   remember();update();
   // When rows still do not fill the viewport, allow the user to see more
   // without hunting for an invisible scroll gesture.
-  if(cursor<items.length&&view.isConnected&&view.scrollHeight<=view.clientHeight+1)
-   window.requestAnimationFrame(()=>{if(view.isConnected&&view.scrollHeight<=view.clientHeight+1)reveal(8);});
+  if(cursor<items.length&&view.scrollHeight<=view.clientHeight+1)
+   window.requestAnimationFrame(fillIfNeeded);
  }
- view.addEventListener('scroll',()=>{
+ function fillIfNeeded(){
+  if(!view.isConnected||deferForHub(fillKey,fillIfNeeded))return;
+  if(view.scrollHeight<=view.clientHeight+1)reveal(8);
+ }
+ function scrolled(){
+  if(!view.isConnected||deferForHub(scrollKey,scrolled))return;
   remember();
   if(sectionScrollSaveTimer)clearTimeout(sectionScrollSaveTimer);
   sectionScrollSaveTimer=setTimeout(()=>{sectionScrollSaveTimer=null;save();},250);
   if(cursor<items.length&&view.scrollTop+view.clientHeight>=view.scrollHeight-160)reveal(16);
- },{passive:true});
+ }
+ view.addEventListener('scroll',scrolled,{passive:true});
  section.append(view,controls);host.append(section);
  // A stored scroll state might contain thousands of rows. Mount only a
  // small batch now and progressively reveal the rest on deliberate scrolling.
- reveal(Math.max(base,Math.min(48,Number(stored.loaded)||0)));
- if(stored.top>0)window.requestAnimationFrame(()=>{if(view.isConnected)view.scrollTop=Math.min(stored.top,Math.max(0,view.scrollHeight-view.clientHeight));});
+ reveal(Math.max(base,Math.min(48,Number(stored.loaded)||0)),true);
+ if(stored.top>0){
+  const restoreInteraction=hubInteraction;
+  const restore=()=>{
+   if(!view.isConnected||hubInteraction!==restoreInteraction||deferForHub(restoreKey,restore))return;
+   view.scrollTop=Math.min(stored.top,Math.max(0,view.scrollHeight-view.clientHeight));
+  };
+  window.requestAnimationFrame(restore);
+ }
  return items.length;
 }
 function renderVerifiedRecentMarkets(host,s,{limit=9}={}){
@@ -1384,7 +1431,7 @@ function appendCatalogueMatches(host,q,shownIds=new Set()){
  if(matches.length>(ui.catalogueLimit||24))host.append(button('Show more catalogue matches ('+matches.length+' total)',()=>{ui.catalogueLimit=(ui.catalogueLimit||24)+50;renderTrades();},'focus-button focus-button-secondary'));
  return matches.length;
 }
-function renderTrades(){const s=State();if(!s||!$('focus-trade-rows'))return;const historyPosition=captureHistoryPosition();renderCapitalModes();
+function renderTrades(){if(deferForHub('render-trades',()=>{if(ui.tab==='trades')renderTrades();}))return;const s=State();if(!s||!$('focus-trade-rows'))return;const historyPosition=captureHistoryPosition();renderCapitalModes();
  const t=tradeData(),newMode=ui.tradeFilter==='new'||ui.tradeFilter==='craft',craftMode=ui.tradeFilter==='craft',q=ui.tradeSearch.toLowerCase().trim();
  for(const b of document.querySelectorAll('[data-trade-filter]')){const chosen=b.dataset.tradeFilter===ui.tradeFilter;b.classList.toggle('is-active',chosen);b.setAttribute('aria-pressed',String(chosen));if(b.dataset.tradeFilter==='bulk')b.textContent='Bulk '+ui.bulkLot+'+';}
  const lotControls=$('focus-lot-controls');if(lotControls)lotControls.hidden=ui.tradeFilter!=='bulk'&&ui.tradeFilter!=='craft';
@@ -1667,11 +1714,12 @@ function groupedOrders(rows,lane){const map=new Map();for(const o of rows){const
 function reviewedStore(){try{return JSON.parse(localStorage.getItem('gp-focus-reviewed:'+String(State()?.account||'unknown'))||'{}');}catch{return {};}}
 function setReviewed(a){const data=reviewedStore();data[reviewFingerprint(a)]=Date.now();try{localStorage.setItem('gp-focus-reviewed:'+String(State()?.account||'unknown'),JSON.stringify(data));}catch{}reviewCache=null;reviewKey='';scheduleReviews();renderOrders();}
 function reviewFingerprint(a){const s=userSnapshot(),all=[...(s?.buys||[]),...(s?.sells||[])];const sig=all.filter(x=>x.item===a.itemId).map(x=>[x.id,x.q,x.price].join(':')).sort().join('|');return [a.id,a.action,a.itemId,sig].join('~');}
-function scheduleReviews(){const s=State(),snap=userSnapshot();if(!s||!snap||ui.tab!=='orders')return;const key=[s.account,snap.buysAt,snap.sellsAt,s.allocationAt,s.ledger.length].join('|');if(reviewKey===key&&reviewCache)return;reviewKey=key;reviewCache=null;labelText('focus-order-state','Checking your existing positions…');
- window.setTimeout(()=>{if(ui.tab!=='orders'||reviewKey!==key)return;try{const analyzed=root.PeanutExecution52.analyze({ledger:s.ledger||[],buys:snap.buys||[],sells:snap.sells||[],delivery:snap.delivery?.items||[],depth:s.exec52Depth||new Map(),now:Date.now(),filter:'active',limit:250});reviewCache=root.PeanutCommander54.decide({execution:analyzed,snapshot:snap,plan:s.allocationPlan,allocationAt:s.allocationAt,now:Date.now(),limit:20});}catch{reviewCache={actions:[],error:'Detailed order reviews could not be calculated.'};}schedule();},50);
+function scheduleReviews(){if(deferForHub('schedule-reviews',scheduleReviews))return;const s=State(),snap=userSnapshot();if(!s||!snap||ui.tab!=='orders')return;const account=s.account,key=[account,snap.buysAt,snap.sellsAt,s.allocationAt,s.ledger.length].join('|');if(reviewKey===key&&reviewCache)return;reviewKey=key;reviewCache=null;labelText('focus-order-state','Checking your existing positions…');
+ const analyze=()=>{if(deferForHub('review-analysis',analyze))return;if(ui.tab!=='orders'||reviewKey!==key)return;if(State()!==s||s.account!==account||userSnapshot()!==snap){scheduleReviews();return;}try{const analyzed=root.PeanutExecution52.analyze({ledger:s.ledger||[],buys:snap.buys||[],sells:snap.sells||[],delivery:snap.delivery?.items||[],depth:s.exec52Depth||new Map(),now:Date.now(),filter:'active',limit:250});reviewCache=root.PeanutCommander54.decide({execution:analyzed,snapshot:snap,plan:s.allocationPlan,allocationAt:s.allocationAt,now:Date.now(),limit:20});}catch{reviewCache={actions:[],error:'Detailed order reviews could not be calculated.'};}schedule();};
+ window.setTimeout(analyze,50);
 }
 function reviewGroups(){const actions=(reviewCache?.actions||[]).filter(a=>a.itemId),already=reviewedStore(),map=new Map();for(const a of actions){if(already[reviewFingerprint(a)])continue;const title=itemName(a.itemId),fam=familyName(title,a.itemId),key=fam.startsWith('Item #')?'item-'+a.itemId:fam;let group=map.get(key);if(!group){group={key,name:fam,actions:[],total:0};map.set(key,group);}group.actions.push(a);group.total+=Number(a.amountType==='reserved'?a.capitalAtStake:0);}return [...map.values()].sort((a,b)=>b.total-a.total);}
-function renderOrders(){const s=State(),snap=userSnapshot();if(!s||!$('focus-order-rows'))return;for(const b of document.querySelectorAll('[data-order-lane]')){const selected=b.dataset.orderLane===ui.orderLane;b.classList.toggle('is-active',selected);b.setAttribute('aria-pressed',String(selected));}
+function renderOrders(){if(deferForHub('render-orders',()=>{if(ui.tab==='orders')renderOrders();}))return;const s=State(),snap=userSnapshot();if(!s||!$('focus-order-rows'))return;for(const b of document.querySelectorAll('[data-order-lane]')){const selected=b.dataset.orderLane===ui.orderLane;b.classList.toggle('is-active',selected);b.setAttribute('aria-pressed',String(selected));}
  if(ui.orderDetail){renderOrderDetail();return;}$('focus-orders-list').hidden=false;$('focus-order-detail').hidden=true;$('focus-order-search').value=ui.orderSearch;
  const host=$('focus-order-rows');host.replaceChildren();if(!snap){host.append(h('p','focus-empty','Check your account to load open orders.'));labelText('focus-order-state','No verified account snapshot');$('focus-more-orders').hidden=true;return;}
  const lane=ui.orderLane,isReview=lane==='review';let entries=[];if(isReview){if(!reviewCache){host.append(h('p','focus-empty','Reviewing completed fills and existing orders…'));labelText('focus-order-state','Checking your trading history for meaningful review actions');$('focus-more-orders').hidden=true;return;}entries=reviewGroups();}else entries=groupedOrders(lane==='buy'?snap.buys||[]:snap.sells||[],lane);
@@ -1733,6 +1781,7 @@ function decorateLegendArtwork(){const cache=root.GPLegendaryPlanner?.cache;if(!
 }
 function renderVisible({background=false}={}){
  if(!started)return;
+ if(hubMoving()){hubRenderPending=true;return;}
  // The previous global renderer rebuilt hidden tabs and heavy portfolio panels
  // for every async status/icon update. Render only the screen the user sees.
  if(ui.tab==='today')renderToday();
@@ -1774,7 +1823,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  chart.src='./guided-price-chart.js?v=20261115-range-v04';
  const start=()=>{
   const guided=document.createElement('script');
-  guided.src='./guided-peanut.js?v=20261115-icons-resume-v1';
+  guided.src='./guided-peanut.js?v=20261115-continuous-swipe-v2';
   guided.async=true;
   document.head.append(guided);
  };

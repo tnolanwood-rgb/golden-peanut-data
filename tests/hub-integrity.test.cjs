@@ -112,7 +112,7 @@ test('one cache write persists all four market routes, without losing an existin
  let timer=0;window.setTimeout=()=>++timer;window.clearTimeout=()=>{};
  const values={mapping:[{id:123,name:'Fixture item'}],latest:{data:{123:{low:100,high:200}}},
   '5m':{data:{},timestamp:sec-120},'1h':{data:{},timestamp:sec-120}};
- window.fetch=async url=>({ok:true,json:async()=>values[url.split('/').pop()]});
+ window.fetch=async url=>new Response(JSON.stringify(values[url.split('/').pop()]));
  await Promise.all(Object.keys(values).map(route=>api.getPrices(route,0,true)));
  assert.equal(saves,0,'avoid four synchronous multi-megabyte serializations during fetch completion');
  api.flushMarketCache();
@@ -134,7 +134,7 @@ test('explicitly deleted market cache is not silently resurrected on pagehide fl
  const existing={'mapping':{data:[{id:123,name:'Existing item'}],at:Date.now()}};
  const {api,window,storage}=hub({'gh-osrs-v1-cache':JSON.stringify(existing)});
  let timer=0;window.setTimeout=()=>++timer;window.clearTimeout=()=>{};
- window.fetch=async()=>({ok:true,json:async()=>[{id:124,name:'New mapping'}]});
+ window.fetch=async()=>new Response(JSON.stringify([{id:124,name:'New mapping'}]));
  await api.getPrices('mapping',0,true);
  storage.delete('gh-osrs-v1-cache');
  api.flushMarketCache();
