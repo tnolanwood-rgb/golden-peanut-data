@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'android/**'
+      - 'app/**'
       - 'scripts/verify_android_webview_emulator.cjs'
       - '.github/workflows/golden-experience-emulator.yml'
   workflow_dispatch:
