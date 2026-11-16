@@ -354,6 +354,15 @@ function blank(){
    </div>
  </details>
  <p class="gh-meta">Independent trading research · no automated Grand Exchange orders · no Jagex affiliation.</p>`;
+ // OSRS is an action-first desk. The current trade and its discovery mode
+ // belong immediately after the identity fascia; secondary account totals,
+ // feed diagnostics and search tooling remain intact further down. Reparent
+ // the EXISTING nodes before listeners attach so visual order and tab order
+ // agree, and no duplicate market controls or data values are introduced.
+ const header=h.querySelector(".gp-guide-header"),idea=h.querySelector(".gp-guide-idea");
+ const modes=h.querySelector(".gh-market-tabs");
+ idea.prepend(modes);
+ header.after(idea);
  return h;
 }
 function install(){

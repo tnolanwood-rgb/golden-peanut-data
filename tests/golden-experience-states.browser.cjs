@@ -26,6 +26,33 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   assert.deepEqual(hierarchy.map(x=>x.index),[...hierarchy.map(x=>x.index)].sort((a,b)=>a-b),
    'Primary buy/sell instructions must precede optional market and Wiki panels: '+JSON.stringify(hierarchy));
   await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  // A 390px phone must expose the current market and first concrete
+  // instruction without scrolling past the complete budget/filter dashboard.
+  // Keep the existing mode controls, trust/status, wallet and search available
+  // further down in real document order, with no CSS-only tab-order mismatch.
+  const topDecision=await page.evaluate(()=>{
+   const root=document.querySelector('#gh-osrs-root .gp-guide-content');
+   const header=root.querySelector('.gp-guide-header');
+   const idea=root.querySelector('.gp-guide-idea'),modes=root.querySelector('.gh-market-tabs');
+   const title=document.querySelector('#gh-item-name'),buy=document.querySelector('#gh-instruction');
+   const budget=root.querySelector('.gp-guide-metrics'),search=root.querySelector('#gh-market-search');
+   const rect=n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom};};
+   return {height:window.innerHeight,children:[...root.children].slice(0,5).map(n=>n.className||n.id),
+    header:rect(header),idea:rect(idea),modes:rect(modes),title:rect(title),buy:rect(buy),
+    budget:rect(budget),search:rect(search),modalButtons:modes.querySelectorAll('button').length,
+    item:document.querySelector('#gh-item-name')?.textContent};
+  });
+  assert.ok(topDecision.header.bottom<=topDecision.idea.top+1,'Action card follows the header');
+  assert.ok(topDecision.modes.top>=topDecision.idea.top&&topDecision.modes.bottom<topDecision.title.top,
+   'Discovery modes must be ahead of the current item inside the action card');
+  assert.ok(topDecision.title.top<topDecision.height-50,
+   'First market must be visible on 390x844 without scrolling: '+JSON.stringify(topDecision));
+  assert.ok(topDecision.buy.top<topDecision.height,
+   'First buy instruction must begin above the first fold: '+JSON.stringify(topDecision));
+  assert.ok(topDecision.budget.top>topDecision.idea.top,
+   'Budget, completed profits, market diagnostics and filters remain after the priority trade');
+  assert.equal(topDecision.modalButtons,2,'Both existing discovery mode buttons remain');
+  states.push({state:'osrs-first-screen-trading-action',layout:topDecision});
   await page.screenshot({path:path.join(out,'osrs-action-first-390.png'),fullPage:true});
   const startingItem=await page.locator('#gh-item-name').innerText();
   // Synchronous handler+DOM cost is an instrumentation proxy, NOT first finger-to-paint latency.

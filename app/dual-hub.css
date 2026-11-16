@@ -1114,3 +1114,20 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  line-height:1.5;
  overflow-wrap:anywhere;
 }
+
+/* Action-first OSRS desk: real buy/sell decision follows the identity header.
+ * The same discovery-mode tabs are reparented into the primary instrument,
+ * while search, source status, budget and realised-ledger data are retained
+ * below. DOM order == visual/keyboard order; no CSS order reflow tricks. */
+#gh-panel-osrs .gp-guide-idea > .gh-market-tabs{
+ width:100%;flex:none;margin:0 0 14px;align-self:stretch;
+ border-color:#88744a;border-radius:13px;
+ background:linear-gradient(145deg,#111d17,#253124);
+}
+#gh-panel-osrs .gp-guide-idea > .gh-market-tabs button[aria-pressed="true"]{
+ background:linear-gradient(145deg,#514930,#343e2b);
+ color:#f6d893;border-color:#927b4d;
+ box-shadow:inset 0 1px 0 #ffffff18;
+}
+#gh-panel-osrs .gp-guide-idea + .gp-guide-metrics{margin-top:16px}
+#gh-panel-osrs .gh-market-lab{margin-top:12px}
