@@ -29,10 +29,33 @@ const out=process.env.GE_SESSION_OUTPUT||'artifacts/audit/golden-experience/sess
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(180);
   const settledWarmupNodes=await page.evaluate(()=>document.querySelectorAll('*').length);
+  // The hidden Advanced GW2 "Today" workspace is intentionally lazy. While
+  // OSRS is selected, Focus.renderVisible refuses to paint it, so the first
+  // actual GW2 render can legitimately append exactly 39 children *after*
+  // 25-50 switching cycles. That is initial mounting, not a leak. Explicitly
+  // open GW2 and paint that one workspace before the memory-retention baseline.
+  // This does not eagerly render the hidden screen in production or relax the
+  // subsequent strict +10-node threshold.
+  const beforeFocus=await page.evaluate(()=>({
+   nodes:document.querySelectorAll('*').length,
+   rows:document.querySelector('#focus-week-strip-list')?.children.length??null
+  }));
+  await page.evaluate(()=>GoldenDualHub.switchGame('gw2'));
+  await page.waitForFunction(()=>GoldenDualHub.diagnostics().game==='gw2'&&!GoldenDualHub.diagnostics().transitioning);
+  await page.evaluate(()=>GPFocus.render());
+  await page.waitForFunction(()=>document.querySelector('#focus-week-strip-list')?.children.length===7);
+  const afterFocus=await page.evaluate(()=>({
+   nodes:document.querySelectorAll('*').length,
+   rows:document.querySelector('#focus-week-strip-list')?.children.length??null
+  }));
+  assert.equal(afterFocus.rows,7,'first advanced GW2 Today paint must have all seven history rows');
+  await page.evaluate(()=>GoldenDualHub.switchGame('osrs'));
+  await page.waitForFunction(()=>GoldenDualHub.diagnostics().game==='osrs'&&!GoldenDualHub.diagnostics().transitioning);
   const warmup={earlyCycles:5,settledCycles:30,earlyNodes:earlyWarmupNodes,
-   settledNodes:settledWarmupNodes,delta: settledWarmupNodes-earlyWarmupNodes};
-  if(Math.abs(warmup.delta)>10)
-   console.warn('Pre-measurement initialization DOM shift (not ignored): '+JSON.stringify(warmup));
+   settledNodes:settledWarmupNodes,delta:settledWarmupNodes-earlyWarmupNodes,
+   lazyFocusMount:{before:beforeFocus,after:afterFocus,delta:afterFocus.nodes-beforeFocus.nodes}};
+  if(Math.abs(warmup.delta)>10||warmup.lazyFocusMount.delta>10)
+   console.warn('Recorded one-time pre-measurement initialization DOM shift: '+JSON.stringify(warmup));
   await page.evaluate(()=>localStorage.setItem('ge-synthetic-continuity','untouched'));
   for(let batch=0;batch<=4;batch++){
    if(batch)for(let i=0;i<25;i++)await cycle();
@@ -71,7 +94,7 @@ const out=process.env.GE_SESSION_OUTPUT||'artifacts/audit/golden-experience/sess
   }
   assert.equal(f.calls.timeseries,1,'bounded chart cache survives repeated navigation');
   assert.deepEqual(f.errors,[]);
-  const report={conditions:'Headless desktop Chromium, synthetic two-item market, 5 early +25 settled initialization cycles (recorded separately), then 100 GW2↔OSRS + cached-chart measured cycles, reduced-motion navigation, explicit GC before each sample. Same strict post-warmup DOM growth guard; not hours of Android use or physical memory/power proof.',chromium:await f.browser.version(),warmup,samples,calls:f.calls,errors:f.errors};
+  const report={conditions:'Headless Chromium, synthetic two-item market, 5+25 warmup cycles PLUS explicit first Focus Today paint while GW2 visible (records the lazy 39-node initial mount), then 100 GW2↔OSRS+cached-chart measured cycles with unchanged strict +10 DOM retention guard, explicit GC. Not real Android or long-duration battery/memory proof.',chromium:await f.browser.version(),warmup,samples,calls:f.calls,errors:f.errors};
   fs.mkdirSync(require('node:path').dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report));
  }finally{await f.close();}
