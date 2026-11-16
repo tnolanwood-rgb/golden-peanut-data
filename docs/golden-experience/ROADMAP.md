@@ -10,7 +10,7 @@
 | GE-05 Startup/loading | IN PROGRESS | Existing caches preserved, new stylesheet request removed; mixed startup tails and real lifecycle remain open. |
 | GE-06 Signature details | IN PROGRESS | Visible confirmed-save feedback, no duplicate writes; graceful no-haptics. Remaining confirmation/interaction acceptance open. |
 | GE-07 Performance | IN PROGRESS | Corrected serial browser distributions and 6+6 CPU-sampled cold comparisons in two CI jobs; one intermittent DOM growth failure followed by one passing retention rerun, root unresolved; press/scroll/item/long-session/Android still open. |
-| GE-08 Regression/a11y | IN PROGRESS | Full source/56 Python/129 JS/nine browser programs pass; full principal-state visual/a11y and real Android remain. |
+| GE-08 Regression/a11y | IN PROGRESS | Full source/56 Python/129 JS/ten browser programs including OSRS settings, purchase/offline/recovery state matrix pass at CI 43857515705. Some enlarged-font and failure screenshots reviewed. Complete populated GW2/advanced/accessibility and physical Android remain. |
 | GE-09 Integrated candidate | TODO | Distinct synthetic staging, complete integration/acceptance, incorporate newer main without losing fixes. |
 | GE-10 Final readiness | TODO | Freeze exact complete candidate, asset/dependency preflight/drift detection, tested release/rollback; no blockers allowed. |
 

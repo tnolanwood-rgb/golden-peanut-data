@@ -1,3 +1,7 @@
+## Latest verified state-matrix CI — 16 November 2026
+
+PR CI **43857515705 PASSED** at source `c803e4fa5ba269a6bc248d69820a6389555a970a`: source/Python/JS, all ten browser programs, CPU profiler, accelerated retention and actionlint. The new OSRS acceptance script confirms 40 Next/Previous round trips, members budget, 320px 24px-font settings without overflow, completed purchase realises zero profit until sold, durable three-item holdings after cross-game navigation and Wiki outage, and successful feed recovery. Screenshots in CI artifact 14222210679. A previous failure run 43857095493 was due solely to the new test assuming a specific ranked item name; corrected to compare original selected item rather than replacing ranking logic. Quantitative handler p95 1.7ms is synthetic JS click latency, not physical press. Intermittent 100-cycle DOM growth from earlier run 43854807834 remains open. See VISUAL-QA.md.
+
 ## 16 November GE-07 continuation
 
 Exact PR CI 43854807834: profiling PASSED but overall FAILED at accelerated DOM-growth assertion. After adding failure-only DOM subtree/tag diagnostics, CI 43855536154 PASSED all existing source/Python/JS/nine browser checks, synthetic profiler, 100 cached cycles, actionlint. This is a single passing rerun, not proof intermittent growth is gone. Browser profiling uses synthetic data and CPU instrumentation; physical Android remains BLOCKED. See evidence/osrs-cold-cpu-paired-20261116.json.

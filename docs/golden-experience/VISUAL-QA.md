@@ -1,0 +1,25 @@
+# Golden Experience — acceptance evidence 16 November 2026
+
+## Source identity / protected boundary
+Development branch `feature/golden-experience`; OSRS state matrix test source at `c803e4fa5ba269a6bc248d69820a6389555a970a`, PR #65 (draft). No production deploy, merge, APK/signing/origin/storage, account data or Cloudflare services changed. GitHub `main` still `097f012c1f912411790dd7dce21434a9cdc497d2` at last readback. The website was not independently fetched during this continuation.
+
+## Actual completed CI check
+Full PR CI [43857515705](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43857515705) passed. Includes source/release guard, Python, JS, ten assembled browser programs, 26-case swipe suite, actionlint, paired CPU cold-profile and cached 100-cycle probe. In the immediately prior run [43857095493](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43857095493), all nine original browser programs passed but the newly introduced state matrix failed due to an invalid *test assumption* that the first-ranked market must be named "First research item". Fixed to capture the actual first recommendation and verify Next/Previous round trips; no OSRS market/ranking code changed.
+
+## New synthetic OSRS state coverage
+`tests/golden-experience-states.browser.cjs` runs against local fixture with two item prices, no real keys or market requests. Exercises:
+- 40 Next/Previous cycles; asserts recommendation ID changes every click and exact first recommendation is restored regardless of engine ordering.
+- Applies 250,000,000 GP members budget; settings retain official game currency and account status.
+- Takes full-page 320x740 screenshot with 24px root font and reduced motion; settings remain open and control elements accessible with no horizontal overflow.
+- Records a purchase of 3 items in the actual OSRS ledger; today realised remains zero, owned-item sale entry shows 3 remaining.
+- Switches GW2→OSRS while retaining ledger, blocks the mapping Wiki feed after clearing only the synthetic OSRS market cache, reloads into a visibly unavailable state and confirms ledger survival, then retries to restore verified market data without losing ledger.
+- Captures failure/recovery/purchase/settings screenshots and asserts no page errors. Artifacts available in successful CI run #43857515705: `audit/golden-experience/states/*`.
+
+## Navigation-handler work
+40 synchronous JS `button.click()` callbacks in Chromium: median **0.9 ms**, nearest-rank p95 **1.7 ms**, max **3.2 ms**. This is handler + synchronous render only; NOT contact-to-paint, native device pressure, swipe frame time, Android WebView, battery or a broad performance distribution. Do NOT use to declare the <100ms physical press target met.
+
+## Human screenshot review scope
+Reviewed 390px default GW2/OSRS, doubled-font 320px, OSRS account/settings, after-purchase, API failure and recovery screenshots. Captured small-screen contents fit screen width; lost-price state is explicit and saved holdings stay visible. Long full-page images show sticky game navigation at the captured scroll position; that is a screenshot artefact and was not counted as a verified visual jump. Remaining acceptance: real populated GW2 inventory/orders/delivery, varied OSRS balances/long names, OSRS stats with full real Wiki metadata, account/backup accessibility, all advanced tools, slow/offline variants, hours-long session, physical installed Android and staging.
+
+## Open constraints
+Earlier [43854807834](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43854807834) intermittently failed the 100-cycle DOM-growth guard; next [43855536154](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43855536154) and latest [43857515705](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43857515705) passed. The unexplained intermittent failure remains OPEN and diagnostics are installed for recurrence. Same-origin staging project/release procedure and original Android hardware/signature are not verified. **NOT READY FOR IMPLEMENT**.

@@ -1,5 +1,10 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November: GE-08 OSRS user-state extension (latest)
+
+IN PROGRESS, production protected. New `tests/golden-experience-states.browser.cjs` added to the full `npm run test:browser` script; original nine browser programs preserved (ten total). Exact tested source `c803e4fa5ba269a6bc248d69820a6389555a970a`. PR CI [43857515705](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43857515705) PASS including source/Python/JS/ten browser programs, paired cold profile, 100-cycle retention, actionlint. Screenshots reviewed. New test verifies 40 ranked recommendation round trips, member budget/settings, 320px 24px fonts without overflow, durable recorded purchase with zero realised profit, cross-game continuity, mapping API outage without ledger loss, and verified retry. Synthetic navigation click-handler p95 1.7ms, NOT physical press. Previous test-only rank assumption failure [43857095493](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43857095493) was fixed without trading engine changes. See `VISUAL-QA.md`. GE-07 intermittent DOM growth and native/staging/release gates remain OPEN. No runtime app files changed in this continuation. Latest main GitHub 097f012; PR draft. DO NOT MERGE OR DEPLOY.
+
+
 ## GE-07 continuation — 16 November 2026, protected branch
 **STATUS IN PROGRESS — NO RELEASE AUTHORITY.** Added CPU-sampled paired OSRS cold-start tool `scripts/profile_golden_experience_cold.cjs` and read-only PR CI step; no web/runtime asset, ledger, account, Android, Cloudflare or production configuration change. Both 6+6 paired CPU profiling runs succeeded.
 CI [43854807834](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43854807834) FAILED in the subsequent 100-cycle retention assertion (>10 DOM nodes); diagnostic instrumentation was added, without weakening that gate. Follow-up exact-branch PR CI [43855536154](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43855536154) PASSED full baseline, cold profiler, 100-cycle retention and actionlint. An intermittent node-growth issue is not closed by one green rerun.
