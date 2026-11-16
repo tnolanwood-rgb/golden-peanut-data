@@ -955,3 +955,42 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  background:linear-gradient(145deg,#1c3125,#13231b);
  padding:13px 12px;margin:10px 0 0;
 }
+
+/* GE-02 GW2 research readability: preserve real numbers, rarity and row data.
+ * Static opaque rows only; no listeners, animations or dependencies. */
+#gh-panel-gw2 .focus-market-row{
+ min-height:94px;gap:11px;padding:14px 12px;
+ border-bottom-color:#445947;background:#17291f;
+}
+#gh-panel-gw2 .focus-market-row:hover,
+#gh-panel-gw2 .focus-market-row:focus-visible{background:#263d2f}
+#gh-panel-gw2 .focus-market-title{min-width:0;flex:1 1 0}
+#gh-panel-gw2 .focus-market-title strong{
+ font-size:clamp(14px,.92rem,20px);font-weight:760;line-height:1.35;
+}
+#gh-panel-gw2 .focus-market-title small{
+ font-size:clamp(12px,.78rem,17px);line-height:1.55;
+ margin-top:6px;color:#c5d2c1;
+}
+#gh-panel-gw2 .focus-market-values{
+ min-width:0;max-width:41%;flex:0 1 40%;gap:5px;
+ align-items:flex-end;text-align:right;
+ font-variant-numeric:tabular-nums lining-nums;
+}
+#gh-panel-gw2 .focus-market-values strong{
+ font-size:clamp(13px,.84rem,18px);line-height:1.45;
+ font-weight:780;white-space:normal;overflow-wrap:anywhere;
+}
+#gh-panel-gw2 .focus-market-values small{
+ font-size:clamp(11px,.72rem,16px);line-height:1.5;
+ white-space:normal;overflow-wrap:anywhere;color:#bbcbbc;
+}
+#gh-panel-gw2 .focus-market-values .focus-money{
+ flex-wrap:wrap;justify-content:flex-end;
+}
+#gh-panel-gw2 .focus-chevron{flex:0 0 auto;color:#d1bb86}
+@media(max-width:390px){
+ #gh-panel-gw2 .focus-market-row{gap:9px;padding:13px 9px}
+ #gh-panel-gw2 .focus-market-values{max-width:40%;flex-basis:38%}
+ #gh-panel-gw2 .focus-item-art{flex-shrink:0}
+}

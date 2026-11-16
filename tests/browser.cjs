@@ -473,8 +473,35 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await hero.locator('.gp-guide-coinset').getAttribute('aria-label'),expectedDelivery.label,
   'simple view uses the existing verified gross Delivery Box total, not unverified coin-only balance');
  await page.getByRole('button',{name:'⚙ Details'}).click();
- if(viewport.width===390)
+ if(viewport.width===390){
+  // Rendered research rows must retain a legible hierarchy with 200% text.
+  const rows=page.locator('#gh-panel-gw2 .focus-market-row');
+  assert.ok(await rows.count()>=2,'fixture must contain GW2 research market rows');
+  const sample=await rows.first().evaluate(row=>{
+   const title=row.querySelector('.focus-market-title strong'),
+    detail=row.querySelector('.focus-market-title small'),
+    metric=row.querySelector('.focus-market-values strong');
+   return {title:parseFloat(getComputedStyle(title).fontSize),
+    detail:parseFloat(getComputedStyle(detail).fontSize),
+    metric:parseFloat(getComputedStyle(metric).fontSize),
+    width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
+  });
+  assert.ok(sample.detail>=12&&sample.title>=14&&sample.metric>=13,
+   'GW2 advanced research hierarchy must be legible: '+JSON.stringify(sample));
+  assert.ok(sample.scroll<=sample.width+1,'GW2 populated research must not overflow');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
   await page.screenshot({path:geDir+'/gw2-advanced-390.png',fullPage:true});
+  await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+  const large=await rows.first().evaluate(row=>({
+   detail:parseFloat(getComputedStyle(row.querySelector('.focus-market-title small')).fontSize),
+   width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth
+  }));
+  assert.ok(large.detail>=16,'GW2 advanced labels must scale at 200% text: '+JSON.stringify(large));
+  assert.ok(large.scroll<=large.width+1,'GW2 advanced large text must not overflow');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:geDir+'/gw2-advanced-390-large-font.png',fullPage:true});
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+ }
  assert.equal(expectedDelivery.full,true,'all public sell listings should be valued');
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'coins plus full gross ask value, BEFORE listing and exchange fees');
