@@ -33,16 +33,27 @@ const assert=require('node:assert/strict'),{fixture}=require('./helpers/hub-fixt
   // Synthetic background/resume notifications, distinct from physical Android lifecycle.
   await page.evaluate(()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pageshow'));});
   assert.equal(await page.locator('#gh-budget-input').inputValue(),'123456789');
+  // A WebView document reload represents a fresh opening, unlike the six
+  // live rotations and background/foreground notifications tested above.
   await page.reload();
-  await page.waitForFunction(()=>GoldenOSRSChart?.diagnostics().points>10&&!GoldenDualHub.diagnostics().loading);
+  await page.waitForFunction(()=>GoldenDualHub?.diagnostics().ideas===2&&!GoldenDualHub.diagnostics().loading);
+  assert.notEqual(await page.locator('#gh-item-name').innerText(),selected,
+   'a fresh app launch must not return to the previously selected 2/2 item');
+  assert.equal(await page.locator('#gh-position').innerText(),'Research market 1 of 2');
+  assert.equal(await page.locator('#gh-settings').evaluate(n=>n.open),false);
+  assert.equal(await page.locator('#gh-fill-form').evaluate(n=>n.hidden),true);
+  assert.equal(await page.evaluate(()=>GoldenOSRSChart.snapshot()),null);
+  assert.equal(await page.locator('#gh-panel-osrs .gh-trade-scroll').evaluate(n=>n.scrollTop),0);
+  assert.equal(await page.evaluate(()=>window.scrollY),0);
+  // An editable draft is not a verified trade. Re-enter it intentionally;
+  // confirmed ledger rows and the real account database remain persistent.
+  await page.locator('#gh-next').click();
   assert.equal(await page.locator('#gh-item-name').innerText(),selected);
-  assert.equal(await page.locator('#gh-budget-input').inputValue(),'123456789');
-  assert.equal(await page.locator('#gh-fill-qty').inputValue(),'7');
-  assert.equal(await page.locator('#gh-fill-price').inputValue(),'1999999');
-  assert.equal(await page.locator('#gh-settings').evaluate(n=>n.open),true);
-  assert.ok(await page.locator('#gh-panel-osrs .gh-trade-scroll').evaluate(n=>n.scrollTop>=50),'internal card scroll survives recreation');
-  const restored=await page.evaluate(()=>GoldenOSRSChart.diagnostics());
-  assert.equal(restored.range,chart.range);assert.equal(restored.selected,chart.selected);assert.deepEqual(restored.visible,chart.visible);
+  await page.locator('#gh-add-fill').click();
+  await page.locator('#gh-fill-qty').fill('7');
+  await page.locator('#gh-fill-price').fill('1999999');
+  await page.locator('#gh-show-chart').click();
+  await page.waitForFunction(()=>GoldenOSRSChart.diagnostics().points>10);
   await page.locator('.gh-research-close').click();
   // A refreshed ranking must not silently change the selected item, nor the fill's item binding.
   const prior=await page.locator('#gh-fill-item').inputValue();

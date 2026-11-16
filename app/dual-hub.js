@@ -66,8 +66,10 @@ function loadUser(){
  state.budget=Number.isSafeInteger(n(c.budget))&&n(c.budget)>=0&&n(c.budget)<=9e12?n(c.budget):1e8;
  state.mode=c.mode==="members"?"members":"f2p";
  state.restricted=c.restricted==="clear"?"clear":"unknown";
- state.index=Number.isSafeInteger(n(c.position))&&n(c.position)>=0?n(c.position):0;
- state.selectedId=Number.isSafeInteger(c.selectedId)&&c.selectedId>0?c.selectedId:null;
+ // Position is intentionally session-only: a newly opened app starts at idea 1.
+ // Keep budget, account settings, filters and watchlist, never resurrect card 12/44.
+ state.index=0;
+ state.selectedId=null;
  state.researchMode=c.researchMode==="value"?"value":"liquid";
  state.valueFloor=[100000,1000000,10000000].includes(c.valueFloor)?c.valueFloor:100000;
  state.search=typeof c.search==="string"?c.search.slice(0,80):"";
@@ -78,7 +80,7 @@ function loadUser(){
  catch(error){state.ledgerError='Saved ledger needs recovery: '+safe(error.message);state.records=[];}
 }
 function saveUser(){
- return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,position:state.index,selectedId:state.selectedId,researchMode:state.researchMode,valueFloor:state.valueFloor,search:state.search,watchOnly:state.watchOnly,watchlist:[...state.watchlist]});
+ return store(CFG,{budget:state.budget,mode:state.mode,restricted:state.restricted,researchMode:state.researchMode,valueFloor:state.valueFloor,search:state.search,watchOnly:state.watchOnly,watchlist:[...state.watchlist]});
 }
 function saveLedger(records){
  if(state.ledgerError)return false;
@@ -287,13 +289,7 @@ function install(){
  win.addEventListener("resize",cancelOnResize,{passive:true});
  doc.addEventListener("visibilitychange",()=>{if(doc.hidden){cancelOnResize();saveView();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
  win.addEventListener('pagehide',()=>{cancelOnResize();saveView();saveUser();flushMarketCache()});
- doc.addEventListener('input',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
- doc.addEventListener('change',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
- doc.addEventListener('toggle',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()},true);
- win.addEventListener('scroll',()=>{if(!navigationBusy()){scrollPositions[state.game]=win.scrollY||0;scheduleViewSave()}},{passive:true});
- doc.addEventListener('scroll',event=>{if(event.target?.closest?.('#gh-osrs-root'))scheduleViewSave()},{passive:true,capture:true});
- doc.addEventListener('pointerdown',()=>{pendingDocumentScroll=null},{passive:true,capture:true});
- win.addEventListener('gh-osrs-chart-changed',saveView);
+ win.addEventListener('scroll',()=>{if(!navigationBusy())scrollPositions[state.game]=win.scrollY||0},{passive:true});
  win.addEventListener("pageshow",()=>{if(state.game==="osrs")render()});
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
   game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
@@ -306,7 +302,7 @@ function install(){
   for(const id of ['gh-settings','gh-ledger'])if(get(id).open){get(id).open=false;saveView();return true;}
   switchGame('gw2',true);return true;
  };
- win.setInterval(()=>{if(!doc.hidden&&state.game==='osrs')ensureGameReady('osrs')},60000);
+ win.setInterval(()=>{if(!doc.hidden&&state.game==='osrs'&&!navigationBusy())ensureGameReady('osrs')},60000);
  const requested=new URLSearchParams(win.location.search).get('game');
  const initial=['gw2','osrs'].includes(requested)?requested:read(LAST_GAME,"gw2");
  switchGame(initial==="osrs"?"osrs":"gw2",false);
@@ -402,56 +398,21 @@ function scheduleNavigationWork(){
 }
 const scrollPositions={gw2:0,osrs:0};
 const panelScrollPositions={};
-let viewTimer=0,settingsReady=false,restoringView=false,pendingPanelScroll={},pendingDocumentScroll=null;
+let settingsReady=false;
 const draftIds=['gh-budget-input','gh-mode','gh-restricted','gh-fill-side','gh-fill-qty','gh-fill-price','gh-fill-tax','gh-fill-item'];
-function scheduleViewSave(){win.clearTimeout(viewTimer);viewTimer=win.setTimeout(saveView,150)}
-function saveView(){
- if(restoringView||navigationBusy())return;
- try{
-  const drafts={};for(const id of draftIds){const node=get(id);if(node)drafts[id]=node.value.slice(0,180)}
-  const panelScroll={};for(const id of ['gh-panel-gw2','gh-panel-osrs']){
-   const panel=get(id),scroller=panel?.querySelector('.gh-trade-scroll');
-   // display:none scrollers report zero, even when the browser retains an
-   // internal position. Never replace a hidden game's saved position with it.
-   if(scroller)panelScroll[id]=pendingPanelScroll[id]??(panel.hidden?panelScrollPositions[id]||0:scroller.scrollTop);
-  }
-  store(VIEW,{v:1,at:Date.now(),game:state.game,scroll:{...scrollPositions,[state.game]:pendingDocumentScroll?.game===state.game?pendingDocumentScroll.y:win.scrollY||0},drafts,panelScroll,
-   fillOpen:!!get('gh-fill-form')&&!get('gh-fill-form').hidden,fillItem:state.fillItem||null,
-   details:['gh-settings','gh-ledger'].filter(id=>get(id)?.open),chart:win.GoldenOSRSChart?.snapshot?.()||null});
- }catch{/* Session UI snapshots are optional; never write to GW2 account storage. */}
-}
+// Do not persist per-pixel positions, open charts or unfinished form drafts.
+// Repeated localStorage writes on nested scroll/touch caused main-thread jank.
+// All live same-document navigation still retains its existing DOM and in-memory scrollPositions.
+function scheduleViewSave(){}
+function saveView(){}
 function restoreView(){
- const saved=read(VIEW,null);
- if(saved?.v!==1||Date.now()-saved.at<0||Date.now()-saved.at>86400000)return;
- restoringView=true;
- for(const game of ['gw2','osrs']){const y=saved.scroll?.[game];if(Number.isFinite(y)&&y>=0&&y<1e7)scrollPositions[game]=y;}
- if(saved.game==='osrs')activateOsrs();
- for(const id of draftIds){const node=get(id),value=saved.drafts?.[id];if(node&&typeof value==='string'&&value.length<=180)node.value=value}
- for(const id of ['gh-settings','gh-ledger'])if(get(id))get(id).open=Array.isArray(saved.details)&&saved.details.includes(id);
- const fill=saved.fillItem;
- if(saved.fillOpen&&Number.isSafeInteger(fill?.id)&&fill.id>0&&typeof fill.name==='string'&&fill.name.length<=180){
-  state.fillItem={id:fill.id,name:fill.name};get('gh-fill-form').hidden=false;
- }
- for(const [id,y] of Object.entries(saved.panelScroll||{})){
-  if(!['gh-panel-gw2','gh-panel-osrs'].includes(id))continue;
-  if(Number.isFinite(y)&&y>=0&&y<1e7)pendingPanelScroll[id]=y;
- }
- if(saved.chart&&state.game==='osrs')win.GoldenOSRSChart?.restore?.(saved.chart);
- restoringView=false;
- const game=state.game,y=scrollPositions[game];
- pendingDocumentScroll={game,y};
- win.requestAnimationFrame(()=>{if(state.game===game)win.scrollTo({top:y,behavior:'instant'})});
+ try{win.history.scrollRestoration='manual';}catch{}
+ scrollPositions.gw2=0;scrollPositions.osrs=0;
+ // WebView sometimes carries a scroll offset into a newly created document.
+ // This runs once on installation, not on visibilitychange or game switching.
+ win.scrollTo({top:0,behavior:'instant'});
 }
-function restoreScrolls(){
- for(const [id,y] of Object.entries(pendingPanelScroll)){
-  const node=get(id)?.querySelector('.gh-trade-scroll');
-  if(node&&node.scrollHeight>node.clientHeight){node.scrollTop=y;panelScrollPositions[id]=node.scrollTop;delete pendingPanelScroll[id];}
- }
- if(pendingDocumentScroll&&state.snap&&!state.loading){
-  const saved=pendingDocumentScroll;pendingDocumentScroll=null;
-  win.requestAnimationFrame(()=>{if(state.game===saved.game)win.scrollTo({top:saved.y,behavior:'instant'})});
- }
-}
+function restoreScrolls(){}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function setPanelAccess(game){
  for(const id of ["gw2","osrs"]){
@@ -491,9 +452,9 @@ function createScene(from,next){
  // Apply remembered nested scrolling before the incoming content is painted.
  const scroller=incoming.querySelector('.gh-trade-scroll');
  if(scroller){
-  const y=pendingPanelScroll[incoming.id]??panelScrollPositions[incoming.id]??0;
+  const y=panelScrollPositions[incoming.id]??0;
   scroller.scrollTop=y;
-  if(scroller.scrollHeight>scroller.clientHeight){panelScrollPositions[incoming.id]=scroller.scrollTop;delete pendingPanelScroll[incoming.id];}
+  if(scroller.scrollHeight>scroller.clientHeight)panelScrollPositions[incoming.id]=scroller.scrollTop;
  }
  // Read the destination's natural height once, at gesture acquisition. Both
  // sheets keep the same width/formatting context during and after movement.
@@ -1310,7 +1271,9 @@ function navigate(dir){
  if(!state.ideas.length)return;
  const index=Math.max(0,Math.min(state.ideas.length-1,state.index+dir));
  if(index===state.index)return;
- state.index=index;state.selectedId=state.ideas[index].id;saveUser();state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
+ // Selected card is session-only: Next/Previous must never block on a
+ // redundant synchronous localStorage write of unrelated account preferences.
+ state.index=index;state.selectedId=state.ideas[index].id;state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
  render();
 }
 function toggleFill(){

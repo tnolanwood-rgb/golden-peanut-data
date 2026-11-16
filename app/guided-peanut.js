@@ -66,44 +66,11 @@ function ideas(s){
  ideasCache={parts,rows:out};
  return out;
 }
-function rememberView(){
- if(document.querySelector('#gh-game-stage.gh-stage-moving'))return;
- const s=root.GoldenPeanutClean?.State;
- if(!visit||!s?.account||!document.body.classList.contains('gp-guided-active'))return;
- // Hidden GW2 panels still receive document scroll events from the OSRS desk.
- // Never replace the GW2 resume position with another game's scroll offset.
- if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
- const state=deck?.snapshot?.(s.account);
- if(!state)return;
- visit.save(s.account,state,Math.max(0,window.scrollY||0),
-  root.GPGuidedPriceChart?.snapshot?.()||null);
-}
-function maybeRestoreView(s,rows){
- if(!visit||!s?.account||!rows?.length||restoredAccount===s.account)return;
- restoredAccount=s.account;
- const saved=visit.load(s.account);
- if(!saved||!deck?.restore?.(saved.deck,s.account))return;
- restoredScroll=saved.scroll;
- // Restore only an inspector showing the same numbered idea; a chart from
- // an unrelated account or card must never silently reappear.
- restoredChart=saved.chart?.id===saved.deck.ids[saved.deck.position]?saved.chart:null;
-}
-function restoreVisiblePosition(){
- const generation=restoreGeneration;
- if(restoredScroll!==null){
-  const y=restoredScroll;restoredScroll=null;
-  for(const delay of [130,380,850])window.setTimeout(()=>{
-   if(generation!==restoreGeneration||document.querySelector('#gh-game-stage.gh-stage-moving'))return;
-   if(document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert&&window.scrollY<y-12)
-    window.scrollTo({top:y,behavior:'instant'});
-  },delay);
- }
- if(restoredChart){
-  const chart=restoredChart;restoredChart=null;
-  window.setTimeout(()=>{if(generation===restoreGeneration&&!document.querySelector('#gh-game-stage.gh-stage-moving')&&document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert)
-   root.GPGuidedPriceChart?.restore?.(chart);},260);
- }
-}
+// Fresh documents always begin on the first current recommendation.
+// The deck itself stays alive when switching games or returning from another app;
+// closing/reopening no longer loads a saved 12/44 or schedules scroll corrections.
+function rememberView(){}
+function restoreVisiblePosition(){}
 function setCurrent(id){current=id;}
 function navigate(action){
  root.GPGuidedPriceChart?.close?.();
@@ -114,6 +81,9 @@ function navigate(action){
 }
 function guided(enabled){
  if(!installed)return;
+ // Returning from Advanced/Research must actually release its modal overlay,
+ // otherwise an invisible research layer intercepts every Next/Previous tap.
+ if(enabled&&!$('focus-research')?.hidden)root.GPFocus?.closeResearch?.();
  document.body.classList.toggle('gp-guided-active',enabled);
  $('gp-guided-root').hidden=!enabled;
  $('gp-return-guided').hidden=enabled;
@@ -357,7 +327,6 @@ function render(force=false){
  if(document.querySelector('#gh-game-stage.gh-stage-moving'))return;
  if(!installed||!document.body.classList.contains('gp-guided-active'))return;
  const s=root.GoldenPeanutClean?.State,rows=ideas(s);
- maybeRestoreView(s,rows);
  const view=deck.view(rows,s?.account);
  if(view.id!==current)setCurrent(view.id);
  const host=$('gp-guided-root');if(!host)return;
@@ -440,21 +409,20 @@ function install(){
  const observer=new MutationObserver(()=>schedule());
  for(const node of [source,delivery])if(node)observer.observe(node,{childList:true,subtree:true,characterData:true});
  document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)rememberView();
-  else schedule(); // Avoid needless full card reconstruction on every Android app switch.
+  if(!document.hidden&&document.body.classList.contains('gp-guided-active')&&
+     !document.querySelector('#gh-panel-gw2')?.hidden)schedule();
  });
- window.addEventListener('pagehide',rememberView);
  window.addEventListener('gp-item-metadata-updated',updateActiveArtwork);
  window.addEventListener('gp-account-changed',()=>schedule(true));
- window.addEventListener('scroll',()=>{
-  if(!document.body.classList.contains('gp-guided-active'))return;
-  if(saveScrollTimer)clearTimeout(saveScrollTimer);
-  saveScrollTimer=setTimeout(()=>{saveScrollTimer=0;rememberView();},220);
- },{passive:true});
- window.addEventListener('gp-guided-chart-changed',rememberView);
- for(const event of ['pointerdown','touchstart','wheel'])document.addEventListener(event,()=>{restoreGeneration++;restoredScroll=null;restoredChart=null;},{capture:true,passive:true});
- document.addEventListener('gh-navigation-idle',()=>schedule());
- setInterval(()=>{if(!document.hidden)schedule();},20000);
+ // After a swipe render only the visible game; no hidden 20-second redraw loop.
+ document.addEventListener('gh-navigation-idle',()=>{
+  if(document.body.classList.contains('gp-guided-active')&&
+     !document.querySelector('#gh-panel-gw2')?.hidden)schedule();
+ });
+ setInterval(()=>{
+  if(!document.hidden&&document.body.classList.contains('gp-guided-active')&&
+     !document.querySelector('#gh-panel-gw2')?.hidden)schedule();
+ },20000);
  root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
   remember:rememberView,
   diagnostics:()=>({cardBuilds:renderCount,position:deck.view(ideas(root.GoldenPeanutClean?.State),root.GoldenPeanutClean?.State?.account).position}),
