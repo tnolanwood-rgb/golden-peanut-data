@@ -5,7 +5,6 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {fixture}=require('./helpers/hub-fixture.cjs');
 const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/states';
-const near=(a,b)=>Math.abs(a-b)<=1;
 (async()=>{
  fs.mkdirSync(out,{recursive:true});
  const f=await fixture(),samples=[],states=[];
@@ -15,6 +14,7 @@ const near=(a,b)=>Math.abs(a-b)<=1;
   await page.waitForFunction(()=>GoldenDualHub?.diagnostics().game==='osrs'&&GoldenDualHub.diagnostics().ideas>0);
   assert.equal(await page.locator('#gh-tab-osrs').getAttribute('aria-selected'),'true');
 
+  const startingItem=await page.locator('#gh-item-name').innerText();
   // Synchronous handler+DOM cost is an instrumentation proxy, NOT first finger-to-paint latency.
   const latencies=await page.evaluate(()=>{
    const next=document.querySelector('#gh-next'),prev=document.querySelector('#gh-previous');
@@ -37,9 +37,9 @@ const near=(a,b)=>Math.abs(a-b)<=1;
   samples.push({metric:'osrs-click-handler-plus-sync-render',units:'ms',
    n:ms.length,median:percentile(ms,.5),p95:percentile(ms,.95),max:Math.max(...ms),
    note:'Synthetic JS click handler duration only; not user-perceived tap response or native frame time'});
-  assert.equal(await page.locator('#gh-item-name').innerText(),'First research item');
+  assert.equal(await page.locator('#gh-item-name').innerText(),startingItem,'repeated Next/Previous returns to exact starting item');
   assert.equal(await page.locator('#gh-previous').isDisabled(),true);
-  states.push({state:'repeated-navigation',game:'osrs',iterations:40,ledgerRows:GoldenMarker()});
+  states.push({state:'repeated-navigation',game:'osrs',iterations:40,startingItem,ledgerRows:0});
 
   // Real settings controls and valuable metadata must remain usable in portrait.
   await page.locator('#gh-settings-toggle').click();
@@ -118,5 +118,3 @@ const near=(a,b)=>Math.abs(a-b)<=1;
   console.log('Synthetic click handler timings: '+JSON.stringify(samples));
  }finally{await f.close();}
 })().catch(e=>{console.error(e.stack||e);process.exitCode=1;});
-// Only used as an initial nonprivileged placeholder; no user account or credentials.
-function GoldenMarker(){return 0;}
