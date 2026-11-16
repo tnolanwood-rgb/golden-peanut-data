@@ -571,8 +571,33 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await seven.evaluate(el=>{el.scrollTop=el.scrollHeight;});
  const position=await seven.evaluate(el=>el.scrollTop);
  assert.ok(position>0,'seven-day panel scrolls to older days');
- await page.evaluate(()=>GPFocus.render());
+ // Rendering identical figures must retain the actual item/coin nodes;
+ // changing a verified day must then invalidate the row (not freeze prices).
+ const weekIdentity=await page.evaluate(()=>{
+  window.__geWeekRow=document.querySelector('#focus-week-strip-list .focus-week-strip-row');
+  window.__geWeekCoin=window.__geWeekRow.querySelector('img');
+  GPFocus.render();GPFocus.render();
+  const row=document.querySelector('#focus-week-strip-list .focus-week-strip-row');
+  return {rowStable:row===window.__geWeekRow,coinStable:row.querySelector('img')===window.__geWeekCoin};
+ });
+ assert.equal(weekIdentity.rowStable,true,'unchanged GW2 week rows must not rebuild');
+ assert.equal(weekIdentity.coinStable,true,'unchanged week values retain official currency artwork');
  assert.ok((await seven.evaluate(el=>el.scrollTop))>0,'refresh preserves seven-day scroll position');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  const yesterday=PeanutCore.shiftDay(day,-1);
+  s.summary.days[yesterday].p100=-51000;
+  GPFocus.render();
+ });
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 10c',
+  'recorded historical profit updates immediately on new verified data');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,yesterday=PeanutCore.shiftDay(PeanutCore.ukDay(Date.now()),-1);
+  s.summary.days[yesterday].p100=-50000;
+  GPFocus.render();
+  delete window.__geWeekRow;delete window.__geWeekCoin;
+ });
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 00c');
  await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
  assert.equal(await days.count(),7,'an empty recorded period still renders seven days');
  assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'0g 00s 00c');
