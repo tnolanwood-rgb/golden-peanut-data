@@ -528,6 +528,29 @@ function renderDeliveryBox(){
  }
  list.scrollTop=previousScroll;
 }
+// Retain the visible action card and button between account refreshes.
+// Rebuilding them on each poll throws away focus/press state and forces an
+// unnecessary layout and listener allocation, even when nothing changed.
+// The latest callback is updated separately: a reused button must never
+// execute a stale recommendation after the wallet/opportunity plan changes.
+let currentTodayAction=()=>{};
+function updateTodayAction(target,title,description,action,fn){
+ if(!target)return;
+ currentTodayAction=fn;
+ let copy=target.querySelector('.focus-action-copy'),control=target.querySelector('button.focus-button-primary');
+ if(!copy||!control||!target.querySelector('.focus-action-body')){
+  const body=h('div','focus-action-body');copy=h('div','focus-action-copy');
+  copy.append(h('strong','',title),h('p','focus-muted',description));
+  body.append(h('span','focus-action-symbol','◉'),copy);
+  control=button(action,()=>currentTodayAction?.(),'focus-button focus-button-primary');
+  target.replaceChildren(body,control);
+  return;
+ }
+ const heading=copy.querySelector('strong'),detail=copy.querySelector('p');
+ if(heading&&heading.textContent!==title)heading.textContent=title;
+ if(detail&&detail.textContent!==description)detail.textContent=description;
+ if(control.textContent!==action)control.textContent=action;
+}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  const day=root.PeanutCore?.ukDay?.(Date.now());
  renderDeliveryBox();
@@ -558,7 +581,7 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  if(single)single.hidden=hasFunded&&!needsCollection;
  if(shortcut)shortcut.hidden=hasFunded;
  if(!needsCollection&&snap?.buys?.length){const host=$('focus-capital-note');if(host){host.onclick=()=>goto('orders');host.classList.add('focus-clickable-summary');host.setAttribute('role','button');host.setAttribute('tabindex','0');host.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goto('orders');}};}}
- const main=h('div','focus-action-body');const msg=h('div','focus-action-copy');msg.append(h('strong','',title),h('p','focus-muted',description));main.append(h('span','focus-action-symbol','◉'),msg);target.append(main,button(action,fn,'focus-button focus-button-primary'));const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const count=mem?.markets.filter(x=>x.proven).length||0;labelText('focus-trade-count',count?num(count)+' historical winners screened for current profit':'Find trading opportunities in your saved history');
+ updateTodayAction(target,title,description,action,fn);const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const count=mem?.markets.filter(x=>x.proven).length||0;labelText('focus-trade-count',count?num(count)+' historical winners screened for current profit':'Find trading opportunities in your saved history');
  renderOperatingBook();renderOpportunityHome();renderPortfolioOutlook();
 }
 function renderOperatingBook(){

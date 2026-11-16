@@ -605,6 +605,28 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   };
   GPFocus.goto('today');GPFocus.render();
  });
+ // The focused next-action card must not be recreated by a routine redraw,
+ // but its visible recommendation must update on a real account change.
+ // Keep the original synthetic Delivery Box and restore it after this probe.
+ const nextActionIdentity=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,original=s.snapshot,
+   target=document.querySelector('#focus-next-action');
+  GPFocus.goto('today');GPFocus.render();
+  const before=target.firstElementChild,button=target.querySelector('button'),
+   initial=target.textContent;
+  for(let i=0;i<6;i++)GPFocus.render();
+  const unchanged={card:before===target.firstElementChild,button:button===target.querySelector('button')};
+  const coins=Number(original.delivery?.coins)||0;
+  s.snapshot={...original,delivery:{...original.delivery,coins:coins>0?0:10000}};
+  GPFocus.render();
+  const updated={card:before===target.firstElementChild,button:button===target.querySelector('button'),
+   changedText:target.textContent!==initial};
+  s.snapshot=original;GPFocus.render();
+  return {unchanged,updated};
+ });
+ assert.deepEqual(nextActionIdentity,{unchanged:{card:true,button:true},
+  updated:{card:true,button:true,changedText:true}},
+  'GW2 next action must preserve DOM/focus while reflecting changed account recommendations');
  // GW2 Today: preserve decoded currency images and existing live nodes when
  // repeated refreshes yield identical wallet/week values. Real changes must
  // still invalidate immediately, with exact coin totals and no fake profit.
