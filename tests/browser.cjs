@@ -884,7 +884,7 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   'scrolling the exotic section should reveal further equipment');
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');
  const scrollSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null')?.sectionScrolls);
- assert.ok(Object.keys(scrollSaved||{}).some(k=>k.includes('exotic-armour')),'section scroll memory persisted');
+ assert.equal(scrollSaved,undefined,'scroll positions must not be persisted across fresh app launches');
  // The monitor is an opt-in privacy setting, not a permanent trading card.
  assert.equal(await page.locator('#focus-best-rows .focus-account-watcher').count(),0);
  assert.equal(await page.locator('#focus-watcher-jump').count(),0);
