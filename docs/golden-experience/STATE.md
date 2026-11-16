@@ -1,5 +1,10 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — GE-02 200%-font GW2 status correction (newest)
+**TESTED incremental fix; overall IN PROGRESS, NOT READY FOR IMPLEMENT.**
+Exact source `df9ba69b4a8eb2bf6dc4a81b9ba10225eeddbd1c` passed full [CI 43891226109](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43891226109) including the ten browser programs, rendered mobile/200%-text font and viewport assertions, full source/Python/JS, touch/chart/ledger/backup, synthetic cold/retention and actionlint. Screenshot artifact **14237111960**. Manual review of 390px/200%-font populated GW2 advanced screenshot confirms the previously oversized secondary research notice and action are now bounded/readable without hiding any text; exact GW2 financial figures remain unchanged and large. Changed `app/dual-hub.css` and `tests/browser.cjs`, no engine changes or new assets/dependencies. The earlier note below identifies the *prior* screenshot defect; this latest source corrects it.
+Open: further populated-state pixel polish, hardware WebView touch/FPS/battery/lifecycle, uncommon long financial values, isolated staging and rollback. Main remains `097f012c1f912411790dd7dce21434a9cdc497d2` at preflight; PR #65 draft, not merged or deployed. Do not call READY FOR IMPLEMENT.
+
 ## GE-02 cross-game deep-tool finishing — 16 November 2026 (latest)
 **TESTED incremental implementation, NOT fully VERIFIED and NOT READY FOR IMPLEMENT.**
 Protected branch `feature/golden-experience`, draft PR #65; exact tested source `d76ed0fd43200b4b9ea1eb5d0b4242a16437c740`, production main `097f012c1f912411790dd7dce21434a9cdc497d2` unchanged at preflight. Three successive full green CI runs:

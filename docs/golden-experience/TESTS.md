@@ -3,6 +3,9 @@
 
 ## GE-07 independent repeated-session CI — 16 November 2026
 
+## GE-02 final enlarged-font notice proof — 16 November 2026
+**PASS** [CI 43891226109](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43891226109) on exact source `df9ba69b4a8eb2bf6dc4a81b9ba10225eeddbd1c`, browser screenshots artifact 14237111960. `tests/browser.cjs` now asserts 390px/200%-text GW2 advanced discovery-status computed size 16–21px, associated action 16–20px, verifies the complete notice sentence is not removed, and retains previous evidence labels >=16px and no horizontal document overflow. Manual comparison against prior screenshot 14235738208 confirms a shorter, controlled notice; financial data and trading logic are unchanged. Full source/Python/JavaScript/ten browser programs plus synthetic startup/long-session and actionlint passed. No physical Android timings measured.
+
 ## Latest full automated acceptance — 16 November 2026
 [CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) **PASS** on implementation `8662a06c61721443f419a9a4d4207bf4c5360e23`: complete source validation, Python/JS suites, all 10 browser scripts including new exact 250m budget fragmented-text guard at 320px with 24px root font, normal/200% responsive secondary metric geometry, compact GW2 seven-day card size, history DOM/coin image retention and changed-value rerender, swipe/cancel/inner-scroll, data/backup, cold profile, strict repeated 100-cycle retention and actionlint. Screenshot evidence artifact **14233731101**. Earlier previous full pass 43881637564 on source `90a9e4d`; last commit `8662a06` only made OSRS enlarged-font screenshot start at scroll top. No real-phone/WebView test run, no Cloudflare staging test, no claims of user-observed FPS.
 
