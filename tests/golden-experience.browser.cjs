@@ -49,6 +49,14 @@ const cases=[],contrast=(a,b)=>{
       else assert.ok(Math.abs(layout.secondY-layout.thirdY)<=1,
        game+' regular text should preserve the compact balanced financial cluster: '+JSON.stringify(layout));
      }
+     if(game==='gw2'&&fontScale===1){
+      const seven=await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').nth(3)
+       .evaluate(n=>({height:n.getBoundingClientRect().height,
+        flexDirection:getComputedStyle(n).flexDirection}));
+      assert.equal(seven.flexDirection,'row','seven-day display must use horizontal compact layout');
+      assert.ok(seven.height<165,
+       'single-line seven-day financial readout must not stretch into a giant empty card: '+JSON.stringify(seven));
+     }
     }
     assert.ok(result.minButtonHeight>=44,game+' touch targets must be at least 44px');
     for(const tab of result.tabWidths)assert.ok(tab.scroll<=tab.width+1,'clipped game tab at '+fontScale+'x');
