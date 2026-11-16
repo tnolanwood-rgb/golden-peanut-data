@@ -1119,6 +1119,7 @@ function renderOpportunityHome(){
   return;
  }
  const t=tradeData('wallet'),s=State(),p=t.p;
+ const fresh=t.valid;
  const progress=$('focus-deep-progress'),stop=$('focus-deep-stop'),retry=$('focus-deep-retry');
  if(progress){
   const scanning=!!s?.opportunityDeepBusy,paused=!!s?.opportunityDeepPaused;
@@ -1152,7 +1153,6 @@ function renderOpportunityHome(){
  // A one-second account/status repaint must not discard and recreate dozens
  // of scrollable result rows. Compare cheap identities/epochs before any DOM
  // mutation; a real plan, wallet, quote or metadata change still refreshes.
- const fresh=t.valid;
  const snap=userSnapshot();
  const keys=[s?.account,fresh,p,p?.at,p?.orders,p?.orders?.length,
   p?.marketChoices,p?.marketChoices?.length,p?.publicResearch,p?.publicResearch?.length,
