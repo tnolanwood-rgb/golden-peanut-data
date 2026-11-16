@@ -371,6 +371,36 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    document.querySelector('#focus-delivery-caption')?.textContent.includes('ALL items at lowest sell listings');
  },null,{timeout:15000});
  assert.equal(await delivery.count(),1);
+ // GE-07: refreshes must not replace unchanged Delivery Box/action buttons.
+ // A live DOM replacement can drop the user's press/focus and create stutter.
+ await page.waitForFunction(()=>document.querySelectorAll('#gp57-item-prices .gp57-delivery-row').length===8,null,{timeout:15000});
+ const retainedNodes=await page.evaluate(async()=>{
+  const host=document.querySelector('#gp57-item-prices'),actions=document.querySelector('#gp57-actions');
+  const originalRow=host.firstElementChild,originalAction=actions.firstElementChild;
+  for(let i=0;i<4;i++){
+   GP57Desk.schedule();
+   await new Promise(resolve=>setTimeout(resolve,200));
+  }
+  return {rowRetained:host.firstElementChild===originalRow,
+   actionRetained:actions.firstElementChild===originalAction,
+   rows:host.querySelectorAll('.gp57-delivery-row').length};
+ });
+ assert.equal(retainedNodes.rows,8,'eight synthetic Delivery Box item types remain visible');
+ assert.equal(retainedNodes.rowRetained,true,'unchanged Delivery Box rows must survive refresh repaint');
+ assert.equal(retainedNodes.actionRetained,true,'unchanged suggested actions must survive refresh repaint');
+ // A meaningful metadata change MUST invalidate the row fingerprint.
+ await page.evaluate(()=>{
+  window.__geOldDeliveryName=GoldenPeanutClean.State.meta[301].name;
+  GoldenPeanutClean.State.meta[301].name='Updated fixture item 301';
+  GP57Desk.schedule();
+ });
+ await page.waitForFunction(()=>document.querySelector('#gp57-item-prices')?.textContent.includes('Updated fixture item 301'));
+ await page.evaluate(()=>{
+  GoldenPeanutClean.State.meta[301].name=window.__geOldDeliveryName;
+  delete window.__geOldDeliveryName;
+  GP57Desk.schedule();
+ });
+ await page.waitForFunction(()=>document.querySelector('#gp57-item-prices')?.textContent.includes('Delivery fixture item 301'));
  assert.equal(await items.locator('.focus-delivery-row').count(),8,'show all eight grouped item types');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-quantity').innerText(),'×8','merge duplicate stacks');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-item-art img').count(),1,'show verified GW2 item icon');
