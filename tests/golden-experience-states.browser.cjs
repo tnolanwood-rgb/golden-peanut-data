@@ -95,6 +95,19 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   assert.match(await page.locator('#gh-today').innerText(),/0 gp/);
   assert.equal(await page.locator('#gh-holdings').isVisible(),true,'Owned-item sale entry must persist');
   assert.match(await page.locator('#gh-holdings-list').innerText(),/3 remaining/);
+  // Real 320px/200%-text geometry: an owned item's sale button must not be
+  // squeezed next to the label or rendered outside its record row.
+  const saleLayout=await page.locator('#gh-holdings-list .gh-ledger-row').first().evaluate(row=>{
+    const [label,button]=row.children,a=label.getBoundingClientRect(),
+      b=button.getBoundingClientRect(),r=row.getBoundingClientRect(),root=document.documentElement;
+    return {labelBottom:a.bottom,buttonTop:b.top,buttonRight:b.right,
+      buttonHeight:b.height,rowRight:r.right,width:root.clientWidth,scroll:root.scrollWidth};
+  });
+  assert.ok(saleLayout.buttonTop>=saleLayout.labelBottom-1,
+    'owned-sale action must stack at enlarged font sizes: '+JSON.stringify(saleLayout));
+  assert.ok(saleLayout.buttonHeight>=44,'sale control must remain tappable');
+  assert.ok(saleLayout.buttonRight<=saleLayout.rowRight+1,'sale control may not escape its card');
+  assert.ok(saleLayout.scroll<=saleLayout.width+1,'ledger must not overflow the viewport');
   await page.screenshot({path:path.join(out,'osrs-recorded-purchase-320.png'),fullPage:true});
   states.push({state:'recorded-purchase',ledgerRows:1,qty:3,realised:'0 gp'});
 

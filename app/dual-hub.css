@@ -842,3 +842,96 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
   overflow-wrap:break-word;word-break:normal;
  }
 }
+
+/* GE-02: Premium OSRS research and personal ledgers.
+ * These are static, scoped surfaces; no new assets, scripts, polling or animations.
+ * Observed prices remain distinct from suggested order targets. */
+#gh-panel-osrs .gh-market-lab{
+ border-color:#6c674a;
+ background:linear-gradient(150deg,#293429,#17271e 78%);
+ box-shadow:inset 0 1px 0 #ffffff17,0 3px 10px #0003;
+}
+#gh-panel-osrs .gh-market-tabs{box-shadow:inset 0 2px 6px #0005}
+#gh-panel-osrs .gh-market-controls>label{color:#ecd5a3;line-height:1.5}
+#gh-panel-osrs .gh-market-counts{border-top:1px solid #ffffff17;padding-top:10px}
+#gh-panel-osrs .gh-order-guide{
+ border-color:#697f61;border-radius:16px;
+ background:linear-gradient(150deg,#1c3125,#111f19);
+ box-shadow:inset 0 1px 0 #ffffff13;
+ padding:clamp(12px,3vw,18px);gap:13px;
+}
+#gh-panel-osrs .gh-order-guide>h3{color:#f0d49a;font-size:1rem;line-height:1.35;font-weight:780}
+#gh-panel-osrs .gh-quote-grid,#gh-panel-osrs .gh-quote-targets{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,8.25rem),1fr));gap:9px;
+}
+#gh-panel-osrs .gh-quote-grid>div,#gh-panel-osrs .gh-quote-targets>div{
+ min-width:0;border-color:#536b54;border-radius:12px;
+ background:linear-gradient(155deg,#263a2d,#1b2b22);
+ padding:12px 11px;box-shadow:inset 0 1px 0 #ffffff14;
+}
+#gh-panel-osrs .gh-quote-targets>div{
+ border-color:#897650;background:linear-gradient(145deg,#353926,#242d21);
+}
+#gh-panel-osrs .gh-quote-grid strong,#gh-panel-osrs .gh-quote-targets strong{
+ font-size:clamp(1rem,3.7vw,1.3rem);line-height:1.4;
+ letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+#gh-panel-osrs .gh-quote-targets strong{color:#f1d08e}
+#gh-panel-osrs .gh-item-context{
+ border-color:#4f6754;border-radius:15px;
+ background:linear-gradient(150deg,#13251c,#101d17);
+ padding:16px 15px;box-shadow:inset 0 1px 0 #ffffff10;
+}
+#gh-panel-osrs .gh-item-context>h3{
+ color:#e9ca8c;font-size:1rem;font-weight:780;
+ border-bottom:1px solid #ffffff17;padding-bottom:10px;
+}
+#gh-panel-osrs .gh-item-properties{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr));
+ gap:9px;margin:13px 0;
+}
+#gh-panel-osrs .gh-item-properties>div{
+ min-width:0;border:1px solid #3e5746;border-radius:10px;
+ background:#1b3023;padding:10px 11px;
+}
+#gh-panel-osrs .gh-item-properties dt{letter-spacing:.02em}
+#gh-panel-osrs .gh-item-properties dd{
+ font-weight:750;line-height:1.5;font-variant-numeric:tabular-nums;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger){
+ border-color:#495e4b;border-radius:15px;
+ background:linear-gradient(145deg,#182820,#101c16);
+ box-shadow:inset 0 1px 0 #ffffff0d;overflow:hidden;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary{
+ list-style:none;display:flex;align-items:center;
+ justify-content:space-between;gap:12px;
+ min-width:0;min-height:54px;padding:14px 16px;
+ color:#edcc8b;font-size:.875rem;line-height:1.45;
+ border-bottom:1px solid transparent;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary::-webkit-details-marker{display:none}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary::after{
+ content:"+";display:grid;place-items:center;flex:0 0 27px;
+ width:27px;height:27px;border:1px solid #536953;
+ border-radius:8px;background:#21352a;color:#e9c985;font-size:20px;line-height:1;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)[open]>summary{
+ border-bottom-color:#4b5d49;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)[open]>summary::after{content:"−"}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>.gh-settings-body{padding:14px 16px 18px}
+#gh-panel-osrs .gh-field-grid label{min-width:0;line-height:1.5;gap:7px}
+#gh-panel-osrs .gh-ledger-row{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));
+ gap:8px 12px;align-items:center;padding:13px 0;font-variant-numeric:tabular-nums;
+}
+#gh-panel-osrs .gh-ledger-row>*{min-width:0;overflow-wrap:anywhere}
+#gh-panel-osrs #gh-holdings-list .gh-ledger-row button{
+ min-height:46px;justify-self:stretch;
+}
+@media(max-width:390px){
+ #gh-panel-osrs .gh-order-guide{padding:12px 10px}
+ #gh-panel-osrs .gh-item-context{padding:14px 12px}
+ #gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>.gh-settings-body{padding:12px}
+}
