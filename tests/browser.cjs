@@ -498,6 +498,23 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   }));
   assert.ok(large.detail>=16,'GW2 advanced labels must scale at 200% text: '+JSON.stringify(large));
   assert.ok(large.scroll<=large.width+1,'GW2 advanced large text must not overflow');
+  const extraLongTitle='UnbrokenGuildWarsTwoSyntheticCatalogueItemDesignationABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 · Never a real recommendation';
+  const longRow=await rows.first().evaluate((row,name)=>{
+   const title=row.querySelector('.focus-market-title strong'),old=title.textContent;
+   title.textContent=name;
+   const r=title.getBoundingClientRect(),range=document.createRange();
+   range.selectNodeContents(title);
+   const fragments=[...range.getClientRects()];
+   const geometry={complete:title.textContent===name,width:title.clientWidth,
+    scroll:title.scrollWidth,pageWidth:document.documentElement.clientWidth,
+    pageScroll:document.documentElement.scrollWidth,
+    inside:fragments.length>0&&fragments.every(x=>x.left>=r.left-1&&x.right<=r.right+1)};
+   title.textContent=old;
+   return geometry;
+  },extraLongTitle);
+  assert.ok(longRow.complete&&longRow.inside&&longRow.scroll<=longRow.width+1&&
+   longRow.pageScroll<=longRow.pageWidth+1,
+   'GW2 advanced long metadata must remain fully legible at 200% text: '+JSON.stringify(longRow));
   const secondary=await page.evaluate(()=>{
    const p=document.querySelector('#gh-panel-gw2 #focus-deep-progress');
    const action=document.querySelector('#gh-panel-gw2 #focus-deep-retry');

@@ -80,6 +80,41 @@ const cases=[],contrast=(a,b)=>{
   await page.locator('#gh-apply').click();
   await page.waitForFunction(()=>document.querySelector('#gh-budget-metric')?.textContent.includes('9,000,000,000,000'));
   assert.match(await page.locator('#gh-budget-metric').innerText(),/9,000,000,000,000 gp/);
+  // Deliberately extreme, synthetic metadata label with an unbroken token.
+  // This is a typography stress test, NOT a claim such an item exists in
+  // either game or that its values are live market prices.
+  const stressName='MysteriousUnbrokenCatalogueDesignationWithExceptionalLengthXYZABCDEFGH'+
+   ' · Reforged Relic of the Very Long Name and the Nearly Impossible Suffix';
+  await page.setViewportSize({width:320,height:740});
+  for(const game of ['osrs','gw2']){
+   await page.goto(origin+'/?game='+game);
+   await page.waitForFunction(g=>GoldenDualHub?.diagnostics().game===g&&
+    (g==='gw2'?!!document.querySelector('#gh-panel-gw2 .gp-guide-idea h2'):
+      GoldenDualHub.diagnostics().ideas>0),game);
+   await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+   const stress=await page.evaluate(({game,name})=>{
+    const root=document.querySelector('#gh-panel-'+game);
+    const title=root?.querySelector('.gp-guide-idea h2');
+    const card=title?.closest('.gp-guide-idea');
+    if(!title||!card)return null;
+    title.textContent=name;
+    const rect=title.getBoundingClientRect(),boundary=card.getBoundingClientRect();
+    const range=document.createRange();range.selectNodeContents(title);
+    const fragments=[...range.getClientRects()];
+    return {whole:title.textContent===name,
+     viewport:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,
+     titleWidth:title.clientWidth,titleScroll:title.scrollWidth,
+     font:parseFloat(getComputedStyle(title).fontSize),
+     within:fragments.length>0&&fragments.every(x=>x.left>=rect.left-1&&
+      x.right<=rect.right+1&&x.right<=boundary.right-4)};
+   },{game,name:stressName});
+   assert.ok(stress?.whole&&stress.font>=24,game+' extreme synthetic label remains complete/readable');
+   assert.ok(stress.titleScroll<=stress.titleWidth+1,game+' unbroken item name must wrap inside its heading: '+JSON.stringify(stress));
+   assert.ok(stress.within,game+' text glyphs must remain inside the card: '+JSON.stringify(stress));
+   assert.ok(stress.scroll<=stress.viewport+1,game+' large label must not produce horizontal page overflow');
+   await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+   await page.screenshot({path:out+'/stress-long-name-'+game+'-320-2x.png',fullPage:true});
+  }
   assert.deepEqual(f.errors,[]);
   fs.writeFileSync(out+'/report.json',JSON.stringify({conditions:'Synthetic headless Chromium viewport/font/reduced-motion checks; not physical Android or full accessibility certification',cases,errors:f.errors},null,2)+'\n');
   console.log('PASS Golden Experience: '+cases.length+' viewport/font/game states, contrast, touch targets, monetary overflow, reduced motion and keyboard navigation');

@@ -1075,3 +1075,17 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
 /* Preserve the meaningful semantic status stripe after each state's shorthand
  * border-color; no gradients/animation/opacity dependency for recognition. */
 #gh-panel-osrs #gh-status[data-state]{border-left-color:var(--ge-status)}
+
+
+/* GE-02 extreme-name contract: full item names remain discoverable even at
+ * 200% font size. Do not ellipsize rarity-coloured names or rely on overflow
+ * hidden to hide a long unbroken market label in a premium trade instrument.
+ * Layout only: original metadata/colour/market ranking are preserved. */
+#gh-panel-gw2 .gp-guide-idea h2,
+#gh-panel-osrs .gp-guide-idea h2,
+#gh-panel-osrs #gh-item-name,
+#gh-panel-gw2 .focus-market-title strong,
+#gh-panel-gw2 .focus-market-title small{
+ min-width:0;max-width:100%;overflow-wrap:anywhere;
+ word-break:normal;hyphens:auto;
+}
