@@ -1138,8 +1138,7 @@ function renderOpportunityHome(){
   p?.activeBook,p?.candidateRefresh?.phase,s?.opportunityAt,s?.ledger,s?.ledger?.length,
   snap?.wallet,snap?.walletAt,s?.summary?.weekP100,
   s?.externalMarketStatus?.at,metaRevision,
-  root.GPMarketBoard?.build,root.GPOpportunity?.rankedMarkets,
-  Math.floor(Date.now()/60000)];
+  root.GPMarketBoard?.build,root.GPOpportunity?.rankedMarkets];
  if(host.childElementCount&&homeResearchKeys?.length===keys.length&&
     keys.every((key,i)=>key===homeResearchKeys[i]))return;
  homeResearchKeys=keys;
