@@ -810,7 +810,10 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));
 }
 #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4){
- display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ /* Override the inherited vertical direction: otherwise flex-wrap forms
+  * tall columns and stretches an ordinary 7-day readout into a huge card. */
+ display:flex;flex-direction:row;flex-wrap:wrap;
+ align-items:center;align-content:center;justify-content:space-between;
  gap:3px 11px;
 }
 #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>.gp-guide-label{
