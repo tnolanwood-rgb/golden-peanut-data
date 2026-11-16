@@ -10,7 +10,12 @@ const btn=(text,fn,cls='gp-price-button')=>{const b=node('button',cls,text);b.ty
 const date=d=>new Date(d*DAY).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const coin=v=>{if(!Number.isSafeInteger(v)||v<0)return 'Not available';return Math.floor(v/10000).toLocaleString('en-GB')+'g '+String(Math.floor(v%10000/100)).padStart(2,'0')+'s '+String(v%100).padStart(2,'0')+'c';};
 const shortCoin=v=>v>=10000?(v/10000).toFixed(v>=100000?1:2)+'g':v>=100?(v/100).toFixed(1)+'s':v+'c';
-let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null,pendingRestore=null;
+let dialog,host,body,active=null,version=0,range='week',expanded=false,viewSize=7,offset=0,selected=0,drag=null,pendingRestore=null,renderFrame=0;
+function cancelRender(){if(renderFrame)root.cancelAnimationFrame(renderFrame);renderFrame=0;}
+function requestRender(){
+ if(renderFrame)return;
+ renderFrame=root.requestAnimationFrame(()=>{renderFrame=0;render();});
+}
 function moneyView(value){
  const out=node('span','gp-price-money');
  out.setAttribute('aria-label',coin(value));
@@ -66,7 +71,7 @@ function ensure(){
  if(dialog)return;
  dialog=document.createElement('dialog');dialog.id='gp-price-dialog';dialog.className='gp-price-dialog';
  dialog.setAttribute('aria-label','Guild Wars 2 market price research');
- dialog.addEventListener('close',()=>{active=null;drag=null;pendingRestore=null;fingers.clear();gesture=null;version++;notify();});
+ dialog.addEventListener('close',()=>{active=null;drag=null;pendingRestore=null;fingers.clear();gesture=null;cancelRender();version++;notify();});
  dialog.addEventListener('pointerdown',onPointerDown);
  dialog.addEventListener('pointermove',onPointerMove);
  dialog.addEventListener('pointerup',onPointerEnd);
@@ -77,7 +82,7 @@ function ensure(){
  document.body.append(dialog);
  root.addEventListener?.('gp-item-metadata-updated',updateArtwork);
 }
-function close(){if(dialog?.open)dialog.close();active=null;drag=null;pendingRestore=null;version++;notify();}
+function close(){cancelRender();if(dialog?.open)dialog.close();active=null;drag=null;pendingRestore=null;version++;notify();}
 function availableDays(){return active?.rows?.length?active.rows.at(-1)[0]-active.rows[0][0]+1:0;}
 function visible(){
  if(!active?.rows?.length)return [];
@@ -192,7 +197,7 @@ function onPointerDown(e){
  if(!active?.rows?.length||!e.target?.closest?.('.gp-price-svg'))return;
  fingers.set(e.pointerId,e.clientX);
  try{dialog.setPointerCapture(e.pointerId);}catch{}
- if(fingers.size===1)gesture={x:e.clientX,originalOffset:offset,used:false,pinching:false};
+ if(fingers.size===1)gesture={x:e.clientX,originalOffset:offset,step:Math.max(40,(dialog.querySelector('.gp-price-svg')?.getBoundingClientRect().width||400)/(Math.max(4,viewSize)+1)),used:false,pinching:false};
  if(fingers.size===2)gesture={pinching:true,used:true,originalDistance:fingersApart(),originalSize:viewSize,originalOffset:offset};
 }
 function onPointerMove(e){
@@ -203,22 +208,20 @@ function onPointerMove(e){
    gesture.originalSize*gesture.originalDistance/Math.max(20,fingersApart()))));
   if(desired!==viewSize){
    viewSize=desired;offset=Math.max(0,Math.min(availableDays()-viewSize,gesture.originalOffset));
-   range='custom';render();
+   range='custom';requestRender();
   }
  }else if(fingers.size===1&&!gesture.pinching){
   const distance=e.clientX-gesture.x;
   if(Math.abs(distance)>12)gesture.used=true;
   if(gesture.used){
-   const chart=dialog.querySelector('.gp-price-svg');
-   const step=Math.max(40,(chart?.getBoundingClientRect().width||400)/(Math.max(4,viewSize)+1));
-   const target=Math.max(0,Math.min(availableDays()-viewSize,gesture.originalOffset+Math.round(distance/step)));
-   if(target!==offset){offset=target;render();}
+   const target=Math.max(0,Math.min(availableDays()-viewSize,gesture.originalOffset+Math.round(distance/gesture.step)));
+   if(target!==offset){offset=target;requestRender();}
   }
  }
 }
 function onPointerEnd(e){
  if(!fingers.has(e.pointerId))return;
- const inspect=!!gesture&&!gesture.used&&!gesture.pinching&&fingers.size===1;
+ const inspect=e.type!=='pointercancel'&&!!gesture&&!gesture.used&&!gesture.pinching&&fingers.size===1;
  fingers.delete(e.pointerId);
  if(inspect){
   const index=dayAtClientX(e.clientX);
@@ -230,7 +233,7 @@ function onWheel(e){
  if(!e.ctrlKey||!active?.rows?.length||!e.target?.closest?.('.gp-price-svg'))return;
  e.preventDefault();
  const n=availableDays(),desired=Math.max(MIN_POINTS,Math.min(n,viewSize+(e.deltaY>0?1:-1)));
- if(viewSize!==desired){viewSize=desired;offset=Math.min(offset,n-viewSize);range='custom';render();}
+ if(viewSize!==desired){viewSize=desired;offset=Math.min(offset,n-viewSize);range='custom';requestRender();}
 }
 function rangeSummary(rows){
  const wrap=node('section','gp-price-range-summary');
@@ -265,6 +268,7 @@ function selectedPanel(rows){
  return card;
 }
 function render(){
+ cancelRender();
  if(!dialog?.open||!active)return;
  dialog.classList.toggle('is-expanded',expanded);
  dialog.replaceChildren();
