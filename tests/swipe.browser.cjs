@@ -25,8 +25,21 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
    (!g||GoldenDualHub.diagnostics().game===g),game,{timeout:5000});
   await tick();
  };
- const send=(type,x,y=350,extra=[])=>cdp.send('Input.dispatchTouchEvent',{type,
-  touchPoints:['touchEnd','touchCancel'].includes(type)?[]:[{x,y,id:1},...extra]});
+ // Keep one stable contact plane for each manually dispatched touch stream.
+ // The old implicit y=350 could become a price/search input after the larger
+ // fascia, where input protection MUST block a game swipe.
+ let touchStreamY=350;
+ const send=async(type,x,y=null,extra=[])=>{
+  if(type==='touchStart'){
+   if(y===null){
+    const game=(await state()).game;
+    const eligible=await contactY(game,x);
+    if(Number.isFinite(eligible))touchStreamY=eligible;
+   }else touchStreamY=y;
+  }else if(y!==null)touchStreamY=y;
+  return cdp.send('Input.dispatchTouchEvent',{type,
+   touchPoints:['touchEnd','touchCancel'].includes(type)?[]:[{x,y:touchStreamY,id:1},...extra]});
+ };
  const state=()=>page.evaluate(()=>GoldenDualHub.diagnostics());
  const switchTo=async game=>{await page.evaluate(g=>GoldenDualHub.switchGame(g),game);await idle(game);await page.waitForTimeout(80);};
  const scroll=async y=>{await page.evaluate(y=>scrollTo({top:y,behavior:'instant'}),y);await tick();};
