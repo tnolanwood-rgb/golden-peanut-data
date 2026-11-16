@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November — OSRS primary action now above fold
+Exact verified `e654b1d496e8582c9176a2cd5db29506842e5d4f` [CI 43944884562 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884562), Android preview [43944884652 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884652). GE-02 first-screen OSRS action-first geometry TESTED: main item name and full buy instruction inside initial 390×844 screen, mode tabs integrated in card, all earlier financial/research sections retained below. GE-03 swipe interaction regressions TESTED with actual hit-test and native vertical-scroll assertion, but real Android hardware open. GE-09/GE-10 still TODO; production frozen.
+
+
 ## 16 November — separate Android build provenance proven (native hardware still OPEN)
 Source `bf84c76e5d4ad68c99cd3fafa3c1235777a4e9e8`: Android [CI 43941763186 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43941763186), **37 source-matched bundled files**, debug signing and distinct preview package; web [CI 43941763243 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43941763243). Missing static frontend assets now fail closed rather than mixing production/preview versions. GE-08 native *packaging* TESTED; physical Android interactions/long sessions and isolated staging NOT VERIFIED. GE-09/10 remain TODO. No production change. Full details ANDROID-PREVIEW-BUILD.md.
 

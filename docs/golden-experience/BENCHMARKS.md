@@ -1,5 +1,9 @@
 # Performance evidence
 
+## 16 November — OSRS action-first geometry; zero performance extrapolation
+Source `e654b1d496e8582c9176a2cd5db29506842e5d4f` [full CI 43944884562 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884562). Existing OSRS nodes were reparented **once** before event listeners attach; no new endpoint, recurring timer, chart renderer, financial calculation or gesture subscription. Verified 390×844 card top 325.53px, item title top 576.31px and entire first buy instruction bottom 816.86px. Full desktop Chromium swipe, startup and 400 retained-session tests green, native preview build green. This is usability/visual-hierarchy evidence, **not** measured improvement to real Android FPS, start latency, RAM, battery or touch-to-paint. Hardware acceptance remains OPEN.
+
+
 ## GW2 conditional financial-panel DOM retention — 16 November 2026
 Code `4e9574fa0d226ca539db90701b17b2d1d6af30af` [CI 43935010936 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43935010936). Repeated identical GW2 Today refreshes no longer replace the active-book rows, review control or trading-outlook DOM. Signatures cover visible market name/volume/conditional gold, committed capital/review amount, overnight scenario, wallet allocation, backtest metrics and recent ledger summary; real changed values invalidate. Lower DOM/element allocation expected. **No hardware FPS, power, startup or touch-to-paint delta claimed**. Existing 400 synthetic retained-session checks pass.
 

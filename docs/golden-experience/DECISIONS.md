@@ -1,5 +1,9 @@
 # Decisions
 
+## 16 November — prioritise the trade on the OSRS opening screen
+The prior screen spent its first 844 phone pixels on identity, budget, realised totals, status and research form; the first market title/buy action was below the fold. Moved the **existing** trade card immediately beneath the game fascia and reparented **existing** liquid/high-value mode selectors to the top of that card before JS listeners attach. Retain manual budget, realised accounting, feed status, search/watched filters and owned-sale/backup controls below the idea, preserving one clear move first. Use DOM order for keyboard as well as visual order; avoid CSS `order` tricks, duplicated buttons or rewriting trading math. Keep saved game scroll and fixed internal trade navigation. Test first-screen title and full buy price; base source `e654b1d496e8582c9176a2cd5db29506842e5d4f` green CI 43944884562. Do not claim native smoothness from desktop emulation or change production before “Implement”.
+
+
 ## 16 November 2026 — keep exact buy action visible with Android type scaling
 Mobile accessible text expands the OSRS card itself rather than truncating, ellipsizing, hiding secondary market evidence, shrinking real money or moving Next/Previous controls unpredictably. CSS uses a root-font-responsive 570px minimum / 1040px maximum `clamp(570px,max(74dvh,35rem),1040px)` only on narrow OSRS desks; default 320px/16px card remains 570px, 24px 840px, 32px 1040px. Critical 200%-text research evidence has 22px type and observed value-tier caption 20px. Real screenshot review discovered partial BUY price even though the first instruction started within the pane; strengthen test to assert the **entire** buy line fits, not just its top edge. No JS, dependency, touch, fee/ledger/API or native change; not proof of Android physical performance. Source `9e6bf9e` CI 43913882902 green. Do not flatten genuine long names or currency values.
 
