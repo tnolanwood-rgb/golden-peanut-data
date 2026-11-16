@@ -119,10 +119,12 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
  };
  try{
   if(process.env.SWIPE_ASSET_REF){
-   for(const file of ['dual-hub.js','dual-hub.css','guided-peanut.js']){
+   for(const file of ['dual-hub.js','dual-hub.css','guided-peanut.js','focus-edition.js']){
     const body=execFileSync('git',['show',process.env.SWIPE_ASSET_REF+':app/'+file]);
     await page.route('**/'+file+'*',r=>r.fulfill({body,contentType:file.endsWith('css')?'text/css':'text/javascript'}));
    }
+   const html=execFileSync('git',['show',process.env.SWIPE_ASSET_REF+':app/index.html']);
+   await page.route(url=>url.origin===origin&&['/','/index.html'].includes(url.pathname),r=>r.fulfill({body:html,contentType:'text/html'}));
   }
   await page.addInitScript(()=>{
    document.addEventListener('pointerdown',event=>{if(event.pointerType==='touch')window.__touchPointer=event.pointerId;},{capture:true});
@@ -134,7 +136,20 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
    };
   });
   if(report.cpuRate>1)await cdp.send('Emulation.setCPUThrottlingRate',{rate:report.cpuRate});
-  await page.goto(origin+'/?game=osrs');
+  // A slow GW2 script used to initialize after OSRS was visible and reset
+  // its shared scroll. Keep both desks behind the boot screen until ready.
+  let releaseGuided;
+  await page.route('**/guided-peanut.js*',async route=>{
+   await new Promise(resolve=>releaseGuided=resolve);await route.continue();
+  });
+  const boot=page.goto(origin+'/?game=osrs');
+  while(!releaseGuided)await page.waitForTimeout(10);
+  await page.waitForTimeout(100);
+  if(!process.env.SWIPE_ASSET_REF){
+   assert.equal(await page.evaluate(()=>document.body.classList.contains('gp-ui-booting')),true,'delayed GW2 setup must remain behind the boot screen');
+   assert.equal(await page.evaluate(()=>!!window.GoldenDualHub),false,'both desks initialize before accepting gestures');
+  }
+  releaseGuided();await boot;await page.unroute('**/guided-peanut.js*');
   await page.waitForFunction(()=>GoldenDualHub?.diagnostics().ideas===2&&!GoldenDualHub.diagnostics().loading);
   await page.waitForFunction(()=>GoldenPeanutClean?.State?.db?.db&&window.GPGuided);
   // Stable, nonempty GW2 selected-item state, independent of external services.
