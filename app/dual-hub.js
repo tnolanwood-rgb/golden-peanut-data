@@ -1271,7 +1271,9 @@ function navigate(dir){
  if(!state.ideas.length)return;
  const index=Math.max(0,Math.min(state.ideas.length-1,state.index+dir));
  if(index===state.index)return;
- state.index=index;state.selectedId=state.ideas[index].id;saveUser();state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
+ // Selected card is session-only: Next/Previous must never block on a
+ // redundant synchronous localStorage write of unrelated account preferences.
+ state.index=index;state.selectedId=state.ideas[index].id;state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
  render();
 }
 function toggleFill(){
