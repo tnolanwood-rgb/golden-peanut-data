@@ -1,5 +1,9 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## Additional fail-closed source identity preflight (new CI pending)
+The helper now checks that the local checkout's true Git HEAD/tree equal the supplied candidate identifiers and that tracked/untracked source is clean. Candidate lock JSON must stay within ignored artifacts/; it never enters app/. The verified predecessor 10a32e1 passed CI 43959179383 and separate Android 43959179409. The new hardening is not yet exact-head CI-verified. Checking local Git does not check remote main; final release workflow MUST independently read/compare remote production and staging identities and verify a rollback. Do not deploy.
+
+
 ## Source-lock helper exists but release remains BLOCKED
 Use scripts/golden_experience_candidate.py prepare and verify with trusted actual source commit, source tree and main SHA to prepare an offline exact app-file and dependency lock. The utility never deploys, checks remote identity, accesses accounts or proves staging. A future controlled release must collect remote identities, verify distinct synthetic staging, original data/native compatibility and rollback before owner signoff. Do not ship or mistake this utility for the complete release procedure.
 

@@ -1,5 +1,9 @@
 
 
+## Candidate manifest tests — verified prior SHA, new test pending
+Exact 10a32e1208e42a263aad7d640cd6d4982d5ef765 passed [full CI 43959179383](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179383) plus [Android CI 43959179409](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179409). Seven new offline guard tests executed as part of full Python suite. The follow-on eighth test creates a genuine temporary Git checkout, exercises prepare/verify CLI with its actual HEAD/tree and rejects uncommitted modifications; **new exact CI pending**. No real-device/staging/live claim.
+
+
 ## Offline Golden Experience source lock — 16 November (CI pending)
 Seven new Python unittest cases exercise stable exact hashes, deploy-only _headers, edited/added/deleted assets, dependency and origin changes, commit/tree/main drift, symlinks, required files and manifest output confinement. They are unverified until the remote full PR CI passes. No physical Android or Cloudflare tests were run.
 

@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -88,7 +89,7 @@ class CandidateSafetyTests(unittest.TestCase):
 
     def test_local_manifest_cannot_be_added_to_deployed_assets(self):
         a = self.lock()
-        with self.assertRaisesRegex(mod.CandidateError, "deployed"):
+        with self.assertRaisesRegex(mod.CandidateError, "artifacts"):
             mod.save(self.root, self.root / "app/lock.json", a)
         path = self.root / "artifacts/ge/candidate.json"
         mod.save(self.root, path, a)
@@ -104,6 +105,34 @@ class CandidateSafetyTests(unittest.TestCase):
         (self.root / "app/dual-hub.js").unlink()
         with self.assertRaises(mod.CandidateError):
             self.lock()
+
+    def test_real_git_checkout_and_dirty_tree_gate(self):
+        def git(*args):
+            return subprocess.check_output(["git", "-C", str(self.root), *args],
+                                           text=True).strip()
+        git("init", "-q")
+        git("config", "user.name", "Golden Experience CI")
+        git("config", "user.email", "ge-ci@example.invalid")
+        (self.root / ".gitignore").write_text("artifacts/\n")
+        git("add", ".")
+        git("commit", "-q", "-m", "synthetic candidate")
+        head = git("rev-parse", "HEAD")
+        tree = git("rev-parse", "HEAD^{tree}")
+        mod.check_local_git(self.root, head, tree)
+        manifest = self.root / "artifacts/ge/lock.json"
+        self.assertEqual(mod.main(["--root", str(self.root), "prepare",
+                                    "--commit", head, "--tree", tree,
+                                    "--baseline-main", MAIN,
+                                    "--manifest", str(manifest)]), 0)
+        self.assertEqual(mod.main(["--root", str(self.root), "verify",
+                                    "--commit", head, "--tree", tree,
+                                    "--observed-main", MAIN,
+                                    "--manifest", str(manifest)]), 0)
+        with self.assertRaisesRegex(mod.CandidateError, "HEAD"):
+            mod.check_local_git(self.root, "f" * 40, tree)
+        (self.root / "app/dual-hub.js").write_text("dirty")
+        with self.assertRaisesRegex(mod.CandidateError, "uncommitted"):
+            mod.check_local_git(self.root, head, tree)
 
 
 if __name__ == "__main__":

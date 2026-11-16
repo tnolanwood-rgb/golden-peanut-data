@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November — source integrity guard TESTED; working-tree hardening in progress
+GE-09/10 preparatory lock at exact 10a32e1 passed full browser CI 43959179383 and Android preview 43959179409. Follow-on Git checkout identity/clean-tree verification and eighth test pending CI. Entire staging, frozen candidate, physical WebView verification and rollback rehearsals remain TODO. No release.
+
+
 ## 16 November — GE-09/10 candidate identity safeguard IN PROGRESS
 Implemented deterministic local manifest of all app assets, _headers, dependency lock, candidate commit/tree and observed main ancestor, plus seven fail-closed tests. Await full CI; isolated staging, native hardware QA, frozen candidate, production drift readback and rollback rehearsal remain TODO. Production freeze remains in force.
 

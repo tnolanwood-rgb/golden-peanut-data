@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,11 +79,31 @@ def verify(root, lock, actual_commit, actual_tree, actual_main):
     return len(lock["files"])
 
 
+def check_local_git(root, expected_commit, expected_tree):
+    """Reject fabricated IDs and uncommitted work before preparing a release."""
+    root = Path(root).resolve()
+    def command(*parts):
+        proc = subprocess.run(["git", "-C", str(root), *parts],
+                              capture_output=True, text=True, check=False)
+        if proc.returncode:
+            raise CandidateError("Cannot establish clean local Git identity")
+        return proc.stdout.strip()
+    current_commit = command("rev-parse", "--verify", "HEAD")
+    current_tree = command("rev-parse", "--verify", "HEAD^{tree}")
+    if current_commit != sha(expected_commit, "expected_commit"):
+        raise CandidateError("Checkout HEAD does not match proposed candidate commit")
+    if current_tree != sha(expected_tree, "expected_tree"):
+        raise CandidateError("Checkout Git tree does not match proposed source tree")
+    if command("status", "--porcelain", "--untracked-files=normal"):
+        raise CandidateError("Checkout has uncommitted or untracked source changes")
+    return current_commit, current_tree
+
+
 def save(root, path, manifest):
     root = Path(root).resolve()
     target = Path(path).resolve()
-    if target.is_relative_to(root / "app"):
-        raise CandidateError("Refusing to write a manifest into deployed app/")
+    if not target.is_relative_to(root / "artifacts"):
+        raise CandidateError("Manifest must stay under artifacts/, outside deployed app/")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n",
                       encoding="utf-8")
@@ -104,6 +125,7 @@ def main(argv=None):
     check.add_argument("--manifest", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        check_local_git(args.root, args.commit, args.tree)
         if args.operation == "prepare":
             lock = snapshot(args.root, args.commit, args.tree, args.baseline_main)
             save(args.root, args.manifest, lock)

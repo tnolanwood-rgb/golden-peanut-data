@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Newest source-integrity checkpoint — CI pending for Git checkout gate
+Previous exact implementation 10a32e1 passed full CI 43959179383 and Android preview CI 43959179409. Follow-on changes to scripts/golden_experience_candidate.py add Git rev-parse of actual HEAD/tree and a clean-checkout requirement, plus artifact-only manifest output and an additional temporary real Git repository test. First verify current branch HEAD and exact PR #65 CI, repair if needed, update evidence. Still separate frontend integrity tooling, NOT isolated staging, native runtime acceptance, release readiness or permission to deploy. Production main last verified 097f012c1f912411790dd7dce21434a9cdc497d2.
+
+
 ## Current work — offline candidate preflight (CI PENDING)
 Verify latest draft PR #65 branch HEAD and CI for scripts/golden_experience_candidate.py and tests/test_golden_experience_candidate.py. Fix any failures and record exact SHA/run. Script supports offline prepare and verify using trusted Git commit/tree/main inputs; it does not independently read GitHub, Cloudflare or the Android phone. Continue deep visual QA, actual Android, isolated synthetic staging and rollback. Never deploy or merge before READY + explicit Implement.
 

@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — offline candidate-lock green + local Git identity hardening
+**Last fully verified exact source** 10a32e1208e42a263aad7d640cd6d4982d5ef765: [full regression CI 43959179383 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179383), [Android preview build 43959179409 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43959179409). Offline candidate lock and seven synthetic tests are TESTED. New follow-on implementation now also verifies checkout HEAD/tree and a clean Git working tree, and confines candidate metadata to artifacts/; eight-case gate awaits new exact CI. The tool has no deploy function. No main/Cloudflare/account/installed-app change. Staging, native runtime and rollback still OPEN; **NOT READY FOR IMPLEMENT**.
+
+
 ## 16 November 2026 — candidate-lock preflight code (CI PENDING)
 Introduced a deterministic offline source/asset/lockfile fingerprint and main-drift verification script with seven synthetic regression tests. It includes app/_headers as deploy configuration. This is **GE-09/10 preparatory implementation only**, not staging, release, mobile performance evidence or readiness. Full PR CI still pending. Main/Cloudflare/installed APK must remain untouched.
 
