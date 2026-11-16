@@ -3916,8 +3916,21 @@ const coinNode=n=>root.GoldenPeanutClean?.coinNode?.(n)||document.createTextNode
 const stamp=when=>{const time=Date.parse(when||'');return Number.isFinite(time)?new Date(time).toLocaleString('en-GB',{timeZone:'Europe/London',dateStyle:'short',timeStyle:'short'}):'not checked';};
 const maxQuoteAgeMs=25*60*1000;
 let currentAccount='',targetOverrides={},priceMap=new Map(),quoteUpdatedAt=0,fetching=false,loadedCache='',targetLoading=false,initComplete=false,displaySignature='',lastActionSignature='',actionsCache=[],computeTimer=null,paintTimer=null,lastError='',refreshBusy=false,lastRequestedIds='';
-function money(id,v){const node=$(id);if(node)node.replaceChildren(coinNode(v));}
-function label(id,v){const node=$(id);if(node)node.textContent=v;}
+function money(id,v){
+ const node=$(id);if(!node)return;
+ // Preserve official denomination artwork and numeric alignment on unchanged
+ // snapshots. If the coin-art renderer becomes available after boot, upgrade
+ // the placeholder rather than freezing a plain-text fallback.
+ const signature=(root.GoldenPeanutClean?.coinNode?'art':'text')+'|'+
+  (Number.isFinite(v)?'n:'+String(v):'missing:'+String(v));
+ if(node.dataset.gp57MoneySignature===signature&&node.hasChildNodes())return;
+ node.replaceChildren(coinNode(v));node.dataset.gp57MoneySignature=signature;
+}
+function label(id,v){
+ const node=$(id);if(!node)return;
+ const text=v===null||v===undefined?'':String(v);
+ if(node.textContent!==text)node.textContent=text;
+}
 function groupItems(delivery){const out=new Map();for(const d of delivery?.items||[])if(safeInt(d?.id,1)&&safeInt(d?.count,0)&&d.count)out.set(d.id,(out.get(d.id)||0)+d.count);return out;}
 function ownSells(snapshot){const byId=new Map();const timestamp=Date.parse(snapshot?.sellsAt||snapshot?.ordersAt||'');const recent=Number.isFinite(timestamp)&&Date.now()-timestamp<2*3600000&&timestamp<=Date.now();if(!recent||snapshot?.sellsVerified===false)return byId;
  for(const o of snapshot?.sells||[])if(safeInt(o?.item,1)&&safeInt(o?.price,1)&&safeInt(o?.q,1)){const old=byId.get(o.item);if(!old||o.price<old)byId.set(o.item,o.price);}
