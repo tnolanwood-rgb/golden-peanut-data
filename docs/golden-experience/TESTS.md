@@ -1,3 +1,16 @@
+## Refinement batch — actual results
+
+Implementation c775c4ec3f0efb22cf95455941156190579e635a: source/Python/129 JS and all NINE browser programs passed
+locally. Tests now cover exact adaptive-axis point selection, >=12px rendered axes,
+stable loading-modal geometry, cached reopen, visible saved feedback and existing
+double-submit guard. 100 accelerated synthetic repeat cycles passed DOM/network/
+continuity assertions; heap increased ~5%, so hours-long/Android leak proof remains
+open. Screenshot review covered both main desks, doubled-font narrow OSRS, small
+OSRS/GW2 chart and advanced GW2 entry. Principal populated-account/form/error/tool
+state acceptance and physical-device checks are incomplete. Remote CI at prior
+0307e68 passed run 43850320880; latest head pending. See evidence/refinement-*.json
+and session-100-cycles.json. Never substitute previous-head CI for current-head CI.
+
 ## Chart frame batch
 
 Implementation da58fbb0f8f133c92a776445eaf197cf607df133: source/Python/JS and all EIGHT browser programs passed.

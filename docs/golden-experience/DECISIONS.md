@@ -21,3 +21,11 @@
   synchronous rebuilds. Coalesce render (not state) to requestAnimationFrame and
   cache contact geometry. No chart dependency/downsampling/inertia added without
   need; exact data and zoom endpoints remain. Cancel is not point selection.
+
+- Refinement: use phone-sized logical SVG widths, preserving exact data and mapping
+  touch inspection through actual viewBox geometry. Keep modal bounds stable during
+  loading, rather than showing fabricated prices or animated shimmers.
+- Manual-fill success status now lives outside the hidden form and is set only
+  after durable validated ledger save. Preserve accounting and duplicate guard.
+- Correct startup benchmark transport symmetry before acceptance; retain flawed
+  exploratory samples with explicit limitations instead of disguising them.

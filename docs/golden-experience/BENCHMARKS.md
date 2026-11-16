@@ -42,3 +42,17 @@ After OSRS 1/0.6ms, GW2 1/0.9ms; independent full-suite replay 1/0.8ms and
 work-count assertion and exact resulting windows are the regression contract.
 See evidence/chart-before.json, chart-after.json, chart-checks.json. Data accuracy,
 feeds, history windows and point inspection are preserved. No physical FPS claim.
+
+## Corrected comparison and repeated-session probe
+
+Exploratory startup reports are superseded for acceptance: historical assets were
+served via interception while initial current assets used local HTTP. Corrected
+benchmark_golden_experience.cjs serves both identically and records all static text
+hashes, conditions, raw samples and nearest-rank quantiles. Final serial run pending.
+HTTP caching is disabled by routing; warm means retained APPLICATION data cache only.
+
+Repeated-session probe: five warmups +100 reduced-motion GW2↔OSRS/cached-chart cycles,
+Chromium156.0.8078.79. DOM961 at all five samples; each API fixture called once; no
+ledger mutation, lost sentinel or page error. Explicit-GC heap 2,865,140→3,007,264
+bytes (+142,124; ~5%). This short accelerated test cannot exclude long-lived leaks
+or prove native/battery/CPU behavior. See evidence/session-100-cycles.json.

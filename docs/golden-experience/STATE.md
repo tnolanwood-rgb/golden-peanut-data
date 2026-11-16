@@ -1,10 +1,40 @@
+# Latest refinement checkpoint
+
+Implementation: c775c4ec3f0efb22cf95455941156190579e635a. STATUS: TESTED locally, not release-ready.
+All source/Python/JS and NINE browser programs passed. Chart axes now use adaptive
+logical widths with >=12px labels at tested phone sizes and exact tap mapping;
+loading preserves modal geometry; cached OSRS reopen performs no extra request.
+Confirmed manual fill feedback remains visible after form close, with duplicate
+submission guard retained and purchase wording never implying realised proceeds.
+Shared tokens now cover advanced-view variables/charts. No feed or accounting change.
+Reviewed 320px OSRS, 390px GW2 chart and 390px advanced screenshots.
+
+100 synthetic reduced-motion GW2↔OSRS + cached-chart cycles after five warmups:
+961 DOM nodes at every sample; one mapping/latest/5m/1h/timeseries request each;
+no errors, continuity marker retained, no ledger writes. Explicit-GC JS heap rose
+2,865,140→3,007,264 bytes (+142,124; ~5%); no leak-free or native long-session claim.
+
+PR #65 draft exists. Exact-head CI for prior checkpoint 0307e68 passed in run
+43850320880. Current implementation CI pending. Added read-only Cloudflare inspection
+metadata (source/trigger/binding presence only) on this branch; not yet run. It does
+not change production settings or deploy. Next: serial corrected benchmark comparison,
+read-only isolation inspection, final local/CI evidence and further acceptance work.
+The previous exploratory benchmark used different static response paths between
+revisions; it is superseded for acceptance by identical interception in the corrected
+harness. No causal speed conclusion is supported by those old samples.
+
+Production freeze remains in force; main/live last verified at 097f012. No merge,
+deploy, APK, storage, private data, Worker/D1 or collector change. Candidate incomplete.
+
+---
+
 # Golden Experience — authoritative checkpoint
 
 Date: 2026-11-16. Overall: IN PROGRESS. Candidate incomplete; release blocked.
 Branch: `feature/golden-experience`. Base main/live production:
 `097f012c1f912411790dd7dce21434a9cdc497d2`, unchanged at latest readback.
 Tested chart implementation: `da58fbb0f8f133c92a776445eaf197cf607df133`. Design implementation: `0288a66`.
-Checkpoint: `git log -1 -- docs/golden-experience/STATE.md`. PR: none yet.
+Checkpoint: `git log -1 -- docs/golden-experience/STATE.md`. PR: https://github.com/tnolanwood-rgb/golden-peanut-data/pull/65 (DRAFT, do not merge).
 No production authorization. Historical audit release instructions do not apply.
 
 GE-00: discovery/isolation and complete original baseline TESTED; real Android
