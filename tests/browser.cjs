@@ -605,6 +605,25 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   };
   GPFocus.goto('today');GPFocus.render();
  });
+ // GW2 operating book should be a stable financial panel between refreshes.
+ // A real in-place change to conditional market profit must still invalidate it.
+ const bookStability=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,original=s.opportunityPlan;
+  s.opportunityPlan={...original,ok:true,activeBook:{...original?.activeBook,
+   eligible:1,entries:[{id:301,scenarioUnits:3,conditionalWeek:15000}]},
+   capitalReview:{...original?.capitalReview,committed:250000,releasedSelective:10000}};
+  try{
+   GPFocus.goto('today');GPFocus.render();
+   const host=document.querySelector('#focus-operating-book');
+   const first=host.firstElementChild,btn=host.querySelector('button'),before=host.textContent;
+   for(let i=0;i<6;i++)GPFocus.render();
+   const stable={row:host.firstElementChild===first,button:host.querySelector('button')===btn};
+   s.opportunityPlan.activeBook.entries[0].conditionalWeek=30000;GPFocus.render();
+   return {stable,updated:host.textContent!==before,replaced:host.firstElementChild!==first};
+  }finally{s.opportunityPlan=original;GPFocus.render();}
+ });
+ assert.deepEqual(bookStability,{stable:{row:true,button:true},updated:true,replaced:true},
+  'GW2 operating book must preserve unchanged DOM and refresh on scenario changes');
  // The focused next-action card must not be recreated by a routine redraw,
  // but its visible recommendation must update on a real account change.
  // Keep the original synthetic Delivery Box and restore it after this probe.

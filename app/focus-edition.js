@@ -586,8 +586,16 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
 }
 function renderOperatingBook(){
  const host=$('focus-operating-book'),s=State(),snap=userSnapshot(),p=s?.opportunityPlan;
- if(!host)return;host.replaceChildren();host.hidden=!snap||!p?.ok;if(host.hidden)return;
+ if(!host)return;
+ host.hidden=!snap||!p?.ok;
+ if(host.hidden){if(host.childElementCount)host.replaceChildren();delete host.dataset.geBookKey;return;}
  const committed=root.PeanutCore?.committedBuys?.(snap.buys||[])||0,book=p.activeBook;
+ const compare=p.capitalReview,flagged=compare?.releasedSelective||0;
+ const key=JSON.stringify([s?.account,committed,book?.eligible,
+  (book?.entries||[]).slice(0,4).map(v=>[v.id,itemName(v.id),v.scenarioUnits,v.conditionalWeek]),
+  compare?.committed,flagged]);
+ if(host.childElementCount&&host.dataset.geBookKey===key)return;
+ host.dataset.geBookKey=key;host.replaceChildren();
  host.append(h('strong','','Markets already working for you'));
  host.append(h('p','focus-muted',cash(committed)+' in standing buy orders. '+(book?.entries?.length?num(book.eligible)+' markets currently show repeat-trading evidence with positive quoted spreads.':'No current quote-verified earning comparison is available yet.')));
  if(book?.entries?.length){
@@ -598,7 +606,7 @@ function renderOperatingBook(){
   }
  }
  host.append(h('small','focus-muted','These are capacity scenarios, not guaranteed fills or expected profit.'));
- const compare=p.capitalReview,flagged=compare?.releasedSelective||0;
+
  if(compare?.committed>0){const line=h('p','focus-muted');line.textContent=flagged>0?
   cash(flagged)+' in orders worth reviewing for possible redeployment.':'Existing buy orders are assessed separately from your spendable wallet.';
   host.append(line);
