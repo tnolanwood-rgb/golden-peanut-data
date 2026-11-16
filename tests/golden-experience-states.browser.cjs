@@ -84,6 +84,33 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   states.push({state:'settings-visual',viewport:'320x740',font:'24px',layout});
   await page.locator('#gh-settings-toggle').click();
 
+  // On 320px/24px text, scroll deeply inside a market; Next/Previous must
+  // start the *new* item at its name, not inherit the previous item's offset.
+  const cardNavigation=await page.evaluate(()=>{
+   const box=document.querySelector('#gh-osrs-root .gh-trade-scroll');
+   const first=document.querySelector('#gh-item-name').textContent;
+   const max=box.scrollHeight-box.clientHeight;
+   if(max<80)throw Error('Fixture card must have substantial inner scroll');
+   box.scrollTop=max;
+   const initial=box.scrollTop;
+   document.querySelector('#gh-next').click();
+   const next={name:document.querySelector('#gh-item-name').textContent,top:box.scrollTop};
+   box.scrollTop=max;
+   document.querySelector('#gh-previous').click();
+   const previous={name:document.querySelector('#gh-item-name').textContent,top:box.scrollTop};
+   return {max,initial,first,next,previous,width:document.documentElement.clientWidth,
+    scrollWidth:document.documentElement.scrollWidth};
+  });
+  assert.ok(cardNavigation.initial>=80,'test must scroll substantially inside card');
+  assert.notEqual(cardNavigation.next.name,cardNavigation.first,'Next changes item');
+  assert.equal(cardNavigation.next.top,0,'Next opens at beginning of new item');
+  assert.equal(cardNavigation.previous.name,cardNavigation.first,'Previous restores first item');
+  assert.equal(cardNavigation.previous.top,0,'Previous opens at beginning of item');
+  assert.ok(cardNavigation.scrollWidth<=cardNavigation.width+1,'Navigation must not overflow');
+  states.push({state:'nested-recommendation-scroll-reset',game:'osrs',
+   priorScroll:cardNavigation.initial,nextScroll:cardNavigation.next.top,
+   previousScroll:cardNavigation.previous.top});
+
   // A confirmed purchase is a ledger record, not realised profit or an in-game action.
   await page.locator('#gh-add-fill').click();
   await page.locator('#gh-fill-side').selectOption('buy');

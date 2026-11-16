@@ -1359,6 +1359,11 @@ function navigate(dir){
  // Selected card is session-only: Next/Previous must never block on a
  // redundant synchronous localStorage write of unrelated account preferences.
  state.index=index;state.selectedId=state.ideas[index].id;state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
+ // Each recommendation starts at its own title/price instructions, not partway
+ // through the previous recommendation's independent scrollable detail.
+ // Do not reset the document/game scroll position or persisted user settings.
+ const detailScroll=get("gh-osrs-root")?.querySelector(".gh-trade-scroll");
+ if(detailScroll&&detailScroll.scrollTop!==0)detailScroll.scrollTop=0;
  render();
 }
 function toggleFill(){
