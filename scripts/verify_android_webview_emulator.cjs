@@ -120,6 +120,16 @@ async function screenshot(page,name){
 async function run(){
  const apk='android/app/build/outputs/apk/debug/app-debug.apk';
  assert.ok(fs.existsSync(apk),'Missing independently built Android preview APK');
+ // Calibrate the host/emulator ADB input scheduler BEFORE the app starts.
+ // A nominal 350ms input command has sometimes taken >3000ms in CI,
+ // producing an Android touchcancel even on the original touch target.
+ // Never mistake a stalled injector for an app-level gesture pass.
+ result.adbInputCalibrationMs=[];
+ for(let i=0;i<2;i++){
+   const start=Date.now();
+   adb('shell','input','swipe','200','1100','700','1100','350');
+   result.adbInputCalibrationMs.push(Date.now()-start);
+ }
  adb('install','-r',apk);
  adb('shell','am','force-stop',APP);
  const start=adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
