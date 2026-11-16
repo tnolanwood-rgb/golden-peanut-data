@@ -31,6 +31,8 @@ jobs:
           if ! test -x /usr/bin/chromium; then
             npx playwright-core install --with-deps chromium
           fi
+      - name: Preview Golden Experience visual acceptance before full regressions
+        run: node tests/golden-experience.browser.cjs
       - name: Reproducible audit baseline
         run: python scripts/audit_baseline.py
       - name: Synthetic startup and chart payload benchmark
