@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Paired GE cold-start probe needs the exact recorded base commit
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -35,6 +37,8 @@ jobs:
         run: |
           mkdir -p artifacts/audit
           node scripts/benchmark_startup.cjs > artifacts/audit/startup-benchmark.json
+      - name: Investigate synthetic OSRS cold-start tail against pinned baseline
+        run: GE_COLD_RUNS=6 node scripts/profile_golden_experience_cold.cjs
       - name: Synthetic repeated-session retention probe
         run: node scripts/benchmark_golden_experience_session.cjs
       - uses: actions/upload-artifact@v4
@@ -46,6 +50,7 @@ jobs:
             artifacts/audit/*.json
             artifacts/audit/*.log
             artifacts/audit/swipe/**
+            artifacts/audit/golden-experience/osrs-cold-profile.json
             artifacts/audit/golden-experience/**
       - uses: actions/setup-go@v5
         with:
