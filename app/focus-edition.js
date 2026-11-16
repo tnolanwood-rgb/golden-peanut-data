@@ -1111,6 +1111,7 @@ function renderTopResearch(host,state,board=marketBoard(state)){
  }
  host.append(section);
 }
+let homeResearchKeys=null;
 function renderOpportunityHome(){
  const host=$('focus-best-rows'),status=$('focus-best-status'),copy=$('focus-copy-all');if(!host)return;
  if(root.GPOpportunity?.buildId!==EXPECTED_MARKET_BUILD){
@@ -1129,8 +1130,23 @@ function renderOpportunityHome(){
   if(stop)stop.hidden=!scanning;
   if(retry){retry.hidden=scanning||!s?.opportunityPlan?.ok;retry.textContent=paused?'Resume wider discovery':'Run wider discovery';}
  }
+ // A one-second account/status repaint must not discard and recreate dozens
+ // of scrollable result rows. Compare cheap identities/epochs before any DOM
+ // mutation; a real plan, wallet, quote or metadata change still refreshes.
+ const fresh=t.valid;
+ const snap=userSnapshot();
+ const keys=[s?.account,fresh,p,p?.at,p?.orders,p?.orders?.length,
+  p?.marketChoices,p?.marketChoices?.length,p?.publicResearch,p?.publicResearch?.length,
+  p?.activeBook,p?.candidateRefresh?.phase,s?.opportunityAt,s?.ledger,s?.ledger?.length,
+  snap?.wallet,snap?.walletAt,s?.summary?.weekP100,
+  s?.externalMarketStatus?.at,metaRevision,
+  root.GPMarketBoard?.build,root.GPOpportunity?.rankedMarkets,
+  Math.floor(Date.now()/60000)];
+ if(host.childElementCount&&homeResearchKeys?.length===keys.length&&
+    keys.every((key,i)=>key===homeResearchKeys[i]))return;
+ homeResearchKeys=keys;
  host.replaceChildren();
- const fresh=t.valid,book=root.GPOpportunity?.rankedMarkets?.(p);
+ const book=root.GPOpportunity?.rankedMarkets?.(p);
  const board=fresh?marketBoard(s):null;
  if(fresh)renderTopResearch(host,s,board);
  // Keep operational details in ⚙ Settings, not the trade list.
