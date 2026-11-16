@@ -872,6 +872,12 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
 
  assert.equal(await armorSection.count(),1);
  assert.match(await armorSection.innerText(),/of 72 markets/);
+ const keptMarketSection=await page.evaluate(()=>{
+  const original=document.querySelector('#focus-best-rows [data-section-id="exotic-armour"]');
+  GPFocus.render(); // unchanged data must NOT rebuild a scrolling section
+  return original===document.querySelector('#focus-best-rows [data-section-id="exotic-armour"]');
+ });
+ assert.equal(keptMarketSection,true,'unchanged GW2 market results must retain DOM identity and scroll');
  const armorScroll=armorSection.locator('.focus-section-scroll');
  const earlyRows=await armorSection.locator('.focus-connected-market').count();
  assert.ok(earlyRows>=6&&earlyRows<72,'first render should not truncate candidates or mount 72 cards at once');
