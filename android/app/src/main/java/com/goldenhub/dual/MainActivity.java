@@ -87,7 +87,19 @@ public final class MainActivity extends Activity {
                     if (type == null) type = "application/octet-stream";
                     return new WebResourceResponse(type, type.startsWith("text/") ? "UTF-8" : null,
                             200, "OK", java.util.Collections.singletonMap("Cache-Control", "no-store"), stream);
-                } catch (java.io.IOException missingAsset) { return null; }
+                } catch (java.io.IOException missingAsset) {
+                    // Frontend code is intentionally version-locked to the
+                    // embedded release. Only dynamic API/market responses
+                    // may use the network when no packaged asset exists.
+                    if (NavigationPolicy.isBundledFrontendAsset(path)) {
+                        byte[] body = "Bundled Golden Hub preview file missing. The app will not load a different website version."
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found",
+                                java.util.Collections.singletonMap("Cache-Control", "no-store"),
+                                new java.io.ByteArrayInputStream(body));
+                    }
+                    return null;
+                }
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
