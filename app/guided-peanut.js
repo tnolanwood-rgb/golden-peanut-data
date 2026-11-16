@@ -377,13 +377,19 @@ function render(force=false){
   const content=el('div','gp-guide-content');
   renderTop(content,s);
   buildIdea(content,s,view);
-  // Keep the Delivery Box prominent, but expose the actual trade before
-  // secondary profit/wallet panels, filters and account-readiness notes.
-  // Moving the existing card into the existing financial grid preserves its
-  // DOM identity, all metrics and real tab order without duplicated values.
-  const deliveryHero=content.querySelector('.gp-guide-delivery-summary');
+  // First-screen hierarchy: separate the Delivery Box into its own
+  // full-width instrument, then the actual trade, then the remaining three
+  // financial readouts. Never nest the large trade card inside the metrics
+  // grid: large-text content can otherwise overlap a later auto-grid row.
+  const financialGrid=content.querySelector('.gp-guide-metrics');
+  const delivery=financialGrid?.querySelector('.gp-guide-delivery-summary');
   const currentIdea=content.querySelector('.gp-guide-idea');
-  if(deliveryHero&&currentIdea)deliveryHero.after(currentIdea);
+  if(financialGrid&&delivery&&currentIdea){
+   const hero=el('section','gp-guide-delivery-hero');
+   financialGrid.before(hero);
+   hero.append(delivery);
+   hero.after(currentIdea);
+  }
   const footer=el('footer','gp-guide-foot');
   add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
    button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));

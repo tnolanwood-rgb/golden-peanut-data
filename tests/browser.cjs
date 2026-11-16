@@ -85,7 +85,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForSelector('#gp-guided-root:not([hidden])');
  assert.match(await page.locator('#gh-panel-gw2 .gp-guide-header h1').innerText(),/The Golden Peanut/);
  assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-idea').count(),1);
- assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').count(),4);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-delivery-hero > .gp-guide-metric').count(),1);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').count(),3);
  assert.match(await page.locator('#gh-panel-gw2 .gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
  // GW2 action-first: preserve the user's top-priority Delivery Box, but the
  // item and real buy guidance must be visible before the secondary wallet
@@ -93,18 +94,19 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  if(viewport.width===390){
   const firstScreen=await page.evaluate(()=>{
    const root=document.querySelector('#gp-guided-root'),
+    content=root.querySelector('.gp-guide-content'),
     grid=root.querySelector('.gp-guide-metrics'),
-    delivery=grid.querySelector('.gp-guide-delivery-summary'),
-    card=grid.querySelector('.gp-guide-idea'),
+    delivery=root.querySelector('.gp-guide-delivery-hero>.gp-guide-delivery-summary'),
+    card=content.querySelector(':scope > .gp-guide-idea'),
     title=card.querySelector('.gp-guide-item-name'),
     buy=card.querySelector('.gp-guide-instruction'),
-    today=grid.querySelectorAll('.gp-guide-metric')[1],
+    today=grid.querySelector(':scope > .gp-guide-metric'),
     art=card.querySelector('.gp-guide-item-icon'),
     row=card.querySelector('.gp-guide-item-identity');
    const rect=n=>{const r=n?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right}:null;};
    return {height:innerHeight,grid:rect(grid),delivery:rect(delivery),card:rect(card),
     title:rect(title),buy:rect(buy),today:rect(today),art:rect(art),row:rect(row),
-    position:[...grid.children].map(n=>n.className),amounts:grid.querySelectorAll(':scope > .gp-guide-metric').length,
+    position:[...content.children].map(n=>n.className),amounts:1+grid.querySelectorAll(':scope > .gp-guide-metric').length,
     width:document.documentElement.scrollWidth};
   });
   assert.ok(firstScreen.delivery.bottom<firstScreen.card.top&&firstScreen.card.bottom<=firstScreen.today.top,

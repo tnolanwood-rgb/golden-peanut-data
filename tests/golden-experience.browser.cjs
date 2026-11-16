@@ -40,7 +40,8 @@ const cases=[],contrast=(a,b)=>{
     if(viewport.width===390){
      const layout=await page.evaluate(g=>{
       const cards=[...document.querySelectorAll('#gh-panel-'+g+' .gp-guide-metrics > .gp-guide-metric')];
-      const a=cards[1]?.getBoundingClientRect(),b=cards[2]?.getBoundingClientRect();
+      const i=g==='gw2'?0:1;
+      const a=cards[i]?.getBoundingClientRect(),b=cards[i+1]?.getBoundingClientRect();
       return a&&b?{secondY:a.y,thirdY:b.y,secondBottom:a.bottom,columns:getComputedStyle(cards[1].parentElement).gridTemplateColumns}:null;
      },game);
      if(layout){
@@ -50,7 +51,7 @@ const cases=[],contrast=(a,b)=>{
        game+' regular text should preserve the compact balanced financial cluster: '+JSON.stringify(layout));
      }
      if(game==='gw2'&&fontScale===1){
-      const seven=await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').nth(3)
+      const seven=await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').nth(2)
        .evaluate(n=>({height:n.getBoundingClientRect().height,
         flexDirection:getComputedStyle(n).flexDirection}));
       assert.equal(seven.flexDirection,'row','seven-day display must use horizontal compact layout');
