@@ -36,18 +36,19 @@ function parseItemStats(html){
 const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
 function renderItemStats(item,details){
  const box=get('gh-item-stats');box.replaceChildren();
- const metadata=state.mappingById?.get(item.id),properties=new Map([
-  ['Access',item.members?'Members':'Free-to-play'],
-  ['GE buy limit',item.limit?item.limit.toLocaleString('en-GB')+' / 4 hours':'Unknown']
- ]);
- if(Number.isSafeInteger(metadata?.highalch))properties.set('High alch',metadata.highalch.toLocaleString('en-GB')+' coins');
- for(const [label,value]of details?.basic||[])properties.set(label,value);
- const list=el('dl','gh-item-properties');for(const [label,value]of properties){const pair=el('div');pair.append(el('dt',null,label),el('dd',null,value));list.append(pair);}box.append(list);
- for(const {group,stats}of details?.combat||[]){
-  const table=el('table','gh-item-bonuses');table.append(el('caption',null,group));
-  const head=el('tr'),values=el('tr');for(const [label,value]of stats){const cell=el('th',null,label);cell.scope='col';head.append(cell);values.append(el('td',null,value));}
-  const body=el('tbody');body.append(head,values);table.append(body);box.append(table);
+ const metadata=state.mappingById?.get(item.id),properties=new Map();
+ const equipment=details?.combat?.length||details?.basic?.some(([label,value])=>label==='Slot'||label==='Equipable'&&value==='Yes');
+ for(const [label,value]of details?.basic||[]){
+  if((equipment?['Slot','Equip requirement']:['Weight','Stackable','High alch']).includes(label))properties.set(label,value);
  }
+ if(!equipment&&!properties.has('High alch')&&Number.isSafeInteger(metadata?.highalch))properties.set('High alch',metadata.highalch.toLocaleString('en-GB')+' coins');
+ for(const {group,stats}of details?.combat||[])for(const [label,value]of stats){
+  if(Number(value.replace('%',''))===0)continue;
+  const name=group==='Attack bonuses'?label+' attack':group==='Defence bonuses'?label+' defence':
+   ({'Strength bonus':'Melee strength','Ranged Strength':'Ranged strength'}[label]||label);
+  properties.set(name,value);
+ }
+ const list=el('dl','gh-item-properties');for(const [label,value]of properties){const pair=el('div');pair.append(el('dt',null,label),el('dd',null,value));list.append(pair);}box.append(list);
 }
 function renderItemContext(item){
  const panel=get('gh-item-context');if(!panel)return;
@@ -55,7 +56,7 @@ function renderItemContext(item){
  if(itemContextID===item.id)return;
  itemContextID=item.id;itemContextRequest?.abort();
  get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
- const show=details=>{renderItemStats(item,details);txt('gh-item-description',details.ambiguous?'This Wiki page has multiple item variants. Check the full guide for the correct requirements and bonuses.':details.combat.length?'Equipment stats from the OSRS Wiki. See the guide for special effects and full requirements.':'Item properties from the OSRS Wiki. Equipment bonuses are not available for this item.');};
+ const show=details=>{renderItemStats(item,details);txt('gh-item-description',details.ambiguous?'This Wiki page has multiple item variants. Check the full guide for the correct requirements and bonuses.':'');};
  const cached=itemContextCache.get(item.name);if(cached){show(cached);return;}
  renderItemStats(item);txt('gh-item-description','Loading item stats from the OSRS Wiki…');
  const controller=new AbortController();itemContextRequest=controller;
@@ -228,7 +229,7 @@ function blank(){
    <div id="gh-item-stats"></div>
    <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
    <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
-   <small>Stats: OSRS Wiki · <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 3.0</a></small>
+   <small><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">OSRS Wiki · CC BY-NC-SA 3.0</a></small>
   </section>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>

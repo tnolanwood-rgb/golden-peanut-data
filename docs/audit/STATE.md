@@ -1,3 +1,14 @@
+# Compact item stats — 16 November 2026
+
+BATCH: COMPACT-STATS. STATUS: implementation and focused checks passed; full local baseline/PR CI and hosted release verification pending.
+FIXED: compact item properties list replaces all bonus tables. Equipment shows slot, explicit requirements and only non-zero bonuses/penalties; zero-only groups and duplicated access/GE/property rows are removed. Non-equipment retains relevant item properties. Negative bonuses remain visible. Quiet source attribution and hidden empty status reduce vertical clutter. No account storage or collector changes.
+TESTED: focused actual-Wiki browser test confirms Shield/80 Defence, +55/+8 and negative values survive while +0 and zero Stab attack are absent; variants, outages and safe rendering still pass. Source/Python/JS baseline passed; assembled browser suite pending at this checkpoint.
+EVIDENCE: ignored artifacts/audit/compact-stats-*; exact implementation SHA/CI/production runs on its PR.
+NEXT: finish and release to the hosted app under the user's continuing instruction, verify live compact stats. Preserve user data; rollback only frontend code through the tested Pages workflow. Previous full-table stats release 94b1242bd8f3e51dddf8ed84a496580c2ea8b7fe deployed successfully in run 43835488440 (PR #63). Direct local Rondache selection in that hosted release timed out and was not counted as a passing live item check.
+CHECKPOINT: git log -1 -- docs/audit/STATE.md on feat/compact-item-stats-20261116. No new APK or database migration.
+
+---
+
 # Practical item stats release — 16 November 2026
 
 BATCH: ITEM-STATS. STATUS: implemented; local full baseline passed; awaiting exact-head CI and hosted release verification.

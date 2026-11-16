@@ -11,9 +11,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{fixture}=requi
  assert.equal(await page.locator('#gh-item-context').isVisible(),true);
  assert.equal(await page.locator('#gh-item-context h3').innerText(),'Item stats');
  await page.locator('#gh-next').click();
- await page.waitForFunction(()=>document.getElementById('gh-item-stats').textContent.includes('Defence bonuses'));
+ await page.waitForFunction(()=>document.getElementById('gh-item-stats').textContent.includes('Ranged defence'));
  const selected=await page.locator('#gh-item-name').innerText();release?.();await page.waitForTimeout(80);
- const stats=await page.locator('#gh-item-stats').innerText();assert.match(stats,/80 Defence/);assert.match(stats,/\+55/);assert.match(stats,/\+8/);assert.match(stats,/4\.122 kg/);
+ const stats=await page.locator('#gh-item-stats').innerText();assert.match(stats,/80 Defence/);assert.match(stats,/Shield/);assert.match(stats,/-8/);assert.doesNotMatch(stats,/\+0(?:\D|$)/);assert.doesNotMatch(stats,/Stab attack/);assert.match(stats,/\+55/);assert.match(stats,/\+8/);
  assert.equal(await page.locator('#gh-item-context script').count(),0);
  assert.equal(await page.locator('#gh-item-wiki').getAttribute('href'),'https://oldschool.runescape.wiki/w/'+encodeURIComponent(selected.replace(/ /g,'_')));
  // Exercise the production parser directly against actual public Wiki table structure.
@@ -22,6 +22,6 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{fixture}=requi
  assert.equal(parsed.normal.combat.find(g=>g.group==='Defence bonuses').stats.find(x=>x[0]==='Ranged')[1],'+55');
  assert.equal(parsed.variant.combat.length,0);assert.equal(parsed.variant.basic.some(p=>p[0]==='Equip requirement'),false);assert.equal(parsed.variant.ambiguous,true);assert.deepEqual(parsed.plain.combat,[]);assert.deepEqual(parsed.plain.basic,[['Stackable','Yes']]);
  mode='outage';await page.reload();await page.waitForFunction(()=>document.getElementById('gh-item-description').textContent.includes('unavailable'));
- assert.match(await page.locator('#gh-item-stats').innerText(),/GE buy limit/);assert.equal(await page.locator('.gh-item-bonuses').count(),0);
+ assert.equal(await page.locator('#gh-item-context').isVisible(),true);assert.match(await page.locator('#gh-item-description').innerText(),/unavailable/);assert.equal(await page.locator('.gh-item-bonuses').count(),0);
  assert.deepEqual(f.errors,[]);console.log('PASS item stats: real Wiki bonuses/requirements, variants, non-equipment, outage fallback, stale selection and safe rendering');
  }finally{await f.close()}})().catch(e=>{console.error(e);process.exitCode=1});
