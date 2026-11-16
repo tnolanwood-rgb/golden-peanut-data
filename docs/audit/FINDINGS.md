@@ -1,3 +1,14 @@
+# Compact stats deployed and verified — 16 November 2026
+
+BATCH: COMPACT-STATS. STATUS: LIVE, https://thegoldenpeanut.pages.dev/.
+FIXED: equipment panel now shows slot, explicit requirements and non-zero bonuses/penalties only. Removed all-zero rows/groups, duplicated generic properties and verbose boilerplate. Non-equipment keeps useful item properties; no user storage, credentials, collectors or schemas changed.
+TESTED: full local baseline (129 JS, 56 Python and all assembled browser suites), exact-head CI 43836290111 and production run 43836621817 all passed. Deployed SHA 097f012c1f912411790dd7dce21434a9cdc497d2, PR #64. Production verified exact hashes of every served file and real hosted touch navigation. Separate fresh mobile Chromium test on actual public production passed for Occult necklace: 70 Magic, Neck, Magic attack +12, Magic damage +5%, Prayer +2; no +0 rows. Inspection used the workspace proxy with local proxy certificate bypass, not a TLS/physical-phone test.
+EVIDENCE: https://github.com/tnolanwood-rgb/golden-peanut-data/pull/64; https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43836621817; ignored artifacts/audit/compact-stats-live.{json,png,log} and baseline logs. Exact tested implementation ced4598ed556c0f32c89c01853de08caf545f6c7.
+NEXT: reopen the hosted app if an already-open page still shows the old tables. No new APK needed. Physical phone acceptance remains unverified. Rollback only frontend code through the same tested Pages workflow; never clear saved data.
+CHECKPOINT: final documentation saved on feat/compact-item-stats-20261116; git log -1 -- docs/audit/STATE.md there. Documentation-only checkpoint does not redeploy or alter the served SHA.
+
+---
+
 # Compact item stats — 16 November 2026
 
 BATCH: COMPACT-STATS. STATUS: implementation and focused checks passed; full local baseline/PR CI and hosted release verification pending.
