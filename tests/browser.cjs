@@ -802,37 +802,22 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPFocus.goto('today');GPFocus.render();
  });
  await page.locator('#focus-best-rows .focus-connected-market').filter({hasText:'Dire Pearl Reaver'}).click();
- await page.waitForFunction(()=>{
-  const v=JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null');
-  return v?.tab==='trades'&&v?.tradeDetail===302&&v?.selectedMarket?.id===302;
- });
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-detail')&&!document.querySelector('#focus-trade-detail').hidden);
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
  await page.setViewportSize({width:844,height:390});
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.locator('#focus-trade-detail').isVisible(),true);
- await page.reload(); // Worst-case native Activity teardown/recreation.
- await page.waitForFunction(()=>window.GPFocus&&document.querySelector('#focus-trade-detail')&&!document.querySelector('#focus-trade-detail').hidden,
-  {timeout:7500}).catch(async error=>{
-  const state=await page.evaluate(()=>({saved:JSON.parse(localStorage.getItem('gp-focus-ui-v1')||'null'),
-   headline:document.querySelector('#focus-title')?.textContent,
-   selectedHidden:document.querySelector('#focus-trade-detail')?.hidden,
-   selectedText:document.querySelector('#focus-trade-detail')?.textContent?.slice(0,450),
-   selectedTab:[...document.querySelectorAll('[data-focus-page]')].filter(x=>!x.hidden).map(x=>x.dataset.focusPage),
-   errorText:document.querySelector('#focus-sync-state')?.textContent}));
-  console.log('ORIENTATION_RECOVERY_DIAG '+JSON.stringify(state));
-  throw error;
- });
- assert.equal(await page.locator('#focus-trade-detail').isVisible(),true,
-  'page recreation must not redirect to Best Trades or erase the selected market');
- assert.match(await page.locator('#focus-trade-detail').innerText(),/Dire Pearl Reaver/);
- assert.match(await page.locator('#focus-trade-detail').innerText(),/Restored this market after the phone reloaded/);
- assert.match(await page.locator('#focus-trade-detail').innerText(),/Refresh before trading/i);
- assert.equal(await page.locator('#focus-title').innerText(),'Compare markets');
- // After the Android wrapper loses its native backstack, in-app Back still works.
- await page.getByRole('button',{name:'Back within Golden Peanut'}).click();
- await page.waitForFunction(()=>document.querySelector('#focus-trade-list-view')&&!document.querySelector('#focus-trade-list-view').hidden,{timeout:7500});
- assert.equal(await page.locator('#focus-trade-list-view').isVisible(),true);
+ // A new document is a fresh app launch: no stale detail or scroll should reopen.
+ // A same-document orientation change above must still retain the live detail.
+ await page.reload();
+ await page.waitForFunction(()=>window.GPFocus&&document.querySelector('#focus-title')?.textContent==='Best trades',{timeout:12000});
+ assert.equal(await page.locator('#focus-trade-detail').isVisible(),false,
+  'a new app launch must start at the overview, not the last viewed market');
+ assert.equal(await page.evaluate(()=>window.scrollY),0,
+  'new document starts at the top');
+ await page.evaluate(()=>GPFocus.goto('trades'));
+ await page.waitForFunction(()=>document.querySelector('#focus-trade-list-view')&&!document.querySelector('#focus-trade-list-view').hidden);
  // Real portrait UX: all 72 candidates reachable within ONE section,
  // without mounting 72 cards on the main screen at once.
  await page.evaluate(()=>{
@@ -980,9 +965,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.ok(perf.homeBuilds<=1,'unchanged home screen must reuse market-board analysis');
  assert.equal(perf.hiddenBuilds,0,'orders screen must not compute the hidden trading desk');
- // Android can recreate a WebView after the user opens another app.
- // Rebuild the app in the SAME origin using the saved public UI-only context:
- // exact numbered deck position, scroll and independently opened chart.
+ // A temporarily backgrounded live WebView retains the selected idea; a truly
+ // reopened app/new document starts at idea 1 with a closed chart and scroll 0.
  await page.evaluate(async()=>{
   const state=GoldenPeanutClean.State;
   localStorage.setItem('gp-clean-selected-account','Fixture.1234');
@@ -996,25 +980,21 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   GPGuided.open();GPGuided.render();
  });
  const originalCard=await page.evaluate(()=>GPGuided.navigation());
- assert.ok(originalCard.total>0,'a recorded trading deck is available before Android reconstruction');
+ assert.ok(originalCard.total>0,'a trading deck is available before the fresh-start test');
+ if(originalCard.total>1)await page.locator('#gp-guided-root .gp-guide-controls button').last().click();
+ const oldPosition=await page.evaluate(()=>GPGuided.navigation().position);
  await page.evaluate(()=>{
-  const current=GPGuided.navigation().id,state=GoldenPeanutClean.State;
-  const name=state.meta[current]?.name||'Observed price history';
-  GPGuidedPriceChart.open({id:current,name});
+  const state=GoldenPeanutClean.State,id=GPGuided.navigation().id;
+  GPGuidedPriceChart.open({id,name:state.meta[id]?.name||'Observed price history'});
  });
  await page.waitForFunction(()=>GPGuidedPriceChart.isOpen());
- await page.evaluate(()=>{window.scrollTo({top:260,behavior:'instant'});GPGuided.remember();});
- const savedView=await page.evaluate(()=>({
-  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot(),
-  persisted:GPGuidedVisit.create(localStorage).load('Fixture.1234')
- }));
- assert.equal(savedView.persisted.deck.ids[savedView.persisted.deck.position],savedView.deck.id);
- assert.equal(savedView.persisted.chart.id,savedView.deck.id);
- assert.ok(savedView.persisted.scroll>=100);
+ await page.evaluate(()=>window.scrollTo({top:260,behavior:'instant'}));
+ const live=await page.evaluate(()=>({pos:GPGuided.navigation().position,chart:GPGuidedPriceChart.isOpen()}));
+ assert.equal(live.pos,oldPosition);
+ assert.equal(live.chart,true);
  await page.reload();
  await page.waitForFunction(()=>window.GPGuided?.navigation&&window.GoldenPeanutClean?.State?.db?.db);
- assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null,
-   'obsolete skipped bin still cleared on reload');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('gp-guided-skips-v1')),null);
  await page.evaluate(async()=>{
   const state=GoldenPeanutClean.State;
   if(state.account!=='Fixture.1234')state.account='Fixture.1234';
@@ -1024,23 +1004,16 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   if(model)state.executionLearning=model;
   state.opportunityDeepPaused=true;
   await GPOpportunity.refresh(state,{phase:'quick'});
-  // This test intentionally forces advanced mode at every document load for
-  // legacy Focus browser coverage. Simulate the user's return to the guided
-  // screen after Android reconstructs that document.
   GPGuided.open();GPGuided.render();
  });
- await page.waitForFunction(expected=>{
-  const v=GPGuided?.navigation?.();
-  return v?.id===expected.id&&v?.position===expected.position&&
-   window.GPGuidedPriceChart?.isOpen?.();
- },{id:savedView.deck.id,position:savedView.deck.position},{timeout:12000});
- const resumed=await page.evaluate(()=>({
-  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.snapshot()
+ await page.waitForFunction(()=>GPGuided?.navigation?.().total>0,{timeout:12000});
+ const reopened=await page.evaluate(()=>({
+  deck:GPGuided.navigation(),chart:GPGuidedPriceChart.isOpen(),scroll:scrollY
  }));
- assert.equal(resumed.deck.position,savedView.deck.position,'same numbered trade card on Android app return');
- assert.equal(resumed.deck.total,savedView.deck.total,'background recreation does not reset idea count');
- assert.equal(resumed.chart.id,savedView.chart.id,'open price chart survives WebView recreation');
- assert.equal(await page.locator('#gp-price-dialog').isVisible(),true);
+ assert.equal(reopened.deck.position,1,'fresh app launch begins with recommendation 1');
+ assert.equal(reopened.chart,false,'old chart must not reopen on a fresh app launch');
+ assert.equal(reopened.scroll,0,'reopened app must start at top');
+ assert.equal(await page.locator('#gp-price-dialog').isVisible(),false);
  assert.deepEqual(errors,[]);
  assert.deepEqual(errors,[]);console.log(`PASS assembled ${viewport.width}px: HTTP ingestion -> IndexedDB -> ranking -> UI; stable guided deck, reload, detail/search/legendary/backup guards`);
  await context.close();
