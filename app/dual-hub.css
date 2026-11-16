@@ -935,3 +935,23 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  #gh-panel-osrs .gh-item-context{padding:14px 12px}
  #gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>.gh-settings-body{padding:12px}
 }
+
+/* GE-02 owned-item precision: separate the item name, remaining quantity and
+ * actual sale action in the independently retained OSRS holdings panel. */
+#gh-panel-osrs #gh-holdings .gh-settings-body>h2{
+ margin:0 0 8px;font:780 1.05rem/1.35 var(--ge-font);
+ letter-spacing:-.025em;color:#ecd08e;
+}
+#gh-panel-osrs #gh-holdings .gh-settings-body>p{line-height:1.6}
+#gh-panel-osrs .gh-ledger-row strong{
+ display:block;line-height:1.4;overflow-wrap:anywhere;font-weight:760;
+}
+#gh-panel-osrs .gh-ledger-row small{
+ display:block;margin-top:5px;line-height:1.5;
+ white-space:normal;overflow-wrap:anywhere;
+}
+#gh-panel-osrs #gh-holdings-list .gh-ledger-row{
+ border-radius:11px;border:1px solid #3f5b48;
+ background:linear-gradient(145deg,#1c3125,#13231b);
+ padding:13px 12px;margin:10px 0 0;
+}

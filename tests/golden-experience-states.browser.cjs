@@ -106,8 +106,19 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   assert.ok(saleLayout.buttonTop>=saleLayout.labelBottom-1,
     'owned-sale action must stack at enlarged font sizes: '+JSON.stringify(saleLayout));
   assert.ok(saleLayout.buttonHeight>=44,'sale control must remain tappable');
+  const ownedLabel=await page.locator('#gh-holdings-list .gh-ledger-row').first().evaluate(row=>{
+    const title=row.querySelector('strong'),remaining=row.querySelector('small');
+    const t=title.getBoundingClientRect(),q=remaining.getBoundingClientRect();
+    return {titleBottom:t.bottom,remainingTop:q.top,
+      titleText:title.textContent,remainingText:remaining.textContent};
+  });
+  assert.ok(ownedLabel.remainingTop>=ownedLabel.titleBottom-1,
+    'item title and remaining quantity must appear on separate visual rows: '+JSON.stringify(ownedLabel));
+  assert.match(ownedLabel.remainingText,/3 remaining/);
+
   assert.ok(saleLayout.buttonRight<=saleLayout.rowRight+1,'sale control may not escape its card');
   assert.ok(saleLayout.scroll<=saleLayout.width+1,'ledger must not overflow the viewport');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
   await page.screenshot({path:path.join(out,'osrs-recorded-purchase-320.png'),fullPage:true});
   states.push({state:'recorded-purchase',ledgerRows:1,qty:3,realised:'0 gp'});
 
