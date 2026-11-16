@@ -380,7 +380,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   for(let i=0;i<8;i++){
    const before={row:host.firstElementChild,action:actions.firstElementChild,
     rowSignature:host.dataset.gp57RowsSignature,
-    actionSignature:actions.dataset.gp57ActionsSignature};
+    actionSignature:actions.dataset.gp57ActionsSignature,
+    metrics:['gp57-wallet','gp57-collect','gp57-week','gp57-reserved','gp57-items-net']
+     .map(id=>{const n=document.getElementById(id);return {id,signature:n?.dataset.gp57MoneySignature,child:n?.firstChild,node:n};})};
    GP57Desk.schedule();
    await new Promise(resolve=>setTimeout(resolve,210));
    const after={rowSignature:host.dataset.gp57RowsSignature,
@@ -389,7 +391,13 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     rowsUnchanged:before.rowSignature===after.rowSignature,
     actionsUnchanged:before.actionSignature===after.actionSignature,
     rowRetained:before.row===host.firstElementChild,
-    actionRetained:before.action===actions.firstElementChild
+    actionRetained:before.action===actions.firstElementChild,
+    // Only inspect stable-value figures; real incoming quotes should redraw.
+    moneyComparisons:before.metrics.map(m=>({
+     id:m.id,
+     sameValue:!!m.node&&m.node.dataset.gp57MoneySignature===m.signature,
+     artworkRetained:!!m.node&&m.node.firstChild===m.child
+    }))
    });
   }
   return {rows:host.querySelectorAll('.gp57-delivery-row').length,
@@ -397,6 +405,9 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    sameActionVersions:comparisons.filter(x=>x.actionsUnchanged).length,
    rowViolations:comparisons.filter(x=>x.rowsUnchanged&&!x.rowRetained),
    actionViolations:comparisons.filter(x=>x.actionsUnchanged&&!x.actionRetained),
+   moneyComparable:comparisons.flatMap(x=>x.moneyComparisons).filter(x=>x.sameValue).length,
+   moneyViolations:comparisons.flatMap(x=>x.moneyComparisons)
+    .filter(x=>x.sameValue&&!x.artworkRetained),
    comparisons};
  });
  assert.equal(retainedNodes.rows,8,'eight synthetic Delivery Box item types remain visible');
@@ -404,6 +415,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.ok(retainedNodes.sameActionVersions>=2,'at least two refreshes of identical actions must be compared');
  assert.deepEqual(retainedNodes.rowViolations,[],'identical Delivery Box rows must survive refresh repaint');
  assert.deepEqual(retainedNodes.actionViolations,[],'identical action buttons must survive refresh repaint');
+ assert.ok(retainedNodes.moneyComparable>=5,'unchanged GW2 coin metrics must be exercised');
+ assert.deepEqual(retainedNodes.moneyViolations,[],'unchanged GW2 monetary figures must retain official coin artwork DOM');
  // A meaningful metadata change MUST invalidate the row fingerprint.
  await page.evaluate(()=>{
   window.__geOldDeliveryName=GoldenPeanutClean.State.meta[301].name;
