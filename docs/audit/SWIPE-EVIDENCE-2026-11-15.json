@@ -1,0 +1,1188 @@
+{
+  "schema": "golden-hub-swipe-repair-v1",
+  "recorded_at": "2026-11-16T00:04:56.977814+00:00",
+  "source_files": {
+    "app/dual-hub.js": "97fbe813839d254a4bde2609a5619227f9868fa75ba2dcddf9a5d25d61d66b3e",
+    "app/dual-hub.css": "4e855ddfdb39718058b197acf8afaee92b3c3b519adcfd14fe4c51b0be347f61",
+    "app/guided-peanut.js": "6308c6252799608e669075789fd0ff3446ebee8c194c75b8d4042bd6f4b739af",
+    "app/focus-edition.js": "f1deb3cf155739838ccdc8f704ec42e83ea9ffd507e259a129d95f4d120d1088",
+    "app/index.html": "b0ab5e24d29731fba3c2db4af4305906fb900432f1f5be280426fb6470e8666a"
+  },
+  "baseline": {
+    "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
+    "assetRef": "dd868f7",
+    "cpuRate": 1,
+    "cases": [
+      {
+        "name": "different-scroll-slow-osrs",
+        "frames": 62,
+        "activeFrames": 56,
+        "maxVerticalJump": 360,
+        "maxPanelGap": 1.1444091796875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000273,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      }
+    ],
+    "status": "FAIL",
+    "error": "different-scroll-slow-osrs: visible content jumped vertically 360px",
+    "trace": {
+      "Layout": {
+        "count": 27,
+        "totalMs": 5.414000000000003,
+        "maxMs": 2.524
+      },
+      "UpdateLayoutTree": {
+        "count": 29,
+        "totalMs": 8.122,
+        "maxMs": 2.155
+      },
+      "Paint": {
+        "count": 59,
+        "totalMs": 17.668999999999997,
+        "maxMs": 0.892
+      },
+      "FunctionCall": {
+        "count": 125,
+        "totalMs": 21.959000000000007,
+        "maxMs": 4.808
+      }
+    },
+    "browser": "156.0.8078.79"
+  },
+  "normal": {
+    "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
+    "assetRef": "working tree",
+    "cpuRate": 1,
+    "cases": [
+      {
+        "name": "different-scroll-slow-osrs",
+        "frames": 64,
+        "activeFrames": 58,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4424324035644531e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999727,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "different-scroll-slow-gw2",
+        "frames": 62,
+        "activeFrames": 57,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.699999999999818,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "nested-card-horizontal",
+        "frames": 37,
+        "activeFrames": 31,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "cancelled-touch",
+        "frames": 28,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "reversal-to-origin",
+        "frames": 32,
+        "activeFrames": 27,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4781951904296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "reversal-past-origin",
+        "frames": 23,
+        "activeFrames": 19,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 0,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "quick-flick",
+        "frames": 21,
+        "activeFrames": 16,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "quick-flick-back",
+        "frames": 21,
+        "activeFrames": 16,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "webview-pointer-cancel-fallback",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 8.791685104370117e-06,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "pen-finger-ownership",
+        "frames": 18,
+        "activeFrames": 14,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3947486877441406e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "interrupted-settle",
+        "frames": 25,
+        "activeFrames": 20,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "vertical-interrupts-settle",
+        "frames": 32,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.2636184692382812e-05,
+        "nativeVertical": true,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-0",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-1",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4081597328186035e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-2",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-3",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.1444091796875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.700000000000728,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-4",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-5",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.0251998901367188e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-6",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-7",
+        "frames": 22,
+        "activeFrames": 17,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4230608940124512e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-8",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-9",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4543533325195312e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "rapid-tab-reversal",
+        "frames": 26,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 2.288818359375e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 16.80000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "resized-412",
+        "frames": 33,
+        "activeFrames": 28,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3828277587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.80000000000291,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "response-during-held-drag",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.2874603271484375e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "cached-nested-scroll-restore",
+        "frames": 20,
+        "activeFrames": 14,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.1920928955078125e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000045,
+        "frameMax": 16.700000000000045,
+        "framesOver34ms": 0
+      }
+    ],
+    "status": "PASS",
+    "trace": {
+      "Layout": {
+        "count": 737,
+        "totalMs": 235.73800000000023,
+        "maxMs": 32.216
+      },
+      "UpdateLayoutTree": {
+        "count": 791,
+        "totalMs": 271.9680000000001,
+        "maxMs": 8.592
+      },
+      "Paint": {
+        "count": 1210,
+        "totalMs": 462.7810000000002,
+        "maxMs": 4.247
+      },
+      "FunctionCall": {
+        "count": 2505,
+        "totalMs": 422.9499999999981,
+        "maxMs": 20.354
+      }
+    },
+    "browser": "156.0.8078.79"
+  },
+  "cpu4_shared_runner": {
+    "conditions": "Headless Chromium mobile touch emulation; synthetic data; instrumented rAF geometry, not physical Android FPS",
+    "assetRef": "working tree",
+    "cpuRate": 4,
+    "cases": [
+      {
+        "name": "different-scroll-slow-osrs",
+        "frames": 73,
+        "activeFrames": 67,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.700000000000728,
+        "frameMax": 16.800000000000182,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "different-scroll-slow-gw2",
+        "frames": 69,
+        "activeFrames": 63,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.30000000000018,
+        "frameMax": 66.60000000000036,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "nested-card-horizontal",
+        "frames": 39,
+        "activeFrames": 33,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000000546,
+        "frameMax": 50,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "cancelled-touch",
+        "frames": 29,
+        "activeFrames": 21,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 50,
+        "frameMax": 50,
+        "framesOver34ms": 2
+      },
+      {
+        "name": "reversal-to-origin",
+        "frames": 35,
+        "activeFrames": 28,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.5149824321269989e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.29999999999927,
+        "frameMax": 33.30000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "reversal-past-origin",
+        "frames": 28,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 0,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 49.899999999999636,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "quick-flick",
+        "frames": 19,
+        "activeFrames": 14,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 66.70000000000073,
+        "frameMax": 66.70000000000073,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "quick-flick-back",
+        "frames": 22,
+        "activeFrames": 15,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000001455,
+        "frameMax": 50,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "webview-pointer-cancel-fallback",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.399999999999636,
+        "frameMax": 50,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "pen-finger-ownership",
+        "frames": 20,
+        "activeFrames": 15,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.2874603271484375e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 16.799999999999272,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "interrupted-settle",
+        "frames": 30,
+        "activeFrames": 24,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 50,
+        "frameMax": 66.70000000000073,
+        "framesOver34ms": 2
+      },
+      {
+        "name": "vertical-interrupts-settle",
+        "frames": 33,
+        "activeFrames": 16,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.71661376953125e-05,
+        "nativeVertical": true,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.80000000000109,
+        "frameMax": 33.30000000000109,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-0",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.2993812561035156e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.29999999999927,
+        "frameMax": 33.399999999999636,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-1",
+        "frames": 28,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.399999999999636,
+        "frameMax": 50.100000000000364,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "repeat-2",
+        "frames": 28,
+        "activeFrames": 23,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000001455,
+        "frameMax": 50,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "repeat-3",
+        "frames": 32,
+        "activeFrames": 26,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.4901161193847656e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 50,
+        "frameMax": 66.59999999999854,
+        "framesOver34ms": 3
+      },
+      {
+        "name": "repeat-4",
+        "frames": 30,
+        "activeFrames": 24,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3314187526702881e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 16.799999999999272,
+        "frameMax": 33.400000000001455,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-5",
+        "frames": 24,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.0251998901367188e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000001455,
+        "frameMax": 33.400000000001455,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "repeat-6",
+        "frames": 32,
+        "activeFrames": 27,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.3664830476045609e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 50,
+        "frameMax": 50.10000000000218,
+        "framesOver34ms": 2
+      },
+      {
+        "name": "repeat-7",
+        "frames": 23,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.1444091796875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 66.70000000000073,
+        "frameMax": 150,
+        "framesOver34ms": 3
+      },
+      {
+        "name": "repeat-8",
+        "frames": 32,
+        "activeFrames": 27,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000001455,
+        "frameMax": 83.19999999999709,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "repeat-9",
+        "frames": 28,
+        "activeFrames": 21,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 50,
+        "frameMax": 66.59999999999854,
+        "framesOver34ms": 2
+      },
+      {
+        "name": "rapid-tab-reversal",
+        "frames": 28,
+        "activeFrames": 24,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 2.288818359375e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.29999999999927,
+        "frameMax": 33.30000000000291,
+        "framesOver34ms": 0
+      },
+      {
+        "name": "resized-412",
+        "frames": 32,
+        "activeFrames": 27,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.33514404296875e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.29999999999927,
+        "frameMax": 49.900000000001455,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "response-during-held-drag",
+        "frames": 27,
+        "activeFrames": 22,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.400000000001455,
+        "frameMax": 66.70000000000073,
+        "framesOver34ms": 1
+      },
+      {
+        "name": "cached-nested-scroll-restore",
+        "frames": 25,
+        "activeFrames": 18,
+        "maxVerticalJump": 0,
+        "maxPanelGap": 1.52587890625e-05,
+        "nativeVertical": false,
+        "domUpdates": 0,
+        "storageWrites": [],
+        "frameP95": 33.299999999999955,
+        "frameMax": 33.299999999999955,
+        "framesOver34ms": 0
+      }
+    ],
+    "status": "PASS",
+    "trace": {
+      "Layout": {
+        "count": 706,
+        "totalMs": 1030.5250000000005,
+        "maxMs": 103.573
+      },
+      "UpdateLayoutTree": {
+        "count": 763,
+        "totalMs": 1380.248000000002,
+        "maxMs": 31.962
+      },
+      "Paint": {
+        "count": 1156,
+        "totalMs": 2552.4030000000034,
+        "maxMs": 44.65
+      },
+      "FunctionCall": {
+        "count": 2521,
+        "totalMs": 2308.637000000005,
+        "maxMs": 77.907
+      }
+    },
+    "browser": "156.0.8078.79"
+  },
+  "suite_results": {
+    "release": "PASS",
+    "python": 56,
+    "javascript": 129,
+    "browser_programs": 4,
+    "native_cases": 26
+  },
+  "limitations": [
+    "No recording available",
+    "No physical Android/WebView attached",
+    "4x full suite overlapped other test processes; do not treat its timings as isolated phone FPS"
+  ],
+  "release": {
+    "status": "pending exact-head CI and production"
+  },
+  "cpu4_isolated_comparison": {
+    "conditions": "Single headless Chromium browser,390x844 mobile/hasTouch, synthetic data,4x DevTools CPU throttle. rAF timestamps only except named geometry-control. No phone/GPU FPS claims; trace and input injection add overhead.",
+    "runs": [
+      {
+        "name": "baseline",
+        "geometryReads": false,
+        "hotMs": 1278.295,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 41.446999999999996,
+            "maxMs": 2.316
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 77,
+            "totalMs": 11.056000000000003,
+            "maxMs": 0.99
+          },
+          "FunctionCall": {
+            "count": 154,
+            "totalMs": 35.315000000000005,
+            "maxMs": 1.07
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.799999999999727,
+          "maxMs": 16.800000000000182,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "geometry-control",
+        "geometryReads": true,
+        "hotMs": 1267.814,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 33.187000000000005,
+            "maxMs": 1.484
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 11.62,
+            "maxMs": 0.846
+          },
+          "FunctionCall": {
+            "count": 152,
+            "totalMs": 84.98899999999999,
+            "maxMs": 3.072
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.800000000000182,
+          "maxMs": 16.800000000000182,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "panel-paint",
+        "geometryReads": false,
+        "hotMs": 1264.12,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 47.69200000000001,
+            "maxMs": 4.067
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 10.779,
+            "maxMs": 0.859
+          },
+          "FunctionCall": {
+            "count": 152,
+            "totalMs": 30.21299999999999,
+            "maxMs": 2.106
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.700000000000728,
+          "maxMs": 16.799999999999272,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "stage-paint",
+        "geometryReads": false,
+        "hotMs": 1244.064,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 34.916999999999994,
+            "maxMs": 1.932
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 75,
+            "totalMs": 17.155,
+            "maxMs": 2.13
+          },
+          "FunctionCall": {
+            "count": 151,
+            "totalMs": 29.80400000000001,
+            "maxMs": 2.072
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 75,
+          "p95Ms": 16.80000000000109,
+          "maxMs": 16.80000000000109,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "opaque-nav",
+        "geometryReads": false,
+        "hotMs": 1267.913,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 35.998,
+            "maxMs": 2.769
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 13.383999999999997,
+            "maxMs": 1.04
+          },
+          "FunctionCall": {
+            "count": 153,
+            "totalMs": 30.833000000000006,
+            "maxMs": 1.385
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.799999999999272,
+          "maxMs": 16.80000000000109,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "stage-layer",
+        "geometryReads": false,
+        "hotMs": 1270.569,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 33.833999999999996,
+            "maxMs": 1.938
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 17.185,
+            "maxMs": 1.455
+          },
+          "FunctionCall": {
+            "count": 152,
+            "totalMs": 34.93200000000001,
+            "maxMs": 1.086
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.700000000000728,
+          "maxMs": 16.80000000000109,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "overflow-clip",
+        "geometryReads": false,
+        "hotMs": 1271.852,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 30.891000000000005,
+            "maxMs": 1.986
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 11.686999999999998,
+            "maxMs": 1.068
+          },
+          "FunctionCall": {
+            "count": 152,
+            "totalMs": 27.14099999999999,
+            "maxMs": 1.142
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.700000000000728,
+          "maxMs": 16.80000000000109,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "clip-panel-paint",
+        "geometryReads": false,
+        "hotMs": 1270.031,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 37.928,
+            "maxMs": 1.739
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 12.336,
+            "maxMs": 0.976
+          },
+          "FunctionCall": {
+            "count": 153,
+            "totalMs": 28.950999999999993,
+            "maxMs": 1.099
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.799999999999272,
+          "maxMs": 16.80000000000291,
+          "over34ms": 0
+        }
+      },
+      {
+        "name": "baseline-repeat",
+        "geometryReads": false,
+        "hotMs": 1265.92,
+        "headerHandoffDelta": 0,
+        "heldOffset": 210,
+        "counts": {
+          "Layout": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "UpdateLayoutTree": {
+            "count": 38,
+            "totalMs": 32.723000000000006,
+            "maxMs": 1.784
+          },
+          "Paint": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "PrePaint": {
+            "count": 76,
+            "totalMs": 15.212,
+            "maxMs": 1.944
+          },
+          "FunctionCall": {
+            "count": 153,
+            "totalMs": 26.708999999999982,
+            "maxMs": 1.129
+          }
+        },
+        "layoutExamples": [],
+        "frames": {
+          "frames": 76,
+          "p95Ms": 16.700000000000728,
+          "maxMs": 16.700000000000728,
+          "over34ms": 0
+        }
+      }
+    ],
+    "browser": "156.0.8078.79",
+    "pageErrors": [],
+    "scope": "Steady active horizontal drag only: first100ms after gesture acquisition and final animation/cleanup are excluded from event/frame aggregates. Each run sends38 native touchMove updates after acquisition. rAF reads only timestamps except geometry-control.",
+    "recommendation": "No additional CSS change justified: baseline already showed0 Layout/0 Paint during the measured steady drag; containment, opaque nav, layer promotion and overflow:clip showed no material improvement. All variants preserved header handoff geometry.",
+    "limits": "Chromium156.0.8078.79 headless emulation with4x DevTools CPU throttle; renderer uses software/headless compositing. rAF timing and trace counts are browser automation evidence, not physical Android frame delivery or GPU performance. Initial/final layout costs are deliberately outside the steady-drag comparison. Broad acceptance-suite trace includes different fixture state, setup, settling, cleanup and forced geometry sampling; recurring events there were not reproduced in this focused path, so their attribution is unresolved."
+  }
+}

@@ -73,3 +73,7 @@ Saved implementation `54313199b2921822d7ba706c30d3551d97181c31`; [PR #52](https:
 - **P12 live persistence:** Read-only aggregate health shows existing private records survived the guarded rollout: 1 active monitor, 49 recent polls, 197 recent trade records, 299 recent events, no monitor warning. Complete nights remain 0; no calibrated 24h predictions claimed.
 - **P9 native:** Android preview CI was already successful; real installed production package update, original signing identity and physical screen rotation/back/backup verification remain BLOCKED without original installed package and direct device evidence.
 - **P3/P4/P5/P6/P7 OSRS/GW2 model and v4 parity:** Not fully closed; never infer real fills from quote spreads. OSRS v4 state/migration not present in current simplified Hub, and model calibration awaits independent observed cohorts.
+
+## SWIPE-R2 — user-prioritized navigation repair, 16 November 2026
+
+Local implementation VERIFIED by 26 native-touch cases and the full existing baseline. Old main fails at a measured 360px completion discontinuity. Remote exact-head CI and the explicitly authorized Pages production deployment/readback are pending; physical Android smoothness remains OPEN. See [repair report](SWIPE-REPAIR-2026-11-15.md). No broader audit phase is closed by this repair.

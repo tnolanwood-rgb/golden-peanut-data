@@ -11,6 +11,7 @@ const deck=root.GPGuidedDeck?.create?.();
 let installed=false, current=null, fingerprint='', renderTimer=0;
 let ideasCache=null,restoredAccount=null,restoredScroll=null,restoredChart=null,saveScrollTimer=0;
 let renderedAccount=null,topFingerprint='',lastPrefetch='',renderCount=0;
+let restoreGeneration=0;
 const warmedImages=new Map();
 let visit=null;
 try{visit=root.GPGuidedVisit?.create?.(root.localStorage);}catch{/* Private browsing/storage denial must never break UI. */}
@@ -66,6 +67,7 @@ function ideas(s){
  return out;
 }
 function rememberView(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving'))return;
  const s=root.GoldenPeanutClean?.State;
  if(!visit||!s?.account||!document.body.classList.contains('gp-guided-active'))return;
  // Hidden GW2 panels still receive document scroll events from the OSRS desk.
@@ -87,16 +89,18 @@ function maybeRestoreView(s,rows){
  restoredChart=saved.chart?.id===saved.deck.ids[saved.deck.position]?saved.chart:null;
 }
 function restoreVisiblePosition(){
+ const generation=restoreGeneration;
  if(restoredScroll!==null){
   const y=restoredScroll;restoredScroll=null;
   for(const delay of [130,380,850])window.setTimeout(()=>{
+   if(generation!==restoreGeneration||document.querySelector('#gh-game-stage.gh-stage-moving'))return;
    if(document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert&&window.scrollY<y-12)
     window.scrollTo({top:y,behavior:'instant'});
   },delay);
  }
  if(restoredChart){
   const chart=restoredChart;restoredChart=null;
-  window.setTimeout(()=>{if(document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert)
+  window.setTimeout(()=>{if(generation===restoreGeneration&&!document.querySelector('#gh-game-stage.gh-stage-moving')&&document.body.classList.contains('gp-guided-active')&&!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-panel-gw2')?.inert)
    root.GPGuidedPriceChart?.restore?.(chart);},260);
  }
 }
@@ -346,6 +350,7 @@ function showChart(choice){
  root.GPGuidedPriceChart?.open?.({id:choice.id,name:choice.label});
 }
 function render(force=false){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving'))return;
  if(!installed||!document.body.classList.contains('gp-guided-active'))return;
  const s=root.GoldenPeanutClean?.State,rows=ideas(s);
  maybeRestoreView(s,rows);
@@ -442,6 +447,8 @@ function install(){
   saveScrollTimer=setTimeout(()=>{saveScrollTimer=0;rememberView();},220);
  },{passive:true});
  window.addEventListener('gp-guided-chart-changed',rememberView);
+ for(const event of ['pointerdown','touchstart','wheel'])document.addEventListener(event,()=>{restoreGeneration++;restoredScroll=null;restoredChart=null;},{capture:true,passive:true});
+ document.addEventListener('gh-navigation-idle',()=>schedule());
  setInterval(()=>{if(!document.hidden)schedule();},20000);
  root.GPGuided={render:()=>render(true),open:()=>guided(true),advanced:()=>advanced(false),
   remember:rememberView,

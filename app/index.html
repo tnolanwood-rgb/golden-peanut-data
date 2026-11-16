@@ -265,7 +265,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 @media(max-width:600px){#gp57-dashboard .gp57-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gp-compact-shelf>.gp-compact-shelf-body{padding-inline:7px}}
 </style>
 <link rel="stylesheet" href="./focus-edition.css?v=20261115-uncropped-icons-v1">
-<link rel="stylesheet" href="./dual-hub.css?v=20261115-osrs-brain-v2">
+<link rel="stylesheet" href="./dual-hub.css?v=20261115-continuous-swipe-v2">
 <link rel="stylesheet" href="./dual-hub-chart.css?v=20261115-range-v04">
 <script>window.__gpReleaseBoot=function(){const body=document.body;if(!body)return;body.classList.remove("gp-ui-booting");document.getElementById("gp-ui-boot-screen")?.remove();};window.setTimeout(window.__gpReleaseBoot,12000);</script>
 </head><body class="gp-ui-booting"><div id="gp-ui-boot-screen" role="status" aria-live="polite"><div><div class="gp-boot-name">The Golden Peanut</div><div class="gp-boot-copy">Preparing your trading desk…</div></div></div><div class="app">
@@ -2579,6 +2579,7 @@ function status(t){putText('status',t);}
 function warning(t){State.error=t||'';putText('warning',State.error);}
 function changeMode(mode){State.mode=mode==='legend'?'legend':'desk';$('view-desk').hidden=State.mode!=='desk';$('view-legend').hidden=State.mode!=='legend';for(const [id,value] of [['nav-desk','desk'],['nav-legend','legend']]){$(id).classList.toggle('active',State.mode===value);if(State.mode===value)$(id).setAttribute('aria-current','page');else $(id).removeAttribute('aria-current');}}
 function render(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',render,{once:true});return;}
  putText('account-label',State.account?State.account+' · Stored locally':'Account not connected');
  const s=State.snapshot?.account===State.account?State.snapshot:null;
  putMoney('wallet',Number.isSafeInteger(s?.wallet)?s.wallet:null);
@@ -2644,6 +2645,7 @@ function cloudLabel(id){
  return {text:count+' / '+c.spanHours.toFixed(1)+'h'+age+' · '+c.label,risk:c.risky};
 }
 function renderPriceCycles(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',renderPriceCycles,{once:true});return;}
  const area=$('price-cycle-watch');if(!area)return;
  const signals=[...(State.cloudSignals||new Map()).values()].filter(s=>s?.fresh&&s.rhythm?.rangeGood)
    .sort((a,b)=>Number(b.rhythm.cyclical)-Number(a.rhythm.cyclical)||Number(b.rhythm.nearLow)-Number(a.rhythm.nearLow)||b.rhythm.upward-a.rhythm.upward);
@@ -2695,6 +2697,7 @@ function buildVariantLabels(ids){
 }
 function printCoins(c){const p=Number.isFinite(c)?Core.unitCoins(c):null;return p?(p.negative?'−':'')+p.gold+'g '+p.silver+'s '+p.copper+'c':'—';}
 function renderAllocation(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',renderAllocation,{once:true});return;}
  const output=$('allocation-plan');if(!output)return;
  const source=$('allocation-source').value,style=$('allocation-style').value,focus=$('allocation-focus').value;
  const prefs=economicPrefs();
@@ -2921,6 +2924,7 @@ async function recordOutcome56(){
  renderOutcomes56();
 }
 function renderOutcomes56(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',renderOutcomes56,{once:true});return;}
  const target=$('outcome56-results');if(!target)return;
  const plans=(State.outcome56Plans||[]).filter(x=>x.account===State.account),tag=$('outcome56-tag');
  if(tag)tag.textContent=plans.length+' tracked '+(plans.length===1?'plan':'plans');
@@ -3217,6 +3221,7 @@ function renderCommander54(snap,at,filter,current){
 }
 // Stage 5.2 shadow execution insights: read-only, never modifies the allocator or personal storage.
 function renderExecution52(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',renderExecution52,{once:true});return;}
  const panel=$('execution52-results'),status=$('execution52-status');if(!panel||!Exec52||!$('execution52-panel').open)return;
  const snap=State.snapshot?.account===State.account?State.snapshot:null;
  const buys=Array.isArray(snap?.buys)?snap.buys:[],sells=Array.isArray(snap?.sells)?snap.sells:[];
@@ -3294,6 +3299,7 @@ async function updateExecution52(){
  finally{State.exec52Busy=false;button.disabled=false;renderExecution52();}
 }
 function renderMarket(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',renderMarket,{once:true});return;}
  if(!$('market-panel'))return;
  const record=State.marketStatus;
  putText('market-count',State.marketTotal?State.marketTotal.toLocaleString('en-GB')+' public quotes stored':'Not scanned');
@@ -4056,7 +4062,7 @@ function paintActions(State,s){const node=$('gp57-actions');if(!node)return;let 
 }
 function openResearch(id){const research=$('gp57-advanced');if(research)research.open=true;const target=$(id);for(let el=target;el;el=el.parentElement){if(el.tagName==='DETAILS')el.open=true;}requestAnimationFrame(()=>target?.scrollIntoView({behavior:'smooth',block:'start'}));}
 async function refreshAll(){if(refreshBusy)return;const api=root.GoldenPeanutClean;if(!api||!api.State?.db)return;refreshBusy=true;const b=$('gp57-refresh');b.disabled=true;label('gp57-status','Verifying account and refreshing qualified opportunities…');try{await api.sync();await api.buildAllocation();label('gp57-status','Account and investment research checked. Confirm the market quote timestamps before trading.');}catch{label('gp57-status','Refresh incomplete. Existing saved values were preserved.');}finally{refreshBusy=false;b.disabled=false;schedule();}}
-function paint(){const State=root.GoldenPeanutClean?.State;if(!initComplete||!State)return;const s=State.snapshot?.account===State.account?State.snapshot:null;
+function paint(){if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',paint,{once:true});return;}const State=root.GoldenPeanutClean?.State;if(!initComplete||!State)return;const s=State.snapshot?.account===State.account?State.snapshot:null;
  money('gp57-wallet',safeInt(s?.wallet)?s.wallet:null);money('gp57-collect',safeInt(s?.delivery?.coins)?s.delivery.coins:null);money('gp57-week',Number.isFinite(State.summary?.weekP100)?State.summary.weekP100/100:null);money('gp57-reserved',Array.isArray(s?.buys)?root.PeanutCore.committedBuys(s.buys):null);
  label('gp57-last-check',s?.walletAt?'Account checked '+stamp(s.walletAt):'Account not verified yet');label('gp57-delivery-error',lastError);
  paintDelivery(s,State);paintActions(State,s);
@@ -4137,9 +4143,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="./market-board.js?v=20261109-unit-quotes" defer></script>
 <script src="./guided-deck.js?v=20261115-prev-next-only" defer></script>
 <script src="./guided-visit.js?v=20261115-range-v04" defer></script>
-<script src="./focus-edition.js?v=20261115-range-v04" defer></script>
+<script src="./focus-edition.js?v=20261115-continuous-swipe-v2" defer></script>
 <script src="./dual-hub-chart.js?v=20261115-official-value-colours-v10" defer></script>
-<script src="./dual-hub.js?v=20261115-fast-firstpaint-v1" defer></script>
+<script src="./dual-hub.js?v=20261115-continuous-swipe-v2" defer></script>
 <script id="gp-integrity-check">
 document.addEventListener('DOMContentLoaded',()=>{
  const stamp='7.16.0-evidence',engine=window.GPOpportunity,front=window.GPFocus;

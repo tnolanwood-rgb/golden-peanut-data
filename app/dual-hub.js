@@ -1,6 +1,6 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
-const VERSION="hub-performance-1.0-2026-11-15";
+const VERSION="hub-continuous-swipe-2026-11-15";
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1",VIEW="gh-view-session-v1",RECOVERY="gh-osrs-ledger-recovery-v1",ORIGINAL="gh-osrs-ledger-original-v1";
@@ -270,22 +270,21 @@ function install(){
  doc.addEventListener("pointermove",moveGesture,{passive:false,capture:true});
  doc.addEventListener("pointerup",endGesture,{passive:true,capture:true});
  doc.addEventListener("pointercancel",cancelGesture,{passive:true,capture:true});
- // Android WebView may let a nested overflow:auto list consume the pointer
- // stream before it reaches the outer panel. Keep the list's native VERTICAL
- // scroll, while explicitly recovering HORIZONTAL drags from touch events.
- // Event listeners do not run on ordinary content outside the suggestion box.
+ // Pointer Events track the finger before the browser's Touch Event slop.
+ // Touch Events take over only if the pointer stream is missing/cancelled,
+ // including nested Android scrollers. Never sample both streams twice.
  doc.addEventListener("touchstart",startScrollTouch,{passive:true,capture:true});
  doc.addEventListener("touchmove",moveScrollTouch,{passive:false,capture:true});
  doc.addEventListener("touchend",endScrollTouch,{passive:true,capture:true});
  doc.addEventListener("touchcancel",cancelScrollTouch,{passive:true,capture:true});
  doc.addEventListener("click",guardDragClick,true);
  win.addEventListener("resize",cancelOnResize,{passive:true});
- doc.addEventListener("visibilitychange",()=>{if(doc.hidden){saveView();cancelOnResize();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
- win.addEventListener('pagehide',()=>{saveView();saveUser();flushMarketCache()});
+ doc.addEventListener("visibilitychange",()=>{if(doc.hidden){cancelOnResize();saveView();flushMarketCache()}else if(state.game==='osrs'){ensureGameReady('osrs');render()}});
+ win.addEventListener('pagehide',()=>{cancelOnResize();saveView();saveUser();flushMarketCache()});
  doc.addEventListener('input',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
  doc.addEventListener('change',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()});
  doc.addEventListener('toggle',event=>{if(event.target?.closest?.('#gh-osrs-root'))saveView()},true);
- win.addEventListener('scroll',()=>{scrollPositions[state.game]=win.scrollY||0;scheduleViewSave()},{passive:true});
+ win.addEventListener('scroll',()=>{if(!navigationBusy()){scrollPositions[state.game]=win.scrollY||0;scheduleViewSave()}},{passive:true});
  doc.addEventListener('scroll',event=>{if(event.target?.closest?.('#gh-osrs-root'))scheduleViewSave()},{passive:true,capture:true});
  doc.addEventListener('pointerdown',()=>{pendingDocumentScroll=null},{passive:true,capture:true});
  win.addEventListener('gh-osrs-chart-changed',saveView);
@@ -293,7 +292,7 @@ function install(){
  win.GoldenDualHub={version:VERSION,switchGame:(game)=>switchGame(game,true),diagnostics:()=>({
   game:state.game,osrsPriceTimestamp:state.builtAt,ideas:state.ideas.length,ledgerRows:state.records.length,loading:state.loading,stale:state.stale,priceError:state.priceError,researchMode:state.researchMode,liquidCount:state.liquidIdeas.length,valueCount:state.valueIdeas.length,scanCount:state.scanCount,positiveSpreads:state.positiveSpreads,
   selectedId:state.selectedId,feedIssues:[...state.feedIssues],ledgerError:state.ledgerError,
-  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning,cacheWrites:cacheWriteCount,iconWarmCount:warmedOsrsIcons.size
+  dragging:!!gesture?.scene,dragOffset:gesture?.scene?.offset??0,transitioning,lastRelease,cacheWrites:cacheWriteCount,iconWarmCount:warmedOsrsIcons.size
  })};
  win.GoldenDualHub.back=()=>{
   if(state.game!=='osrs')return false;
@@ -306,15 +305,12 @@ function install(){
  const initial=['gw2','osrs'].includes(requested)?requested:read(LAST_GAME,"gw2");
  switchGame(initial==="osrs"?"osrs":"gw2",false);
  if(state.game==="osrs")render();
+ // Build once before accepting input, including a swipe immediately after
+ // startup. No DOM construction or cache restoration belongs in pointermove.
+ activateOsrs();
+ render();
  restoreView();
- // Construct the other desk during idle time, rather than freezing the FIRST
- // horizontal swipe while hundreds of OSRS nodes and handlers are created.
- // This does not fetch markets, alter ledgers, or start account requests.
- if(state.game==='gw2'){
-  const prepare=()=>{if(state.game==='gw2'&&!get('gh-refresh'))activateOsrs();};
-  if(typeof win.requestIdleCallback==='function')win.requestIdleCallback(prepare,{timeout:1800});
-  else win.setTimeout(prepare,650);
- }
+ restoreScrolls();
 }
 function activateOsrs(){
  if(get("gh-refresh"))return;
@@ -373,17 +369,42 @@ function activateOsrs(){
  * a settling animation; never start a full-screen animation on finger lift.
  * OSRS/W2 content and storage are never unmounted or recreated on each drag.
  */
-let transitioning=false,gesture=null,activeAnimation=null,ignoreClickBefore=0;
+let transitioning=false,gesture=null,activeAnimation=null,liveScene=null,ignoreClickBefore=0;
+let lastRelease=null;
+function gestureTime(event){
+ const stamp=event.timeStamp;
+ if(!Number.isFinite(stamp))return win.performance.now();
+ return stamp>1e12?stamp-win.performance.timeOrigin:stamp;
+}
+let deferredRender=false,idleTimer=0;
+const idleWaiters=[];
+function navigationBusy(){return !!liveScene;}
+function navigationIdle(){return navigationBusy()?new Promise(resolve=>idleWaiters.push(resolve)):Promise.resolve();}
+function scheduleNavigationWork(){
+ win.clearTimeout(idleTimer);
+ idleTimer=win.setTimeout(()=>{
+  if(navigationBusy())return;
+  for(const resolve of idleWaiters.splice(0))resolve();
+  if(deferredRender){deferredRender=false;render();}
+  if(state.game==='osrs'){ensureGameReady('osrs');win.__gpReleaseBoot?.();}
+  doc.dispatchEvent(new Event('gh-navigation-idle'));
+  saveView();
+ },32);
+}
 const scrollPositions={gw2:0,osrs:0};
+const panelScrollPositions={};
 let viewTimer=0,settingsReady=false,restoringView=false,pendingPanelScroll={},pendingDocumentScroll=null;
 const draftIds=['gh-budget-input','gh-mode','gh-restricted','gh-fill-side','gh-fill-qty','gh-fill-price','gh-fill-tax','gh-fill-item'];
 function scheduleViewSave(){win.clearTimeout(viewTimer);viewTimer=win.setTimeout(saveView,150)}
 function saveView(){
- if(restoringView)return;
+ if(restoringView||navigationBusy())return;
  try{
   const drafts={};for(const id of draftIds){const node=get(id);if(node)drafts[id]=node.value.slice(0,180)}
   const panelScroll={};for(const id of ['gh-panel-gw2','gh-panel-osrs']){
-   const scroller=get(id)?.querySelector('.gh-trade-scroll');if(scroller)panelScroll[id]=pendingPanelScroll[id]??scroller.scrollTop;
+   const panel=get(id),scroller=panel?.querySelector('.gh-trade-scroll');
+   // display:none scrollers report zero, even when the browser retains an
+   // internal position. Never replace a hidden game's saved position with it.
+   if(scroller)panelScroll[id]=pendingPanelScroll[id]??(panel.hidden?panelScrollPositions[id]||0:scroller.scrollTop);
   }
   store(VIEW,{v:1,at:Date.now(),game:state.game,scroll:{...scrollPositions,[state.game]:pendingDocumentScroll?.game===state.game?pendingDocumentScroll.y:win.scrollY||0},drafts,panelScroll,
    fillOpen:!!get('gh-fill-form')&&!get('gh-fill-form').hidden,fillItem:state.fillItem||null,
@@ -415,7 +436,7 @@ function restoreView(){
 function restoreScrolls(){
  for(const [id,y] of Object.entries(pendingPanelScroll)){
   const node=get(id)?.querySelector('.gh-trade-scroll');
-  if(node&&node.scrollHeight>node.clientHeight){node.scrollTop=y;delete pendingPanelScroll[id];}
+  if(node&&node.scrollHeight>node.clientHeight){node.scrollTop=y;panelScrollPositions[id]=node.scrollTop;delete pendingPanelScroll[id];}
  }
  if(pendingDocumentScroll&&state.snap&&!state.loading){
   const saved=pendingDocumentScroll;pendingDocumentScroll=null;
@@ -439,6 +460,7 @@ function setActiveGame(game){
  store(LAST_GAME,game);
 }
 function ensureGameReady(next){
+ if(navigationBusy())return;
  if(next==="osrs"){
   activateOsrs();
   if(!state.loading&&(!state.snap||Date.now()-state.builtAt>=60000))void refresh(false);
@@ -447,56 +469,88 @@ function ensureGameReady(next){
 function createScene(from,next){
  const stage=get("gh-game-stage"),out=get("gh-panel-"+from),incoming=get("gh-panel-"+next);
  if(!stage||!out||!incoming)return null;
- // Do not run parsing/ranking, synchronous render or network-start work
- // inside a pointermove; that stalls finger tracking on real Android phones.
- if(next==='osrs')activateOsrs();
- // The receiving panel is prepared off-screen before the first drag frame.
- const width=Math.max(1,stage.getBoundingClientRect().width);
+ // Freeze each view at its OWN document position, not the outgoing game's.
+ // Restoring scroll only after the slide used to move the incoming content
+ // vertically by hundreds of pixels at the final frame.
+ const rect=stage.getBoundingClientRect(),fromY=win.scrollY||0;
+ const width=Math.max(1,rect.width);
  const height=Math.max(1,out.getBoundingClientRect().height);
  const direction=next==="osrs"?1:-1; // destination starts right (OSRS) or left (GW2).
- incoming.hidden=false;
  stage.style.height=height+"px";
  stage.classList.add("gh-stage-moving");
+ incoming.hidden=false;
+ // Apply remembered nested scrolling before the incoming content is painted.
+ const scroller=incoming.querySelector('.gh-trade-scroll');
+ if(scroller){
+  const y=pendingPanelScroll[incoming.id]??panelScrollPositions[incoming.id]??0;
+  scroller.scrollTop=y;
+  if(scroller.scrollHeight>scroller.clientHeight){panelScrollPositions[incoming.id]=scroller.scrollTop;delete pendingPanelScroll[incoming.id];}
+ }
+ // Read the destination's natural height once, at gesture acquisition. Both
+ // sheets keep the same width/formatting context during and after movement.
+ const incomingHeight=incoming.getBoundingClientRect().height;
+ const top=rect.top+fromY;
+ const toY=clamp(scrollPositions[next]||0,0,Math.max(0,top+incomingHeight-win.innerHeight));
+ const incomingTop=fromY-toY;
+ incoming.style.top=incomingTop+"px";
+ stage.style.height=Math.max(height,incomingHeight+incomingTop,fromY+win.innerHeight-top)+"px";
  incoming.inert=true;incoming.setAttribute("aria-hidden","true");
- const scene={stage,out,incoming,from,next,width,direction,offset:0};
+ const scene={stage,out,incoming,from,next,width,direction,offset:0,fromY,toY};
+ liveScene=scene;
  moveScene(scene,0);
  return scene;
 }
 function moveScene(scene,offset){
- const dx=clamp(offset,-scene.width,scene.width);
+ const dx=clamp(offset,scene.direction===1?-scene.width:0,scene.direction===1?0:scene.width);
  scene.offset=dx;
  scene.out.style.transform="translate3d("+dx+"px,0,0)";
  scene.incoming.style.transform="translate3d("+(scene.direction*scene.width+dx)+"px,0,0)";
 }
 function finishScene(scene,commit){
  if(!scene||scene.closed)return;
+ // A vertical gesture can take over an interrupted settle. Carry its native
+ // document scroll into the receiving view instead of restoring a stale Y.
+ const scrollDelta=(win.scrollY||0)-scene.fromY;
  scene.closed=true;
  if(activeAnimation?.scene===scene){
-  const {a,b,height,watchdog}=activeAnimation;activeAnimation=null;
+  const {a,b,watchdog}=activeAnimation;activeAnimation=null;
   win.clearTimeout(watchdog);
   // Clear compositor fill-forwards before removing the drag transforms.
-  try{a.cancel();b.cancel();height?.cancel();}catch{}
+  try{a.cancel();b.cancel();}catch{}
  }
  const next=commit?scene.next:scene.from;
+ for(const panel of [scene.out,scene.incoming]){
+  const scroller=panel.querySelector('.gh-trade-scroll');
+  if(scroller&&scroller.scrollHeight>scroller.clientHeight)panelScrollPositions[panel.id]=scroller.scrollTop;
+ }
  scene.out.style.transform="";scene.incoming.style.transform="";
+ scene.incoming.style.top="";
  scene.stage.style.height="";scene.stage.classList.remove("gh-stage-moving");
+ // remember() must still see the outgoing GW2 view before it is hidden or
+ // made inert; otherwise its older resume snapshot can undo this scroll.
+ setActiveGame(next);
  scene.out.hidden=next!==scene.from;
  scene.incoming.hidden=next!==scene.next;
- setActiveGame(next);
  setPanelAccess(next);
- transitioning=false;activeAnimation=null;
- if(commit){
-  // Preserve each game's document scroll instead of losing the user's place.
-  win.scrollTo({top:scrollPositions[next]||0,behavior:"instant"});
-  if(next==='osrs')win.requestAnimationFrame(()=>{
-   // First visible frame completes before a potentially expensive market scan.
-   if(state.game!=='osrs'||transitioning)return;
-   ensureGameReady('osrs');
-   render();
-   win.__gpReleaseBoot?.();
-  });
- }
- saveView();
+ transitioning=false;activeAnimation=null;liveScene=null;
+ // This layout/scroll handoff happens in one task. The compensated incoming
+ // top makes its viewport coordinates identical on either side of the handoff.
+ win.scrollTo({top:(commit?scene.toY:scene.fromY)+scrollDelta,behavior:"instant"});
+ scrollPositions[next]=win.scrollY||0;
+ scheduleNavigationWork();
+}
+function interruptScene(){
+ const active=activeAnimation;if(!active)return null;
+ const {scene,a,b,watchdog}=active;
+ // One compositor read at acquisition; never a layout read per touchmove.
+ const transform=win.getComputedStyle(scene.out).transform;
+ const values=transform.slice(transform.indexOf('(')+1,-1).split(',');
+ const offset=transform==='none'?scene.offset:Number(values[values.length===16?12:4]);
+ activeAnimation=null;win.clearTimeout(watchdog);
+ // Cancelled .finished promises must not finish a newly acquired scene.
+ a.cancel();b.cancel();transitioning=false;
+ moveScene(scene,Number.isFinite(offset)?offset:scene.offset);
+ return scene;
 }
 /* Compositor-only two-keyframe settling: the old 48-frame sampled spring
  * created three animations and took up to 650ms after finger release.
@@ -528,13 +582,19 @@ function settleScene(scene,commit,releaseVelocity=0){
  const b=scene.incoming.animate(framesIn,options);
  // If a hidden-tab WebView stalls a.finished, don't leave the UI locked.
  const watchdog=win.setTimeout(()=>finishScene(scene,commit),duration+100);
- activeAnimation={a,b,height:null,watchdog,scene,duration,commit};
+ const active={a,b,watchdog,scene,duration,commit};activeAnimation=active;
+ // Use the same timeline origin so the sheets cannot drift apart.
+ a.startTime=b.startTime=doc.timeline.currentTime;
  Promise.all([a.finished,b.finished])
-  .then(()=>finishScene(scene,commit),()=>finishScene(scene,commit));
+  .then(()=>{if(activeAnimation===active)finishScene(scene,commit)},()=>{if(activeAnimation===active)finishScene(scene,commit)});
 }
 function switchGame(game,userAction){
  const next=game==="osrs"?"osrs":"gw2";
- if(transitioning||gesture||((userAction===true)&&state.game===next))return;
+ if(gesture)return;
+ if(activeAnimation){
+  const scene=interruptScene();settleScene(scene,next===scene.next);return;
+ }
+ if((userAction===true)&&state.game===next)return;
  const from=state.game;
  if(!userAction||next===from){
   ensureGameReady(next);
@@ -554,126 +614,104 @@ function switchGame(game,userAction){
 }
 let scrollTouch=null;
 function scrollTouchPoint(event){
- const touch=scrollTouch;
- if(!touch)return null;
- return [...(event.changedTouches||[]),...(event.touches||[])].find(t=>t.identifier===touch.id)||null;
+ if(!scrollTouch)return null;
+ return Array.from(event.changedTouches||[]).find(t=>t.identifier===scrollTouch.id)||
+  Array.from(event.touches||[]).find(t=>t.identifier===scrollTouch.id)||null;
 }
 function startScrollTouch(event){
- if(transitioning||event.touches?.length!==1||scrollTouch)return;
- const node=event.target?.nodeType===1?event.target:event.target?.parentElement;
- if(!node?.closest?.("#gh-osrs-root .gh-trade-scroll"))return;
- // Scrollable suggestion text is a swipe target, but form inputs/charts
- // retain their own native gestures.
- if(node.closest("input,textarea,select,svg,canvas,video,iframe,[contenteditable],[role=slider],.gh-chart-card,[data-no-game-swipe]"))return;
+ if(event.touches?.length!==1){
+  scrollTouch=null;cancelGesture();return;
+ }
  const point=event.touches[0];
- scrollTouch={id:point.identifier,node,startX:point.clientX,startY:point.clientY,vertical:false,horizontal:false};
+ if(gesture?.pointerType==='pen')return;
+ // pointerdown precedes touchstart. Keep its earlier movement samples and
+ // record a fallback owner rather than replaying the same finger twice.
+ if(!gesture)startGesture({target:event.target,pointerId:'touch-'+point.identifier,
+  pointerType:'touch',isPrimary:true,clientX:point.clientX,clientY:point.clientY,timeStamp:event.timeStamp,input:'touch'});
+ if(gesture)scrollTouch={id:point.identifier,pointerId:gesture.pointerId};
 }
 function moveScrollTouch(event){
- const t=scrollTouch,point=scrollTouchPoint(event);
- if(!t||!point||event.touches?.length!==1||transitioning)return;
- const dx=point.clientX-t.startX,dy=point.clientY-t.startY;
- if(!t.horizontal){
-  if(t.vertical)return;
-  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){t.vertical=true;return;}
-  if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
-  if((dx<0&&state.game!=='gw2')||(dx>0&&state.game!=='osrs'))return;
-  t.horizontal=true;
- }
- // Pointer Events normally provide the same gesture. When WebView cancels
- // pointer capture within a scroller, recreate it with the stored touch start.
- if(!gesture){
-  startGesture({target:t.node,pointerId:'scroll-touch-'+t.id,pointerType:'touch',
-   isPrimary:true,clientX:t.startX,clientY:t.startY});
- }
- if(gesture){
-  moveGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY,
-   cancelable:false});
-  // Only horizontal navigation blocks the native stream. Vertical card
-  // scrolling stays untouched, including when the finger begins on text.
-  if(gesture.scene&&event.cancelable)event.preventDefault();
- }
+ const point=scrollTouchPoint(event);
+ if(!point||event.touches?.length!==1)return;
+ if(gesture?.input==='pointer'&&!gesture.pointerCancelled)return;
+ moveGesture({pointerId:scrollTouch.pointerId,touchFallback:true,clientX:point.clientX,clientY:point.clientY,timeStamp:event.timeStamp,
+  cancelable:event.cancelable,preventDefault:()=>event.preventDefault()});
 }
 function endScrollTouch(event){
- const t=scrollTouch,point=scrollTouchPoint(event);
- if(!t||!point)return;
+ const point=scrollTouchPoint(event);if(!point)return;
+ const pointerId=scrollTouch.pointerId;
  scrollTouch=null;
- if(t.horizontal&&gesture&&gesture.scene){
-  endGesture({pointerId:gesture.pointerId,clientX:point.clientX,clientY:point.clientY});
- }else if(gesture?.pointerId==='scroll-touch-'+t.id){
-  gesture=null;
- }
+ endGesture({pointerId,clientX:point.clientX,clientY:point.clientY,timeStamp:event.timeStamp});
 }
-function cancelScrollTouch(event){
- const t=scrollTouch,point=scrollTouchPoint(event);
- if(!t||!point)return;
- scrollTouch=null;
- if(gesture?.scene)cancelGesture({pointerId:gesture.pointerId});
-}
+function cancelScrollTouch(){if(!scrollTouch)return;scrollTouch=null;cancelGesture();}
 function startGesture(ev){
- if(transitioning||gesture||!ev.isPrimary||!["touch","pen"].includes(ev.pointerType)||doc.querySelector("dialog[open]"))return;
+ if(gesture||!ev.isPrimary||!["touch","pen"].includes(ev.pointerType)||doc.querySelector("dialog[open]"))return;
  const node=ev.target?.nodeType===1?ev.target:ev.target?.parentElement;
  if(!node?.closest||!node.closest("#gh-game-stage,#gh-game-nav"))return;
- // Avoid hijacking text editing, charts, slider scrubbing and pinch interactions.
- // Buttons/cards/summary text are swipeable, but their click is cancelled after
- // a real horizontal drag. This drastically expands the responsive touch area.
  if(node.closest("input,textarea,select,svg,canvas,video,iframe,[contenteditable],[role=slider],.gp-price-plot,.gh-chart-card,[data-no-game-swipe]"))return;
- const now=win.performance.now();
- gesture={pointerId:ev.pointerId,startX:ev.clientX,startY:ev.clientY,lastX:ev.clientX,
-  lastTime:now,sampleX:ev.clientX,sampleTime:now,from:state.game,scene:null};
+ const resumeCommit=activeAnimation?.commit,scene=interruptScene();
+ const now=gestureTime(ev);
+ gesture={pointerId:ev.pointerId,pointerType:ev.pointerType,input:ev.input||'pointer',startX:ev.clientX,startY:ev.clientY,lastX:ev.clientX,
+  lastTime:now,sampleX:ev.clientX,sampleTime:now,from:scene?.from||state.game,
+  startOffset:scene?.offset||0,scene,resumeCommit};
 }
 function moveGesture(ev){
  const g=gesture;
  if(!g||ev.pointerId!==g.pointerId)return;
+ if(g.pointerCancelled&&!ev.touchFallback)return;
  const dx=ev.clientX-g.startX,dy=ev.clientY-g.startY;
- if(!g.scene){
-  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){gesture=null;return;}
+ if(!g.horizontal){
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)*1.15){
+   gesture=null;
+   if(g.scene)settleScene(g.scene,!!g.resumeCommit);
+   return;
+  }
   if(Math.abs(dx)<9||Math.abs(dx)<Math.abs(dy)*1.2)return;
-  if((dx<0&&g.from!=="gw2")||(dx>0&&g.from!=="osrs")){gesture=null;return;}
-  const next=g.from==="gw2"?"osrs":"gw2";
-  scrollPositions[g.from]=win.scrollY||0;
-  g.scene=createScene(g.from,next);
-  if(!g.scene){gesture=null;return;}
-  // Capture after the receiving page is mounted, as specified by Pointer Events.
-  try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
+  if(!g.scene&&((dx<0&&g.from!=="gw2")||(dx>0&&g.from!=="osrs"))){gesture=null;return;}
+  g.horizontal=true;
  }
- const now=win.performance.now();
+ if(!g.scene){
+  scrollPositions[g.from]=win.scrollY||0;
+  g.scene=createScene(g.from,g.from==="gw2"?"osrs":"gw2");
+  if(!g.scene){gesture=null;return;}
+  if(g.input==='pointer')try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
+ }
+ const now=gestureTime(ev);
  if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}
  g.lastX=ev.clientX;g.lastTime=now;
- moveScene(g.scene,dx);
+ moveScene(g.scene,g.startOffset+dx);
  if(ev.cancelable)ev.preventDefault();
 }
 function endGesture(ev){
  const g=gesture;if(!g||ev.pointerId!==g.pointerId)return;
  gesture=null;
  if(!g.scene)return;
- // An interrupted or reversed drag can return the original page.
- const dx=clamp(ev.clientX-g.startX,-g.scene.width,g.scene.width);
- moveScene(g.scene,dx);
- const elapsed=Math.max(1,win.performance.now()-g.sampleTime);
+ if(!g.horizontal){settleScene(g.scene,!!g.resumeCommit);return;}
+ moveScene(g.scene,g.startOffset+ev.clientX-g.startX);
+ const dx=g.scene.offset,elapsed=Math.max(1,gestureTime(ev)-g.sampleTime);
  const speed=(ev.clientX-g.sampleX)/elapsed;
- const towardNew=(dx<0&&g.from==="gw2")||(dx>0&&g.from==="osrs");
- const commit=towardNew&&(Math.abs(dx)>g.scene.width*.32||
-  (Math.abs(dx)>48&&Math.sign(speed)===Math.sign(dx)&&Math.abs(speed)>.65));
+ const towardNew=-g.scene.direction*speed;
+ // A decisive reverse flick returns immediately, even beyond the distance
+ // threshold. A held/slow drag uses distance, rather than stale velocity.
+ const commit=towardNew<-.65?false:
+  Math.abs(dx)>g.scene.width*.32||(Math.abs(dx)>48&&towardNew>.65);
+ lastRelease={offset:dx,velocity:speed,commit};
  ignoreClickBefore=Date.now()+350;
  settleScene(g.scene,commit,speed);
 }
 function cancelGesture(ev){
  const g=gesture;
  if(!g||(ev&&ev.pointerId!==g.pointerId))return;
- // WebView can cancel the pointer stream for a nested scroller even as
- // touchmove/touchend continue. Let the touch fallback complete the swipe.
- if(ev&&scrollTouch?.horizontal&&g.scene)return;
+ if(ev&&g.pointerType==='touch'&&scrollTouch?.pointerId===g.pointerId){g.pointerCancelled=true;return;}
  gesture=null;
  if(g.scene)settleScene(g.scene,false);
 }
 function cancelOnResize(){
  scrollTouch=null;
- if(gesture){const g=gesture;gesture=null;if(g.scene){moveScene(g.scene,0);finishScene(g.scene,false);}}
- if(activeAnimation){
-  const {a,b,height,watchdog,scene,commit}=activeAnimation;activeAnimation=null;
-  win.clearTimeout(watchdog);
-  // Cancelling animations rejects .finished; guard the stale callback.
-  try{a.cancel();b.cancel();height?.cancel();}catch{}
+ const scene=liveScene;
+ gesture=null;
+ if(scene){
+  const commit=activeAnimation?.commit||false;
   finishScene(scene,commit);
  }
 }
@@ -703,6 +741,7 @@ function cacheLoad(){
 function flushMarketCache(){
  if(marketCacheTimer){win.clearTimeout(marketCacheTimer);marketCacheTimer=0;}
  if(!marketCacheDirty)return;
+ if(navigationBusy()){marketCacheTimer=win.setTimeout(flushMarketCache,200);return;}
  marketCacheDirty=false;
  // Optimistic storage safety: a user/other tab intentionally cleared or
  // replaced the cache while our network requests ran. Do not resurrect old
@@ -750,17 +789,21 @@ async function getPrices(route,ttl,force){
  try{
   const response=await win.fetch(API+route,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(17000)});
   if(!response.ok)throw Error("Wiki API "+response.status);
-  fresh=await response.json();
+  const body=await response.text();
+  await navigationIdle();
+  fresh=JSON.parse(body);
   if(!validate(route,fresh))throw Error("Unexpected Wiki API response for "+route);
   const mergedCache=cacheLoad();mergedCache[route]={data:fresh,at:Date.now()};
   scheduleMarketCacheSave();
   return {data:fresh,at:Date.now(),stale:false};
  }catch(err){
+  await navigationIdle();
   if(rec&&age>=0&&age<86400000&&validate(route,rec.data))return {data:rec.data,at:rec.at,stale:true,error:String(err.message)};
   throw err;
  }
 }
 async function refresh(force){
+ await navigationIdle();
  if(state.loading)return;
  state.loading=true;
  state.priceError=null;
@@ -781,6 +824,7 @@ async function refresh(force){
    getPrices("1h",3600000,force)
   ]);
   const first=await essential;
+  await navigationIdle();
   for(const r of first)if(r.status==='rejected')throw r.reason;
   const core=first.map(r=>r.value);
   // Provisional discovery is visibly UNVERIFIED. It may show high-value
@@ -800,6 +844,7 @@ async function refresh(force){
    }
   }
   const finished=await aggregates;
+  await navigationIdle();
   const settled=[...first,...finished];
   const result=settled.map((r,i)=>r.status==='fulfilled'?r.value:{data:{data:{},timestamp:0},stale:true,error:(i===2?'5-minute':'hourly')+' feed unavailable: '+safe(r.reason?.message)});
   state.snap={mapping:result[0].data,latest:result[1].data,five:result[2].data,hour:result[3].data};
@@ -814,6 +859,7 @@ async function refresh(force){
    new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+
    " · "+state.ideas.length+" eligible candidates");
  }catch(err){
+  await navigationIdle();
   // Don't leave the card stuck in the loading state when even one endpoint
   // fails. Never manufacture trades from missing or unverified observations.
   state.priceError=safe(err?.message||"Network request failed");
@@ -1120,6 +1166,7 @@ function ledgerTotals(){
  return result;
 }
 function render(){
+ if(navigationBusy()){deferredRender=true;return;}
  if(!get("gh-budget-metric"))return;
  txt("gh-budget-metric",gp(state.budget));txt("gh-account-metric",state.mode==="members"?"Members · 8 GE slots":"Free-to-play · 3 GE slots");
  const totals=ledgerTotals();txt("gh-today",totals.today===null?'Total exceeds safe range':gp(totals.today));txt("gh-week",totals.lastWeek===null?'Total exceeds safe range':gp(totals.lastWeek));

@@ -43,6 +43,7 @@ jobs:
             artifacts/browser-*.png
             artifacts/audit/*.json
             artifacts/audit/*.log
+            artifacts/audit/swipe/**
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
