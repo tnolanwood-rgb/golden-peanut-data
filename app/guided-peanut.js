@@ -118,7 +118,11 @@ function guided(enabled){
  $('gp-guided-root').hidden=!enabled;
  $('gp-return-guided').hidden=enabled;
  save(KEY,enabled?'guided':'advanced');
- if(enabled){render(true);window.scrollTo({top:0,behavior:'instant'});}
+ if(enabled){
+  render(true);
+  if(!document.querySelector('#gh-panel-gw2')?.hidden&&!document.querySelector('#gh-game-stage.gh-stage-moving'))
+   window.scrollTo({top:0,behavior:'instant'});
+ }
  // Release the first paint only after Guided (or the saved Advanced view) is mounted.
  // Double RAF avoids briefly exposing the legacy page while WebView lays out.
  window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>window.__gpReleaseBoot?.()));
@@ -421,6 +425,7 @@ function render(force=false){
 }
 function schedule(force=false){clearTimeout(renderTimer);renderTimer=setTimeout(()=>render(force),250);}
 function install(){
+ if(document.querySelector('#gh-game-stage.gh-stage-moving')){document.addEventListener('gh-navigation-idle',install,{once:true});return true;}
  if(installed||!deck||!$('focus-today')||!document.querySelector('.app'))return false;
  // Legacy versions persisted skipped IDs across reloads and accounts.
  // Remove ONLY this obsolete UI-only key: never touch account/ledger storage.
