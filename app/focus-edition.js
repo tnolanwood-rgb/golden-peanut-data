@@ -1281,18 +1281,27 @@ function renderOpportunityHome(){
 }
 function renderPortfolioOutlook(){
  const host=$('focus-earnings-pace'),s=State(),t=tradeData('wallet');if(!host)return;
- host.replaceChildren();host.hidden=!t.valid; if(!t.valid)return;
- const book=root.GPOpportunity?.rankedMarkets?.(t.p);if(!book)return;
+ host.hidden=!t.valid;
+ if(host.hidden){if(host.childElementCount)host.replaceChildren();delete host.dataset.geOutlookKey;return;}
+ const book=root.GPOpportunity?.rankedMarkets?.(t.p);
+ if(!book){if(host.childElementCount)host.replaceChildren();delete host.dataset.geOutlookKey;return;}
+ const audit=s?.executionBacktest||root.GPExecution?.backtest(s?.executionLearning||{});
+ const ledger=s?.ledger||[],lastPurchase=ledger.length?Math.max(...ledger.slice(-1000).map(v=>v.purchased||0)):null;
+ const key=JSON.stringify([s?.account,book.overnightPortfolioScenario,t.p.spent,t.p.unallocated,
+  audit?.n,audit?.censoredWindows,audit?.skippedStarts,audit?.profitMAE,audit?.persistenceMAE,
+  ledger.length,lastPurchase,s?.summary?.weekP100]);
+ if(host.childElementCount&&host.dataset.geOutlookKey===key)return;
+ host.dataset.geOutlookKey=key;host.replaceChildren();
  const cover=h('div','focus-outlook-title');cover.append(h('strong','','Trading outlook · currently verified markets'));
  host.append(cover);
  const grid=h('div','focus-pace-grid');
  const make=(name,c)=>{const cell=h('div','focus-pace-cell');cell.append(h('small','',name),h('strong','',c===null?'Not estimated':cash(c)));grid.append(cell);};
- make('Expected net profit by tomorrow',book.overnightPortfolioScenario);
+ make('Conditional overnight net · if orders fill and resell',book.overnightPortfolioScenario);
  make('Buy capital + listing-fee reserve',t.p.spent||0);
  make('Wallet left unallocated',t.p.unallocated||0);
  host.append(grid);
  host.append(h('p','focus-muted','Only funded new purchases are totalled. Existing holdings and cancellation scenarios are separate. Unspent sale proceeds are not recycled in this forecast. No estimate is available without comparable execution evidence.'));
- const audit=s?.executionBacktest||root.GPExecution?.backtest(s?.executionLearning||{});
+
  if(audit)host.append(h('p','focus-muted','Walk-forward checks: '+audit.n+' held-out windows; '+audit.censoredWindows+' censored; '+audit.skippedStarts+' starts not observable. '+(audit.n?'Profit MAE '+cash(audit.profitMAE)+'; last-window baseline MAE '+cash(audit.persistenceMAE)+'.':'Live forecasting accuracy has not been established.')));
  host.append(h('p','focus-muted','Learning: '+num((s?.ledger||[]).length)+' preserved completed trade records feed the forecasts. Last recorded trade: '+
   (s?.ledger?.length?new Date(Math.max(...s.ledger.slice(-1000).map(x=>x.purchased||0))).toLocaleString('en-GB',{timeZone:'Europe/London'}):'none')+

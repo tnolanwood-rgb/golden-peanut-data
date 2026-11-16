@@ -624,6 +624,27 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  assert.deepEqual(bookStability,{stable:{row:true,button:true},updated:true,replaced:true},
   'GW2 operating book must preserve unchanged DOM and refresh on scenario changes');
+ // The GW2 trading outlook also retains its exact DOM when inputs are
+ // stable. A real change to unallocated capital must update the displayed
+ // amount, and the overnight forecast must always be labelled conditional.
+ const outlookRetention=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,originalPlan=s.opportunityPlan,originalSnap=s.snapshot;
+  s.snapshot={...originalSnap,walletAt:new Date().toISOString()};
+  s.opportunityPlan={...originalPlan,ok:true,source:'wallet',at:Date.now(),
+   orders:[],budget:1000000,spent:0,unallocated:250000,activeBook:{entries:[]}};
+  try{
+   GPFocus.goto('today');GPFocus.render();
+   const host=document.querySelector('#focus-earnings-pace'),first=host.firstElementChild,
+    initial=host.textContent;
+   for(let i=0;i<6;i++)GPFocus.render();
+   const stable=host.firstElementChild===first;
+   s.opportunityPlan.unallocated=500000;GPFocus.render();
+   return {visible:!host.hidden,stable,updated:host.textContent!==initial,
+    replaced:host.firstElementChild!==first,conditional:host.textContent.includes('Conditional overnight net')};
+  }finally{s.opportunityPlan=originalPlan;s.snapshot=originalSnap;GPFocus.render();}
+ });
+ assert.deepEqual(outlookRetention,{visible:true,stable:true,updated:true,replaced:true,conditional:true},
+  'GW2 outlook must retain unchanged nodes, update genuine financial changes and distinguish scenarios');
  // The focused next-action card must not be recreated by a routine redraw,
  // but its visible recommendation must update on a real account change.
  // Keep the original synthetic Delivery Box and restore it after this probe.
