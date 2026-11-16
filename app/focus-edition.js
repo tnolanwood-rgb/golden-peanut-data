@@ -129,10 +129,12 @@ function safeGet(){try{return JSON.parse(localStorage.getItem(STORE)||'null');}c
 /* Persist navigation and visible research during Android WebView Activity
  * recreation (including a rotation-induced page reload). No account key,
  * completed transactions, or other personal trading data is stored here. */
-const UI_KEYS=['tab','tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode',
+// Only intentional preferences survive a new document. Navigation, detail cards and
+// scroll locations are ephemeral, so reopening starts at the beginning.
+const PREF_KEYS=['tradeFilter','bulkLot','tradeSearch','tradeAll','capitalMode',
  'orderLane','orderSearch','orderAll','legendSection','marketResearchLot',
- 'portfolioBudgetGold','tradeDetail','growthDetail','relatedDetail','orderDetail',
- 'tradeY','orderY','scrollY','memoryLimit','catalogueLimit','capacitySelections','sectionScrolls'];
+ 'portfolioBudgetGold','memoryLimit','catalogueLimit','capacitySelections'];
+let lastSavedPreferences='';
 function viewMarketSnapshot(){
  const id=Number(ui.tradeDetail);
  if(!Number.isSafeInteger(id)||id<=0)return null;
@@ -152,17 +154,18 @@ function viewMarketSnapshot(){
 function save(){
  if(hubMoving()){hubSavePending=true;return;}
  try{
-  const persist={version:2};
-  for(const key of UI_KEYS)persist[key]=ui[key];
-  persist.selectedMarket=viewMarketSnapshot();
-  persist.savedAt=Date.now();
-  localStorage.setItem(STORE,JSON.stringify(persist));
- }catch{/* Browsing and memory must never depend on localStorage access. */}
+  const persist={version:3};
+  for(const key of PREF_KEYS)persist[key]=ui[key];
+  const next=JSON.stringify(persist);
+  if(next===lastSavedPreferences)return; // Avoid synchronous flash writes on scroll/click.
+  localStorage.setItem(STORE,next);
+  lastSavedPreferences=next;
+ }catch{/* UI preferences must never block touch navigation. */}
 }
 function load(){
  const old=safeGet();
  if(!old||typeof old!=='object')return;
- for(const key of UI_KEYS)if(Object.hasOwn(old,key))ui[key]=old[key];
+ for(const key of PREF_KEYS)if(Object.hasOwn(old,key))ui[key]=old[key];
  if(!NAMES[ui.tab])ui.tab='today';
  if(!['best','bulk','new','craft','memory'].includes(ui.tradeFilter))ui.tradeFilter='best';
  if(![5,10,20,50].includes(Number(ui.bulkLot)))ui.bulkLot=5;else ui.bulkLot=Number(ui.bulkLot);
@@ -200,16 +203,7 @@ function load(){
   }
   ui.sectionScrolls=valid;
  }
- // Restore only a bounded recently viewed PUBLIC research snapshot. Never
- // silently turn it into a current recommendation after a page recreation.
- const m=old.selectedMarket,ms=Number(old.savedAt);
- if(ui.tradeDetail&&ui.tab==='trades'&&Number.isFinite(ms)&&Date.now()-ms>=0&&Date.now()-ms<7*86400000&&
-  Number(m?.id)===ui.tradeDetail&&Number.isSafeInteger(m.buy)&&m.buy>0&&
-  Number.isSafeInteger(m.exit)&&m.exit>m.buy){
-  ui.selectedMarket={id:ui.tradeDetail,kind:'research',name:String(m.name||'').slice(0,180),
-   buy:m.buy,exit:m.exit,quantity:Number.isSafeInteger(m.quantity)?Math.max(0,m.quantity):0,
-   asOf:typeof m.at==='string'?m.at:null,restoredView:true};
- }
+
 }
 // Chromium can skip same-document history entries inserted without user activation.
 // Never seed a synthetic pushState on startup. Push real intra-app destinations
@@ -358,26 +352,15 @@ function install(){if(started)return;started=true;load();document.body.classList
  // Android may destroy/recreate the WebView on a configuration change.
  // Capture actual state *before* the old document disappears, and also after
  // user actions (some Android wrappers never emit pagehide).
- let scrollSaveTimer=0;
- document.addEventListener('click',()=>window.setTimeout(save,0),{passive:true});
- document.addEventListener('change',()=>window.setTimeout(save,0),{passive:true});
+ // Retain scroll coordinates in memory for Back and game switching, but never
+ // serialize transient positions or schedule a localStorage write per gesture.
  window.addEventListener('scroll',()=>{
   if(hubMoving())return;
   if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
   ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));
-  if(scrollSaveTimer)clearTimeout(scrollSaveTimer);
-  scrollSaveTimer=setTimeout(()=>{scrollSaveTimer=0;save();},180);
  },{passive:true});
- const capture=()=>{if(hubMoving()){hubSavePending=true;return;}if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;ui.scrollY=Math.max(0,Math.floor(window.scrollY||0));save();};
- const interacted=()=>{hubInteraction++;};
- document.addEventListener('pointerdown',interacted,{passive:true,capture:true});
- document.addEventListener('touchstart',interacted,{passive:true,capture:true});
- window.addEventListener('pagehide',capture);
- window.addEventListener('orientationchange',capture,{passive:true});
- document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)capture();
-  else schedule();
- });
+ document.addEventListener('click',()=>window.setTimeout(save,0),{passive:true});
+ document.addEventListener('change',()=>window.setTimeout(save,0),{passive:true});
  document.addEventListener('gh-navigation-idle',()=>{
   for(const [key,work]of [...hubDeferred]){
    if(hubMoving())break;
@@ -386,23 +369,8 @@ function install(){if(started)return;started=true;load();document.body.classList
   if(hubSavePending){hubSavePending=false;save();}
   if(hubRenderPending){hubRenderPending=false;schedule();}
  });
- const restoredScroll=ui.scrollY,restoredTab=ui.tab;
- goto(restoredTab,{scroll:false});
- // Content arrives from IndexedDB asynchronously. Restore position after it
- // renders instead of snapping to the beginning or forcing a fresh account sync.
- if(restoredScroll>0){
-  let attempts=0;const restoreInteraction=hubInteraction;
-  const restoreScroll=()=>{
-   if(hubInteraction!==restoreInteraction)return;
-   if(deferForHub('restore-scroll',restoreScroll))return;
-   if(document.querySelector('#gh-panel-gw2')?.hidden||document.querySelector('#gh-panel-gw2')?.inert)return;
-   if(ui.tab!==restoredTab||window.scrollY>=restoredScroll-8)return;
-   if(document.documentElement.scrollHeight>restoredScroll+window.innerHeight/2)
-    window.scrollTo({top:restoredScroll,behavior:'instant'});
-   if(++attempts<14&&window.scrollY<restoredScroll-8)setTimeout(restoreScroll,220);
-  };
-  setTimeout(restoreScroll,250);
- }
+ // Fresh launch: open the simple starting page, with no deferred scroll restore.
+ goto('today',{scroll:false});
  window.setTimeout(schedule,350);
  root.GPFocus={buildId:EXPECTED_MARKET_BUILD,goto,showResearch,closeResearch,render:()=>renderVisible(),cash,
   ensureItemArtwork:ids=>{
@@ -1781,7 +1749,7 @@ function decorateLegendArtwork(){const cache=root.GPLegendaryPlanner?.cache;if(!
 }
 function renderVisible({background=false}={}){
  if(!started)return;
- if(hubMoving()){hubRenderPending=true;return;}
+ if(hubMoving()||document.querySelector('#gh-panel-gw2')?.hidden){hubRenderPending=true;return;}
  // The previous global renderer rebuilt hidden tabs and heavy portfolio panels
  // for every async status/icon update. Render only the screen the user sees.
  if(ui.tab==='today')renderToday();
