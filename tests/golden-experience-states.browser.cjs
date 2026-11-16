@@ -136,6 +136,15 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   await page.waitForFunction(()=>GoldenDualHub.diagnostics().loading===false&&GoldenDualHub.diagnostics().priceError!==null);
   assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).ledgerRows,1);
   assert.match(await page.locator('#gh-status').innerText(),/unavailable/i);
+  assert.equal(await page.locator('#gh-status').getAttribute('data-state'),'unavailable',
+   'failed market evidence must carry an explicit semantic error state');
+  const errorChrome=await page.locator('#gh-status').evaluate(n=>({
+   border:getComputedStyle(n).borderLeftWidth,
+   label:getComputedStyle(n,'::before').content,
+   role:n.getAttribute('role')}));
+  assert.equal(errorChrome.role,'status','preserve a live accessible feed status');
+  assert.equal(errorChrome.border,'3px','degraded market evidence requires a visible signal');
+  assert.match(errorChrome.label,/UNAVAILABLE/,'unavailable styling must be visually explicit');
   assert.match(await page.locator('#gh-holdings-list').innerText(),/3 remaining/);
   await page.screenshot({path:path.join(out,'osrs-feed-unavailable-320.png'),fullPage:true});
   states.push({state:'offline-mapping-failure',ledgerRows:1,unverified:true});
@@ -146,6 +155,10 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   await page.waitForFunction(()=>GoldenDualHub.diagnostics().loading===false&&
    GoldenDualHub.diagnostics().ideas>0&&!GoldenDualHub.diagnostics().priceError);
   assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).ledgerRows,1);
+  assert.equal(await page.locator('#gh-status').getAttribute('data-state'),'verified',
+   'fresh complete market feed should recover out of the warning presentation');
+  assert.match(await page.locator('#gh-status').evaluate(n=>getComputedStyle(n,'::before').content),/CHECKED/,
+   'verified market evidence must have a distinct visual label');
   await page.screenshot({path:path.join(out,'osrs-recovered-320.png'),fullPage:true});
   states.push({state:'feed-recovered',ledgerRows:1});
 

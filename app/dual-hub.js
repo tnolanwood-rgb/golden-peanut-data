@@ -96,6 +96,13 @@ const txt=(id,v)=>{
  if(a.textContent!==value)a.textContent=value;
 };
 const get=(id)=>doc.getElementById(id);
+// Explicit feed-quality presentation, never inferred from wording. A verified
+// feed is NOT proof a proposed trading limit will fill or be profitable.
+const setMarketStatus=(message,tone)=>{
+ const status=get('gh-status');if(!status)return;
+ txt('gh-status',message);
+ status.dataset.state=['loading','verified','caution','unavailable'].includes(tone)?tone:'caution';
+};
 const tax=(price,name)=>{const sell=Math.floor(n(price));const key=safe(name).trim().toLowerCase();if(EXEMPT.has(key)||/^energy potion\([1-4]\)$/.test(key)||/^old school bonds?( \(untradeable\))?$/.test(key))return 0;return Math.min(5000000,Math.floor(Math.max(0,sell)/50))};
 /* Actual official OSRS Mobile / Steam ground-items overlay defaults.
  * This is a *value* colour, not a fixed item rarity. Source:
@@ -198,7 +205,7 @@ function blank(){
   <div class="gp-guide-metric"><div class="gp-guide-label">Today · realised profit</div><strong class="gp-guide-number" id="gh-today">—</strong><small>Completed, recorded trades only</small></div>
   <div class="gp-guide-metric"><div class="gp-guide-label">Last 7 days · realised</div><strong class="gp-guide-number" id="gh-week">—</strong><small>Not predicted future profit</small></div>
  </div>
- <p class="gp-guide-update" id="gh-status" role="status" aria-live="polite">Loading OSRS market prices…</p>
+ <p class="gp-guide-update" id="gh-status" data-state="loading" role="status" aria-live="polite">Loading OSRS market prices…</p>
  <section class="gh-market-lab" aria-label="OSRS research engine">
    <div class="gh-market-tabs" role="group" aria-label="Trade discovery type">
      <button type="button" id="gh-mode-liquid" aria-pressed="true">Verified liquid flips</button>
@@ -771,7 +778,7 @@ function guardDragClick(event){
 }
 function applySettings(){
  const budget=n(get("gh-budget-input").value),mode=get("gh-mode").value;
- if(!Number.isSafeInteger(budget)||budget<0||budget>9e12){txt("gh-status","Budget must be whole GP between 0 and 9 trillion.");return}
+ if(!Number.isSafeInteger(budget)||budget<0||budget>9e12){setMarketStatus("Budget must be whole GP between 0 and 9 trillion.","caution");return}
  state.budget=budget;state.mode=mode==="members"?"members":"f2p";
  state.restricted=get("gh-restricted").value==="clear"?"clear":"unknown";
  state.index=0;saveUser();buildIdeas();render();
@@ -854,7 +861,7 @@ async function refresh(force){
  if(state.loading)return;
  state.loading=true;
  state.priceError=null;
- txt("gh-status","Checking RuneScape Wiki price observations…");
+ setMarketStatus("Checking RuneScape Wiki price observations…","loading");
  if(get("gh-refresh"))get("gh-refresh").disabled=true;
  if(get("gh-empty-retry"))get("gh-empty-retry").hidden=true;
  render();
@@ -886,7 +893,7 @@ async function refresh(force){
    state.builtAt=Date.now();
    buildIdeas();
    if(state.ideas.length){
-    txt("gh-status","Latest observed prices received · verifying volume and liquidity. Research only.");
+    setMarketStatus("Latest observed prices received · verifying volume and liquidity. Research only.","loading");
     render();
    }
   }
@@ -900,11 +907,11 @@ async function refresh(force){
   state.stale=result.some(x=>x.stale);
   state.builtAt=Date.now();
   buildIdeas();
-  txt("gh-status",(state.stale?
+  setMarketStatus((state.stale?
    "Some API requests failed; using cached market observations. No new recommendations until every feed is verified · ":
    "Price evidence checked · ")+
    new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+
-   " · "+state.ideas.length+" eligible candidates");
+   " · "+state.ideas.length+" eligible candidates",state.stale?"caution":"verified");
  }catch(err){
   await navigationIdle();
   // Don't leave the card stuck in the loading state when even one endpoint
@@ -912,8 +919,8 @@ async function refresh(force){
   state.priceError=safe(err?.message||"Network request failed");
   state.stale=true;
   state.ideas=[];
-  txt("gh-status","RuneScape Wiki market feed unavailable: "+state.priceError+
-   ". Check connection, or retry the price check.");
+  setMarketStatus("RuneScape Wiki market feed unavailable: "+state.priceError+
+   ". Check connection, or retry the price check.","unavailable");
  }finally{
   // IMPORTANT: render only AFTER clearing the loading flag. Previously the
   // card was painted while loading=true and never painted again on empty
@@ -938,7 +945,7 @@ function toggleMarketWatch(){
  const idea=state.ideas[state.index];if(!idea)return;
  if(state.watchlist.has(idea.id))state.watchlist.delete(idea.id);
  else if(state.watchlist.size<200)state.watchlist.add(idea.id);
- else{txt("gh-status","Watchlist full (200 markets). Unwatch another before adding this one.");return;}
+ else{setMarketStatus("Watchlist full (200 markets). Unwatch another before adding this one.","caution");return;}
  saveUser();applyIdeasView();render();
 }
 function applyIdeasView(){

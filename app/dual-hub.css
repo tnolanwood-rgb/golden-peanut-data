@@ -1007,3 +1007,67 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  font-size:min(.875rem,19px);line-height:1.4;
  min-height:48px;padding:11px 15px;
 }
+
+
+/* GE-02 evidence instrument — distinguish a verified Wiki feed, partial
+ * cached data, loading and outright failure. These states are presentation
+ * of existing engine decisions, never new price/fill claims. */
+#gh-panel-osrs #gh-status{
+ --ge-status:#a8c4b2;
+ position:relative;display:block;min-height:54px;min-width:0;
+ margin:12px 0 14px;padding:12px 14px 12px 15px;
+ border:1px solid #4b6552;border-left:3px solid var(--ge-status);
+ border-radius:0 12px 12px 0;
+ background:linear-gradient(115deg,#1a3126,#14241c);
+ color:#d3e2d4;font-size:min(.875rem,20px);line-height:1.58;
+ box-shadow:inset 0 1px 0 #ffffff0b;
+ overflow-wrap:break-word;
+}
+#gh-panel-osrs #gh-status::before{
+ content:"MARKET EVIDENCE · STATUS";
+ display:block;color:var(--ge-status);margin:0 0 5px;
+ font-size:min(.67rem,13px);font-weight:820;letter-spacing:.12em;
+ line-height:1.35;
+}
+#gh-panel-osrs #gh-status[data-state="loading"]{
+ --ge-status:#e8c47f;border-color:#6a6545;
+ background:linear-gradient(115deg,#302d1c,#1e271e);
+}
+#gh-panel-osrs #gh-status[data-state="loading"]::before{content:"MARKET EVIDENCE · CHECKING"}
+#gh-panel-osrs #gh-status[data-state="verified"]{
+ --ge-status:#9bd6b3;border-color:#537960;
+ background:linear-gradient(115deg,#1b3628,#14271d);
+}
+#gh-panel-osrs #gh-status[data-state="verified"]::before{content:"MARKET FEEDS · CHECKED"}
+#gh-panel-osrs #gh-status[data-state="caution"]{
+ --ge-status:#f0cb8a;border-color:#796948;
+ background:linear-gradient(115deg,#382c1b,#25271b);
+ color:#f1dfc0;
+}
+#gh-panel-osrs #gh-status[data-state="caution"]::before{content:"MARKET EVIDENCE · LIMITED"}
+#gh-panel-osrs #gh-status[data-state="unavailable"]{
+ --ge-status:#f2aaa5;border-color:#89574b;
+ background:linear-gradient(115deg,#392621,#28211d);
+ color:#ffe3d7;
+}
+#gh-panel-osrs #gh-status[data-state="unavailable"]::before{content:"MARKET FEED · UNAVAILABLE"}
+#gh-panel-osrs .gh-inline-error{
+ color:#ffc1b5;background:#34241e;border-left:3px solid #e4a49a;
+ border-radius:0 9px 9px 0;padding:9px 11px;line-height:1.55;
+}
+#gh-panel-osrs .gh-inline-error:empty{display:none}
+
+/* GW2 market research status belongs to the same carefully designed family.
+ * Keep all text readable in 200%-font mode; add no compositing filters. */
+#gh-panel-gw2 #focus-deep-progress:not(:empty){
+ position:relative;background:linear-gradient(145deg,#1c3327,#14271d);
+ border:1px solid #445f4e;border-left:3px solid #9bbea4;
+ border-radius:0 12px 12px 0;
+ padding:13px 13px 14px;line-height:1.55;
+ color:#d2e2d4;overflow-wrap:break-word;
+}
+#gh-panel-gw2 #focus-deep-progress.focus-deep-active{
+ border-color:#85734e;border-left-color:#e6c17c;
+ background:linear-gradient(145deg,#343121,#252a1e);
+ color:#f4e2bb;
+}
