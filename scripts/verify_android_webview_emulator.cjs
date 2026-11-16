@@ -160,43 +160,9 @@ async function run(){
   const sw=Number(dims[1]),sh=Number(dims[2]),ratio=sw/contact.cssWidth;
   const verticalInset=Math.max(0,(sh-contact.cssHeight*ratio)/2);
   const y=Math.min(sh-80,Math.max(100,Math.round(verticalInset+contact.y*ratio)));
-  // Emulator adb can report a completed swipe while an Android system
-  // overlay or locked screen receives all input. Prove the WebView actually
-  // received a harmless native touch before diagnosing the game gesture.
-  await page.evaluate(()=>{
-    window.__geNativeInputPreflight=0;
-    addEventListener('touchstart',()=>{window.__geNativeInputPreflight++;},
-      {passive:true,capture:true});
-  });
-  const preflight=[];
-  for(let attempt=1;attempt<=2;attempt++){
-    adb('shell','input','keyevent','KEYCODE_WAKEUP');
-    adb('shell','wm','dismiss-keyguard');
-    await sleep(200);
-    adb('shell','input','tap',String(Math.round(sw*.78)),String(y));
-    await sleep(200);
-    const received=await page.evaluate(()=>window.__geNativeInputPreflight);
-    const focus=adb('shell','dumpsys','window').match(/mCurrentFocus[^\\n]*|mFocusedApp[^\\n]*/)?.[0]||'unknown';
-    preflight.push({attempt,received,focus:focus.slice(0,180)});
-    if(received>0)break;
-  }
-  const nativeInput=await page.evaluate(()=>window.__geNativeInputPreflight);
-  mark('native-input-focus-preflight',{attempts:preflight,received:nativeInput});
-  // The harmless focus-check tap cannot be adjacent to the measured swipe:
-  // Android may treat the second down + sideways motion as a double-tap-drag
-  // zoom gesture and dispatch touchcancel. The previous native green runner
-  // performed no preceding tap. Wait beyond the system double-tap interval.
-  await sleep(800);
-  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics?.()?.game==='gw2',
-    null,{timeout:5000});
-  if(!nativeInput){
-    try{
-      fs.writeFileSync(path.join(OUTPUT,'android-input-focus-failure.png'),
-        execFileSync('adb',['exec-out','screencap','-p'],{timeout:30000}));
-    }catch{}
-    throw new Error('Emulator did not deliver even a harmless native tap to the WebView: '+
-      JSON.stringify(preflight).slice(0,800));
-  }
+  // The swipe's own capture-phase trace below proves that real Android input
+  // reached WebView. Do not precede it with ADB tap on the same touch surface:
+  // that extra OS gesture changed the stream in otherwise identical native runs.
   await page.evaluate(()=>{
     const trace={start:0,move:0,end:0,cancel:0,first:null,last:null};
     window.__geAndroidTouchTrace=trace;

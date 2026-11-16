@@ -1,5 +1,9 @@
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
+## A/B native interaction perturbation test — pending
+Native reference 43965081137 succeeded with one ADB swipe and touchend=1. Revised tests added an ADB tap immediately beforehand; retries including run 43971116706 failed with touchcancel=1, even after an 800ms gap. The test now performs the original native swipe without extra tap and still captures touchstart/move/end/cancel; its extended OSRS reverse/vertical assertions remain. Await exact green emulator evidence.
+
+
 ## Android preflight interference hypothesis — awaiting new CI
 Prior emulator 43970182876 failed first GW2 swipe with Android `touchcancel`, despite exact restored e538 app source that passed the earlier emulator run 43965081137. Only pre-swipe harness addition is an ADB focus tap at identical position; native double-tap-drag gesture is plausible. New 800ms separation tests this without weakening touch/game-state assertions. Not yet verified; retry green is required and original phone remains untested.
 

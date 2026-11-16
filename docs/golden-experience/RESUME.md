@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## First unfinished — native emulator test without extra focus tap (CI pending)
+Green app gesture source remains exactly e538b648; new preflight tap sequence introduced after the verified Android 35 run and produced 3 failures despite tried code adjustments and 800ms cooldown. New source removes only the extra ADB focus tap while keeping native touch event proof and forward/reverse/vertical, rotation and resume checks. Check exact run; if still failing, investigate app WebView gesture state/OS input, not desktop results. No production changes, no release.
+
+
 ## Latest emulator isolate — focus-tap gesture interference test PENDING
 At restored known green app source, run 43970182876 still failed touchcancel after GW2 preflight tap followed quickly by a swipe at the same spot. Changed ONLY emulator harness to wait 800ms after the tap and assert GW2 state; run exact full CI + emulator. Preserve stricter OSRS reverse and inner vertical acceptance. Do not claim fix unless native run green. Production main unchanged 097f012; DRAFT PR #65.
 

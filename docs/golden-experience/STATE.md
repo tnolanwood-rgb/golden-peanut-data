@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 16 November 2026 — remove intrusive native focus-tap probe (CI pending)
+The 800ms-delayed preflight still reproduced `touchcancel` in Android run 43971116706; full CI 43971116702 and preview APK 43971116747 passed. Added tap was absent from exact native green 43965081137 and its timing was not proven causal; remove the entire extra ADB preflight interaction, preserving capture-phase native touchstart/move/end/cancel assertions and the expanded native OSRS reverse/vertical tests. This is a controlled A/B source-identical comparison, NOT a verified fix. Do not weaken the existing swipe requirements or claim READY. Production main frozen.
+
+
 ## 16 November 2026 — isolate native emulator preflight from swipe (CI pending)
 Restoration of e538 source passed full regression CI 43970182830 and debug APK build 43970182737, but emulator 43970182876 still failed: touchstart=1, touchmove=4, **touchcancel=1**, touchend=0. Read the only changed pre-forward-swipe test sequence versus green e538: new ADB `input tap` at the exact subsequent swipe coordinate, followed ~200ms later by a swipe. Android may interpret second touch as double-tap-drag zoom and cancel app stream. The emulator harness now waits 800ms after focus preflight and asserts GW2 remains active. This is a **hypothesis pending exact emulator run**, not proven root cause. App gesture/CSS remain precisely the earlier tested e538 blobs; no production change. If the run still fails, investigate device event stream and WebView viewport rather than assuming success. NOT READY.
 
