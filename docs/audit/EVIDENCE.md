@@ -1,3 +1,14 @@
+# Hosted item guide release — 16 November 2026
+
+BATCH: ITEM-GUIDE-LIVE. STATUS: prepared for the user-authorized production release; confirm the PR and exact served hashes before claiming deployed.
+FIXED: item context is an always-visible section directly beneath the OSRS item name (not a collapsed details control). Includes examine text, attributed Wiki summary, membership/acquisition guidance and source link, with bounded independent requests/cache and stale-response guards. Based on current production main, retaining its swipe/owned-sale fixes. No collector/schema/persistence changes from audit PR #52 are included.
+TESTED: dedicated visibility/item-switch/escaped-text browser case and source checks passed. Full local source/Python/JavaScript/assembled browser baseline passed; exact-head PR CI must pass before merge; production workflow reruns checks, verifies every deployed asset hash and real hosted swipe navigation.
+EVIDENCE: ignored `artifacts/audit/item-context-*` and baseline logs, release PR/production workflow. No private account data accessed.
+NEXT: merge only the tested frontend release, wait for the production workflow and verify exact live bytes; preserve all user storage and production databases. User explicitly requested hosted release rather than another APK. Rollback: revert only this frontend commit through the same tested Pages workflow; no data migration/reset.
+CHECKPOINT: `git log -1 -- docs/audit/STATE.md`; release branch `feat/item-info-production-20261116`. Do not confuse audit PR #52 or an embedded APK with this hosted release.
+
+---
+
 # Audit evidence — P0-001
 
 2026-11-07 UTC. No personal records or credentials in fixtures/artifacts.

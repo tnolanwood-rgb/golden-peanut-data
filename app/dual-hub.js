@@ -1,6 +1,34 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
 const VERSION="hub-continuous-swipe-2026-11-15";
+const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
+function renderItemContext(item){
+ const panel=get('gh-item-context');if(!panel)return;
+ panel.hidden=!item;if(!item){itemContextID=null;itemContextRequest?.abort();return;}
+ if(itemContextID===item.id)return;
+ itemContextID=item.id;itemContextRequest?.abort();
+ const metadata=state.mappingById?.get(item.id);
+ txt('gh-item-examine',typeof metadata?.examine==='string'?metadata.examine:'');
+ txt('gh-item-obtain',(item.members?'Members item. ':'Free-to-play item. ')+
+  'Tradeable on the Grand Exchange. See the linked item guide for drops, shops, requirements and other ways to obtain it.');
+ get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
+ const cached=itemContextCache.get(item.name);
+ if(cached){txt('gh-item-description',cached);return;}
+ txt('gh-item-description','Loading item background from the OSRS Wiki…');
+ const controller=new AbortController();itemContextRequest=controller;
+ const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
+ const query=new URLSearchParams({action:'query',prop:'extracts',exintro:'1',explaintext:'1',exchars:'1200',redirects:'1',titles:name,format:'json',origin:'*'});
+ fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
+ .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>65536)throw Error('Oversized Wiki response');return JSON.parse(text);})
+ .then(data=>{const pages=data?.query?.pages;if(!pages||typeof pages!=='object')throw Error('Missing Wiki summary');
+  const extract=Object.values(pages).find(p=>typeof p?.extract==='string'&&p.extract.trim())?.extract;
+  if(!extract)throw Error('Missing Wiki summary');
+  const summary=extract.trim().slice(0,1600);itemContextCache.set(name,summary);
+  if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
+  if(itemContextID===item.id&&!controller.signal.aborted)txt('gh-item-description',summary);
+ }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Item background is unavailable right now. Open the Wiki guide for details.');})
+ .finally(()=>clearTimeout(deadline));
+}
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1",VIEW="gh-view-session-v1",RECOVERY="gh-osrs-ledger-recovery-v1",ORIGINAL="gh-osrs-ledger-original-v1";
@@ -154,6 +182,15 @@ function blank(){
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
+  <section id="gh-item-context" class="gh-item-context" hidden>
+   <h3>What is it?</h3>
+   <p id="gh-item-examine"></p>
+   <p id="gh-item-description" role="status"></p>
+   <h4>Where can I get it?</h4>
+   <p id="gh-item-obtain"></p>
+   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Item guide &amp; sources on the OSRS Wiki ↗</a>
+   <small>Summary: OSRS Wiki · <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 3.0</a></small>
+  </section>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
   <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
@@ -1156,6 +1193,7 @@ function render(){
  const watch=get("gh-watch-toggle");if(watch)watch.hidden=!current;
  txt("gh-total-label",state.researchMode==="value"?"Capital needed for one unit":"Illustrative total");
  txt("gh-margin-label",state.researchMode==="value"?"Observed after-tax spread per unit":"Potential after-tax margin");
+ renderItemContext(current);
  renderValueTier(current);
  renderListingGuide(current);
  if(!current){
