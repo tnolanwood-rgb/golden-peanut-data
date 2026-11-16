@@ -182,6 +182,13 @@ async function run(){
   }
   const nativeInput=await page.evaluate(()=>window.__geNativeInputPreflight);
   mark('native-input-focus-preflight',{attempts:preflight,received:nativeInput});
+  // The harmless focus-check tap cannot be adjacent to the measured swipe:
+  // Android may treat the second down + sideways motion as a double-tap-drag
+  // zoom gesture and dispatch touchcancel. The previous native green runner
+  // performed no preceding tap. Wait beyond the system double-tap interval.
+  await sleep(800);
+  await page.waitForFunction(()=>window.GoldenDualHub?.diagnostics?.()?.game==='gw2',
+    null,{timeout:5000});
   if(!nativeInput){
     try{
       fs.writeFileSync(path.join(OUTPUT,'android-input-focus-failure.png'),

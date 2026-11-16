@@ -1,5 +1,9 @@
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
+## Android preflight interference hypothesis — awaiting new CI
+Prior emulator 43970182876 failed first GW2 swipe with Android `touchcancel`, despite exact restored e538 app source that passed the earlier emulator run 43965081137. Only pre-swipe harness addition is an ADB focus tap at identical position; native double-tap-drag gesture is plausible. New 800ms separation tests this without weakening touch/game-state assertions. Not yet verified; retry green is required and original phone remains untested.
+
+
 ## Expanded native gesture test retry — CI pending
 Previous exact emulator green: 43965081137 at e538b648. Latest effefc86 native fail: 43969237871. Error is real Android `touchcancel` after 4 moves, not a passing gesture. Recovered original two game-gesture source files from e538b648 and kept the stricter current emulator test, which now requires reverse OSRS→GW2 and OSRS vertical nested scrolling. Verify new exact-head run before making success claims. Original APK/phone not tested.
 

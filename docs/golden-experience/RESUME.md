@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## Latest emulator isolate — focus-tap gesture interference test PENDING
+At restored known green app source, run 43970182876 still failed touchcancel after GW2 preflight tap followed quickly by a swipe at the same spot. Changed ONLY emulator harness to wait 800ms after the tap and assert GW2 state; run exact full CI + emulator. Preserve stricter OSRS reverse and inner vertical acceptance. Do not claim fix unless native run green. Production main unchanged 097f012; DRAFT PR #65.
+
+
 ## First unfinished: Android horizontal touch replay after restoring known green source (CI pending)
 Review new Android emulator CI on the exact latest feature HEAD. Current prior failed run 43969237871 recorded touchcancel=1, touchend=0 after more recent positioning/capture changes; restore app/dual-hub.css and app/dual-hub.js blobs exactly from native-tested e538b648d1d2d48eb360b8615f7fbd8707b73486 without losing newly expanded emulator test. If forward swipe passes, examine new OSRS reverse and vertical-native assertions. Keep failed evidence and treat physical-device, isolated staging, final visual QA, freeze/rollback as OPEN. No production merge/deploy. Previous native pass: 43965081137.
 
