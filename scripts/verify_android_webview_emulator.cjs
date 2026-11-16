@@ -160,8 +160,39 @@ async function run(){
   const sw=Number(dims[1]),sh=Number(dims[2]),ratio=sw/contact.cssWidth;
   const verticalInset=Math.max(0,(sh-contact.cssHeight*ratio)/2);
   const y=Math.min(sh-80,Math.max(100,Math.round(verticalInset+contact.y*ratio)));
+  await page.evaluate(()=>{
+    const trace={start:0,move:0,end:0,cancel:0,first:null,last:null};
+    window.__geAndroidTouchTrace=trace;
+    for(const phase of ['start','move','end','cancel']){
+      addEventListener('touch'+phase,event=>{
+        trace[phase]++;
+        const t=event.changedTouches?.[0];
+        if(!t)return;
+        const hit=event.target;
+        const value={phase,x:Math.round(t.clientX),y:Math.round(t.clientY),
+          target:hit?.tagName||'',className:String(hit?.className||'').slice(0,80),
+          scrolling:Math.round(scrollY)};
+        if(!trace.first)trace.first=value;
+        trace.last=value;
+      },{capture:true,passive:true});
+    }
+  });
   adb('shell','input','swipe',String(Math.round(sw*.78)),String(y),
       String(Math.round(sw*.18)),String(y),'350');
+  const touch=await page.evaluate(()=>({
+    trace:window.__geAndroidTouchTrace,
+    game:window.GoldenDualHub?.diagnostics?.()?.game||null,
+    viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},
+    documentScrollY:Math.round(scrollY),
+    elementAtContact:document.elementFromPoint(innerWidth*.78,
+      Math.max(0,(contact.y)))?.outerHTML?.slice(0,300)||null
+  }));
+  mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],deviceY:y});
+  if(touch.game!=='osrs'){
+    await screenshot(page,'gw2-after-unsuccessful-native-swipe');
+    throw new Error('Android-native swipe did not switch games: '+
+      JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y}).slice(0,1900));
+  }
   await game(page,'osrs');
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
