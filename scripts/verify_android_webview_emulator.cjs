@@ -145,6 +145,20 @@ async function run(){
   }));
   assert.ok(initial.tabs && ['gw2','osrs'].includes(initial.game),'Both game tabs must be available');
   mark('cold-launch',{processId,initial});
+  // CDP can see a loaded WebView before Android has actually focused the
+  // Activity window. Input injected at that point can reach no DOM target at
+  // all, a harness failure that cannot be confused with app touchcancel.
+  let windowFocus='';
+  for(let i=0;i<24;i++){
+    const lines=adb('shell','dumpsys','window').split('\n');
+    windowFocus=lines.find(x=>x.includes('mCurrentFocus='))||'focus line unavailable';
+    if(windowFocus.includes(APP))break;
+    await sleep(200);
+  }
+  assert.ok(windowFocus.includes(APP),'Android preview Activity never received native input focus: '+windowFocus);
+  await page.waitForFunction(()=>document.visibilityState==='visible',null,{timeout:15000});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  mark('native-window-focus',{focusedApp:APP});
   if(initial.game!=='gw2')await page.evaluate(()=>GoldenDualHub.switchGame('gw2'));
   await game(page,'gw2');
   // Do not invoke CDP GPU screenshot capture immediately before Android's
