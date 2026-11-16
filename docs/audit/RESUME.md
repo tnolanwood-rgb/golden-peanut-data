@@ -1,3 +1,14 @@
+# Practical item stats release — 16 November 2026
+
+BATCH: ITEM-STATS. STATUS: implemented; local full baseline passed; awaiting exact-head CI and hosted release verification.
+FIXED: replaced lore/examine/acquisition paragraphs with practical properties, requirement, slot and attack/defence/other bonus tables. Wiki HTML is parsed inertly; only text/numeric fields render. Retains membership, GE limits, alch values on Wiki outages. Ambiguous variant pages omit equipment bonuses and requirements instead of selecting an arbitrary variant. No storage, credentials, collectors or database migrations changed.
+TESTED: 129 JavaScript, 56 Python and all assembled browser suites passed. Added real public Rondache Wiki fixture with 80 Defence, +8 strength and +55 Ranged defence; variant, non-equipment, stale-selection, outage and safe rendering checks pass. Public fixture source: OSRS Wiki Rondache parse API, captured 2026-11-16; CC BY-NC-SA 3.0.
+EVIDENCE: ignored artifacts/audit/item-stats-* and baseline logs. Source branch feat/item-stats-20261116; exact tested commit and CI/deployment results recorded on its PR.
+NEXT: release to the existing hosted app under the user's continuing release instruction, verify exact deployed bytes and live stats, then record final evidence. Physical-device tests remain unverified. Rollback only frontend code via tested Pages workflow; never clear user storage.
+CHECKPOINT: git log -1 -- docs/audit/STATE.md on this branch. Previous lore release was deployed as 918702e73a64336ce3135249c4fe54acba56bd6e via PR #62; no new APK is required for the hosted update.
+
+---
+
 # Hosted item guide release — 16 November 2026
 
 BATCH: ITEM-GUIDE-LIVE. STATUS: prepared for the user-authorized production release; confirm the PR and exact served hashes before claiming deployed.
