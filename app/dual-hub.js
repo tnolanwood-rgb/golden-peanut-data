@@ -1,32 +1,73 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
 const VERSION="hub-continuous-swipe-2026-11-15";
+// Only text and validated numeric fields from the Wiki are rendered; its HTML
+// is parsed in an inert document and never inserted into the application.
+function parseItemStats(html){
+ const parsed=new DOMParser().parseFromString(html,'text/html');
+ parsed.querySelectorAll('script,style,sup').forEach(n=>n.remove());
+ const clean=n=>(n?.textContent||'').replace(/\s+/g,' ').trim();
+ const basic=[],combat=[];
+ const items=[...parsed.querySelectorAll('table.infobox-item')];
+ if(items.length===1)for(const row of items[0].querySelectorAll('tr')){
+  const cells=[...row.children],label=clean(cells[0]),value=clean(cells[1]);
+  if(['Weight','High alch','Low alch','Stackable','Equipable','Tradeable'].includes(label)&&value&&value.length<100)basic.push([label,value]);
+ }
+ const tables=[...parsed.querySelectorAll('table.infobox-bonuses')];
+ // Variant pages can contain charged/uncharged or degraded equipment tables.
+ // Without an unambiguous variant mapping, do not attach one variant's bonuses.
+ if(tables.length===1){let group='',labels=[];
+  for(const row of tables[0].querySelectorAll('tr')){
+   const cells=[...row.children],heading=clean(cells[0]);
+   if(['Attack bonuses','Defence bonuses','Other bonuses'].includes(heading)){group=heading;labels=[];continue;}
+   const headings=cells.filter(c=>c.tagName==='TH'&&c.classList.contains('infobox-nested'));
+   if(headings.length){labels=headings.map(c=>c.querySelector('a[title]')?.title||c.querySelector('img[alt]')?.alt||'');
+    const slot=labels.find(l=>/ slot table$/.test(l));if(slot)basic.push(['Slot',slot.replace(/ slot table$/,'')]);continue;}
+   if(!labels.length||cells.length!==labels.length||cells.some(c=>c.tagName!=='TD'))continue;
+   const stats=[];cells.forEach((c,i)=>{const value=clean(c);if(/^[+-]?\d+(?:\.\d+)?%?$/.test(value)&&labels[i]&&!/slot table$/.test(labels[i]))stats.push([labels[i],value]);});
+   if(stats.length)combat.push({group,stats});labels=[];
+  }
+ }
+ const intro=[...parsed.querySelectorAll('.mw-parser-output > p')].slice(0,3).map(clean).join(' ');
+ const requirement=intro.match(/\b(?:requires?|requiring)\s+([^.!?]{1,180}?)\s+to\s+(?:wield|wear|equip|use)\b/i)?.[1];
+ if(requirement&&items.length<=1&&tables.length<=1)basic.unshift(['Equip requirement',requirement]);
+ return {basic,combat,ambiguous:items.length>1||tables.length>1};
+}
 const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
+function renderItemStats(item,details){
+ const box=get('gh-item-stats');box.replaceChildren();
+ const metadata=state.mappingById?.get(item.id),properties=new Map([
+  ['Access',item.members?'Members':'Free-to-play'],
+  ['GE buy limit',item.limit?item.limit.toLocaleString('en-GB')+' / 4 hours':'Unknown']
+ ]);
+ if(Number.isSafeInteger(metadata?.highalch))properties.set('High alch',metadata.highalch.toLocaleString('en-GB')+' coins');
+ for(const [label,value]of details?.basic||[])properties.set(label,value);
+ const list=el('dl','gh-item-properties');for(const [label,value]of properties){const pair=el('div');pair.append(el('dt',null,label),el('dd',null,value));list.append(pair);}box.append(list);
+ for(const {group,stats}of details?.combat||[]){
+  const table=el('table','gh-item-bonuses');table.append(el('caption',null,group));
+  const head=el('tr'),values=el('tr');for(const [label,value]of stats){const cell=el('th',null,label);cell.scope='col';head.append(cell);values.append(el('td',null,value));}
+  const body=el('tbody');body.append(head,values);table.append(body);box.append(table);
+ }
+}
 function renderItemContext(item){
  const panel=get('gh-item-context');if(!panel)return;
  panel.hidden=!item;if(!item){itemContextID=null;itemContextRequest?.abort();return;}
  if(itemContextID===item.id)return;
  itemContextID=item.id;itemContextRequest?.abort();
- const metadata=state.mappingById?.get(item.id);
- txt('gh-item-examine',typeof metadata?.examine==='string'?metadata.examine:'');
- txt('gh-item-obtain',(item.members?'Members item. ':'Free-to-play item. ')+
-  'Tradeable on the Grand Exchange. See the linked item guide for drops, shops, requirements and other ways to obtain it.');
  get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
- const cached=itemContextCache.get(item.name);
- if(cached){txt('gh-item-description',cached);return;}
- txt('gh-item-description','Loading item background from the OSRS Wiki…');
+ const show=details=>{renderItemStats(item,details);txt('gh-item-description',details.ambiguous?'This Wiki page has multiple item variants. Check the full guide for the correct requirements and bonuses.':details.combat.length?'Equipment stats from the OSRS Wiki. See the guide for special effects and full requirements.':'Item properties from the OSRS Wiki. Equipment bonuses are not available for this item.');};
+ const cached=itemContextCache.get(item.name);if(cached){show(cached);return;}
+ renderItemStats(item);txt('gh-item-description','Loading item stats from the OSRS Wiki…');
  const controller=new AbortController();itemContextRequest=controller;
  const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
- const query=new URLSearchParams({action:'query',prop:'extracts',exintro:'1',explaintext:'1',exchars:'1200',redirects:'1',titles:name,format:'json',origin:'*'});
+ const query=new URLSearchParams({action:'parse',prop:'text',page:name,redirects:'1',format:'json',origin:'*'});
  fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
- .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>65536)throw Error('Oversized Wiki response');return JSON.parse(text);})
- .then(data=>{const pages=data?.query?.pages;if(!pages||typeof pages!=='object')throw Error('Missing Wiki summary');
-  const extract=Object.values(pages).find(p=>typeof p?.extract==='string'&&p.extract.trim())?.extract;
-  if(!extract)throw Error('Missing Wiki summary');
-  const summary=extract.trim().slice(0,1600);itemContextCache.set(name,summary);
-  if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
-  if(itemContextID===item.id&&!controller.signal.aborted)txt('gh-item-description',summary);
- }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Item background is unavailable right now. Open the Wiki guide for details.');})
+ .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>1500000)throw Error('Oversized Wiki response');return JSON.parse(text);})
+ .then(data=>{const html=data?.parse?.text?.['*'];if(typeof html!=='string')throw Error('Missing Wiki stats');
+  const details=parseItemStats(html);if(!details.basic.length&&!details.combat.length&&!details.ambiguous)throw Error('Missing Wiki stats');
+  itemContextCache.set(name,details);if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
+  if(itemContextID===item.id&&!controller.signal.aborted)show(details);
+ }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Additional item stats are unavailable right now. Open the Wiki guide for verified details.');})
  .finally(()=>clearTimeout(deadline));
 }
 const API="https://prices.runescape.wiki/api/v2/osrs/";
@@ -183,13 +224,11 @@ function blank(){
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
   <section id="gh-item-context" class="gh-item-context" hidden>
-   <h3>What is it?</h3>
-   <p id="gh-item-examine"></p>
-   <p id="gh-item-description" role="status"></p>
-   <h4>Where can I get it?</h4>
-   <p id="gh-item-obtain"></p>
-   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Item guide &amp; sources on the OSRS Wiki ↗</a>
-   <small>Summary: OSRS Wiki · <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 3.0</a></small>
+   <h3>Item stats</h3>
+   <div id="gh-item-stats"></div>
+   <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
+   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
+   <small>Stats: OSRS Wiki · <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 3.0</a></small>
   </section>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>

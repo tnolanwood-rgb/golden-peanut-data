@@ -272,3 +272,12 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 
 #gh-osrs-root .gh-item-context h3,#gh-osrs-root .gh-item-context h4{margin:0 0 8px}
 #gh-osrs-root .gh-item-context h4{margin-top:14px}
+
+#gh-osrs-root .gh-item-properties{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+#gh-osrs-root .gh-item-properties dt{font-size:.8rem;opacity:.75}
+#gh-osrs-root .gh-item-properties dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+#gh-osrs-root .gh-item-bonuses{width:100%;table-layout:fixed;border-collapse:collapse;margin:12px 0}
+#gh-osrs-root .gh-item-bonuses caption{text-align:left;font-weight:700;margin-bottom:6px}
+#gh-osrs-root .gh-item-bonuses th{font-size:.7rem;font-weight:400;overflow-wrap:anywhere;padding:4px 2px}
+#gh-osrs-root .gh-item-bonuses td{text-align:center;padding:6px 2px;background:rgba(0,0,0,.15);font-variant-numeric:tabular-nums}
+#gh-osrs-root .gh-item-stats-status{font-size:.8rem;opacity:.8}
