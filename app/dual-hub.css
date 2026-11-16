@@ -800,3 +800,26 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
  }
  #gh-panel-gw2 .focus-top{padding:13px 12px}
 }
+
+
+/* GE RESPONSIVE FINANCIAL — real text scaling drives breakpoints.
+ * Hard-coded two-column gauges become very narrow when Android enlarges
+ * root fonts. 10rem means two readouts fit on standard phones, but the grid
+ * naturally stacks them for 200% text, without JS or a display-size guess. */
+#gh-panel-gw2 .gp-guide-metrics,#gh-panel-osrs .gp-guide-metrics{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4){
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ gap:3px 11px;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>.gp-guide-label{
+ flex:1 1 10rem;min-width:0;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>.gp-guide-number{
+ flex:0 1 auto;margin-left:auto;min-width:0;max-width:100%;text-align:right;
+ overflow-wrap:anywhere;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:nth-child(4)>small{
+ flex:1 0 100%;min-width:0;
+}
