@@ -278,7 +278,11 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await page.evaluate(()=>GoldenDualHub.switchGame('osrs'));await page.waitForTimeout(35);
   await page.setViewportSize({width:412,height:915});await idle('osrs');
   await scroll(400);
-  await drag('resized-412','osrs',[65,110,155,200,245,290],{y:350});
+  // Locate the recommendation after responsive typography changes. A fixed
+  // document coordinate can land in the market search input, where navigation
+  // is intentionally excluded to preserve editing and text selection.
+  const resizedY=await page.locator('.gh-trade-scroll').evaluate(n=>Math.min(innerHeight-60,Math.max(160,n.getBoundingClientRect().top+35)));
+  await drag('resized-412','osrs',[65,110,155,200,245,290],{y:resizedY});
   await page.setViewportSize({width:390,height:844});await switchTo('osrs');await scroll(480);
 
   // A market response arriving during a held drag must defer JSON/scan/DOM

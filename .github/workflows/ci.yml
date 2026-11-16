@@ -44,6 +44,7 @@ jobs:
             artifacts/audit/*.json
             artifacts/audit/*.log
             artifacts/audit/swipe/**
+            artifacts/audit/golden-experience/**
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
