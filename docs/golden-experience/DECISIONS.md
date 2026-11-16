@@ -16,3 +16,8 @@
 - OSRS v4 migration/parity and forecast calibration remain separate audit gates.
 - Use local synthetic HTTP fixtures until staging's data/monitor isolation is proven.
   Never use private credentials to demonstrate design.
+
+- GE-04: retain existing SVG engines; measured event bursts caused 35–40 redundant
+  synchronous rebuilds. Coalesce render (not state) to requestAnimationFrame and
+  cache contact geometry. No chart dependency/downsampling/inertia added without
+  need; exact data and zoom endpoints remain. Cancel is not point selection.

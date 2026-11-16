@@ -1,3 +1,11 @@
+## Chart frame batch
+
+Implementation da58fbb0f8f133c92a776445eaf197cf607df133: source/Python/JS and all EIGHT browser programs passed.
+New chart test asserts <=1 plot rebuild per frame for a 60-event burst, exact final
+GW2/OSRS visible window and no point selection on cancellation. Existing chart
+history, cached reopen, stale requests, touch, Back, rotation and accounting fixtures
+still pass. No physical Android inference. Evidence: evidence/chart-checks.json.
+
 ## 2026-11-16 design batch actual results
 
 Implementation 0288a66: full source, 56 Python, 129 JS and all seven browser

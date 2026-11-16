@@ -1,0 +1,64 @@
+{
+  "conditions": "Headless desktop Chromium; synthetic 120-bucket OSRS / 90-day GW2 history, 60 pointer moves in a single JS task. Counts render work, not physical touch latency or FPS.",
+  "baseline": false,
+  "results": [
+    {
+      "game": "osrs",
+      "events": 60,
+      "renders": 1,
+      "synchronousMs": 0.7999999999301508,
+      "initial": {
+        "id": 2,
+        "points": 120,
+        "range": "week",
+        "selected": 119,
+        "visible": [
+          0,
+          120
+        ]
+      },
+      "after": {
+        "id": 2,
+        "points": 120,
+        "range": "week",
+        "selected": 119,
+        "visible": [
+          106,
+          120
+        ]
+      },
+      "cancelSelected": 119,
+      "selected": 119,
+      "open": true,
+      "desk": "osrs"
+    },
+    {
+      "game": "gw2",
+      "events": 60,
+      "renders": 1,
+      "synchronousMs": 0.30000000004656613,
+      "initial": {
+        "id": 1,
+        "range": "all",
+        "viewSize": 90,
+        "offset": 0,
+        "selected": 89,
+        "rows": 90,
+        "status": "ready"
+      },
+      "after": {
+        "id": 1,
+        "range": "custom",
+        "viewSize": 11,
+        "offset": 0,
+        "selected": 89,
+        "rows": 90,
+        "status": "ready"
+      },
+      "cancelSelected": 89,
+      "selected": 89,
+      "open": true,
+      "desk": "osrs"
+    }
+  ]
+}

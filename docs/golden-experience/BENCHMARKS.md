@@ -32,3 +32,13 @@ checks and final responsive font-grid changes postdate these design samples. Tre
 as exploratory only, no causal improvement or no-regression claim; repeat serially.
 Small sample p95/p99 both select maximum; cannot estimate population tail reliably.
 GW2 ready means unconnected shell; requests depend on readiness sampling instant.
+
+## GE-04 chart event-work evidence
+
+Synthetic same-task 60 pointermove burst, 120 OSRS buckets /90 GW2 days, headless
+Chromium. Before OSRS 40 SVG rebuilds/51.5ms synchronous task, GW2 35/56.5ms.
+After OSRS 1/0.6ms, GW2 1/0.9ms; independent full-suite replay 1/0.8ms and
+1/0.3ms. Single task timings are observations, not stable device distributions;
+work-count assertion and exact resulting windows are the regression contract.
+See evidence/chart-before.json, chart-after.json, chart-checks.json. Data accuracy,
+feeds, history windows and point inspection are preserved. No physical FPS claim.

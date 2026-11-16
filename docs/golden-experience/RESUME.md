@@ -1,30 +1,26 @@
 # Resume Golden Experience
 
-Read AGENTS.md, BRIEF.md, STATE.md, ROADMAP.md, TESTS.md and ISOLATION.md here.
-Verify git status/origin refs/current production build-info; preserve existing edits.
-Branch feature/golden-experience, base main 097f012, design implementation 0288a66.
-Checkpoint: git log -1 -- docs/golden-experience/STATE.md. No merge/deploy/auto-merge,
-production request, native identity, storage, D1/Worker/collector changes. Production
-freeze supersedes historical global audit authorizations. Do not restart that audit.
+Read AGENTS.md and this directory's BRIEF/STATE/ROADMAP/TESTS/ISOLATION. Verify git
+status, origin refs and live build-info before changes. Branch feature/golden-experience;
+base main/live 097f012. Latest chart implementation da58fbb0f8f133c92a776445eaf197cf607df133; checkpoint discovered
+with git log -1 -- docs/golden-experience/STATE.md. No production approval; no merge,
+deploy, release-request, APK, storage, Worker/D1/collector changes. Historical global
+audit release instructions do not apply. Preserve concurrent maintenance.
 
-Completed: dedicated project contract/preservation/verification/release skeleton;
-original full baseline; shared design CSS tokens and surfaces, immediate browser
-press feedback; full design baseline including 16 design/accessibility states passed.
-Preserve swipe/startup/owned-sale/stats fixes and official colours/icon dimensions.
+Completed: project contract/preservation map; full original baseline; shared design
+system/press feedback +16 viewport/font states; chart frame coalescing/cached geometry/
+cancel correctness. Full source/Python/JS/eight browser suites passed. Existing swipe,
+owned-sale, lifecycle, accounting, stats/official colours retained. No dependencies.
 
-First unfinished task: GE-04 chart main-thread work. Source profile confirmed
-60 synchronous pointermoves cause 40 OSRS/35 GW2 full plot rebuilds. Local test
-`tests/chart-frame.browser.cjs` is uncommitted for next batch; baseline output at
-artifacts/audit/golden-experience/chart-before.json. Queue at most one chart render
-per requestAnimationFrame, cache width on gesture start, cancel pending work on
-close and prevent pointercancel selecting a point. Keep state updates synchronous,
-existing APIs/accuracy/modal persistence intact. Run new test (without baseline
-flag), existing browser chart/gesture suites, then checkpoint that batch.
+First unfinished task: GE-02/04/05/06 visual/loading/confirmation. Extend shared tokens
+to advanced research and all chart surfaces, stabilize chart loading geometry, make
+confirmed-save feedback visible without implying in-game actions. Run focused tests,
+review screenshots and checkpoint. Then serial before/after performance (initial
+exploratory samples are not acceptance), long-session and complete accessibility QA.
+Original Android hardware/signing/lifecycle and isolated staging/release remain open.
 
-Dependencies available: npm ci --ignore-scripts, PyYAML 6.0.3, Chromium
-/usr/bin/chromium, locked Playwright 1.58.2. Full check:
-python scripts/audit_baseline.py --output artifacts/audit/golden-experience/<batch>.
-Final serial performance comparison is still required; exploratory JSON is labelled
-and not Android proof. Native hardware/signer/staging unavailable; never claim them.
-Finish independent work, maintain all affected project docs, commit/push each tested
-batch and record precise next actions. No READY declaration while gates remain open.
+Tools ready: Chromium /usr/bin/chromium, npm locked Playwright1.58.2, PyYAML6.0.3.
+Full check python scripts/audit_baseline.py. tests/chart-frame.browser.cjs verifies
+one rebuild per frame, exact final zoom windows and cancellation; do not weaken it.
+Before ending update docs/evidence, commit and push safe feature branch, record exact
+SHA/tests/defects/next actions and unchanged production. No readiness claim yet.

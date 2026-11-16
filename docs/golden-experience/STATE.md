@@ -3,7 +3,7 @@
 Date: 2026-11-16. Overall: IN PROGRESS. Candidate incomplete; release blocked.
 Branch: `feature/golden-experience`. Base main/live production:
 `097f012c1f912411790dd7dce21434a9cdc497d2`, unchanged at latest readback.
-Tested implementation: `0288a66` (resolve full SHA with git).
+Tested chart implementation: `da58fbb0f8f133c92a776445eaf197cf607df133`. Design implementation: `0288a66`.
 Checkpoint: `git log -1 -- docs/golden-experience/STATE.md`. PR: none yet.
 No production authorization. Historical audit release instructions do not apply.
 
@@ -30,13 +30,19 @@ Exploratory 10 cold +10 warm samples/game are not a speed claim: baseline ran wi
 concurrent checks, font-grid refinement followed initial after samples; final serial
 comparison remains required. Synthetic GW2 measurement is unconnected shell only.
 
-NEXT: GE-04 diagnosed chart event-work batch. Existing 60-event synthetic pinch
-burst rebuilt OSRS 40 times (~51.5ms synchronous), GW2 35 times (~56.5ms). Coalesce
-render work to one display frame, cache gesture geometry, avoid selection on cancel,
-then verify exact final windows/selection and existing chart tests. Test is currently
-local uncommitted `tests/chart-frame.browser.cjs`; preserve it for this next batch.
-Then finish main-view refinement, chart styling, startup/loading, confirmations,
-controlled performance/accessibility/long-session tests and isolated staging/release.
+GE-04 rendering sub-batch TESTED: both charts now queue at most one render per
+animation frame, read geometry once per contact, cancel queued work on close and
+do not inspect on pointercancel. Exact final windows are unchanged (14 OSRS buckets,
+11 GW2 days in the 60-event burst). Measured rebuilds: OSRS 40→1, GW2 35→1;
+synthetic synchronous event-task time fell from 51.5/56.5ms to below 1ms locally.
+This is a work-count result, not Android FPS. Full source/Python/JS/eight browser
+programs passed after the change. No feed/history/dependency/accounting changes.
+
+NEXT: finish GE-02/04/05/06 visual/loading/confirmation work. Preserve asynchronous
+chart frame scheduling. Improve advanced-view/chart token coverage; inspect stable
+loading geometry and visible confirmed-save feedback. Then repeat serial benchmark,
+complete error/forms/advanced/chart screenshots and long-session/accessibility checks.
+Native Android acceptance and isolated staging/release remain open blockers.
 
 Production behavior changes: none deployed. Dev changes affect visual surfaces,
 typography, focus and press feedback only. No engine, user data, account schema,
