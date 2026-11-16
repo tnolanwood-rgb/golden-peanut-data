@@ -1,6 +1,12 @@
 name: Golden Peanut — Private Account Monitor (Approved)
 on:
   workflow_dispatch:
+    inputs:
+      collectors_quiesced:
+        description: 'Both private collectors paused, in-flight polls drained, and D1 backup verified for protocol upgrade'
+        type: boolean
+        required: true
+        default: false
   push:
     branches: [main]
     paths:
@@ -15,7 +21,7 @@ concurrency:
 
 jobs:
   deploy-monitor:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.collectors_quiesced
     name: Deploy isolated encrypted trading-history monitor
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -45,13 +51,18 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json,os,urllib.request,urllib.error
+          import json,os,urllib.request,urllib.error,sqlite3
           url='https://api.cloudflare.com/client/v4/accounts/{}/d1/database/{}/query'.format(
               os.environ['CF_ACCOUNT_ID'],os.environ['CF_DATABASE_ID'])
           headers={'Authorization':'Bearer '+os.environ['CF_D1_TOKEN'],
                    'Content-Type':'application/json'}
           sql=open('services/account-monitor/schema.sql',encoding='utf-8').read()
-          queries=[x.strip() for x in sql.split(';') if x.strip()]
+          queries=[];pending=''
+          for line in sql.splitlines(True):
+              pending+=line
+              if sqlite3.complete_statement(pending):
+                  queries.append(pending);pending=''
+          if pending.strip(): raise SystemExit('Incomplete private schema; no deployment')
           for statement in queries:
               req=urllib.request.Request(url,method='POST',headers=headers,
                   data=json.dumps({'sql':statement}).encode())

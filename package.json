@@ -3,11 +3,20 @@
   "version": "7.16.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/execution.test.cjs tests/market-board.test.cjs tests/capacity.test.cjs tests/portfolio.test.cjs tests/stress.test.cjs tests/live-data.test.cjs tests/account-monitor.test.cjs tests/rarity-and-performance.test.cjs tests/fast-startup.test.cjs tests/guided-deck.test.cjs tests/public-index.test.cjs tests/accounting-oracle.test.cjs tests/guided-visit.test.cjs tests/hub-integrity.test.cjs",
-    "test:browser": "node tests/browser.cjs && node tests/dual-hub.browser.cjs && node tests/hub-reliability.browser.cjs",
-    "check": "python scripts/check_release.py"
+    "test": "node --test tests/execution.test.cjs tests/market-board.test.cjs tests/capacity.test.cjs tests/portfolio.test.cjs tests/stress.test.cjs tests/live-data.test.cjs tests/account-monitor.test.cjs tests/rarity-and-performance.test.cjs tests/fast-startup.test.cjs tests/guided-deck.test.cjs tests/public-index.test.cjs tests/accounting-oracle.test.cjs tests/guided-visit.test.cjs tests/hub-integrity.test.cjs && npm run test:exchange",
+    "test:browser": "node tests/browser.cjs && node tests/dual-hub.browser.cjs && node tests/hub-reliability.browser.cjs && node tests/hub-advanced.browser.cjs && node tests/hub-advanced-integrity.browser.cjs && node tests/hub-item-context.browser.cjs",
+    "check": "python scripts/check_release.py",
+    "build": "node scripts/build_exchange.mjs",
+    "test:exchange": "node --test tests/exchange/*.test.mjs",
+    "test:exchange:ui": "playwright test --config tests/exchange/playwright.config.mjs"
   },
   "devDependencies": {
-    "playwright-core": "1.58.2"
+    "playwright-core": "1.58.2",
+    "esbuild": "0.28.2",
+    "@playwright/test": "1.58.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
   }
 }

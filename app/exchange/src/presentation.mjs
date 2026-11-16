@@ -1,0 +1,3 @@
+import {gp} from './core.mjs';
+import {researchScenarios} from './research.mjs';
+export function scenarioMarkup(item,qty){const rows=researchScenarios(item,qty);return rows.length?`<details><summary>Compare research scenarios</summary><p class="simple-help">Sensitivity cases, not forecasts. Only the baseline allocation earmarks capital.</p><div class="scenario-grid">${rows.map(r=>`<div><strong>${r.label}</strong>${r.available?`<small>${gp(r.buy)} buy → ${gp(r.sell)} sell</small><small>Cost ${gp(r.cost)} · net margin ${gp(r.margin)} · ${r.roi.toFixed(2)}% ROI</small>`:'<small>Outside supported arithmetic limits.</small>'}</div>`).join('')}</div></details>`:'<p class="simple-help">Insufficient fresh evidence for scenarios.</p>';}

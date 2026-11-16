@@ -1,3 +1,5 @@
+> Historical R1 checkpoint: its open code backlog is completed by [HUB-R2](HUB-COMPLETION-2026-11-15.md). APK/version/test counts below describe R1 only.
+
 # Golden Trading Hub audit and repairs — 15 November 2026
 
 Base: `12c09d9a85e3236f177fec8eedb6c2237eb34d03`. Dedicated branch: `audit/hub-reliability-20261115`.

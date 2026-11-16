@@ -1,6 +1,34 @@
 (function installPrivateDualHub(win,doc){
 "use strict";
 const VERSION="osrs-integrity-3.0-2026-11-15";
+const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
+function renderItemContext(item){
+ const panel=get('gh-item-context');if(!panel)return;
+ panel.hidden=!item;if(!item){itemContextID=null;itemContextRequest?.abort();return;}
+ if(itemContextID===item.id)return;
+ itemContextID=item.id;itemContextRequest?.abort();
+ const metadata=state.mappingById?.get(item.id);
+ txt('gh-item-examine',typeof metadata?.examine==='string'?metadata.examine:'');
+ txt('gh-item-obtain',(item.members?'Members item. ':'Free-to-play item. ')+
+  'Tradeable on the Grand Exchange. See the linked item guide for drops, shops, requirements and other ways to obtain it.');
+ get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
+ const cached=itemContextCache.get(item.name);
+ if(cached){txt('gh-item-description',cached);return;}
+ txt('gh-item-description','Loading item background from the OSRS Wiki…');
+ const controller=new AbortController();itemContextRequest=controller;
+ const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
+ const query=new URLSearchParams({action:'query',prop:'extracts',exintro:'1',explaintext:'1',exchars:'1200',redirects:'1',titles:name,format:'json',origin:'*'});
+ fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
+ .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>65536)throw Error('Oversized Wiki response');return JSON.parse(text);})
+ .then(data=>{const pages=data?.query?.pages;if(!pages||typeof pages!=='object')throw Error('Missing Wiki summary');
+  const extract=Object.values(pages).find(p=>typeof p?.extract==='string'&&p.extract.trim())?.extract;
+  if(!extract)throw Error('Missing Wiki summary');
+  const summary=extract.trim().slice(0,1600);itemContextCache.set(name,summary);
+  if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
+  if(itemContextID===item.id&&!controller.signal.aborted)txt('gh-item-description',summary);
+ }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Item background is unavailable right now. Open the Wiki guide for details.');})
+ .finally(()=>clearTimeout(deadline));
+}
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
 const LAST_GAME="gh-last-game-v1",VIEW="gh-view-session-v1",RECOVERY="gh-osrs-ledger-recovery-v1",ORIGINAL="gh-osrs-ledger-original-v1";
@@ -101,6 +129,7 @@ function blank(){
    <div class="gp-guide-title"><h1>The Golden Exchange</h1><p>One useful move at a time · Old School RuneScape</p></div>
    <div class="gp-guide-head-actions">
      <button id="gh-refresh" class="gp-guide-primary" type="button">↻ Update prices</button>
+     <button id="gh-open-advanced" class="gp-guide-secondary" type="button">Advanced trading desk</button>
      <button id="gh-settings-toggle" class="gp-guide-secondary" type="button">⚙ Details</button>
    </div>
  </header>
@@ -137,6 +166,14 @@ function blank(){
   <h2 id="gh-item-name">Checking eligible trades…</h2>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
+  <details id="gh-item-context" class="gh-item-context" hidden>
+   <summary>What is it? Where can I get it?</summary>
+   <p id="gh-item-examine"></p>
+   <p id="gh-item-description" role="status"></p>
+   <p id="gh-item-obtain"></p>
+   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Item guide &amp; sources on the OSRS Wiki ↗</a>
+   <small>Summary: OSRS Wiki · <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 3.0</a></small>
+  </details>
   <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
    <h3>What prices should I enter into the GE?</h3>
    <p class="gh-quote-intro">OSRS does not publish a live order book. These are recent <strong>completed transactions</strong> and experimental limit-order targets, not outstanding offers.</p>
@@ -272,6 +309,7 @@ function install(){
  })};
  win.GoldenDualHub.back=()=>{
   if(state.game!=='osrs')return false;
+  if(win.GoldenOSRSAdvanced?.back())return true;
   if(!get('gh-fill-form').hidden){get('gh-fill-form').hidden=true;saveView();return true;}
   for(const id of ['gh-settings','gh-ledger'])if(get(id).open){get(id).open=false;saveView();return true;}
   switchGame('gw2',true);return true;
@@ -289,6 +327,10 @@ function activateOsrs(){
  if(!root)return;
  root.append(blank());
  get("gh-refresh").addEventListener("click",()=>refresh(true));
+ get('gh-open-advanced').addEventListener('click',()=>win.GoldenOSRSAdvanced?.open());
+ win.addEventListener('golden-exchange-summary',()=>{buildIdeas();render()});
+ win.addEventListener('golden-exchange-view',saveView);
+ if(win.GoldenOSRSAdvanced?.active())void win.GoldenOSRSAdvanced.refresh().catch(()=>{});
  get("gh-market-search").value=state.search;
  get("gh-value-floor").value=String(state.valueFloor);
  get("gh-only-watch").checked=state.watchOnly;
@@ -327,7 +369,7 @@ function activateOsrs(){
  get("gh-cancel-fill").addEventListener("click",()=>{get("gh-fill-form").hidden=true;saveView()});
  get("gh-fill-form").addEventListener("submit",recordFill);
  get("gh-export-ledger").addEventListener("click",exportOsrsBackup);
- get("gh-import-ledger").addEventListener("click",()=>get("gh-import-file").click());
+ get("gh-import-ledger").addEventListener("click",()=>{if(win.GoldenOSRSAdvanced?.active())win.GoldenOSRSAdvanced.open();else get("gh-import-file").click()});
  get("gh-import-file").addEventListener("change",importOsrsBackup);
  get("gh-chart-svg").addEventListener("wheel",zoomChart,{passive:false});
  get("gh-chart-svg").addEventListener("pointerdown",chartStart);
@@ -352,7 +394,7 @@ function saveView(){
    const scroller=get(id)?.querySelector('.gh-trade-scroll');if(scroller)panelScroll[id]=pendingPanelScroll[id]??scroller.scrollTop;
   }
   store(VIEW,{v:1,at:Date.now(),game:state.game,scroll:{...scrollPositions,[state.game]:pendingDocumentScroll?.game===state.game?pendingDocumentScroll.y:win.scrollY||0},drafts,panelScroll,
-   fillOpen:!!get('gh-fill-form')&&!get('gh-fill-form').hidden,fillItem:state.fillItem||null,
+   advancedOpen:win.GoldenOSRSAdvanced?.isOpen()===true,fillOpen:!!get('gh-fill-form')&&!get('gh-fill-form').hidden,fillItem:state.fillItem||null,
    details:['gh-settings','gh-ledger'].filter(id=>get(id)?.open),chart:win.GoldenOSRSChart?.snapshot?.()||null});
  }catch{/* Session UI snapshots are optional; never write to GW2 account storage. */}
 }
@@ -372,6 +414,7 @@ function restoreView(){
   if(!['gh-panel-gw2','gh-panel-osrs'].includes(id))continue;
   if(Number.isFinite(y)&&y>=0&&y<1e7)pendingPanelScroll[id]=y;
  }
+ if(saved.advancedOpen)win.GoldenOSRSAdvanced?.open();
  if(saved.chart&&state.game==='osrs')win.GoldenOSRSChart?.restore?.(saved.chart);
  restoringView=false;
  const game=state.game,y=scrollPositions[game];
@@ -889,8 +932,8 @@ function validateOsrsRows(raw){
 }
 function purchaseUsage(now=Date.now()){
  const windows=new Map(),usage=new Map();
- for(const r of state.records){
-  const at=Date.parse(r.when);if(r.side!=='buy'||at>now)continue;
+ for(const r of win.GoldenOSRSAdvanced?.summary()?.trades||state.records){
+  const at=Date.parse(r.when||r.date);if(r.side!=='buy'||at>now)continue;
   let window=windows.get(r.id);
   if(!window||at>=window.start+14400000){window={start:at,quantity:0};windows.set(r.id,window);}
   window.quantity+=r.qty;
@@ -899,6 +942,7 @@ function purchaseUsage(now=Date.now()){
  return usage;
 }
 function exportOsrsBackup(){
+ if(win.GoldenOSRSAdvanced?.active()){win.GoldenOSRSAdvanced.open();return;}
  try{
   const body={format:"golden-hub-osrs-v1",exportedAt:new Date().toISOString(),
    config:{budget:state.budget,mode:state.mode,restricted:state.restricted},
@@ -933,6 +977,7 @@ async function importOsrsBackup(event){
  }catch(e){txt("gh-backup-status","Import not applied: "+safe(e.message));}
 }
 function ledgerTotals(){
+ const canonical=win.GoldenOSRSAdvanced?.summary();if(canonical)return {today:canonical.today,lastWeek:canonical.lastWeek};
  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
  const weekDate=new Date(day);weekDate.setDate(weekDate.getDate()-6);
  const week=+weekDate;let today=0n,lastWeek=0n;
@@ -960,6 +1005,7 @@ function render(){
  const watch=get("gh-watch-toggle");if(watch)watch.hidden=!current;
  txt("gh-total-label",state.researchMode==="value"?"Capital needed for one unit":"Illustrative total");
  txt("gh-margin-label",state.researchMode==="value"?"Observed after-tax spread per unit":"Potential after-tax margin");
+ renderItemContext(current);
  renderValueTier(current);
  renderListingGuide(current);
  if(!current){
@@ -1053,6 +1099,7 @@ function navigate(dir){
  render();
 }
 function toggleFill(){
+ if(win.GoldenOSRSAdvanced?.active()){win.GoldenOSRSAdvanced.open(state.ideas[state.index]?.id);return;}
  const f=get("gh-fill-form"),item=state.ideas[state.index];if(!item)return;
  f.hidden=!f.hidden;if(f.hidden)return;
  state.fillItem={id:item.id,name:item.name};
@@ -1073,7 +1120,7 @@ function inventory(id){
  return lots;
 }
 function recordFill(e){
- e.preventDefault();const item=state.fillItem;if(!item||get('gh-fill-form').hidden)return;
+ e.preventDefault();if(win.GoldenOSRSAdvanced?.active()){win.GoldenOSRSAdvanced.open(state.fillItem?.id);return;}const item=state.fillItem;if(!item||get('gh-fill-form').hidden)return;
  if(state.ledgerError){txt('gh-fill-feedback',state.ledgerError);return;}
  const side=get("gh-fill-side").value,qty=n(get("gh-fill-qty").value),price=n(get("gh-fill-price").value);
  if(!Number.isSafeInteger(qty)||qty<=0||!Number.isSafeInteger(price)||price<=0||qty*price>9e12){txt("gh-fill-feedback","Enter valid whole quantities and GP prices.");return}
@@ -1099,10 +1146,12 @@ function recordFill(e){
  txt("gh-fill-feedback",side==="sell"?"Recorded verified sale · realised "+gp(updated.find(r=>r.rid===row.rid).gain):"Recorded purchase · waiting for a matching sale");
  render();
 }
-let renderedRecords=null;
+let renderedRecords=null,renderedAdvanced=false;
 function renderLedger(){
- const target=get("gh-ledger-list");if(!target||renderedRecords===state.records)return;
+ const target=get("gh-ledger-list");if(!target||renderedRecords===state.records&&renderedAdvanced===(win.GoldenOSRSAdvanced?.active()===true))return;
+ renderedAdvanced=win.GoldenOSRSAdvanced?.active()===true;
  renderedRecords=state.records;target.replaceChildren();
+ if(win.GoldenOSRSAdvanced?.active()){target.append(el('p','','Your complete journal, corrections, research tickets and backups are in Advanced trading desk.'));return;}
  if(!state.records.length){target.append(el("p","gh-empty","No recorded OSRS fills yet."));return}
  for(const r of state.records.slice(-20).reverse()){
   const row=el("div","gh-ledger-row");

@@ -10,7 +10,7 @@ import yaml
 root=pathlib.Path(__file__).resolve().parents[1]
 app=root/'app';html=(app/'index.html').read_text()
 count=0
-for p in app.glob('*.js'):
+for p in sorted([*app.rglob('*.js'),*app.rglob('*.mjs')]):
  subprocess.run(['node','--check',str(p)],check=True);count+=1
 with tempfile.TemporaryDirectory() as d:
  for i,body in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',html,re.S)):
@@ -34,7 +34,7 @@ for p in root.glob('.github/workflows/*.yml'):
 for p in (root/'scripts').glob('*.py'):ast.parse(p.read_text(),filename=str(p))
 # No credential-shaped GW2 key or account profile is allowed in distributable files.
 for p in app.rglob('*'):
- if p.suffix not in {'.js','.html','.css','.json','.webmanifest'}:continue
+ if p.suffix not in {'.js','.mjs','.html','.css','.json','.webmanifest'}:continue
  text=p.read_text()
  assert not re.search(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{20}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}',text,re.I),f'Possible credential: {p}'
  assert not re.search(r'__GP_PERSONAL_PROFILE\s*=\s*\{\s*(?:account|key)\s*:',text),f'Embedded personal profile: {p}'

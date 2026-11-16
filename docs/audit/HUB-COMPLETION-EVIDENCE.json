@@ -1,0 +1,150 @@
+{
+  "batch": "HUB-R2",
+  "branch": "audit/hub-reliability-20261115",
+  "base": "12c09d9a85e3236f177fec8eedb6c2237eb34d03",
+  "pr": "https://github.com/tnolanwood-rgb/golden-peanut-data/pull/52",
+  "conditions": "Synthetic fixtures and local SQLite/browser tests; no private-account access, production mutation/deploy or device installation. Baseline predates source commit and explicitly records dirty=true.",
+  "localBaseline": {
+    "schema": "gp-audit-baseline-v1",
+    "started_at": "2026-11-15T19:51:47.236825+00:00",
+    "commit": "ab4d262d36cb4033367bd3d4f3661d558bed36cd",
+    "branch": "audit/hub-reliability-20261115",
+    "dirty": true,
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1",
+    "conditions": "Synthetic local regression; browser emulation, not physical Android or live account validation",
+    "planned_checks": [
+      "build",
+      "source",
+      "python",
+      "javascript",
+      "browser",
+      "exchange_browser"
+    ],
+    "checks": [
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 0.469,
+        "log": "build.log"
+      },
+      {
+        "name": "source",
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+          "scripts/check_release.py"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 1.674,
+        "log": "source.log"
+      },
+      {
+        "name": "python",
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-p",
+          "test_*.py",
+          "-v"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 1.374,
+        "log": "python.log"
+      },
+      {
+        "name": "javascript",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 3.945,
+        "log": "javascript.log"
+      },
+      {
+        "name": "browser",
+        "command": [
+          "npm",
+          "run",
+          "test:browser"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 52.687,
+        "log": "browser.log"
+      },
+      {
+        "name": "exchange_browser",
+        "command": [
+          "npm",
+          "run",
+          "test:exchange:ui"
+        ],
+        "status": "VERIFIED",
+        "exit_code": 0,
+        "seconds": 97.684,
+        "log": "exchange_browser.log"
+      }
+    ],
+    "status": "VERIFIED"
+  },
+  "counts": {
+    "javascriptRoot": 124,
+    "javascriptExchange": 49,
+    "python": 61,
+    "exchangeBrowser": 40,
+    "nativeUnit": 3,
+    "nativeFailures": 0,
+    "lintErrors": 0,
+    "lintWarnings": 5
+  },
+  "browserSuites": [
+    "assembled GW2 1440px and 390px",
+    "dual Hub",
+    "Hub reliability, rotation/recreation/background/outages",
+    "advanced Hub handoff, actual tax and full v3 state",
+    "1002-fill integrity, conflict rejection, original Exchange database and deletion continuity",
+    "40 original Exchange UI cases"
+  ],
+  "collectorProtocol": "9 real-SQLite tests using both production writers generated SQL, including 20 competing connections and 1300-row batching",
+  "sourceCheck": "PASS: 56 JS programs, Python, workflows, assets, credential guard",
+  "actionlint": "PASS; optional local shellcheck/pyflakes unavailable",
+  "apk": {
+    "sha256": "a0cd7031d6dc5524ca0c570fb5de1a9b1db021cf188a8ea7d61bcd63f4efeec2",
+    "bytes": 1964332,
+    "verifiedEmbeddedFiles": 69
+  },
+  "apkIdentity": {
+    "package": "com.goldenhub.dual.preview",
+    "versionCode": 3,
+    "versionName": "0.4-audit-qa",
+    "minSDK": 26,
+    "targetSDK": 34,
+    "signatureScheme": "v2",
+    "certificateSHA256": "17859b30e079e0aaa6ac6e58c68713173d2b7cce6495d78e255a1a3aa3ab9221",
+    "zipAlignment": "PASS",
+    "noBundledPrivateKey": true
+  },
+  "implementationBacklog": "R1 collector fencing/atomic event, preview CORS and actual v4 feature/backup gaps repaired.",
+  "unverified": [
+    "physical Android lifecycle, process death, native pickers, memory/FPS and original installation coexistence",
+    "live private D1/account closed-phone collection and coordinated backed-up protocol rollout",
+    "prospective forecast calibration",
+    "store release signing/modern insets acceptance"
+  ],
+  "remoteCI": "Check final exact-head PR #52 results; no remote success inferred from local results."
+}

@@ -1,3 +1,18 @@
+# Item background addition — 16 November 2026
+
+BATCH: HUB-R3. STATUS: implemented and packaged in a signed debug APK; production not deployed.
+FIXED: OSRS research cards now have an expandable item background/acquisition guide, mapping examine text, attributed Wiki introduction, membership label and exact item guide link. Wiki requests have an 8-second deadline, bounded in-memory cache, no credentials, escaped text, and selected-item/abort guards. Failed summaries leave trading and the source link usable; no drop sources are invented.
+TESTED: new selected-item/stale-response/escaped-text browser journey passed; 15 Hub integrity tests and source checks passed. Android build/unit/lint passed, signature/alignment and 69 embedded assets verified. APK: `artifacts/delivery/Golden-Trading-Hub-item-guide-debug.apk`, SHA-256 `17fde6c857ba7e08b5c064d2a13c196b64130aa5ece0f21c879ec7ab0a48e0ca`. R2 full-suite results remain historical evidence, not a new complete R3 test run.
+EVIDENCE: `artifacts/audit/item-context-{browser,integrity,source}.log`; new browser case is included in normal CI.
+NEXT: review PR/build evidence; physical/live-account gates in HUB-R2 remain unchanged. Production and original applications remain untouched.
+CHECKPOINT: `git log -1 -- docs/audit/STATE.md`. Previous session was interrupted during R2 publishing; verify PR head rather than assuming it was updated.
+
+---
+
+# HUB-R2 completion update — 15 November 2026
+
+R1's remaining implementation findings (collector race/atomic events, preview origin, full v4 feature/backup parity) are repaired in PR #52. See [completion report](HUB-COMPLETION-2026-11-15.md) and [evidence](HUB-COMPLETION-EVIDENCE.json). Physical/live-account/production-rollout gates remain explicitly unverified. Historical entries follow.
+
 # Findings
 
 | ID | Severity / certainty | Root cause and consequence | Repair / next test |

@@ -1,12 +1,14 @@
 # Golden Trading Hub Android QA build
 
-The separate package remains `com.goldenhub.dual.preview`; version 0.3-audit-preview, code 2, min API 26 / target 34 / compile 35. It does not replace Golden Peanut or Golden Exchange. Never uninstall an original app to resolve a signature conflict.
+The separate package remains `com.goldenhub.dual.preview`; version 0.4-audit-qa, code 3, min API 26 / target 34 / compile 35. It does not replace Golden Peanut or Golden Exchange. Never uninstall an original app to resolve a signature conflict.
 
 The APK now includes the exact reviewed `app/` frontend. Static assets are served from the APK at the unchanged `https://private-dual-hub-preview.thegoldenpeanut.pages.dev/` origin; live data continues through the existing endpoints. No Pages or Worker deployment is required to exercise the frontend repairs. The production-origin release configuration is unchanged. No private account data, API keys or signing keys are packaged.
 
 Build with Java 17+ and Android platform/build-tools 35:
 
 ```sh
+npm ci --ignore-scripts
+npm run build
 cd android
 ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
 ```
@@ -19,4 +21,4 @@ Implemented: configuration-change coverage retaining the WebView, pause/resume w
 
 Unverified on hardware: real touch/back gestures, rotation with the keyboard/file picker open, renderer/process death, filesystem permissions and large/compressed backup round trips. A new package's WebView cannot automatically read an original app's private IndexedDB. Original installed histories, credentials and collectors were not accessed or migrated.
 
-The private monitor Worker currently permits only the production Pages origin. Its existing consent/CORS boundary is retained: the preview can use the mature local GW2 engine and account API, but preview-origin cloud-monitor integration remains a separate acceptance gate. Do not change origin or migrate user records to bypass it.
+The reviewed private monitor now permits the exact production and Hub preview origins, with account/key/consent checks retained. This backend change requires the separately approved backed-up, quiesced protocol-v2 rollout; it has not been deployed by this audit. See `docs/audit/HUB-COMPLETION-2026-11-15.md`. The integrated Golden Exchange v4 desk uses an isolated new database; neither original app database is migrated or opened.

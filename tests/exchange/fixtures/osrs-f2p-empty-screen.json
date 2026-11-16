@@ -1,0 +1,310 @@
+{
+  "capturedAt": 1794601761295,
+  "source": "https://prices.runescape.wiki/api/v2/osrs",
+  "mapping": [
+    {
+      "examine": "One of the 4 basic elemental Runes.",
+      "id": 556,
+      "members": false,
+      "lowalch": 1,
+      "limit": 50000,
+      "value": 4,
+      "highalch": 2,
+      "icon": "Air rune.png",
+      "name": "Air rune"
+    },
+    {
+      "examine": "Provides excellent protection.",
+      "id": 1125,
+      "members": false,
+      "lowalch": 1536,
+      "limit": 125,
+      "value": 3840,
+      "highalch": 2304,
+      "icon": "Black platebody.png",
+      "name": "Black platebody"
+    },
+    {
+      "examine": "One of the 4 basic elemental Runes.",
+      "id": 557,
+      "members": false,
+      "lowalch": 1,
+      "limit": 50000,
+      "value": 4,
+      "highalch": 2,
+      "icon": "Earth rune.png",
+      "name": "Earth rune"
+    },
+    {
+      "examine": "I wonder if this is valuable.",
+      "id": 1658,
+      "members": false,
+      "lowalch": 570,
+      "limit": 18000,
+      "value": 1425,
+      "highalch": 855,
+      "icon": "Emerald necklace.png",
+      "name": "Emerald necklace"
+    },
+    {
+      "examine": "One of the 4 basic elemental Runes.",
+      "id": 554,
+      "members": false,
+      "lowalch": 1,
+      "limit": 50000,
+      "value": 4,
+      "highalch": 2,
+      "icon": "Fire rune.png",
+      "name": "Fire rune"
+    },
+    {
+      "examine": "I wonder if this is valuable.",
+      "id": 1654,
+      "members": false,
+      "lowalch": 180,
+      "limit": 18000,
+      "value": 450,
+      "highalch": 270,
+      "icon": "Gold necklace.png",
+      "name": "Gold necklace"
+    },
+    {
+      "examine": "A number of wooden logs.",
+      "id": 1511,
+      "members": false,
+      "lowalch": 1,
+      "limit": 15000,
+      "value": 4,
+      "highalch": 2,
+      "icon": "Logs.png",
+      "name": "Logs"
+    },
+    {
+      "examine": "I wonder if this is valuable.",
+      "id": 1656,
+      "members": false,
+      "lowalch": 420,
+      "limit": 18000,
+      "value": 1050,
+      "highalch": 630,
+      "icon": "Sapphire necklace.png",
+      "name": "Sapphire necklace"
+    },
+    {
+      "examine": "One of the 4 basic elemental Runes.",
+      "id": 555,
+      "members": false,
+      "lowalch": 1,
+      "limit": 50000,
+      "value": 4,
+      "highalch": 2,
+      "icon": "Water rune.png",
+      "name": "Water rune"
+    },
+    {
+      "examine": "Logs cut from a willow tree.",
+      "id": 1519,
+      "members": false,
+      "lowalch": 16,
+      "limit": 15000,
+      "value": 40,
+      "highalch": 24,
+      "icon": "Willow logs.png",
+      "name": "Willow logs"
+    }
+  ],
+  "latest": {
+    "data": {
+      "554": {
+        "high": 5,
+        "highTime": 1794601678,
+        "low": 4,
+        "lowTime": 1794601656
+      },
+      "555": {
+        "high": 5,
+        "highTime": 1794601673,
+        "low": 4,
+        "lowTime": 1794601673
+      },
+      "556": {
+        "high": 6,
+        "highTime": 1794601672,
+        "low": 5,
+        "lowTime": 1794601651
+      },
+      "557": {
+        "high": 5,
+        "highTime": 1794601658,
+        "low": 4,
+        "lowTime": 1794601658
+      },
+      "1125": {
+        "high": 2450,
+        "highTime": 1794601621,
+        "low": 2295,
+        "lowTime": 1794601465
+      },
+      "1511": {
+        "high": 19,
+        "highTime": 1794601667,
+        "low": 18,
+        "lowTime": 1794601612
+      },
+      "1519": {
+        "high": 24,
+        "highTime": 1794601615,
+        "low": 23,
+        "lowTime": 1794601668
+      },
+      "1654": {
+        "high": 129,
+        "highTime": 1794601479,
+        "low": 123,
+        "lowTime": 1794601670
+      },
+      "1656": {
+        "high": 341,
+        "highTime": 1794601581,
+        "low": 328,
+        "lowTime": 1794601654
+      },
+      "1658": {
+        "high": 489,
+        "highTime": 1794601663,
+        "low": 475,
+        "lowTime": 1794601652
+      }
+    }
+  },
+  "5m": {
+    "data": {
+      "554": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 529755,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 98113
+      },
+      "555": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 144888,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 58483
+      },
+      "556": {
+        "avgHighPrice": 6,
+        "highPriceVolume": 454301,
+        "avgLowPrice": 5,
+        "lowPriceVolume": 190578
+      },
+      "557": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 215782,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 92561
+      },
+      "1125": {
+        "avgHighPrice": 2437.78,
+        "highPriceVolume": 9,
+        "avgLowPrice": 2295,
+        "lowPriceVolume": 1
+      },
+      "1511": {
+        "avgHighPrice": 19,
+        "highPriceVolume": 421,
+        "avgLowPrice": 18,
+        "lowPriceVolume": 192
+      },
+      "1519": {
+        "avgHighPrice": 24,
+        "highPriceVolume": 1033,
+        "avgLowPrice": 23,
+        "lowPriceVolume": 978
+      },
+      "1654": {
+        "avgHighPrice": 130.51,
+        "highPriceVolume": 6801,
+        "avgLowPrice": 123,
+        "lowPriceVolume": 1534
+      },
+      "1656": {
+        "avgHighPrice": 341,
+        "highPriceVolume": 3578,
+        "avgLowPrice": 328,
+        "lowPriceVolume": 4820
+      },
+      "1658": {
+        "avgHighPrice": 489,
+        "highPriceVolume": 2120,
+        "avgLowPrice": 475,
+        "lowPriceVolume": 8593
+      }
+    },
+    "timestamp": 1794601200
+  },
+  "1h": {
+    "data": {
+      "554": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 6485467,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 1630541
+      },
+      "555": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 2922279,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 1676023
+      },
+      "556": {
+        "avgHighPrice": 6,
+        "highPriceVolume": 3341076,
+        "avgLowPrice": 5,
+        "lowPriceVolume": 3737120
+      },
+      "557": {
+        "avgHighPrice": 5,
+        "highPriceVolume": 2129754,
+        "avgLowPrice": 4,
+        "lowPriceVolume": 888781
+      },
+      "1125": {
+        "avgHighPrice": 2446.33,
+        "highPriceVolume": 165,
+        "avgLowPrice": 2298.47,
+        "lowPriceVolume": 51
+      },
+      "1511": {
+        "avgHighPrice": 19,
+        "highPriceVolume": 31122,
+        "avgLowPrice": 18,
+        "lowPriceVolume": 8604
+      },
+      "1519": {
+        "avgHighPrice": 24.17,
+        "highPriceVolume": 29558,
+        "avgLowPrice": 23.11,
+        "lowPriceVolume": 11018
+      },
+      "1654": {
+        "avgHighPrice": 133.57,
+        "highPriceVolume": 118069,
+        "avgLowPrice": 128.92,
+        "lowPriceVolume": 27484
+      },
+      "1656": {
+        "avgHighPrice": 336.02,
+        "highPriceVolume": 61553,
+        "avgLowPrice": 325.46,
+        "lowPriceVolume": 34939
+      },
+      "1658": {
+        "avgHighPrice": 490.38,
+        "highPriceVolume": 93432,
+        "avgLowPrice": 475.69,
+        "lowPriceVolume": 61076
+      }
+    },
+    "timestamp": 1794592800
+  }
+}

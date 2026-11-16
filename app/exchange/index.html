@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101c17"><meta name="description" content="Independent OSRS Grand Exchange opportunity research, portfolio planner and local trade ledger.">
+<meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://prices.runescape.wiki; font-src 'self'; frame-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"><link rel="icon" href="./icons/icon-192.png" type="image/png">
+<title>The Golden Exchange · Trading desk</title>
+<link rel="stylesheet" href="./hub.css"><link rel="stylesheet" href="./base.css"><link rel="stylesheet" href="./studio.css"><link rel="stylesheet" href="./simple.css">
+</head>
+<body class="simple-view">
+<div id="storageWarning" class="notice error" role="alert" hidden></div>
+<main id="simpleApp" aria-label="Simple trading view">
+<header class="simple-banner"><img class="brand-logo" src="./artwork/exchange-mark.svg" alt="The Golden Exchange original mark"><h1>The Golden Exchange</h1><span>Independent trading helper</span></header>
+<div class="simple-toolbar"><a class="hub-link" href="#" data-golden-hub-link>GW2</a><button id="simpleSettingsButton" class="quiet-button">⚙ Settings</button><button id="simpleRefresh" class="quiet-button">↻ Update prices</button></div>
+<div id="simpleStatus" class="simple-status" role="status">Loading prices…</div>
+<form id="simpleSetup" class="simple-panel"><h2>Ready to trade?</h2><label>Your trading budget (GP)<input id="simpleBudget" type="number" min="0" max="9000000000000" step="1" value="100000000" required></label><label>Account<select id="simpleMode"><option value="f2p">Free-to-play · 3 slots</option><option value="members">Members · 8 slots</option></select></label><details><summary>New-account restrictions</summary><label>Can this account sell normally?<select id="simpleRestriction"><option value="unknown">Not sure</option><option value="clear">Yes, unrestricted</option><option value="restricted">No, restricted</option></select></label></details><button class="simple-primary" type="submit">Show my next trade</button><p id="simpleSetupError" class="simple-error" role="status"></p></form>
+<div id="simplePot" class="simple-pot"></div><div id="simpleTrades"></div><div id="simpleNext"></div><div id="simpleAllocation" class="simple-more"></div>
+<div id="simpleFeedback" class="simple-feedback" role="status"></div>
+<p class="simple-caveat">Prices are guides. Orders may not fill.<br>Possible profit assumes every unit sells at the shown price.</p>
+<footer class="simple-footer"><button id="simpleAdvanced" class="quiet-button">More tools</button><button id="simpleCredits" class="quiet-button">Artwork &amp; data</button><span>Version 4.0 QA</span></footer>
+</main>
+<dialog id="simpleFillDialog" class="simple-dialog" aria-labelledby="simpleFillTitle"><form id="simpleFillForm" class="simple-panel"><div class="simple-dialog-heading"><h2 id="simpleFillTitle">Record completed trade</h2><button id="simpleFillClose" class="quiet-button" type="button" aria-label="Close">✕</button></div><p id="simpleFillName"></p><label>How many completed?<input id="simpleFillQty" type="number" min="1" step="1" required></label><label>Actual price per item (GP)<input id="simpleFillPrice" type="number" min="1" step="1" required placeholder="Enter the price from OSRS"></label><details><summary>Optional actual sale tax</summary><label>Total tax shown in game (GP)<input id="simpleFillTax" type="number" min="0" step="1" placeholder="Blank uses current tax rules"></label></details><p id="simpleFillHint" class="simple-help"></p><button id="simpleFillSave" class="simple-primary" type="submit">Record completed fill</button><p id="simpleFillError" class="simple-error" role="status"></p></form></dialog>
+<button id="returnSimple" class="btn primary" hidden>← Back to simple view</button>
+<div class="app">
+<header class="topbar"><div class="masthead"><div class="crest" aria-hidden="true">GE</div><div><div class="kicker">OSRS TRADING DESK <span class="version-tag">4.0 QA</span></div><h1>The Golden Exchange</h1><div class="subtitle">Put your next trade under the microscope.</div></div></div><div class="buttons"><a class="hub-link" href="#" data-golden-hub-link>GW2</a><button id="refresh" class="btn primary">↻ Refresh market</button><button id="watchShortcut" class="btn">☆ Watchlist</button></div></header>
+<div class="notice" id="notice" role="status">Fetching the free OSRS Wiki/Jagex pricing feed. No login or API key needed.</div>
+<nav class="tabs" aria-label="Sections"><button data-tab="home" class="tab active">Home</button><button data-tab="markets" class="tab">Markets</button><button data-tab="planner" class="tab">Desk</button><button data-tab="journal" class="tab">Journal</button><button data-tab="insights" class="tab">Insights</button></nav>
+<section id="home" class="page active">
+<div class="home-heading"><div class="eyebrow">YOUR NEXT MOVE</div><h2>Make the gold work.<br><em>Keep the risk visible.</em></h2><p>Real market evidence. A plan that fits your cash. No made-up income.</p></div>
+<details class="session-setup card" id="sessionSetup" open><summary><span id="sessionLabel">Set up your trading session</span><span class="smallmuted">Edit</span></summary><form id="sessionForm"><div class="form-grid"><label>Account today<select id="sessionMode"><option value="f2p">Free-to-play · 3 GE slots</option><option value="members">Members · 8 GE slots</option></select></label><label>Working budget (GP)<input id="sessionCash" type="number" required min="0" max="9000000000000" step="1" value="100000000"></label><label class="wide">New-account sale restrictions<select id="sessionRestriction"><option value="unknown">Not sure · screen conservatively</option><option value="clear">No restrictions on my account</option><option value="restricted">My account is still restricted</option></select></label></div><p class="smallmuted">Use the capital you want to commit, including recorded stock at cost and money earmarked in tickets. Matched journal profit or loss adjusts this pot; it is not your entire wealth. This is a planning budget, not a live wallet balance. New F2P sale restrictions are separate from membership. They apply until the required playtime, quest points and total level are met.</p><button class="btn primary" type="submit">Use this session</button><p id="sessionFeedback" class="smallmuted" role="status"></p></form></details>
+<div id="sessionStrip" class="session-strip"></div>
+<div class="home-actions"><button class="action-tile" id="openOwned"><span>▤</span><b>What I own</b><small>Review items you can sell</small></button><button class="action-tile" data-tab="planner"><span>↗</span><b>Trading desk</b><small>Your saved research tickets</small></button></div>
+<div class="section-head"><div><div class="eyebrow">SHORTLIST</div><h2>Where to investigate</h2><p id="homeShortlistNote">Based on your budget and account settings.</p></div><button class="text-button" data-tab="markets">See markets →</button></div>
+<div id="homeCandidates" class="home-candidates"></div>
+<div class="card how-to"><h3>Start with a small test</h3><ol><li>Inspect the price history and recent activity.</li><li>Set your own prices and save a research ticket.</li><li>Place orders yourself in OSRS. Journal only completed fills.</li></ol><p>Cash stays unallocated when no suitable trade fits. Public prices never guarantee a fill.</p></div>
+<button class="text-button" data-tab="about">How the research works · data and limitations →</button>
+</section>
+<section id="markets" class="page">
+<div class="stats"><div class="card metric"><small>Trading pot</small><div class="big" id="cash">—</div><div class="note">Your saved budget · edit below</div></div><div class="card metric secondary"><small>Qualified markets</small><div class="big" id="viable">—</div><div class="note">Of all publicly mapped items</div></div><div class="card metric secondary"><small>Seven-day realised</small><div class="big" id="profit">—</div><div class="note">FIFO-matched sales after tax</div></div><span id="allocated" hidden></span><div class="card metric"><small>Market data</small><div class="big" id="updated">Not loaded</div><div class="note" id="status">Uses OSRS Wiki v2 · never simulated</div></div></div>
+
+<details id="settingsPanel"><summary>Budget &amp; screening filters</summary><div class="card settings"><div class="control"><label for="budget">Capital (GP)</label><input id="budget" type="number" min="0" step="1" value="10000000" max="9000000000000"></div><div class="control"><label for="mode">Account type</label><select id="mode"><option value="members">Members · 8 slots</option><option value="f2p">Free-to-play · 3 slots</option></select></div><div class="control"><label for="minVolume">Minimum 1h two-way volume</label><input id="minVolume" type="number" min="0" value="50"></div><div class="control"><label for="age">Maximum trade age</label><select id="age"><option value="30">30 minutes</option><option value="90">90 minutes</option><option value="120" selected>2 hours</option><option value="240">4 hours</option></select></div><div class="control"><label for="freeSlots">GE slots assigned to this session</label><select id="freeSlots"><option value="auto">All account slots (includes tickets)</option><option value="0">0 session slots</option><option value="1">1 session slots</option><option value="2">2 session slots</option><option value="3">3 session slots</option><option value="4">4 session slots</option><option value="5">5 session slots</option><option value="6">6 session slots</option><option value="7">7 session slots</option><option value="8">8 session slots</option></select></div><div class="control"><label for="restriction">New F2P account restrictions</label><select id="restriction"><option value="unknown">Not sure · exclude restricted items</option><option value="clear">Account unrestricted</option><option value="restricted">Restricted account</option></select></div><div class="control"><label for="profile">Research mode</label><select id="profile"><option value="balanced">Balanced · corroborated ranking</option><option value="cautious">Cautious · survives 2% exit stress</option></select></div><div class="control"><label for="avoidHeld">New purchases of held items</label><select id="avoidHeld"><option value="yes">Exclude from planner</option><option value="no">Allow · check existing position</option></select></div><div class="control"><label for="maxShare">Maximum cash per item</label><select id="maxShare"><option value="20">20% · spread capital</option><option value="40">40% · balanced</option><option value="100">100% · concentrate</option></select></div><div class="control"><label for="reserve">Keep cash unallocated</label><select id="reserve"><option value="0">0%</option><option value="10">10%</option><option value="25">25%</option></select></div><div class="control"><label for="sort">Sort by</label><select id="sort"><option value="opportunity">Budget opportunity</option><option value="profit">After-tax GP / item</option><option value="roi">ROI after tax</option></select></div></div></details><div class="quick"><div class="control"><label for="query">Find items</label><input id="query" type="search" placeholder="Item name or ID"></div><div class="control"><label for="view">Show</label><select id="view"><option value="top">Best first</option><option value="watch">Watchlist only</option><option value="all">All items</option></select></div></div>
+<div class="section-head"><div><h2>Market shortlist</h2><p>Reference prices · verify before trading.</p></div><div class="smallmuted" id="count"></div></div>
+<div id="comparisonControls" class="buttons" hidden><button class="btn" id="compareOpen">Compare selected</button><button class="btn" id="compareClear">Clear selection</button></div><p id="searchInfo" class="smallmuted"></p><div id="marketsList" class="market-list"><div class="card empty">Loading live prices…</div></div>
+<button id="moreMarkets" class="btn" hidden>Show more items</button><div class="explain">Reference buy = last reported instant-sell price; reference sell = last reported instant-buy price. These are executed trade observations, <strong>not accessible standing quotes</strong>. The 4h quantity uses a deliberately uncalibrated 1%-of-observed-hourly-two-way-volume rule, capped by the item's 4h GE limit. No guarantee of buying, selling, or achieving these margins.</div>
+</section>
+<section id="planner" class="page"><div class="section-head"><div><h2>Your trading desk</h2><p>Save an idea, inspect its assumptions, then record actual fills separately.</p></div></div><div id="ticketCapital" class="session-strip"></div><div id="savedTickets" class="market-list"></div><details class="allocation-details" open><summary>Build a fresh allocation from remaining cash</summary><div class="card planning"><div class="stats"><div class="metric"><small>Budget</small><div id="planBudget" class="big">—</div></div><div class="metric"><small>Allocated</small><div id="planCost" class="big">—</div></div><div class="metric"><small>Unused</small><div id="planRemaining" class="big">—</div></div><div class="metric"><small>Indicative spread opportunity</small><div id="planProfit" class="big">—</div></div></div><p id="allocationInfo" class="smallmuted"></p><div id="planRows"></div></div></details><div class="notice">This is <strong>not a prediction of achievable profit or fill counts</strong>. The cap based on public volume is a screening heuristic, not proof that your own limit orders would fill. Quantities use 1% of hourly two-way flow over four hours, capped by limits and available cash. Recorded buys within four hours reduce capacity. Unrecorded trades and shared item limits must be checked in-game.</div></section>
+<section id="journal" class="page"><div class="section-head"><div><h2>Your actual fills</h2><p>Private on this device, not synced to Jagex or GitHub. Records matched with FIFO cost basis.</p></div></div><div class="journal-layout"><div class="card form"><h2>Record a completed GE fill</h2><form id="tradeForm" class="fields"><label class="span2">Item name or ID<input id="tradeItem" list="itemOptions" required placeholder="E.g. Abyssal whip"></label><datalist id="itemOptions"></datalist><label>Side<select id="tradeSide"><option value="buy">Bought</option><option value="sell">Sold</option><option value="adjust-in">Inventory addition · known cost</option><option value="adjust-out">Inventory write-off · no sale</option></select></label><label>Quantity<input id="tradeQty" type="number" min="1" step="1" required></label><label>Price per item (GP)<input id="tradePrice" type="number" min="1" step="1" required></label><label class="span2">Adjustment/correction reason<input id="tradeReason" maxlength="250"></label><label class="span2">Actual total sale tax (GP, optional)<input id="tradeTax" type="number" min="0" step="1"></label><label>Trade date<input id="tradeDate" type="datetime-local" required></label><p id="tradePreview" class="smallmuted span2" role="status"></p><button id="saveTrade" class="btn primary span2" type="submit">Save completed fill</button><button id="cancelEdit" class="btn span2" type="button" hidden>Cancel edit</button></form><p class="smallmuted">Enter actual pre-tax execution prices. The app deducts seller tax when calculating realised profit. Only sells matched to previously recorded buys count as realised profit.</p><p id="journalStatus" class="smallmuted" role="status"></p><p id="backupStatus" class="smallmuted"></p><div class="buttons"><button class="btn small" id="exportLedger">Export JSON</button><label>Import action<select id="importMode"><option value="replace">Restore / replace backup</option><option value="merge">Merge journal &amp; watchlist (v3)</option></select></label><button class="btn small" id="importLedger">Import JSON</button><button class="btn small" type="button" id="eraseData">Delete local records</button><input id="importFile" type="file" accept="application/json,.json" hidden></div></div><div class="card ledger"><div class="fieldlabel">Realised profit from matched transactions</div><div id="realizedProfit" class="big">0 gp</div><p id="ledgerInfo" class="smallmuted"></p><p>Today: <strong id="todayProfit">0 gp</strong><br>Seven calendar days: <strong id="weekProfit">0 gp</strong></p><h3>Remaining inventory</h3><div id="inventory" class="smallmuted"></div><h3>Transaction history</h3><details><summary>Correction history</summary><div id="journalAudit"></div></details><div id="tradesList" class="smallmuted">No trades recorded yet.</div><button id="moreTrades" class="btn small" hidden>Show more transactions</button></div></div></section>
+<section id="insights" class="page"><div class="section-head"><div><h2>Your trading intelligence</h2><p>Adapted from Golden Peanut · measured results and research signals</p></div></div><div class="card form"><h2>Seven-day realised goal</h2><div class="control"><label for="goal">Your target (GP)</label><input id="goal" type="number" min="0" max="9000000000000" step="1" value="1000000"></div><p id="goalProgress"></p><progress id="goalBar" max="100" value="0" aria-label="Realised weekly goal progress"></progress><p class="smallmuted">A target, not a forecast. Only FIFO-matched sales after tax advance it.</p></div><div class="section-head"><div><h2>Capital tied up in inventory</h2><p>Recorded cost and conditional exit review. This capital is not added to your available cash.</p></div></div><div id="positionReviews" class="market-list"></div><div class="section-head"><div><h2>Market memory</h2><p>Which items have actually earned you GP? Includes losses and unmatched sales.</p></div></div><div id="assumptionMemory" class="card intelligence-row"></div><div id="memoryMarkets" class="market-list"></div><div class="notice"><strong>Execution evidence: manual records only.</strong> Your journal shows completed fills and holding times. It does not capture failed offers, queue position or competitive exposure. Fill probabilities, GP/hour and overnight earnings remain unknown. Public volumes do not establish your share of future trades.</div></section>
+<section id="owned" class="page"><div class="section-head"><div><div class="eyebrow">YOUR STARTING STOCK</div><h2>What I own</h2><p>A manual list of items available to sell. No purchase cost or profit is assumed.</p></div></div><form id="ownedForm" class="card form"><div class="form-grid"><label>Item name or ID<input id="ownedItem" list="itemOptions" required placeholder="Search your item"></label><label>Quantity available<input id="ownedQty" type="number" min="1" step="1" required></label></div><button class="btn primary" type="submit">Add or update item</button><p id="ownedStatus" role="status" class="smallmuted"></p></form><p class="smallmuted">List only stock you can access. This list is separate from journal inventory and never adds to realised profit or available cash. Update quantities manually after selling.</p><div id="ownedCards" class="market-list"></div><button class="text-button" data-tab="home">← Back to your session</button></section>
+<section id="about" class="page"><div class="section-head"><div><h2>Research you can inspect</h2><p>Built with the same principles as The Golden Peanut, adapted to OSRS.</p></div></div><div class="card form"><h2>What we actually know</h2><p>Prices are public executions, not current buy/sell order-book depth. The OSRS Wiki v2 feed supplies current high and low transactions, five-minute and hourly price/volume aggregates, plus item metadata and GE limits. All markets can be scanned in a few bulk requests.</p><p>Sale-side tax is 2%, rounded down and capped at 5,000,000 GP per item. Officially exempt items are excluded from taxation. Four-hour item buying limits and eight member slots (three F2P) are used in the planner.</p><h2>What's deliberately missing</h2><p>The public API cannot supply your account balance or offers. Enter your budget and completed fills manually. Only sales matched to earlier recorded acquisition lots count as realised earnings. Tax is based on your actual total when supplied, otherwise current rules are an assumption.</p><p>The first version has no trading automation. It does not buy, sell, cancel or alter any offers.</p><h2>Independent application</h2><p>The Golden Exchange is an independent research tool. It is not affiliated with or endorsed by Jagex. App graphics are original geometric artwork. Game names are descriptive references only.</p><p><a href="./privacy.html" data-privacy>Privacy and local data</a></p><details><summary>Open-source software notices</summary><pre class="license-copy">The Golden Exchange — third-party notices
+
+core
+MIT License
+
+Copyright (c) 2017-present Drifty Co.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+android
+MIT License
+
+Copyright (c) 2017-present Drifty Co.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+app
+Copyright 2020-present Ionic
+https://ionic.io
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+&quot;Software&quot;), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+filesystem
+MIT License
+
+Copyright (c) 2025 Ionic
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+share
+Copyright 2020-present Ionic
+https://ionic.io
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+&quot;Software&quot;), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+synapse
+MIT License
+
+Copyright (c) 2025 Ionic
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+AndroidX, Kotlin and Apache Cordova components are used under Apache License 2.0.
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      &quot;License&quot; shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      &quot;Licensor&quot; shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      &quot;Legal Entity&quot; shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      &quot;control&quot; means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      &quot;You&quot; (or &quot;Your&quot;) shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      &quot;Source&quot; form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      &quot;Object&quot; form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      &quot;Work&quot; shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      &quot;Derivative Works&quot; shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      &quot;Contribution&quot; shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, &quot;submitted&quot;
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as &quot;Not a Contribution.&quot;
+
+      &quot;Contributor&quot; shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a &quot;NOTICE&quot; text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an &quot;AS IS&quot; BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets &quot;[]&quot;
+      replaced with your own identifying information. (Don&#x27;t include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same &quot;printed page&quot; as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+</pre></details><h2>Data sources</h2><p><a href="https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices" target="_blank" rel="noopener noreferrer">OSRS Wiki real-time price API documentation</a> · <a href="https://oldschool.runescape.wiki/w/Grand_Exchange" target="_blank" rel="noopener noreferrer">GE tax and exemptions</a> · <a href="https://oldschool.runescape.wiki/w/Grand_Exchange/Buying_limits" target="_blank" rel="noopener noreferrer">Four-hour buying limits</a> · <a href="https://github.com/Flipping-Utilities/rl-plugin" target="_blank" rel="noopener noreferrer">RuneLite trade data reference</a>.</p></div></section>
+<footer class="footer"><span class="build-label">Golden Exchange 4.0 QA · local data · manual trading</span><br>The Golden Exchange is an independent OSRS research app, not affiliated with Jagex or RuneLite. Market data from the <a href="https://prices.runescape.wiki/" target="_blank" rel="noopener noreferrer">OSRS Wiki real-time prices project</a> (community transaction data). Your journal and preferences remain stored locally on this device. No account credentials are needed or requested.</footer>
+</div>
+<dialog id="researchDialog" class="research-dialog" aria-labelledby="researchTitle"><div class="research-sheet"><header class="research-header"><div><div class="eyebrow">TRADE RESEARCH</div><h2 id="researchTitle">Item</h2></div><button id="closeResearch" class="icon-button" aria-label="Close research">✕</button></header><div id="researchFacts"></div><section class="research-block"><div class="section-head"><div><h3>Does the spread persist?</h3><p>Seven-day observed averages · no forecasts</p></div><button id="loadHistory" class="btn small">Load 7 days</button></div><div id="historyView" role="status">History is loaded on demand and cached for an hour.</div></section><section class="research-block"><div class="eyebrow">YOUR PRICES, YOUR DECISION</div><h3>Build a research ticket</h3><form id="ticketForm"><div class="form-grid"><label>Quantity<input id="ticketQty" type="number" min="1" step="1" required></label><label>Buy per item (GP)<input id="ticketBuy" type="number" min="1" step="1" required></label><label>Sell per item (GP)<input id="ticketSell" type="number" min="1" step="1" required></label></div><div id="ticketPreview" class="ticket-preview" role="status"></div><p class="smallmuted">A saved ticket is a paper plan. It places no order and records no purchase or sale. Start with a quantity you are willing to test.</p><button id="saveTicket" class="btn primary" type="submit">Save research ticket</button><p id="ticketStatus" class="smallmuted" role="status"></p></form></section><div class="sheet-actions"><button id="researchWatch" class="btn">☆ Watch item</button><button id="researchRecord" class="btn">Record actual fill</button></div></div></dialog>
+<dialog id="compareDialog" class="research-dialog" aria-labelledby="compareTitle"><div class="research-sheet"><div class="research-header"><h2 id="compareTitle">Compare markets</h2><button id="compareClose" class="btn" type="button">Close</button></div><p class="smallmuted">Observed references, not guaranteed offers. No capital is allocated by comparing items.</p><div id="compareTable" class="comparison-scroll"></div></div></dialog><dialog id="privacyDialog" class="simple-dialog"><div class="simple-panel"><button id="closePrivacy" type="button" class="quiet-button">Close privacy</button><iframe title="Privacy and local data" src="./privacy.html" sandbox="allow-same-origin" class="privacy-frame"></iframe></div></dialog><script type="module" src="./desk.mjs"></script>
+<script type="module" src="./adapter.mjs"></script>
+</body></html>

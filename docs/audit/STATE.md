@@ -1,3 +1,28 @@
+# Item background addition — 16 November 2026
+
+BATCH: HUB-R3. STATUS: implemented and packaged in a signed debug APK; production not deployed.
+FIXED: OSRS research cards now have an expandable item background/acquisition guide, mapping examine text, attributed Wiki introduction, membership label and exact item guide link. Wiki requests have an 8-second deadline, bounded in-memory cache, no credentials, escaped text, and selected-item/abort guards. Failed summaries leave trading and the source link usable; no drop sources are invented.
+TESTED: new selected-item/stale-response/escaped-text browser journey passed; 15 Hub integrity tests and source checks passed. Android build/unit/lint passed, signature/alignment and 69 embedded assets verified. APK: `artifacts/delivery/Golden-Trading-Hub-item-guide-debug.apk`, SHA-256 `17fde6c857ba7e08b5c064d2a13c196b64130aa5ece0f21c879ec7ab0a48e0ca`. R2 full-suite results remain historical evidence, not a new complete R3 test run.
+EVIDENCE: `artifacts/audit/item-context-{browser,integrity,source}.log`; new browser case is included in normal CI.
+NEXT: review PR/build evidence; physical/live-account gates in HUB-R2 remain unchanged. Production and original applications remain untouched.
+CHECKPOINT: `git log -1 -- docs/audit/STATE.md`. Previous session was interrupted during R2 publishing; verify PR head rather than assuming it was updated.
+
+---
+
+# Active Hub completion checkpoint — 15 November 2026
+
+BATCH: HUB-R2. STATUS: source repairs implemented; final local/remote evidence recorded below and on PR #52.
+FIXED: all R1 repairs plus actual Golden Exchange v4 integration, lossless transactional handoff/full backups, shared collector leases/write fences/atomic events, in-flight consent protection and exact preview CORS.
+TESTED: 173 JavaScript, 61 Python, 40 Exchange browser tests plus all assembled GW2/Hub suites; three native unit tests; Android assemble/lint (0 errors, 5 warnings); signature/alignment/69 embedded file checks. See completion evidence for final results.
+EVIDENCE: [completion report](HUB-COMPLETION-2026-11-15.md), [sanitized evidence](HUB-COMPLETION-EVIDENCE.json), ignored local full logs.
+NEXT: exact-head PR CI confirmation; external physical-device/live-account acceptance and separately approved backed-up collector rollout. No R1 code backlog is deferred. Production unchanged, no migrations or original-app installs/uninstalls performed.
+CHECKPOINT: discover with `git log -1 -- docs/audit/STATE.md`; branch `audit/hub-reliability-20261115`, [PR #52](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/52). Source identity is pinned in completion evidence/PR after commit; this file does not invent its future SHA.
+
+The signed APK retains `com.goldenhub.dual.preview` at the unchanged preview origin, code 3 / `0.4-audit-qa`. GW2 original data/credentials/brain, standalone Exchange database, collectors and Cloudflare production data have not been mutated. Physical hardware, real private-account collection and predictive accuracy remain unverified, not implied by passing tests.
+
+---
+The following entries are historical checkpoints. Their old NEXT/open-code statements and release permissions are superseded by HUB-R2 above.
+
 # Active Hub reliability checkpoint — 15 November 2026
 
 Branch `audit/hub-reliability-20261115`, based on `12c09d9a85e3236f177fec8eedb6c2237eb34d03`.

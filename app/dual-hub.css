@@ -260,3 +260,9 @@ body.gh-show-osrs #gh-osrs-root{display:block}
  border-radius:10px;padding:10px
 }
 @media(max-width:375px){#gh-osrs-root .gh-order-guide{padding:10px 8px}#gh-osrs-root .gh-quote-grid strong,#gh-osrs-root .gh-quote-targets strong{font-size:13px}}
+
+#gh-osrs-root .gh-item-context{margin:14px 0;padding:14px 16px;border:1px solid #53654f;border-radius:16px;background:rgba(0,0,0,.10)}
+#gh-osrs-root .gh-item-context summary{cursor:pointer;color:#ecd08c;font-weight:700}
+#gh-osrs-root .gh-item-context p{line-height:1.55;white-space:pre-line;overflow-wrap:anywhere}
+#gh-osrs-root .gh-item-context a{color:#ecd08c;text-decoration:underline}
+#gh-osrs-root #gh-item-examine{font-style:italic}

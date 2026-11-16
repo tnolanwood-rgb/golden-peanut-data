@@ -40,6 +40,10 @@ class PrivateMonitorTests(unittest.TestCase):
                     if scenario == 'error_persistence_failure' and 'last_error=?' in sql:
                         raise RuntimeError('PRIVATE_SENTINEL synthetic-personal-key SQL values must never log')
                     rows = [{'enabled': 0}] if scenario == 'disabled' and sql.startswith('SELECT enabled') else []
+                    args=json.loads(request.data).get('params',[])
+                    if 'RETURNING owner' in sql: rows=[{'owner':args[1]}]
+                    if sql.startswith('SELECT 1 AS valid'): rows=[{'valid':1}]
+                    if sql.startswith('SELECT enabled,token_digest'): rows=[{'enabled':1,'token_digest':__import__('hashlib').sha256(('golden-peanut-monitor:v1:synthetic-personal-key').encode()).hexdigest()}]
                     return response({'success': True, 'result': [{'success': True, 'results': rows}]})
                 if url.hostname == 'api.guildwars2.com':
                     if scenario in ('no_key', 'disabled'):
@@ -306,7 +310,7 @@ class PrivateMonitorTests(unittest.TestCase):
             counts, _, _ = m.poll({"id": "fixture-account"})
         self.assertEqual(counts["partialUnits"], 5)
         self.assertTrue(any("INSERT INTO gp_monitor_orders" in sql for sql, _ in writes))
-        self.assertTrue(any("INTO gp_monitor_events" in sql for sql, _ in writes))
+        self.assertFalse(any("INTO gp_monitor_events" in sql for sql, _ in writes))  # atomic schema trigger owns events
 
     def test_public_cloud_collector_runs_hourly_with_separate_shadow_reports(self):
         text = (SOURCE.parents[2] / ".github/workflows/Golden_Peanut_Background_Collector.yml").read_text()

@@ -1,0 +1,2 @@
+// Prevent duplicate financial actions while a durable transaction is pending.
+export function exclusive(handler){let pending=false;return async function(event){event?.preventDefault();if(pending)return;pending=true;const root=event?.currentTarget;const buttons=root?.querySelectorAll?.('button[type="submit"]')||[];const states=[...buttons].map(b=>[b,b.disabled]);for(const [b] of states)b.disabled=true;try{return await handler.call(this,event);}finally{pending=false;for(const [b,disabled] of states)b.disabled=disabled;}};}

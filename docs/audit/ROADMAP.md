@@ -1,3 +1,31 @@
+# Item background addition — 16 November 2026
+
+BATCH: HUB-R3. STATUS: implemented and packaged in a signed debug APK; production not deployed.
+FIXED: OSRS research cards now have an expandable item background/acquisition guide, mapping examine text, attributed Wiki introduction, membership label and exact item guide link. Wiki requests have an 8-second deadline, bounded in-memory cache, no credentials, escaped text, and selected-item/abort guards. Failed summaries leave trading and the source link usable; no drop sources are invented.
+TESTED: new selected-item/stale-response/escaped-text browser journey passed; 15 Hub integrity tests and source checks passed. Android build/unit/lint passed, signature/alignment and 69 embedded assets verified. APK: `artifacts/delivery/Golden-Trading-Hub-item-guide-debug.apk`, SHA-256 `17fde6c857ba7e08b5c064d2a13c196b64130aa5ece0f21c879ec7ab0a48e0ca`. R2 full-suite results remain historical evidence, not a new complete R3 test run.
+EVIDENCE: `artifacts/audit/item-context-{browser,integrity,source}.log`; new browser case is included in normal CI.
+NEXT: review PR/build evidence; physical/live-account gates in HUB-R2 remain unchanged. Production and original applications remain untouched.
+CHECKPOINT: `git log -1 -- docs/audit/STATE.md`. Previous session was interrupted during R2 publishing; verify PR head rather than assuming it was updated.
+
+---
+
+# Current Hub source audit — HUB-R2
+
+The Hub implementation backlog from R1 is completed in [PR #52](https://github.com/tnolanwood-rgb/golden-peanut-data/pull/52). See [completion report](HUB-COMPLETION-2026-11-15.md) and STATE for current evidence.
+
+| Work | Implementation | Evidence / remaining gate |
+|---|---|---|
+| Both-game rotation, state, data continuity, discovery correctness, native reliability | COMPLETE | Full assembled synthetic suites; physical phone acceptance unverified |
+| Standalone v4 engine and full v3 migration/backup parity | COMPLETE | Actual supplied engine, 49 calculations/migrations, 40 UI tests, assembled handoff/integrity checks |
+| Cross-scheduler consent fencing and atomic row/events | COMPLETE | Nine real-SQLite tests using both writers; reviewed coordinated live rollout still required |
+| Exact preview CORS | COMPLETE | Exact origin/spoof rejection checks; Worker deployment remains separate |
+| Signed separate Android QA build | COMPLETE | Code 3, signature/alignment/69 frontend files; no installation performed |
+| Production deployment / private-account continuity / prediction calibration | NOT EXECUTED | External acceptance, credentials/time/physical device; no synthetic substitution |
+
+The older P0–P12 table below describes historical broader evidence/research goals. It is not a deferred implementation list for the current completed Hub repair scope, and does not authorize release.
+
+---
+
 # Audit roadmap
 
 Statuses: TODO / IN PROGRESS / BLOCKED / VERIFIED / FAILED. VERIFIED requires the

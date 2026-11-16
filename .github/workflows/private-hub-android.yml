@@ -1,7 +1,7 @@
 name: Golden Hub — Build Separate Android Preview
 on:
   pull_request:
-    paths: ['android/**', 'app/**', '.github/workflows/private-hub-android.yml']
+    paths: ['android/**', 'app/**', 'package*.json', 'scripts/build_exchange.mjs', '.github/workflows/private-hub-android.yml']
   push:
     branches: [feat/private-dual-game-hub-20261115]
     paths: ['android/**', '.github/workflows/private-hub-android.yml']
@@ -17,6 +17,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

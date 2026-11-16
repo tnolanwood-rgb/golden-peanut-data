@@ -9,7 +9,7 @@ const key='11111111-2222-3333-4444-555555555555-aaaa-bbbb-cccc-dddddddddddd';
 const req=(route,method='GET',extra={})=>new Request(site+route,{method,headers:extra});
 const readyEnv=()=>({
  MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),
- DB:{prepare(sql){return {async all(){return {results:[]}}};}}
+ DB:{prepare(sql){return {async first(){return sql.includes('SELECT generation')?{generation:0}:null},async all(){return {results:[]}}};}}
 });
 test('monitor /health confirms ACTUAL D1 and AES readiness rather than accepting a Worker process',async()=>{
  const {default:worker}=await moduleTask;
@@ -87,8 +87,8 @@ test('full consent workflow encrypts a verified account key before enrolling and
  const env={MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),
   DB:{prepare(sql){
     queries.push(sql);
-    return {bind(){return this;},async run(){return {success:true};},
-     async first(){return null;},async all(){return {results:[]}}};
+    return {bind(){return this;},async run(){return {success:true,meta:{changes:1}};},
+     async first(){return sql.includes('SELECT generation')?{generation:0}:null;},async all(){return {results:[]}}};
    }}
  };
  global.fetch=async url=>{
@@ -128,7 +128,7 @@ test('private tokens must never appear literally in monitor source or a browser-
  assert.match(source,/AES-GCM/);
  assert.match(source,/MONITOR_ENCRYPTION_KEY/);
  assert.match(source,/kind='partial'/);
- assert.match(source,/disappeared_unknown/);
+ assert.match(fs.readFileSync(path.join(__dirname,'../services/account-monitor/schema.sql'),'utf8'),/disappeared_unknown/);
  assert.match(source,/commerce\/transactions\/history/);
  assert.ok(!source.includes('console.log(key)'));
 });
@@ -214,7 +214,7 @@ test('disable always preserves an inactive digest tombstone, even for Worker-enr
      }};
     statements.push(query);return query;
    },
-   async batch(q){batches.push(q);return q.map(()=>({success:true}));}
+   async batch(q){batches.push(q);return q.map(()=>({success:true,meta:{changes:1}}));}
   }};
   const response=await worker.fetch(req('/disable','POST',{Origin:origin,Authorization:'Bearer '+key}),env,{});
   assert.equal(response.status,200);
@@ -309,7 +309,7 @@ test('Worker overlapping recent pages cannot erase a prior historical coverage g
  const writes=[],old=global.fetch;
  const env={MONITOR_ENCRYPTION_KEY:'0123456789abcdef'.repeat(4),DB:{prepare(sql){return {
   params:[],bind(...args){this.params=args;return this;},
-  async first(){if(sql.includes('SELECT last_error'))return {last_error:'history_backfill_incomplete: previous cap'};if(sql.includes('SELECT 1 FROM gp_monitor_trades'))return {found:1};return null;},
+  async first(){if(sql.includes('RETURNING owner'))return {owner:this.params[1]};if(sql.startsWith('SELECT 1 AS valid'))return {valid:1};if(sql.includes('SELECT last_error'))return {last_error:'history_backfill_incomplete: previous cap'};if(sql.includes('SELECT 1 FROM gp_monitor_trades'))return {found:1};return null;},
   async all(){return {results:[]};},async run(){writes.push({sql,params:this.params});return {success:true};}
  };}}};
  const sealed=await helpers.seal(env,key,'synthetic-account');
@@ -320,4 +320,9 @@ test('Worker overlapping recent pages cannot erase a prior historical coverage g
   const update=writes.find(x=>x.sql.includes('last_success_at=?'));
   assert.match(update.params[2],/history_backfill_incomplete/);
  }finally{global.fetch=old;}
+});
+test('the exact Android preview origin can authenticate without granting access to other previews',async()=>{
+ const {default:worker}=await moduleTask,preview='https://private-dual-hub-preview.thegoldenpeanut.pages.dev';
+ const r=await worker.fetch(req('/status','OPTIONS',{Origin:preview}),{},{});assert.equal(r.status,204);assert.equal(r.headers.get('access-control-allow-origin'),preview);
+ for(const untrusted of ['https://other.thegoldenpeanut.pages.dev','https://private-dual-hub-preview.thegoldenpeanut.pages.dev.evil.test'])assert.equal((await worker.fetch(req('/status','OPTIONS',{Origin:untrusted}),{},{})).status,403);
 });

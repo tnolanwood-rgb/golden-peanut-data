@@ -15,10 +15,12 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CHECKS = [
+    ('build', ['npm', 'run', 'build']),
     ('source', [sys.executable, 'scripts/check_release.py']),
     ('python', [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py', '-v']),
     ('javascript', ['npm', 'test']),
     ('browser', ['npm', 'run', 'test:browser']),
+    ('exchange_browser', ['npm', 'run', 'test:exchange:ui']),
 ]
 
 
@@ -62,7 +64,7 @@ def main():
     (args.output / 'baseline.json').write_text(json.dumps(report, indent=2) + '\n')
     for name, command in CHECKS:
         result = ({'name': name, 'command': command, 'status': 'SKIPPED', 'seconds': None,
-                   'reason': 'explicit --skip-browser'} if name == 'browser' and args.skip_browser
+                   'reason': 'explicit --skip-browser'} if name in ('browser','exchange_browser') and args.skip_browser
                   else run_check(name, command, args.output))
         report['checks'].append(result)
         report['status'] = overall(report['checks'], expected=len(CHECKS))

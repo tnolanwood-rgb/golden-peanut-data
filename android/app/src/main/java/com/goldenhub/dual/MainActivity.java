@@ -81,7 +81,7 @@ public final class MainActivity extends Activity {
                 if (!path.matches("/[A-Za-z0-9_./-]+") || path.contains("..")) return null;
                 try {
                     java.io.InputStream stream = getAssets().open("hub" + path);
-                    String type = path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css"
+                    String type = (path.endsWith(".js") || path.endsWith(".mjs")) ? "text/javascript" : path.endsWith(".css") ? "text/css"
                             : path.endsWith(".html") ? "text/html" : path.endsWith(".webmanifest") ? "application/manifest+json"
                             : java.net.URLConnection.guessContentTypeFromName(path);
                     if (type == null) type = "application/octet-stream";

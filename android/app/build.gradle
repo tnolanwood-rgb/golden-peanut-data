@@ -9,8 +9,8 @@ android {
         minSdk 26
         // Private preview: target 34 until Android 15 edge-to-edge insets receive device testing.
         targetSdk 34
-        versionCode 2
-        versionName '0.3-audit-preview'
+        versionCode 3
+        versionName '0.4-audit-qa'
     }
     buildFeatures { buildConfig true }
     sourceSets { main.assets.srcDir layout.buildDirectory.dir('generated/hubAssets') }
