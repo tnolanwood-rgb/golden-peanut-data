@@ -1,5 +1,8 @@
 # Performance evidence
 
+## GE-02 deep styling (no performance inference) — 16 November 2026
+Source `d76ed0fd43200b4b9ea1eb5d0b4242a16437c740` modifies static CSS only and Chromium geometry tests. No added JS handlers, timer, dependency, API calls or data-format change. CI 43889263582 passed existing startup and strict synthetic session probes, not on-device FPS, p95 touch-to-paint, energy or paint area comparison. Larger row type/padding could increase scroll-paint cost; measure on physical Android before claiming speed or full visual success.
+
 ## GE-02/07 adaptive text and history DOM optimisation — 16 November 2026
 Current code `8662a06c61721443f419a9a4d4207bf4c5360e23` retains unchanged GW2 seven-day DOM nodes/currency icons on refresh; test proves exact same-node identity and true changed historical profit rendering. This avoids 7-row reallocation in unchanged Focus Today redraws, but has NOT been assigned a claimed ms/FPS performance benefit without before/after instrumentation. Rem-responsive financial grids and scoped 320px budget font produce nonoverlapping visual layouts; these are visual correctness, not Android throughput measurements. Full [CI 43882425654](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43882425654) passed including existing synthetic cold profile and 400 100-cycle totals; still need real WebView render/battery/scroll and physical phone before final readiness.
 

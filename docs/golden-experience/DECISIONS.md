@@ -1,5 +1,10 @@
 # Decisions
 
+## Deep-tool static hierarchy — 16 November 2026
+- Preserve both engines, OSRS observed completed transactions versus speculative listing targets, GW2 official rarity and financial truth. Scoped styling only, not DOM, state, gesture or accounting changes.
+- Real 320px/200%-font title/quantity/control and 390px GW2 populated/200% label layout assertions are more useful than appearance-only tests. No framework or third-party animation library.
+- Earlier uploaded old APK has package `com.thegoldenpeanut.mobile` and same Pages origin (see ANDROID-ORIGINAL.md), but original V1 certificate alone cannot update current phone, and key/current identity remain unknown. Prefer web-only release.
+
 2026-11-16:
 
 - Work on `feature/golden-experience`, based on actual main `097f012c1f912411790dd7dce21434a9cdc497d2`.

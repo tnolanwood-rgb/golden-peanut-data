@@ -1,3 +1,6 @@
+## GE-02 new implementation and verified regression — 16 November 2026
+**PASS** exact-source CI: [43886786971](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43886786971) at 20a217ef, [43888028689](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43888028689) at 1d7943f, [43889263582](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43889263582) at `d76ed0fd43200b4b9ea1eb5d0b4242a16437c740`. Includes full reproducible source, Python/JS/ten browser suites, touch/swipe/chart, ledger/backup, synthetic CPU profiling and four cached 100-cycle probes, actionlint. OSRS 320px/large-font sale button stack, 44px hit height, ownership label separation and no overflow; GW2 populated 390px row label metrics and 200%-font increase with no horizontal overflow. Visual evidence artifacts 14235586167, 14235782831, 14235738208. No physical WebView, battery, native signing or real phone p95 verified.
+
 ## GE-07 independent repeated-session CI — 16 November 2026
 
 ## Latest full automated acceptance — 16 November 2026

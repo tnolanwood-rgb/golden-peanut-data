@@ -1,5 +1,8 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## Recovered earlier original Android APK — 16 November 2026
+Only one *older* user Library archive was inspected read-only: `Golden_Peanut_Android_Installer.apk`, package `com.thegoldenpeanut.mobile`, minimal WebView opening `https://thegoldenpeanut.pages.dev/`. Exact archive SHA-256 `1102ab605e606ad6a81839f12f0be608f237cb40e20342ab162b30fb0c962ec5`; V1 signer fingerprint recorded in ANDROID-ORIGINAL.md. This **does not prove current device package, origin behaviour on current WebView, update key access or release compatibility**. No new native APK or permission needed/planned. Production untouched; staging, rollback and final gate remain INCOMPLETE.
+
 Owner has NOT authorized implementation. No candidate is frozen. No merge/deploy,
 release-request edit, Worker/D1 action, APK replacement or production-data migration.
 Only the owner's **Implement**, after an evidence-backed final readiness report,
