@@ -1,5 +1,11 @@
 # Golden Experience — acceptance evidence 16 November 2026
 
+## Major instrument-face design review — 16 November 2026 (newest)
+Candidate visual code lives exclusively in protected branch `feature/golden-experience`; tested HEAD `27169f6e9dbdb2fe3ea73bb6828881db45631b1b` PASS [CI 43874452456](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43874452456), visual PNG artifact `14230105976`. Reviewed screenshots: 390×844 GW2/OSRS default, 320×740 with 200%-scale root font, 844×390 landscape. Compared with prior flat green card stack. The new identity fascia, brushed/static dark gradients, warm foil accents, giant low-contrast game numeral, financial full-span hero and anchored recommendation card are visibly differentiated and cohesive. OSRS remains warm amber, GW2 pine/green-gold; official game item rarity and OSRS item-value tiers are not restyled. Redraw overhead confined to static CSS layers; no new imagery or network.
+Automated guards on 16 states: no document horizontal overflow, controls at least 44px tall, financial value contents not clipped, game-tab text not clipped, financial labels meet >=4.5 computed contrast, nav backdrop-filter none, reduced motion and keyboard alternatives. Doubled-font screenshot is much taller and some exact large GP amounts wrap across lines; readable/unclipped but **not yet perfect typographic handling**; revisit with accessible exact-value representation before final signoff. Empty GW2 account / synthetic OSRS feed does not prove a populated real account's polish. Next: create realistic synthetic GW2 market/Delivery Box and OSRS lengthy-name visuals, test all advanced drawers and charts at extreme fonts; then real device.
+Do not confuse this visual review with completion of GE-09 staging or final user approval. No production deploy.
+
+
 ## Source identity / protected boundary
 Development branch `feature/golden-experience`; OSRS state matrix test source at `c803e4fa5ba269a6bc248d69820a6389555a970a`, PR #65 (draft). No production deploy, merge, APK/signing/origin/storage, account data or Cloudflare services changed. GitHub `main` still `097f012c1f912411790dd7dce21434a9cdc497d2` at last readback. The website was not independently fetched during this continuation.
 

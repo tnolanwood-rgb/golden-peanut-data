@@ -1,5 +1,9 @@
 # Performance evidence
 
+## GE-01/02 dramatic visual design vs runtime performance — 16 November 2026
+Visual fascia batch adds approximately **11,390 CSS characters** to the existing combined stylesheet; the new styling adds **zero network requests**, external resources, JS timers, runtime dependencies, live-data calculations, touch handler changes, SVG data transformations or native dependencies. These are code properties, not measured speed gains. [CI 43874452456](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43874452456) passed synthetic gestures and long-session retention across all strict suite assertions; this does NOT establish zero native stutter, Android p95 or production load improvements. Compare fresh startup/switch distributions against earlier pinned baseline only after identical repeated profile conditions; static background raster cost and battery need physical WebView evidence. The real first content metric for unconnected GW2 isn't representative of authenticated portfolio loading.
+
+
 No Golden Experience performance improvement is claimed at the initial checkpoint.
 Baseline source: main `097f012c1f912411790dd7dce21434a9cdc497d2`.
 Existing benchmark_startup.cjs measures synthetic JSON byte sizes and Node parsing,

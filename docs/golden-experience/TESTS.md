@@ -1,5 +1,10 @@
 ## GE-07 independent repeated-session CI — 16 November 2026
 
+## Premium instrument-face tested batch — 16 November 2026
+Exact development commit `27169f6e9dbdb2fe3ea73bb6828881db45631b1b`: [PR CI 43874452456](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43874452456) **PASS** including standalone 16-state visual test run BEFORE audit, source/Python/JavaScript/ten assembled browser suite, swipe at emulated mobile touch coordinate chosen from actual visible noninteractive content, chart tests, OSRS account/outage/ledger/backup tests, paired OSRS cold profiler, original and three extra 100-cycle Chromium sessions, actionlint. Artifacts: screenshot ZIP **14230105976**. Human review includes 390x844 first-screen GW2+OSRS, 320x740 with 2x root font, and 844x390 landscape. Neither physical Android/WebView nor populated GW2 data proves complete. No long-term memory, natural finger-to-paint, battery or real app continuity claim.
+Failing intermediate CI jobs (43872648888, 43873269448, 43873645051) were from geometry-obsolete swipe test contacts that landed in input fields after the larger premium header. Actual touch protections correctly guard form controls; tests now assert hit-testing of a visible scroller/idea surface, retain all no-jump/true drag/DOM/storage assertions. Current CI green. Other intermittent late GW2 DOM growth failures (43854807834, 43861470490, 43868239864, 43871156325) still require diagnosis; passing current strict 100-cycle runs alone is not proof of leak freedom.
+
+
 PR CI 43860812627 PASSED exact development head 889f383, including original 100 cached GW2↔OSRS/chart cycles plus three separate additional 100-cycle probes, all DOM/ledger/cache/page error guards unchanged. All source/Python/JS/ten browser programs, CPU-sampled OSRS profiling and actionlint also passed. Headless Chromium fixture only; no Android hardware acceptance, and the earlier intermittent DOM increase is not yet explained. Distinct reports: artifacts/audit/golden-experience/session-repeat-{1,2,3}.json in CI artifacts. No production data accessed.
 
 ## Latest verified state-matrix CI — 16 November 2026
