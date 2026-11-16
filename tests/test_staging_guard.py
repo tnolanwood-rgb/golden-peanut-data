@@ -39,7 +39,7 @@ class StagingGuardTests(unittest.TestCase):
     def test_production_domain_and_unknown_domains_blocked(self):
         for domains in (["thegoldenpeanut.pages.dev"],
                         ["golden-experience-staging.pages.dev", "userdomain.co.uk"],
-                        None):
+                        [], None):
             sample = fixture()
             sample["result"]["domains"] = domains
             with self.assertRaises(mod.StagingUnsafe):
