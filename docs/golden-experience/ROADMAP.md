@@ -1,5 +1,9 @@
 # Golden Experience roadmap
 
+## 16 November — GE-09/10 candidate identity safeguard IN PROGRESS
+Implemented deterministic local manifest of all app assets, _headers, dependency lock, candidate commit/tree and observed main ancestor, plus seven fail-closed tests. Await full CI; isolated staging, native hardware QA, frozen candidate, production drift readback and rollback rehearsal remain TODO. Production freeze remains in force.
+
+
 ## 16 November — GW2 action hierarchy upgraded and verified
 **Verified** source `e178eabc07c50ab5dc46566e0d68e247fb662af8`; [browser CI 43955710086 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710086), [separate Android CI 43955710065 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710065). GE-02 GW2 first-screen composition now **TESTED**: protected Delivery Box hero, adjacent trade with compact 70px icon/title and first buy guidance above fold, then wallet and realised-profit gauges, all preserved. Earlier grid overlaps and icon regression corrected. GE-03/07/08 browser/swipe/session checks remain green; native hardware and complete deep-screen visual QA still OPEN. GE-09 integrated synthetic staging and GE-10 release readiness/rollback remain TODO. Overall **NOT READY FOR IMPLEMENT**; production frozen.
 

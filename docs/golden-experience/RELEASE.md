@@ -1,5 +1,9 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## Source-lock helper exists but release remains BLOCKED
+Use scripts/golden_experience_candidate.py prepare and verify with trusted actual source commit, source tree and main SHA to prepare an offline exact app-file and dependency lock. The utility never deploys, checks remote identity, accesses accounts or proves staging. A future controlled release must collect remote identities, verify distinct synthetic staging, original data/native compatibility and rollback before owner signoff. Do not ship or mistake this utility for the complete release procedure.
+
+
 ## Native preview provenance checkpoint — 16 November 2026
 Source `bf84c76e5d4ad68c99cd3fafa3c1235777a4e9e8`: [Android build 43941763186 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43941763186), artifact 14263147726: separate debug package `com.goldenhub.dual.preview`, fully signed/manifest-verified, **37** byte-matched embedded app files; SHA-256 `545e9f9773a2a34413e0321fcb8d4e3c60f937d2c7be167d9175070743f463aa`. Distinct from legacy production package `com.thegoldenpeanut.mobile`; this preview **cannot constitute an in-place update**. No existing installed package replaced and no new production APK is approved. Native runtime/browser state, real-device accessibility/memory, actual current installed signing identity and production rollback rehearsal remain unverified. Keep original installed app untouched until owner's explicit later “Implement” after complete READY report.
 

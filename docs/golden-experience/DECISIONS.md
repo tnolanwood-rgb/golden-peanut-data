@@ -1,5 +1,9 @@
 # Decisions
 
+## Candidate source integrity — 16 November 2026
+Record all app bytes and _headers alongside dependency lock and externally verified candidate/base identifiers. Stop release when any input differs. Keep the manifest outside app/, prohibit deployment actions in this tool and avoid collecting private data. A matching local manifest is not proof that Cloudflare staging, the production hostname or a physical Android install was checked.
+
+
 ## 16 November — prioritise the trade on the OSRS opening screen
 The prior screen spent its first 844 phone pixels on identity, budget, realised totals, status and research form; the first market title/buy action was below the fold. Moved the **existing** trade card immediately beneath the game fascia and reparented **existing** liquid/high-value mode selectors to the top of that card before JS listeners attach. Retain manual budget, realised accounting, feed status, search/watched filters and owned-sale/backup controls below the idea, preserving one clear move first. Use DOM order for keyboard as well as visual order; avoid CSS `order` tricks, duplicated buttons or rewriting trading math. Keep saved game scroll and fixed internal trade navigation. Test first-screen title and full buy price; base source `e654b1d496e8582c9176a2cd5db29506842e5d4f` green CI 43944884562. Do not claim native smoothness from desktop emulation or change production before “Implement”.
 

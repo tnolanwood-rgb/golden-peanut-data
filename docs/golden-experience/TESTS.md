@@ -1,4 +1,8 @@
 
+
+## Offline Golden Experience source lock — 16 November (CI pending)
+Seven new Python unittest cases exercise stable exact hashes, deploy-only _headers, edited/added/deleted assets, dependency and origin changes, commit/tree/main drift, symlinks, required files and manifest output confinement. They are unverified until the remote full PR CI passes. No physical Android or Cloudflare tests were run.
+
 ## GW2 first screen / independent financial panels — 16 November 2026
 Exact source `e178eabc07c50ab5dc46566e0d68e247fb662af8`, [complete synthetic CI 43955710086 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710086), [separate native Android APK build 43955710065 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43955710065). `tests/browser.cjs` on populated 390×844 layout asserts full-width Delivery Box first, trade card next, then 3 summary metrics, **4** original total summary values present (one isolated Delivery hero plus three secondary), item name and start of BUY instruction visible before first fold, 70px verified icon geometry, retained navigation/artwork and financial labels. `tests/golden-experience.browser.cjs` validates 320/390/480/844 screen layouts, 1x and 200% text, full-width financial reflow, no sideways overflow, min 44px touch targets and source semantics. Existing full suites exercise OSRS, chart, ledger, swipe, startup and 400-cycle synthetic retention. The two rejected exploratory designs `cdd11bf` / `7fdbf4f` failed CI: first for counting nested scenario metrics, later for actual grid-row overlap and 62px artwork. The corrected sibling-section implementation preserves 70px art and passed. Not physical Android confirmation.
 
