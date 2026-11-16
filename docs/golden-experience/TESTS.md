@@ -1,3 +1,8 @@
+## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
+**Exact source** `e538b648d1d2d48eb360b8615f7fbd8707b73486`: [GitHub Actions emulator 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) SUCCESS with direct Android ADB touch, debug WebView page-level CDP and independent preview package; screenshot/JSON artifact **14277315133**. `report.json` five PASS cases: cold launch at 412×842 CSS px; native swipe GW2→OSRS; orientation retains the active OSRS JS document; HOME/resume retains the same document and selection; event tracing confirms touchstart=1/move=4/end=1/cancel=0. Before: [emulator 43963187603](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43963187603) FAIL with touchstart=1/move=4/end=0/cancel=1 and no game switch. APK had compiled; this was a genuine input cancellation. Earlier harness [43962176115](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43962176115) FAIL due unsupported browser-level CDP, replaced with page CDP. Complete [source/Python/JS/Chromium regression 43965081086](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081086) PASS and [Android preview 43965081112](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081112) PASS.
+Still NOT physical handset FPS, user-installed package signing/data restoration, offline/backup flow, hardware memory/battery, cloud-monitor preview CORS or production deployment. Do not call GE-08 complete.
+
+
 
 
 ## Real Android emulator WebView automation (pending CI)

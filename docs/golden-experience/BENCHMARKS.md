@@ -1,5 +1,9 @@
 # Performance evidence
 
+## 16 November — actual Android touch-stream functional evidence, not FPS
+Source `e538b648d1d2d48eb360b8615f7fbd8707b73486`, [native emulator CI 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) PASS, artifact 14277315133. First emulator before CSS fix: 1 touch start, 4 moves, **1 cancel, 0 ends**, GW2 remained selected. After retaining moving-panel pointer events: 1 start, 4 moves, **0 cancels, 1 end**, GW2→OSRS succeeded; rotation and HOME/resume kept the active document. Validated an actual Android input defect and correction. **No numeric FPS, p95 press/latency, physical touch-to-paint, CPU/energy or long-duration memory claim** follows from this functional test. Hardware and representative data stress still required.
+
+
 ## 16 November — OSRS action-first geometry; zero performance extrapolation
 Source `e654b1d496e8582c9176a2cd5db29506842e5d4f` [full CI 43944884562 PASS](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43944884562). Existing OSRS nodes were reparented **once** before event listeners attach; no new endpoint, recurring timer, chart renderer, financial calculation or gesture subscription. Verified 390×844 card top 325.53px, item title top 576.31px and entire first buy instruction bottom 816.86px. Full desktop Chromium swipe, startup and 400 retained-session tests green, native preview build green. This is usability/visual-hierarchy evidence, **not** measured improvement to real Android FPS, start latency, RAM, battery or touch-to-paint. Hardware acceptance remains OPEN.
 

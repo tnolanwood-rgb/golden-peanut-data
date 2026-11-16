@@ -1,5 +1,9 @@
 # Production isolation evidence — 2026-11-16
 
+## 16 November 2026 — isolated emulator now TESTED, not production acceptance
+Source `e538b648d1d2d48eb360b8615f7fbd8707b73486`, [Actions 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) SUCCESS, package `com.goldenhub.dual.preview`, Android 35 Google APIs ephemeral emulator. Root-only GitHub Actions contents: read, no Cloudflare secrets/bindings/deploy/Workers/D1, no original Android app package or owner user data. Native swipe, rotation and resume test report/screenshots artifact 14277315133. Full source CI and APK verify at same source passed. User's physical installation and separate Cloudflare synthetic staging remain untouched/unverified, and must not be conflated with emulator proof. Main independently read at `097f012c1f912411790dd7dce21434a9cdc497d2`.
+
+
 ## Preview-only Android emulator (new CI pending)
 Workflow golden-experience-emulator.yml uses GitHub contents: read, pinned public emulator action and a fresh runner. Only package com.goldenhub.dual.preview is built/installed; its debug WebView exposes CDP for test inspection, while release builds remain non-debuggable. No Cloudflare production deploy, credentials, D1 writes, production package, user storage, signing or backend configuration is in scope. Physical device proof and synthetic Cloudflare staging are separate outstanding gates.
 

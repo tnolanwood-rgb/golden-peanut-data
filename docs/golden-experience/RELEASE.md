@@ -1,5 +1,9 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## Verified incremental Android acceptance — release remains BLOCKED
+At exact source `e538b648d1d2d48eb360b8615f7fbd8707b73486`, full [source CI 43965081086](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081086), [independent preview APK 43965081112](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081112) and [Android 35 emulator 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) passed. Native emulator swipe no longer touch-cancels; rotation/resume succeeded. This is **not** a frozen release candidate, original installed APK signoff, physical-phone performance evidence, distinct Cloudflare staging or tested production rollback. Existing main `097f012c1f912411790dd7dce21434a9cdc497d2` remains frozen. No change permitted to production deployment/origin/credentials/data until all remaining gates and explicit later owner “Implement”.
+
+
 ## Additional fail-closed source identity preflight (new CI pending)
 The helper now checks that the local checkout's true Git HEAD/tree equal the supplied candidate identifiers and that tracked/untracked source is clean. Candidate lock JSON must stay within ignored artifacts/; it never enters app/. The verified predecessor 10a32e1 passed CI 43959179383 and separate Android 43959179409. The new hardening is not yet exact-head CI-verified. Checking local Git does not check remote main; final release workflow MUST independently read/compare remote production and staging identities and verify a rollback. Do not deploy.
 
