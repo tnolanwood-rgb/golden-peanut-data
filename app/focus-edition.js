@@ -1128,6 +1128,20 @@ function renderOpportunityHome(){
   if(stop)stop.hidden=!scanning;
   if(retry){retry.hidden=scanning||!s?.opportunityPlan?.ok;retry.textContent=paused?'Resume wider discovery':'Run wider discovery';}
  }
+ // Keep operational details in ⚙ Settings, not the trade list.
+ // Collapsed diagnostics cost NOTHING on normal trading refreshes.
+ const monitorHost=$('focus-account-watcher-host');
+ if(monitorHost&&$('focus-monitor-settings')?.open&&$('focus-research')?.hidden===false){
+  monitorHost.replaceChildren();renderAccountWatcher(monitorHost,s);
+ }
+ const capitalHost=$('focus-deployment-research');
+ if(capitalHost&&$('focus-capital-settings')?.open&&$('focus-research')?.hidden===false){
+  // Avoid expensive what-if recalculation and replacing the keyboard-focused
+  // draft whenever a background quote or account update repaints Today.
+  const editing=capitalHost.contains(document.activeElement)&&
+   document.activeElement?.matches?.('.focus-deployment-input');
+  if(!editing){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
+ }
  // A one-second account/status repaint must not discard and recreate dozens
  // of scrollable result rows. Compare cheap identities/epochs before any DOM
  // mutation; a real plan, wallet, quote or metadata change still refreshes.
@@ -1146,20 +1160,6 @@ function renderOpportunityHome(){
  const book=root.GPOpportunity?.rankedMarkets?.(p);
  const board=fresh?marketBoard(s):null;
  if(fresh)renderTopResearch(host,s,board);
- // Keep operational details in ⚙ Settings, not the trade list.
- // Collapsed diagnostics cost NOTHING on normal trading refreshes.
- const monitorHost=$('focus-account-watcher-host');
- if(monitorHost&&$('focus-monitor-settings')?.open&&$('focus-research')?.hidden===false){
-  monitorHost.replaceChildren();renderAccountWatcher(monitorHost,s);
- }
- const capitalHost=$('focus-deployment-research');
- if(capitalHost&&$('focus-capital-settings')?.open&&$('focus-research')?.hidden===false){
-  // Avoid expensive what-if recalculation and replacing the keyboard-focused
-  // draft whenever a background quote or account update repaints Today.
-  const editing=capitalHost.contains(document.activeElement)&&
-   document.activeElement?.matches?.('.focus-deployment-input');
-  if(!editing){capitalHost.replaceChildren();if(fresh)renderDeploymentPlanner(capitalHost,s);}
- }
  // Alert only if a previously connected collector has truly missed several
  // scheduled checks, never while restoring local session state.
  const cloud=root.GPCloudAccount?.status?.(s?.account);
