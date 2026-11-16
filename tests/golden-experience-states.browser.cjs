@@ -145,6 +145,32 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
   await page.screenshot({path:path.join(out,'osrs-action-320-enlarged-text.png'),fullPage:true});
   states.push({state:'adaptive-recommendation-height',viewport:'320x740',font:'24px',scaledCard});
 
+  // 200%-scale Android typography is a separate acceptance state: the trade
+  // instruction must still be reachable inside a generous *unchanged* dock,
+  // and the document must not acquire horizontal overflow from large amounts.
+  const doubleTextCard=await page.evaluate(()=>{
+   document.documentElement.style.fontSize='32px';
+   const shell=document.querySelector('#gh-osrs-root .gh-trade-shell');
+   const pane=document.querySelector('#gh-osrs-root .gh-trade-scroll');
+   const buy=document.querySelector('#gh-instruction');
+   pane.scrollTop=0;
+   const box=pane.getBoundingClientRect();
+   return {height:shell.getBoundingClientRect().height,
+    paneHeight:box.height,firstInstructionTop:buy.getBoundingClientRect().top-box.top,
+    instructionVisible:buy.getBoundingClientRect().top<box.bottom-10,
+    pageWidth:document.documentElement.clientWidth,
+    pageScrollWidth:document.documentElement.scrollWidth};
+  });
+  assert.ok(doubleTextCard.height>=800,'200% text must retain the enlarged recommendation canvas');
+  assert.ok(doubleTextCard.instructionVisible,
+   '200% text must expose the beginning of real buy guidance before nested scroll: '+JSON.stringify(doubleTextCard));
+  assert.ok(doubleTextCard.pageScrollWidth<=doubleTextCard.pageWidth+1,
+   '200% OSRS trading details must not cause sideways document overflow');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:path.join(out,'osrs-action-320-double-text.png'),fullPage:true});
+  await page.evaluate(()=>document.documentElement.style.fontSize='24px');
+  states.push({state:'adaptive-recommendation-height-200pct',viewport:'320x740',font:'32px',doubleTextCard});
+
   // On 320px/24px text, scroll deeply inside a market; Next/Previous must
   // start the *new* item at its name, not inherit the previous item's offset.
   const cardNavigation=await page.evaluate(()=>{
