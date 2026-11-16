@@ -4018,13 +4018,22 @@ function paintDelivery(s,State){const priced=calculateDelivery(s);money('gp57-it
  label('gp57-scenario-note',priced.types?`${human(priced.qty)} units in Delivery Box. These proceeds are NOT in your wallet or collectible coins. Selling is not guaranteed.`:'Item valuations appear after a verified account check.');
  money('gp57-chosen-net',priced.chosenNet);money('gp57-reference-net',priced.referenceNet);
  label('gp57-delivery-coverage',priced.unpriced?`${priced.unpriced} item type${priced.unpriced===1?'':'s'} unpriced — excluded from the total.`:'All available Delivery Box item types have a current target or reference price.');
- const host=$('gp57-item-prices');if(!host)return;const frag=document.createDocumentFragment();const rows=priced.rows.sort((a,b)=>(b.net??-1)-(a.net??-1));
+ const host=$('gp57-item-prices');if(!host)return;
+ const rows=priced.rows.sort((a,b)=>(b.net??-1)-(a.net??-1));
+ // A quote refresh can update figures without changing this list. Retain
+ // row DOM, focused buttons and scroll position unless visible rows differ.
+ const signature=JSON.stringify(rows.map(row=>[
+  row.id,row.count,row.net,row.target?.source||'',row.target?.price||0,
+  State.meta?.[row.id]?.name||'',targetOverrides[row.id]||0
+ ]));
+ if(host.dataset.gp57RowsSignature===signature&&host.hasChildNodes())return;
+ const frag=document.createDocumentFragment();
  if(!rows.length){const p=document.createElement('p');p.className='gp57-muted';p.textContent='No items currently waiting in your Delivery Box.';frag.append(p);}
  for(const row of rows){const line=document.createElement('div');line.className='gp57-delivery-row';const left=document.createElement('div');left.className='gp57-delivery-name';const name=document.createElement('strong');name.textContent=State.meta?.[row.id]?.name||'Item details pending';const sub=document.createElement('small');sub.textContent=`× ${human(row.count)} · ${row.target?row.target.source+' · '+coinText(row.target.price)+' each':'No recent sell target or quote'}`;left.append(name,sub);
  const right=document.createElement('div');right.className='gp57-delivery-value';const sum=document.createElement('strong');sum.textContent=row.net===null?'Unpriced':coinText(row.net);const buttons=document.createElement('div');buttons.className='gp57-delivery-buttons';const edit=document.createElement('button');edit.type='button';edit.className='gp57-mini';edit.textContent=targetOverrides[row.id]?'Edit target':'Set target';edit.addEventListener('click',()=>changeTarget(row.id,State));buttons.append(edit);
  if(targetOverrides[row.id]){const reset=document.createElement('button');reset.type='button';reset.className='gp57-mini';reset.textContent='Use market reference';reset.addEventListener('click',()=>removeTarget(row.id,State));buttons.append(reset);}
  right.append(sum,buttons);line.append(left,right);frag.append(line);}
- host.replaceChildren(frag);
+ host.replaceChildren(frag);host.dataset.gp57RowsSignature=signature;
 }
 function parsePrice(input){if(typeof input!=='string')return null;const t=input.toLowerCase().trim();if(!t)return null;let g=0,s=0,c=0;let matches=[...t.matchAll(/(\d[\d,]*)\s*([gsc])\b/g)];if(matches.length){if(t.replace(/(\d[\d,]*)\s*[gsc]\b/g,'').trim())return null;for(const m of matches){const val=Number(m[1].replaceAll(',',''));if(!safeInt(val))return null;if(m[2]==='g')g+=val;if(m[2]==='s')s+=val;if(m[2]==='c')c+=val;}}else if(/^\d+$/.test(t)){c=Number(t);}else return null;const n=g*10000+s*100+c;return safeInt(n,1)&&n<=2147483647?n:null;}
 async function persistTargets(State){if(!State?.db||!State?.account)return;await State.db.put('config',State.account,'gp57-delivery-targets',{version:1,targets:{...targetOverrides},at:new Date().toISOString()});}
@@ -4039,7 +4048,13 @@ function actionData(State,s){const key=[State.account,s?.at||'',s?.buysAt||'',s?
  actionsCache=acts;return acts;
 }
 function paintActions(State,s){const node=$('gp57-actions');if(!node)return;let acts=[];
- if(!s){node.replaceChildren(Object.assign(document.createElement('p'),{className:'gp57-muted',textContent:'Check your GW2 account to see verified priorities.'}));return;}
+ if(!s){
+  if(node.dataset.gp57ActionsSignature!=='no-account'||!node.hasChildNodes()){
+   node.replaceChildren(Object.assign(document.createElement('p'),{className:'gp57-muted',textContent:'Check your GW2 account to see verified priorities.'}));
+   node.dataset.gp57ActionsSignature='no-account';
+  }
+  return;
+ }
  if(safeInt(s?.delivery?.coins,1))acts.push({kind:'collect',title:'Collect Delivery Box coins',note:'Collect in-game before these coins can fund new buys.',value:s.delivery.coins});
  const p=State.allocationPlan;
  const planFresh=!!(p?.orders?.length&&Number.isFinite(State.allocationAt)&&Date.now()-State.allocationAt<25*60000);
@@ -4057,9 +4072,12 @@ function paintActions(State,s){const node=$('gp57-actions');if(!node)return;let 
   const copy={...act,groupName:family,groupCount:1};familyCards.set(family,copy);compact.push(copy);
  }
  for(const act of compact){if(act.groupCount>1){act.title='Review '+act.groupName+' orders';act.note=act.groupCount+' related markets need a review · tap for details';}}
- const fragment=document.createDocumentFragment();for(const [i,a] of compact.slice(0,3).entries()){const button=document.createElement('button');button.type='button';button.className='gp57-action';button.setAttribute('aria-label',a.title+'. Open detailed research');const num=document.createElement('span');num.className='gp57-action-num';num.textContent=String(i+1);const msg=document.createElement('span');msg.className='gp57-action-desc';const heading=document.createElement('strong');heading.textContent=a.title;const small=document.createElement('small');small.textContent=a.note;msg.append(heading,small);const side=document.createElement('span');side.className='gp57-action-money';side.textContent=a.value!==null?coinText(a.value):'Review';button.append(num,msg,side);button.addEventListener('click',()=>openResearch(a.kind==='invest'||a.kind==='research'?'allocator-panel':'execution52-panel'));fragment.append(button);}
+ const shown=compact.slice(0,3);
+ const signature=JSON.stringify(shown.map(a=>[a.kind,a.title,a.note,a.value,a.groupCount||0]));
+ if(node.dataset.gp57ActionsSignature===signature&&node.hasChildNodes())return;
+ const fragment=document.createDocumentFragment();for(const [i,a] of shown.entries()){const button=document.createElement('button');button.type='button';button.className='gp57-action';button.setAttribute('aria-label',a.title+'. Open detailed research');const num=document.createElement('span');num.className='gp57-action-num';num.textContent=String(i+1);const msg=document.createElement('span');msg.className='gp57-action-desc';const heading=document.createElement('strong');heading.textContent=a.title;const small=document.createElement('small');small.textContent=a.note;msg.append(heading,small);const side=document.createElement('span');side.className='gp57-action-money';side.textContent=a.value!==null?coinText(a.value):'Review';button.append(num,msg,side);button.addEventListener('click',()=>openResearch(a.kind==='invest'||a.kind==='research'?'allocator-panel':'execution52-panel'));fragment.append(button);}
  if(!acts.length){const p=document.createElement('p');p.className='gp57-muted';p.textContent='No consequential actions verified. Your existing orders can continue working.';fragment.append(p);}
- node.replaceChildren(fragment);
+ node.replaceChildren(fragment);node.dataset.gp57ActionsSignature=signature;
 }
 function openResearch(id){const research=$('gp57-advanced');if(research)research.open=true;const target=$(id);for(let el=target;el;el=el.parentElement){if(el.tagName==='DETAILS')el.open=true;}requestAnimationFrame(()=>target?.scrollIntoView({behavior:'smooth',block:'start'}));}
 async function refreshAll(){if(refreshBusy)return;const api=root.GoldenPeanutClean;if(!api||!api.State?.db)return;refreshBusy=true;const b=$('gp57-refresh');b.disabled=true;label('gp57-status','Verifying account and refreshing qualified opportunities…');try{await api.sync();await api.buildAllocation();label('gp57-status','Account and investment research checked. Confirm the market quote timestamps before trading.');}catch{label('gp57-status','Refresh incomplete. Existing saved values were preserved.');}finally{refreshBusy=false;b.disabled=false;schedule();}}
