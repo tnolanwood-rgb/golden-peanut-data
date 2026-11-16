@@ -227,7 +227,7 @@ function blank(){
    </div>
  </section>
  <section class="gp-guide-idea" aria-label="Next OSRS trade idea">
-  <div class="gh-trade-shell"><div class="gh-trade-scroll">
+  <div class="gh-trade-shell"><div class="gh-trade-scroll" role="region" tabindex="0" aria-label="Scrollable trade idea details">
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>

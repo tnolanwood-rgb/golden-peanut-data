@@ -112,6 +112,33 @@ const cases=[],contrast=(a,b)=>{
    assert.ok(stress.titleScroll<=stress.titleWidth+1,game+' unbroken item name must wrap inside its heading: '+JSON.stringify(stress));
    assert.ok(stress.within,game+' text glyphs must remain inside the card: '+JSON.stringify(stress));
    assert.ok(stress.scroll<=stress.viewport+1,game+' large label must not produce horizontal page overflow');
+   if(game==='osrs'){
+    const details=page.locator('#gh-osrs-root .gh-trade-scroll');
+    assert.equal(await details.getAttribute('role'),'region',
+     'nested OSRS trade evidence must be an accessible scroll region');
+    assert.equal(await details.getAttribute('tabindex'),'0',
+     'keyboard users need a focusable nested scroll region');
+    const reach=await details.evaluate(scroller=>{
+     const title=scroller.querySelector('#gh-item-name'),
+      range=document.createRange();range.selectNodeContents(title);
+     const before=[...range.getClientRects()].at(-1),box=scroller.getBoundingClientRect();
+     if(!before)return {visible:false};
+     scroller.scrollTop+=before.bottom-box.bottom+14;
+     const after=[...range.getClientRects()].at(-1),now=scroller.getBoundingClientRect();
+     return {visible:after.top>=now.top-1&&after.bottom<=now.bottom-4,
+      scroll:scroller.scrollTop,max:scroller.scrollHeight-scroller.clientHeight,
+      dock:document.querySelector('#gh-osrs-root .gh-action-dock')?.getBoundingClientRect().height};
+    });
+    assert.ok(reach.visible&&reach.scroll>0&&reach.max>=reach.scroll&&reach.dock>75,
+     'the final glyphs of a long OSRS label must be reachable while trade actions remain visible: '+JSON.stringify(reach));
+    await details.evaluate(n=>n.scrollTop=0);
+    await details.focus();
+    await page.keyboard.press('PageDown');
+    await page.waitForTimeout(50);
+    assert.ok((await details.evaluate(n=>n.scrollTop))>0,
+     'keyboard PageDown must scroll the inner OSRS evidence without switching games');
+    assert.equal((await page.evaluate(()=>GoldenDualHub.diagnostics())).game,'osrs');
+   }
    await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
    await page.screenshot({path:out+'/stress-long-name-'+game+'-320-2x.png',fullPage:true});
   }
