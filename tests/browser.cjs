@@ -376,18 +376,34 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForFunction(()=>document.querySelectorAll('#gp57-item-prices .gp57-delivery-row').length===8,null,{timeout:15000});
  const retainedNodes=await page.evaluate(async()=>{
   const host=document.querySelector('#gp57-item-prices'),actions=document.querySelector('#gp57-actions');
-  const originalRow=host.firstElementChild,originalAction=actions.firstElementChild;
-  for(let i=0;i<4;i++){
+  const comparisons=[];
+  for(let i=0;i<8;i++){
+   const before={row:host.firstElementChild,action:actions.firstElementChild,
+    rowSignature:host.dataset.gp57RowsSignature,
+    actionSignature:actions.dataset.gp57ActionsSignature};
    GP57Desk.schedule();
-   await new Promise(resolve=>setTimeout(resolve,200));
+   await new Promise(resolve=>setTimeout(resolve,210));
+   const after={rowSignature:host.dataset.gp57RowsSignature,
+    actionSignature:actions.dataset.gp57ActionsSignature};
+   comparisons.push({
+    rowsUnchanged:before.rowSignature===after.rowSignature,
+    actionsUnchanged:before.actionSignature===after.actionSignature,
+    rowRetained:before.row===host.firstElementChild,
+    actionRetained:before.action===actions.firstElementChild
+   });
   }
-  return {rowRetained:host.firstElementChild===originalRow,
-   actionRetained:actions.firstElementChild===originalAction,
-   rows:host.querySelectorAll('.gp57-delivery-row').length};
+  return {rows:host.querySelectorAll('.gp57-delivery-row').length,
+   sameRowVersions:comparisons.filter(x=>x.rowsUnchanged).length,
+   sameActionVersions:comparisons.filter(x=>x.actionsUnchanged).length,
+   rowViolations:comparisons.filter(x=>x.rowsUnchanged&&!x.rowRetained),
+   actionViolations:comparisons.filter(x=>x.actionsUnchanged&&!x.actionRetained),
+   comparisons};
  });
  assert.equal(retainedNodes.rows,8,'eight synthetic Delivery Box item types remain visible');
- assert.equal(retainedNodes.rowRetained,true,'unchanged Delivery Box rows must survive refresh repaint');
- assert.equal(retainedNodes.actionRetained,true,'unchanged suggested actions must survive refresh repaint');
+ assert.ok(retainedNodes.sameRowVersions>=2,'at least two refreshes of identical delivery data must be compared: '+JSON.stringify(retainedNodes));
+ assert.ok(retainedNodes.sameActionVersions>=2,'at least two refreshes of identical actions must be compared');
+ assert.deepEqual(retainedNodes.rowViolations,[],'identical Delivery Box rows must survive refresh repaint');
+ assert.deepEqual(retainedNodes.actionViolations,[],'identical action buttons must survive refresh repaint');
  // A meaningful metadata change MUST invalidate the row fingerprint.
  await page.evaluate(()=>{
   window.__geOldDeliveryName=GoldenPeanutClean.State.meta[301].name;
