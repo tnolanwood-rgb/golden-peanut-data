@@ -50,7 +50,11 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_6
-          disable-animations: false
+          # Reduce CI emulator starvation; this does not alter app performance
+          # requirements, physical-phone signoff or gesture assertions.
+          cores: 4
+          ram-size: 4096M
+          disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             cd android && bash ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest && cd ..
