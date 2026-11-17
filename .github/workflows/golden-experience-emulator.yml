@@ -44,10 +44,10 @@ jobs:
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: 35
-          # Use the AOSP image for deterministic WebView touch QA: the Google
-          # NexusLauncher has produced native ANR overlays in CI, stealing input.
-          # Android 35 API/device/gesture assertions remain unchanged.
-          target: default
+          # Android Test Device is Google's headless-optimized AOSP image.
+          # Regular Google and AOSP launchers ANRed during earlier CI gestures.
+          # Keep API 35, native touch assertions, rotation and resume checks.
+          target: aosp_atd
           arch: x86_64
           profile: pixel_6
           # Reduce CI emulator starvation; this does not alter app performance
