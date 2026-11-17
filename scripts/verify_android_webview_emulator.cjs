@@ -12,7 +12,7 @@ const ACTIVITY='com.goldenhub.dual.MainActivity';
 const OUTPUT='artifacts/audit/golden-experience/android-emulator';
 fs.mkdirSync(OUTPUT,{recursive:true});
 const result={schema:'golden-experience-android-webview-emulator-v1',
-  environment:'Android 35 AOSP x86_64 emulator, independently identified debug APK',
+  environment:'Android 35 AOSP Automated Test Device x86_64 emulator, independently identified debug APK',
   limitations:'Not original installed APK, physical phone, battery or live account validation',
   cases:[]};
 const adb=(...args)=>execFileSync('adb',args,{encoding:'utf8',timeout:30000}).trim();
