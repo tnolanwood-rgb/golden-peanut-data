@@ -1,5 +1,9 @@
 # Performance evidence
 
+## 17 Nov 2026 — AOSP ATD native latency breakdown
+Exact green [native 44054851609](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44054851609) at `00665acd`: 410ms real ADB input command for nominal 350ms first GW2→OSRS, 1 touchend/0 cancels, functionality verified. One `longtask` 1,015ms, long-animation-frame start ~1059ms duration 1024ms/blocking 967ms; LoAF scripts attribute ~6ms to `endGesture` listener, while no individual `getBoundingClientRect` call >=12ms was recorded. The remainder is NOT proof of a specific CSS/layout/render cause; requires controlled trace, profiler and physical-device testing. ATD framebuffer returned totally black PNGs (detected in code), NOT valid visual timing evidence. This is native functional sign-off only, **not** the user's desired perfect 2026 phone experience.
+
+
 ## 17 Nov Android emulator input-duration anomaly (not FPS claim)
 [Android CI 44049887731](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44049887731), AOSP API35 4 cores, 4GB RAM, separate debug preview app. Native input focus verified. ADB OS swipe requested 350ms but wall time was 7,671ms. Captured WebView stream 1 touchstart/4 moves/0 end/1 cancel at x321→254 CSSpx, and a 1,504ms self long task. The long task coincided with interrupted input but has not been attributed to a specific app function. This does not prove a healthy 350ms interaction on a physical phone, nor that WebView or emulator alone caused the stall. Full source/browser CI passed separately; native touch performance remains BLOCKED.
 

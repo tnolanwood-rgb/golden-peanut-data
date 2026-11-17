@@ -1,5 +1,11 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## 17 Nov — all three source/native CI suites pass; real release remains explicitly BLOCKED
+Exact green protected source `00665acdfc279bcf57720acbb9c58e849396213c`: 44054851632 full regression, 44054851607 independent preview APK, 44054851609 Android 35 ATD native actual forward/reverse/vertical/rotation/resume — all PASS. Native emulator screen capture is wholly black; screen visuals and real hardware smoothness are NOT verified. ~1sec browser long animation frame still demands performance analysis.
+New critical installation finding from read-only user APKs: original `com.thegoldenpeanut.mobile` points to existing Pages origin, while newer Capacitor v1-v4 use DISTINCT `app.goldenpeanut.tradinghub` / `tradinghu2` / `tradinghu3` / `tradinghu4`, bundle static frontend and disable Android backup. A website-only release cannot update those packaged copies. Exact app currently installed and its signer/export path unknown. A separate preview package cannot automatically replace or share private data with them. See ANDROID-ORIGINAL.md.
+Remaining mandatory gates: actual original installed device source/package/storage/back/keyboard/smoothness; independent Cloudflare credential-free synthetic staging with read-only binding inventory and rollback; hosted byte-for-byte preflight; full financial and visual acceptance; main drift verification; frozen candidate and final owner readiness report. Owner must explicitly say **Implement** afterwards. Continue no-new-feature scope. No production changes or APK install done.
+
+
 ## 17 Nov exact-head gate result: NO RELEASE
 At `80f3857d`, full regression CI 44049887597 PASS and separate Android preview 44049887575 PASS; native AOSP WebView 44049887731 FAIL first actual horizontal gesture after valid app focus, with touchcancel and severe input-duration/long-task stalls. **A real release is blocked.** The offline rollback rehearsal in full CI does not replace isolated Cloudflare staging or verified hosted rollback. PR #65 remains DRAFT and all production/frontend/account/Android user state untouched by this project. No owner Implement after a readiness report has occurred.
 
