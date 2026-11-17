@@ -7,6 +7,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
+const zlib=require('node:zlib');
 const APP='com.goldenhub.dual.preview';
 const ACTIVITY='com.goldenhub.dual.MainActivity';
 const OUTPUT='artifacts/audit/golden-experience/android-emulator';
@@ -114,6 +115,39 @@ async function game(page,target){
  await page.waitForFunction(g=>window.GoldenDualHub?.diagnostics?.()?.game===g,target,{timeout:20000});
  assert.equal(await page.evaluate(()=>GoldenDualHub.diagnostics().game),target);
 }
+// A headless ATD can return a formally valid, totally black native PNG.
+// Do not mistake that framebuffer for visual acceptance. This check only
+// handles standard Android 8-bit RGBA captures; unknown PNG modes remain
+// explicitly unclassified rather than being guessed.
+function allBlackRgbaPng(png){
+ try{
+   if(png.length<40||png.readUInt32BE(16)<1||png.readUInt32BE(20)<1||
+      png[24]!==8||png[25]!==6||png[28]!==0)return null;
+   const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
+   let pos=8,idat=[];
+   while(pos+12<=png.length){
+     const length=png.readUInt32BE(pos),type=png.toString('ascii',pos+4,pos+8);
+     if(length>png.length-pos-12)return null;
+     if(type==='IDAT')idat.push(png.subarray(pos+8,pos+8+length));
+     pos+=length+12;
+     if(type==='IEND')break;
+   }
+   if(!idat.length)return null;
+   const raw=zlib.inflateSync(Buffer.concat(idat));
+   const rowBytes=width*4+1;
+   if(raw.length!==height*rowBytes)return null;
+   // PNG Sub/Up/Average/Paeth filters predict RGB from RGB; true solid black
+   // yields zero residual RGB bytes regardless of filter. Alpha is ignored.
+   for(let y=0;y<height;y++){
+     const row=y*rowBytes+1;
+     for(let x=0;x<width;x++){
+       const p=row+x*4;
+       if(raw[p]||raw[p+1]||raw[p+2])return false;
+     }
+   }
+   return true;
+ }catch{return null;}
+}
 async function screenshot(page,name){
  const destination=path.join(OUTPUT,name+'.png');
  // ATD omits standard launcher/UI services. CDP Page.captureScreenshot may
@@ -129,7 +163,14 @@ async function screenshot(page,name){
    const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
    if(width<320||height<320)throw new Error('Invalid framebuffer dimensions');
    fs.writeFileSync(destination,png);
-   (result.screenshots||=[]).push({name,source:'adb-native-framebuffer',width,height,bytes:png.length});
+   const black=allBlackRgbaPng(png);
+   (result.screenshots||=[]).push({
+     name,source:'adb-native-framebuffer',width,height,bytes:png.length,
+     allBlackFrame:black});
+   if(black===true){
+     result.visualCaptureUnsupported=true;
+     result.visualCaptureReason='ATD native framebuffer is all black; it is NOT visual QA evidence';
+   }
    return;
  }catch(captureError){previousError=captureError;}
  try{
@@ -226,6 +267,20 @@ async function run(){
       pointer:{down:0,move:0,up:0,cancel:0},events:[]};
     window.__geAndroidTouchTrace=trace;
     window.__geAndroidLongTasks=[];
+    window.__geAndroidLongFrames=[];
+    // Long Animation Frames provide script-level attribution on modern
+    // Android WebView. Unsupported versions simply omit this evidence.
+    try{
+      new PerformanceObserver(list=>{
+        const frames=window.__geAndroidLongFrames;
+        for(const e of list.getEntries())if(frames.length<16)
+          frames.push({start:Math.round(e.startTime),duration:Math.round(e.duration),
+            blockingDuration:Math.round(e.blockingDuration||0),
+            scripts:Array.from(e.scripts||[]).slice(0,8).map(s=>({
+              duration:Math.round(s.duration),function:s.sourceFunctionName||'',
+              url:(s.sourceURL||'').slice(0,110),invoker:s.invoker||''}))});
+      }).observe({type:'long-animation-frame',buffered:true});
+    }catch{}
     // Test-only readback of slow synchronous layout queries while the swipe
     // scene is acquired. Never change the site's gesture decisions or skip
     // strict native event assertions. Only record slow reads (bounded).
@@ -295,6 +350,7 @@ async function run(){
     return {
       trace:window.__geAndroidTouchTrace,
       longTasks:window.__geAndroidLongTasks||[],
+      longFrames:window.__geAndroidLongFrames||[],
       slowLayoutReads:window.__geAndroidSlowLayout||[],
       game:window.GoldenDualHub?.diagnostics?.()?.game||null,
       diagnostics:window.GoldenDualHub?.diagnostics?.()||null,
@@ -320,7 +376,7 @@ async function run(){
   if(swipeFailure){
     await screenshot(page,'gw2-after-unsuccessful-native-swipe');
     console.error('ANDROID_WEBVIEW_INPUT_TRACE '+JSON.stringify({
-      trace:touch.trace,longTasks:touch.longTasks,slowLayoutReads:touch.slowLayoutReads,viewport:touch.viewport,panel:touch.panel,
+      trace:touch.trace,longTasks:touch.longTasks,longFrames:touch.longFrames,slowLayoutReads:touch.slowLayoutReads,viewport:touch.viewport,panel:touch.panel,
       stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs
     }));
     throw new Error('Android-native swipe did not switch games: '+
@@ -331,7 +387,7 @@ async function run(){
   console.log('NATIVE_ANDROID_FORWARD_TOUCH_ACCEPTED '+JSON.stringify({
     from:'gw2',to:'osrs',touchEnd:touch.trace.end,touchCancel:touch.trace.cancel,
     adbInputDurationMs:nativeSwipeElapsedMs,longTasks:touch.longTasks,
-    slowLayoutReads:touch.slowLayoutReads}));
+    longFrames:touch.longFrames,slowLayoutReads:touch.slowLayoutReads}));
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
 
