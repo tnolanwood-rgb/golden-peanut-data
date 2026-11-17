@@ -1,5 +1,10 @@
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
+## 17 Nov — offline release rehearsal CI and native Android still open
+Four local Python cases passed for exact-byte predecessor→candidate→predecessor replay; negative gates reject fabricated revisions, missing required frontend, symlinked Git asset, and output outside ignored artifacts. New mandatory protected PR CI `Rehearse frontend deploy and exact-byte rollback OFFLINE only` PASS in run 44049406065 (full suite separate). This tests local Git-object bytes, **not** hosted Cloudflare live assets/staging or installed Android.
+Cloudflare Pages `subdomain` vs custom `domains` correction has seven synthetic tests; the real Pages project is not verified. AOSP Android 35 2-core run 44048617724 FAILED with touchcancel and ~858ms longtask during first swipe; 4-core run 44049406063 FAILED early due system AOSP launcher ANR. Source 80f3857d adds strict single launcher-only recovery. Inspect exact CI for current native outcome, do not report green until screenshot/JSON and touchend/no-cancel + OSRS vertical + rotation/resume all pass.
+
+
 ## 16 Nov 2026 — strict native WebView regression reproduction and release gate
 The source/browser+Android APK builds are green at e3314f8 (CI 43977050401, separate build 43977050518). Native Android emulator 43977050512 then passed GW2→OSRS and OSRS→GW2 horizontal swipes with finger pointer capture removed, but failed nested OSRS vertical scroll (scrollTop=0, body scrollY=0). **Native total FAIL, not a certified pass**.
 Further exact Android run 43978013622 at 22fdf4b, with hit-tested OSRS vertical fixture, failed earlier at first GW2 swipe: 5 touchmoves, 0 touchends, 1 touchcancel, trace showed ~3-second gap between consecutive events. The interrupted input starts on connected original DIV, computed ancestor touch-action pan-y pinch-zoom and no pointer capture. Root cause remains uncertain; possible emulator input starvation/renderer stall versus cancellation, not proven.

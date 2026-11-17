@@ -1,5 +1,10 @@
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
+## 17 Nov — offline rollback dry-run is TESTED; final readiness remains BLOCKED
+New `scripts/golden_experience_rollback_rehearsal.py` simulates source-locked static frontend upgrade then rollback byte-for-byte inside an ephemeral filesystem. Four local tests passed; mandatory GitHub PR CI offline rehearsal step on run 44049406065 passed. This **cannot** certify the actual hosted predecessor, Cloudflare asset hashes, independent staging, production deployment/rollback or original Android data continuity. This is preparation, not a release action.
+Main advanced by one data-only automated snapshot commit `02f0e864`, not an app update. Final candidate must independently read real main, hosted build identity, staging project/bindings and original package compatibility; abort on drift. The native emulator has not consistently passed first swipe/nested scroll. Maintain a complete production freeze and draft PR. Only after ALL gates, final readiness report, and subsequent owner's explicit **Implement** can a production release be performed.
+
+
 ## Owner's 16 November stabilisation / maximum-safe-subset release request
 Stop new feature development. Polish, test and release only existing completed work and its necessary safety prerequisites. No subset is currently certified safe to ship: genuine Android native swipe remains intermittent and vertical nested scroll has failed strict tests, isolated binding-free Cloudflare staging has not been established, original installed Android/storage behaviour is unverified, and a production-safe rehearsal/rollback has not been completed. User wants eventual live launch, but the established **final readiness report followed by explicit Implement** release gate remains in force. Do NOT merge/deploy the current branch or point an Android debug APK at production. Preserve working production website/installed app/credentials/storage.
 

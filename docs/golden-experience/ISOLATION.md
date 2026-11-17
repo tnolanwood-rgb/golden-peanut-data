@@ -1,5 +1,10 @@
 # Production isolation evidence — 2026-11-16
 
+## 17 Nov — current main drift and API-correct staging-host guard
+Read-only GitHub main is `02f0e8640b5a22be590f55e9598937cb3f6e7161`, one public-market-data snapshot commit ahead of `097f012`. The complete diff only includes data/market JSON and shards, **no app/**; preserve the collector's independent maintenance. Could not independently read production hosted build-info in this continuation. No production deployment was performed by Golden Experience.
+Cloudflare Pages' documented project `subdomain` is its default pages.dev host; `domains` lists *custom* domains. Offline staging guard now requires exact independent `subdomain=golden-experience-staging.pages.dev` and explicit inspected custom-domain inventory (an empty array is valid), while rejecting production name/branch/host, Git-linked auto-deploy and unknown or private bindings. No real Cloudflare staging project created, viewed or deployed, no production credentials touched.
+
+
 ## 16 November — stricter offline independent-domain gate, no staging deployment
 The offline staging validator at 2434543 now rejects an empty domains list; synthetic test 3d5915b confirms this missing-domain case is blocked. Staging must explicitly report the exact `golden-experience-staging.pages.dev` host in addition to excluding the live domain/branch/project, unknown config, Git auto-deploy and all nonempty private bindings. This is a fail-closed local test only, **not proof that a real Cloudflare staging project exists**. No Cloudflare production/staging deployment or original app modification occurred.
 
