@@ -31,11 +31,22 @@ jobs:
           if ! test -x /usr/bin/chromium; then
             npx playwright-core install --with-deps chromium
           fi
+      - name: Capture current main Git commit, not the possibly stale PR base
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          test "${#current_main}" -eq 40
+          git fetch --no-tags origin "$current_main"
+          git cat-file -e "$current_main^{commit}"
+          echo "GE_OBSERVED_MAIN=$current_main" >> "$GITHUB_ENV"
+          echo "Read-only main identity captured for candidate and rollback rehearsal."
       - name: Lock and verify checked-out Golden Experience candidate (offline only)
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
         shell: bash
         env:
-          GP_BASE_MAIN_SHA: ${{ github.event.pull_request.base.sha }}
+          GP_BASE_MAIN_SHA: ${{ env.GE_OBSERVED_MAIN }}
         run: |
           set -euo pipefail
           test -n "$GP_BASE_MAIN_SHA"
@@ -54,7 +65,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
         shell: bash
         env:
-          GP_BASE_MAIN_SHA: ${{ github.event.pull_request.base.sha }}
+          GP_BASE_MAIN_SHA: ${{ env.GE_OBSERVED_MAIN }}
         run: |
           set -euo pipefail
           python3 scripts/golden_experience_rollback_rehearsal.py \
@@ -81,6 +92,17 @@ jobs:
             GE_SESSION_OUTPUT="artifacts/audit/golden-experience/session-repeat-${trial}.json" \
               node scripts/benchmark_golden_experience_session.cjs
           done
+      - name: Fail if main drifted during Golden Experience verification
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed_now="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          test "${#observed_now}" -eq 40
+          test "$observed_now" = "$GE_OBSERVED_MAIN" || {
+            echo "::error::main advanced while this release candidate was being verified; redo the source and rollback lock"
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
