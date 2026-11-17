@@ -45,11 +45,9 @@ jobs:
       - name: Lock and verify checked-out Golden Experience candidate (offline only)
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
         shell: bash
-        env:
-          GP_BASE_MAIN_SHA: ${{ env.GE_OBSERVED_MAIN }}
         run: |
           set -euo pipefail
-          test -n "$GP_BASE_MAIN_SHA"
+          test -n "$GE_OBSERVED_MAIN"
           candidate_commit="$(git rev-parse --verify HEAD)"
           candidate_tree="$(git rev-parse --verify 'HEAD^{tree}')"
           # This is the CI checkout (possibly GitHub's synthetic PR merge),
@@ -57,20 +55,18 @@ jobs:
           manifest=artifacts/audit/golden-experience/ci-candidate-lock.json
           python3 scripts/golden_experience_candidate.py prepare \
             --commit "$candidate_commit" --tree "$candidate_tree" \
-            --baseline-main "$GP_BASE_MAIN_SHA" --manifest "$manifest"
+            --baseline-main "$GE_OBSERVED_MAIN" --manifest "$manifest"
           python3 scripts/golden_experience_candidate.py verify \
             --commit "$candidate_commit" --tree "$candidate_tree" \
-            --observed-main "$GP_BASE_MAIN_SHA" --manifest "$manifest"
+            --observed-main "$GE_OBSERVED_MAIN" --manifest "$manifest"
       - name: Rehearse frontend deploy and exact-byte rollback OFFLINE only
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
         shell: bash
-        env:
-          GP_BASE_MAIN_SHA: ${{ env.GE_OBSERVED_MAIN }}
         run: |
           set -euo pipefail
           python3 scripts/golden_experience_rollback_rehearsal.py \
             --candidate "$(git rev-parse HEAD)" \
-            --rollback "$GP_BASE_MAIN_SHA" \
+            --rollback "$GE_OBSERVED_MAIN" \
             --output artifacts/audit/golden-experience/offline-rollback.json
       - name: Preview Golden Experience visual acceptance before full regressions
         run: node tests/golden-experience.browser.cjs
