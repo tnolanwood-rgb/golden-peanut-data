@@ -12,7 +12,7 @@ const ACTIVITY='com.goldenhub.dual.MainActivity';
 const OUTPUT='artifacts/audit/golden-experience/android-emulator';
 fs.mkdirSync(OUTPUT,{recursive:true});
 const result={schema:'golden-experience-android-webview-emulator-v1',
-  environment:'Android 35 Google APIs emulator, independently identified debug APK',
+  environment:'Android 35 AOSP x86_64 emulator, independently identified debug APK',
   limitations:'Not original installed APK, physical phone, battery or live account validation',
   cases:[]};
 const adb=(...args)=>execFileSync('adb',args,{encoding:'utf8',timeout:30000}).trim();
@@ -146,14 +146,16 @@ async function run(){
     const lines=adb('shell','dumpsys','window').split('\n');
     windowFocus=lines.find(x=>x.includes('mCurrentFocus='))||'focus line unavailable';
     if(windowFocus.includes(APP))break;
-    if(!launcherRecoveryAttempted&&/Application Not Responding: com\.google\.android\.apps\.nexuslauncher/.test(windowFocus)){
-      // OS infrastructure fault (not this APK): a launcher ANR window can
-      // consume every ADB touch while CDP still shows the WebView normally.
-      // Recover the *launcher only*, once, then demand the QA Activity truly
-      // owns native focus. Never dismiss an ANR belonging to Golden Hub.
+    const launcherAnr=windowFocus.match(/Application Not Responding: (com\\.google\\.android\\.apps\\.nexuslauncher|com\\.android\\.launcher3)(?:\\s|$)/);
+    if(!launcherRecoveryAttempted&&launcherAnr){
+      // OS infrastructure fault (not this APK): either stock Android or
+      // Google launcher may ANR during software-rendered emulator startup.
+      // Only recover the exact system launcher once; never auto-dismiss an
+      // ANR belonging to the actual trading app under test.
       launcherRecoveryAttempted=true;
       result.launcherAnrRecoveryAttempted=true;
-      adb('shell','am','force-stop','com.google.android.apps.nexuslauncher');
+      result.launcherAnrPackage=launcherAnr[1];
+      adb('shell','am','force-stop',launcherAnr[1]);
       adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
     }
     await sleep(200);
