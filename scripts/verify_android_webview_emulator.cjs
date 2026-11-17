@@ -202,6 +202,23 @@ async function run(){
       pointer:{down:0,move:0,up:0,cancel:0},events:[]};
     window.__geAndroidTouchTrace=trace;
     window.__geAndroidLongTasks=[];
+    // Test-only readback of slow synchronous layout queries while the swipe
+    // scene is acquired. Never change the site's gesture decisions or skip
+    // strict native event assertions. Only record slow reads (bounded).
+    window.__geAndroidSlowLayout=[];
+    const originalRect=Element.prototype.getBoundingClientRect;
+    window.__geAndroidOriginalRect=originalRect;
+    Element.prototype.getBoundingClientRect=function(...args){
+      const t=performance.now();
+      const bounds=originalRect.apply(this,args);
+      const elapsed=performance.now()-t;
+      if(elapsed>=12 && window.__geAndroidSlowLayout?.length<24){
+        window.__geAndroidSlowLayout.push({at:Math.round(t),
+          duration:Math.round(elapsed),id:this.id||'',
+          className:String(this.className||'').slice(0,65)});
+      }
+      return bounds;
+    };
     try{
       new PerformanceObserver(list=>{
         const rows=window.__geAndroidLongTasks;
@@ -254,6 +271,7 @@ async function run(){
     return {
       trace:window.__geAndroidTouchTrace,
       longTasks:window.__geAndroidLongTasks||[],
+      slowLayoutReads:window.__geAndroidSlowLayout||[],
       game:window.GoldenDualHub?.diagnostics?.()?.game||null,
       diagnostics:window.GoldenDualHub?.diagnostics?.()||null,
       viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio,
@@ -269,10 +287,16 @@ async function run(){
   },{x:contact.x,y:contact.y});
   mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],
     deviceY:y,nativeSwipeElapsedMs});
+  // Restore the original DOM API before later correctness/scroll/lifecycle QA.
+  await page.evaluate(()=>{
+    if(window.__geAndroidOriginalRect)
+      Element.prototype.getBoundingClientRect=window.__geAndroidOriginalRect;
+    delete window.__geAndroidOriginalRect;
+  });
   if(swipeFailure){
     await screenshot(page,'gw2-after-unsuccessful-native-swipe');
     console.error('ANDROID_WEBVIEW_INPUT_TRACE '+JSON.stringify({
-      trace:touch.trace,longTasks:touch.longTasks,viewport:touch.viewport,panel:touch.panel,
+      trace:touch.trace,longTasks:touch.longTasks,slowLayoutReads:touch.slowLayoutReads,viewport:touch.viewport,panel:touch.panel,
       stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs
     }));
     throw new Error('Android-native swipe did not switch games: '+
