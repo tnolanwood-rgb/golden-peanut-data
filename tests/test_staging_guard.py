@@ -17,7 +17,8 @@ def fixture():
         "name": "golden-experience-staging",
         "production_branch": "golden-experience-staging",
         "source": None,
-        "domains": ["golden-experience-staging.pages.dev"],
+        "subdomain": "golden-experience-staging.pages.dev",
+        "domains": [],
         "deployment_configs": {"preview": dict(env), "production": dict(env)},
     }}
 
@@ -39,11 +40,20 @@ class StagingGuardTests(unittest.TestCase):
     def test_production_domain_and_unknown_domains_blocked(self):
         for domains in (["thegoldenpeanut.pages.dev"],
                         ["golden-experience-staging.pages.dev", "userdomain.co.uk"],
-                        [], None):
+                        None):
             sample = fixture()
             sample["result"]["domains"] = domains
             with self.assertRaises(mod.StagingUnsafe):
                 mod.validate(sample)
+
+    def test_missing_or_wrong_default_subdomain_blocked(self):
+        for subdomain in (None, "", "thegoldenpeanut.pages.dev",
+                          "golden-experience-staging.pages.dev.evil.example"):
+            with self.subTest(subdomain=subdomain):
+                sample = fixture()
+                sample["result"]["subdomain"] = subdomain
+                with self.assertRaises(mod.StagingUnsafe):
+                    mod.validate(sample)
 
     def test_all_private_binding_kinds_blocked_in_both_environments(self):
         keys = ("d1_databases", "kv_namespaces", "r2_buckets", "services",
