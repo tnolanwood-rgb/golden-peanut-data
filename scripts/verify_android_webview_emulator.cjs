@@ -146,7 +146,7 @@ async function run(){
     const lines=adb('shell','dumpsys','window').split('\n');
     windowFocus=lines.find(x=>x.includes('mCurrentFocus='))||'focus line unavailable';
     if(windowFocus.includes(APP))break;
-    const launcherAnr=windowFocus.match(/Application Not Responding: (com\\.google\\.android\\.apps\\.nexuslauncher|com\\.android\\.launcher3)(?:\\s|$)/);
+    const launcherAnr=windowFocus.match(/Application Not Responding: (com\.google\.android\.apps\.nexuslauncher|com\.android\.launcher3)(?:\s|$)/);
     if(!launcherRecoveryAttempted&&launcherAnr){
       // OS infrastructure fault (not this APK): either stock Android or
       // Google launcher may ANR during software-rendered emulator startup.
