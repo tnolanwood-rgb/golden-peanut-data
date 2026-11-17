@@ -39,12 +39,18 @@ def validate(payload):
         raise StagingUnsafe("Unexpected staging production branch")
     if payload.get("source") not in (None, {}, {"type": None}):
         raise StagingUnsafe("Git-linked staging auto-deploy source not independently cleared")
+    # In Cloudflare Pages' project API, "subdomain" is the default pages.dev
+    # hostname; "domains" lists *custom* domains. A safely isolated project
+    # normally reports the expected subdomain and an empty domains array.
+    expected_host = STAGING_NAME + ".pages.dev"
+    if payload.get("subdomain") != expected_host:
+        raise StagingUnsafe("Missing or unexpected independent staging subdomain")
     hosts = payload.get("domains")
-    if not isinstance(hosts, list) or STAGING_NAME + ".pages.dev" not in hosts:
-        raise StagingUnsafe("The exact independent staging domain must be reported")
+    if not isinstance(hosts, list):
+        raise StagingUnsafe("Complete custom-domain inventory must be reported")
     for hostname in hosts:
-        if not isinstance(hostname, str) or hostname.lower().rstrip(".") != STAGING_NAME + ".pages.dev":
-            raise StagingUnsafe("Unexpected staging hostname or production domain")
+        if not isinstance(hostname, str) or hostname.lower().rstrip(".") != expected_host:
+            raise StagingUnsafe("Unexpected custom hostname or production domain")
     config = payload.get("deployment_configs")
     if not isinstance(config, dict) or set(config) != {"production", "preview"}:
         raise StagingUnsafe("Both Cloudflare deployment environment configs are required")
