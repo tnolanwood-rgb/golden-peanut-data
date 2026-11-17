@@ -115,7 +115,31 @@ async function game(page,target){
  assert.equal(await page.evaluate(()=>GoldenDualHub.diagnostics().game),target);
 }
 async function screenshot(page,name){
- await page.screenshot({path:path.join(OUTPUT,name+'.png'),timeout:15000});
+ const destination=path.join(OUTPUT,name+'.png');
+ // ATD omits standard launcher/UI services. CDP Page.captureScreenshot may
+ // hang even after native touch and Runtime CDP have succeeded. Preserve
+ // evidence with the actual Android framebuffer instead of hiding the cause.
+ let previousError=null;
+ try{
+   const png=execFileSync('adb',['exec-out','screencap','-p'],{
+     timeout:20000,maxBuffer:16*1024*1024});
+   const header=Buffer.from([137,80,78,71,13,10,26,10]);
+   if(png.length<3000||!png.subarray(0,8).equals(header))
+     throw new Error('ADB framebuffer was empty or not a PNG');
+   const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
+   if(width<320||height<320)throw new Error('Invalid framebuffer dimensions');
+   fs.writeFileSync(destination,png);
+   (result.screenshots||=[]).push({name,source:'adb-native-framebuffer',width,height,bytes:png.length});
+   return;
+ }catch(captureError){previousError=captureError;}
+ try{
+   await page.screenshot({path:destination});
+   (result.screenshots||=[]).push({name,source:'webview-cdp-after-adb-failure'});
+ }catch(cdpError){
+   throw new Error('Both native framebuffer and CDP screenshots failed ('+
+     String(previousError?.message||previousError).slice(0,170)+'; '+
+     String(cdpError?.message||cdpError).slice(0,170)+')');
+ }
 }
 async function run(){
  const apk='android/app/build/outputs/apk/debug/app-debug.apk';
@@ -304,6 +328,10 @@ async function run(){
   }
   assert.ok(touch.trace.end>=1 && touch.trace.cancel===0,
     'Android gesture transition cannot pass on a cancelled touch stream: '+JSON.stringify(touch.trace));
+  console.log('NATIVE_ANDROID_FORWARD_TOUCH_ACCEPTED '+JSON.stringify({
+    from:'gw2',to:'osrs',touchEnd:touch.trace.end,touchCancel:touch.trace.cancel,
+    adbInputDurationMs:nativeSwipeElapsedMs,longTasks:touch.longTasks,
+    slowLayoutReads:touch.slowLayoutReads}));
   await screenshot(page,'osrs-native-swipe');
   mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
 
