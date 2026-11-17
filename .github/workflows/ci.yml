@@ -50,6 +50,17 @@ jobs:
           python3 scripts/golden_experience_candidate.py verify \
             --commit "$candidate_commit" --tree "$candidate_tree" \
             --observed-main "$GP_BASE_MAIN_SHA" --manifest "$manifest"
+      - name: Rehearse frontend deploy and exact-byte rollback OFFLINE only
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        env:
+          GP_BASE_MAIN_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/golden_experience_rollback_rehearsal.py \
+            --candidate "$(git rev-parse HEAD)" \
+            --rollback "$GP_BASE_MAIN_SHA" \
+            --output artifacts/audit/golden-experience/offline-rollback.json
       - name: Preview Golden Experience visual acceptance before full regressions
         run: node tests/golden-experience.browser.cjs
       - name: Reproducible audit baseline
