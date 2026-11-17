@@ -1,5 +1,9 @@
 # Performance evidence
 
+## 17 Nov Android emulator input-duration anomaly (not FPS claim)
+[Android CI 44049887731](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44049887731), AOSP API35 4 cores, 4GB RAM, separate debug preview app. Native input focus verified. ADB OS swipe requested 350ms but wall time was 7,671ms. Captured WebView stream 1 touchstart/4 moves/0 end/1 cancel at x321→254 CSSpx, and a 1,504ms self long task. The long task coincided with interrupted input but has not been attributed to a specific app function. This does not prove a healthy 350ms interaction on a physical phone, nor that WebView or emulator alone caused the stall. Full source/browser CI passed separately; native touch performance remains BLOCKED.
+
+
 ## 16 November — actual Android touch-stream functional evidence, not FPS
 Source `e538b648d1d2d48eb360b8615f7fbd8707b73486`, [native emulator CI 43965081137](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/43965081137) PASS, artifact 14277315133. First emulator before CSS fix: 1 touch start, 4 moves, **1 cancel, 0 ends**, GW2 remained selected. After retaining moving-panel pointer events: 1 start, 4 moves, **0 cancels, 1 end**, GW2→OSRS succeeded; rotation and HOME/resume kept the active document. Validated an actual Android input defect and correction. **No numeric FPS, p95 press/latency, physical touch-to-paint, CPU/energy or long-duration memory claim** follows from this functional test. Hardware and representative data stress still required.
 
