@@ -12,10 +12,13 @@ BINDINGS = frozenset({
     "durable_object_namespaces", "env_vars", "queues", "hyperdrive",
     "vectorize", "analytics_engine_datasets", "ai", "browser",
     "dispatch_namespaces", "unsafe", "vars", "secrets", "assets",
+    "ai_bindings", "browsers", "hyperdrive_bindings", "mtls_certificates",
+    "queue_producers", "vectorize_bindings",
 })
 SAFE_CONFIG = frozenset({
     "compatibility_date", "compatibility_flags", "build_image_major_version",
     "fail_open", "usage_model", "placement", "limits", "observability",
+    "always_use_latest_compatibility_date",
 })
 EMPTY = (None, {}, [])
 
@@ -62,10 +65,9 @@ def validate(payload):
             if key in BINDINGS or key not in SAFE_CONFIG:
                 if value not in EMPTY:
                     raise StagingUnsafe("Nonempty or unknown " + name + " binding: " + key)
-        for key in ("d1_databases", "kv_namespaces", "r2_buckets", "services",
-                    "durable_object_namespaces", "env_vars"):
-            if key not in env:
-                raise StagingUnsafe("Binding inventory incomplete for " + name + ": " + key)
+        # Cloudflare Pages GET documents binding fields as optional maps:
+        # an omitted optional field is unbound. All present binding fields
+        # must be empty; any unexpected nonempty field is still rejected.
     return {
         "project": STAGING_NAME,
         "staging_domain": STAGING_NAME + ".pages.dev",
