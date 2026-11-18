@@ -5,7 +5,7 @@
 const API='https://prices.runescape.wiki/api/v2/osrs/',NS='http://www.w3.org/2000/svg';
 // v2 timeseries accepts lookback, not timestep. 3d is filtered from 7d.
 const periods={six:['6h','6h',21600],day:['24h','24h',86400],three:['3d','7d',259200],week:['7d','7d',604800],month:['30d','30d',2592000]};
-let dialog=null,item=null,rows=[],range='week',size=0,offset=0,selected=0,sequence=0,gesture=null,pendingRestore=null,controller=null;
+let dialog=null,item=null,rows=[],range='week',size=0,offset=0,selected=0,sequence=0,gesture=null,pendingRestore=null,controller=null,renderFrame=0;
 const touch=new Map(),cache=new Map();
 const e=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n};
 const svg=(tag,props,text)=>{const n=doc.createElementNS(NS,tag);for(const [k,v] of Object.entries(props||{}))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=String(text);return n};
@@ -36,10 +36,15 @@ function ensure(){
  dialog.addEventListener('pointerdown',pointerDown);dialog.addEventListener('pointermove',pointerMove);
  dialog.addEventListener('pointerup',pointerUp);dialog.addEventListener('pointercancel',pointerUp);
  dialog.addEventListener('wheel',wheel,{passive:false});
- dialog.addEventListener('close',()=>{touch.clear();gesture=null;sequence++;controller?.abort();controller=null;notify()});
- win.addEventListener('resize',()=>{touch.clear();gesture=null});
+ dialog.addEventListener('close',()=>{touch.clear();gesture=null;sequence++;controller?.abort();controller=null;cancelRender();notify()});
+ win.addEventListener('resize',()=>{touch.clear();gesture=null;if(dialog?.open)requestRender()});
 }
 function notify(){win.dispatchEvent(new Event('gh-osrs-chart-changed'))}
+function cancelRender(){if(renderFrame)win.cancelAnimationFrame(renderFrame);renderFrame=0;}
+function requestRender(){
+ if(renderFrame)return;
+ renderFrame=win.requestAnimationFrame(()=>{renderFrame=0;if(dialog?.open)render();});
+}
 function snapshot(){return dialog?.open&&item?{item:{...item},range,size,offset,selectedTime:rows[selected]?.timestamp??null,scrollTop:dialog.scrollTop}:null}
 function restore(saved){
  if(!Number.isSafeInteger(saved?.item?.id)||!Object.hasOwn(periods,saved.range))return false;
@@ -68,7 +73,12 @@ function renderRange(){
   'Best observed historical averages in the visible window, possibly from different times. Before GE tax; not guaranteed available orders or a tradeable spread.'));
 }
 function render(){
+ cancelRender();
  if(!dialog)return;
+ // Match the logical canvas to its displayed width so 15-unit axis labels
+ // remain readable on phones instead of shrinking a 700-unit desktop chart.
+ const plot=dialog.querySelector('#gh-research-plot');
+ const W=Math.max(280,Math.min(700,(plot.clientWidth||712)-12));
  dialog.querySelectorAll('[data-gh-period]').forEach(b=>b.classList.toggle('is-selected',b.dataset.ghPeriod===range));
  const slider=dialog.querySelector('#gh-research-slider');slider.max=String(Math.max(0,rows.length-1));slider.value=String(selected);slider.disabled=rows.length<2;
  const pane=dialog.querySelector('#gh-research-selected');pane.replaceChildren();
@@ -82,9 +92,9 @@ function render(){
   pane.append(pair);
   pane.append(e('p','gh-research-volume','Bucket volumes: '+Number(q.lowPriceVolume||0).toLocaleString('en-GB')+' instant-sold / '+Number(q.highPriceVolume||0).toLocaleString('en-GB')+' instant-bought'));
  }else pane.append(e('p','','No observations available.'));
- const plot=dialog.querySelector('#gh-research-plot');plot.replaceChildren();renderRange();
+ plot.replaceChildren();renderRange();
  if(rows.length<2){plot.append(e('p','gh-research-empty','No usable two-sided historical buckets.'));return}
- const [a,b]=bounds(),view=rows.slice(a,b),W=700,H=330,L=100,R=20,T=24,B=57;
+ const [a,b]=bounds(),view=rows.slice(a,b),H=330,L=100,R=20,T=24,B=57;
  if(view.length<2)return;
  const all=view.flatMap(x=>[x.avgLowPrice,x.avgHighPrice]);let low=Math.min(...all),high=Math.max(...all);
  const pad=Math.max(1,(high-low)*.08);low=Math.max(0,low-pad);high+=pad;
@@ -154,22 +164,22 @@ function open(next,key='week'){
 }
 function chartIndex(clientX){
  const chart=dialog.querySelector('#gh-research-plot svg');if(!chart||!rows.length)return -1;
- const b=chart.getBoundingClientRect(),x=((clientX-b.left)/Math.max(1,b.width)*700-100)/(700-100-20),[a,end]=bounds();
+ const b=chart.getBoundingClientRect(),width=chart.viewBox.baseVal.width,x=((clientX-b.left)/Math.max(1,b.width)*width-100)/(width-100-20),[a,end]=bounds();
  return Math.max(a,Math.min(end-1,Math.round(a+x*(end-a-1))));
 }
 function pointerDown(ev){
  if(!ev.target?.closest?.('#gh-research-plot svg')||rows.length<2)return;
  touch.set(ev.pointerId,ev.clientX);try{dialog.setPointerCapture(ev.pointerId)}catch{}
- if(touch.size===1)gesture={x:ev.clientX,offset,used:false,pinch:false};
+ if(touch.size===1)gesture={x:ev.clientX,offset,width:dialog.querySelector('#gh-research-plot').clientWidth||400,used:false,pinch:false};
  if(touch.size===2){const x=[...touch.values()];gesture={pinch:true,used:true,size,distance:Math.max(1,Math.abs(x[0]-x[1])),offset};}
 }
 function pointerMove(ev){
  if(!touch.has(ev.pointerId)||!gesture)return;
  touch.set(ev.pointerId,ev.clientX);
- if(touch.size===2&&gesture.pinch){const x=[...touch.values()],distance=Math.max(20,Math.abs(x[0]-x[1])),s=Math.max(8,Math.min(rows.length,Math.round(gesture.size*gesture.distance/distance)));if(s!==size){size=s;offset=Math.min(rows.length-size,gesture.offset);render();}}
- else if(touch.size===1&&!gesture.pinch){const dx=ev.clientX-gesture.x;if(Math.abs(dx)>12)gesture.used=true;if(gesture.used){const width=dialog.querySelector('#gh-research-plot').clientWidth||400,c=size||rows.length,o=Math.max(0,Math.min(rows.length-c,gesture.offset+Math.round(dx/width*c)));if(o!==offset){offset=o;render();}}}
+ if(touch.size===2&&gesture.pinch){const x=[...touch.values()],distance=Math.max(20,Math.abs(x[0]-x[1])),s=Math.max(8,Math.min(rows.length,Math.round(gesture.size*gesture.distance/distance)));if(s!==size){size=s;offset=Math.min(rows.length-size,gesture.offset);requestRender();}}
+ else if(touch.size===1&&!gesture.pinch){const dx=ev.clientX-gesture.x;if(Math.abs(dx)>12)gesture.used=true;if(gesture.used){const c=size||rows.length,o=Math.max(0,Math.min(rows.length-c,gesture.offset+Math.round(dx/gesture.width*c)));if(o!==offset){offset=o;requestRender();}}}
 }
-function pointerUp(ev){if(!touch.has(ev.pointerId))return;const inspect=gesture&&!gesture.used&&!gesture.pinch&&touch.size===1;touch.delete(ev.pointerId);if(inspect){const i=chartIndex(ev.clientX);if(i>=0)select(i)}if(!touch.size)gesture=null}
-function wheel(ev){if(!ev.ctrlKey||!ev.target?.closest?.('#gh-research-plot svg')||rows.length<8)return;ev.preventDefault();const s=Math.max(8,Math.min(rows.length,size+(ev.deltaY>0?8:-8)));if(s!==size){size=s;offset=Math.min(offset,rows.length-size);render();}}
+function pointerUp(ev){if(!touch.has(ev.pointerId))return;const inspect=ev.type!=='pointercancel'&&gesture&&!gesture.used&&!gesture.pinch&&touch.size===1;touch.delete(ev.pointerId);if(inspect){const i=chartIndex(ev.clientX);if(i>=0)select(i)}if(!touch.size)gesture=null}
+function wheel(ev){if(!ev.ctrlKey||!ev.target?.closest?.('#gh-research-plot svg')||rows.length<8)return;ev.preventDefault();const s=Math.max(8,Math.min(rows.length,size+(ev.deltaY>0?8:-8)));if(s!==size){size=s;offset=Math.min(offset,rows.length-size);requestRender();}}
 win.GoldenOSRSChart={open,restore,snapshot,close:()=>dialog?.close(),diagnostics:()=>({id:item?.id||null,points:rows.length,range,selected,visible:bounds()})};
 })(window,document);

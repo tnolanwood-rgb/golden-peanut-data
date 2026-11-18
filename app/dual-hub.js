@@ -33,7 +33,7 @@ function parseItemStats(html){
  if(requirement&&items.length<=1&&tables.length<=1)basic.unshift(['Equip requirement',requirement]);
  return {basic,combat,ambiguous:items.length>1||tables.length>1};
 }
-const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null;
+const itemContextCache=new Map();let itemContextID=null,itemContextRequest=null,itemContextTimer=0;
 function renderItemStats(item,details){
  const box=get('gh-item-stats');box.replaceChildren();
  const metadata=state.mappingById?.get(item.id),properties=new Map();
@@ -52,24 +52,38 @@ function renderItemStats(item,details){
 }
 function renderItemContext(item){
  const panel=get('gh-item-context');if(!panel)return;
- panel.hidden=!item;if(!item){itemContextID=null;itemContextRequest?.abort();return;}
+ panel.hidden=!item;
+ if(!item){
+  itemContextID=null;clearTimeout(itemContextTimer);itemContextTimer=0;
+  itemContextRequest?.abort();itemContextRequest=null;
+  return;
+ }
  if(itemContextID===item.id)return;
- itemContextID=item.id;itemContextRequest?.abort();
+ itemContextID=item.id;
+ clearTimeout(itemContextTimer);itemContextTimer=0;
+ itemContextRequest?.abort();itemContextRequest=null;
  get('gh-item-wiki').href='https://oldschool.runescape.wiki/w/'+encodeURIComponent(item.name.replace(/ /g,'_'));
  const show=details=>{renderItemStats(item,details);txt('gh-item-description',details.ambiguous?'This Wiki page has multiple item variants. Check the full guide for the correct requirements and bonuses.':'');};
  const cached=itemContextCache.get(item.name);if(cached){show(cached);return;}
+ // The market and account calculations update instantly. Extra Wiki stat
+ // parsing is secondary: fetch only the item the user settles on, rather
+ // than issuing an abortable 1.5MB parse request for every rapid Next click.
  renderItemStats(item);txt('gh-item-description','Loading item stats from the OSRS Wiki…');
- const controller=new AbortController();itemContextRequest=controller;
- const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
- const query=new URLSearchParams({action:'parse',prop:'text',page:name,redirects:'1',format:'json',origin:'*'});
- fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
- .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>1500000)throw Error('Oversized Wiki response');return JSON.parse(text);})
- .then(data=>{const html=data?.parse?.text?.['*'];if(typeof html!=='string')throw Error('Missing Wiki stats');
-  const details=parseItemStats(html);if(!details.basic.length&&!details.combat.length&&!details.ambiguous)throw Error('Missing Wiki stats');
-  itemContextCache.set(name,details);if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
-  if(itemContextID===item.id&&!controller.signal.aborted)show(details);
- }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Additional item stats are unavailable right now. Open the Wiki guide for verified details.');})
- .finally(()=>clearTimeout(deadline));
+ itemContextTimer=setTimeout(()=>{
+  itemContextTimer=0;
+  if(itemContextID!==item.id)return;
+  const controller=new AbortController();itemContextRequest=controller;
+  const deadline=setTimeout(()=>controller.abort(),8000),name=item.name;
+  const query=new URLSearchParams({action:'parse',prop:'text',page:name,redirects:'1',format:'json',origin:'*'});
+  fetch('https://oldschool.runescape.wiki/api.php?'+query,{signal:controller.signal,credentials:'omit'})
+  .then(async response=>{if(!response.ok)throw Error('Wiki unavailable');const text=await response.text();if(text.length>1500000)throw Error('Oversized Wiki response');return JSON.parse(text);})
+  .then(data=>{const html=data?.parse?.text?.['*'];if(typeof html!=='string')throw Error('Missing Wiki stats');
+   const details=parseItemStats(html);if(!details.basic.length&&!details.combat.length&&!details.ambiguous)throw Error('Missing Wiki stats');
+   itemContextCache.set(name,details);if(itemContextCache.size>64)itemContextCache.delete(itemContextCache.keys().next().value);
+   if(itemContextID===item.id&&!controller.signal.aborted)show(details);
+  }).catch(()=>{if(itemContextID===item.id&&itemContextRequest===controller)txt('gh-item-description','Additional item stats are unavailable right now. Open the Wiki guide for verified details.');})
+  .finally(()=>clearTimeout(deadline));
+ },160);
 }
 const API="https://prices.runescape.wiki/api/v2/osrs/";
 const CFG="gh-osrs-v1-config",LEDGER="gh-osrs-v1-ledger",CACHE="gh-osrs-v1-cache";
@@ -96,6 +110,13 @@ const txt=(id,v)=>{
  if(a.textContent!==value)a.textContent=value;
 };
 const get=(id)=>doc.getElementById(id);
+// Explicit feed-quality presentation, never inferred from wording. A verified
+// feed is NOT proof a proposed trading limit will fill or be profitable.
+const setMarketStatus=(message,tone)=>{
+ const status=get('gh-status');if(!status)return;
+ txt('gh-status',message);
+ status.dataset.state=['loading','verified','caution','unavailable'].includes(tone)?tone:'caution';
+};
 const tax=(price,name)=>{const sell=Math.floor(n(price));const key=safe(name).trim().toLowerCase();if(EXEMPT.has(key)||/^energy potion\([1-4]\)$/.test(key)||/^old school bonds?( \(untradeable\))?$/.test(key))return 0;return Math.min(5000000,Math.floor(Math.max(0,sell)/50))};
 /* Actual official OSRS Mobile / Steam ground-items overlay defaults.
  * This is a *value* colour, not a fixed item rarity. Source:
@@ -198,7 +219,7 @@ function blank(){
   <div class="gp-guide-metric"><div class="gp-guide-label">Today · realised profit</div><strong class="gp-guide-number" id="gh-today">—</strong><small>Completed, recorded trades only</small></div>
   <div class="gp-guide-metric"><div class="gp-guide-label">Last 7 days · realised</div><strong class="gp-guide-number" id="gh-week">—</strong><small>Not predicted future profit</small></div>
  </div>
- <p class="gp-guide-update" id="gh-status" role="status" aria-live="polite">Loading OSRS market prices…</p>
+ <p class="gp-guide-update" id="gh-status" data-state="loading" role="status" aria-live="polite">Loading OSRS market prices…</p>
  <section class="gh-market-lab" aria-label="OSRS research engine">
    <div class="gh-market-tabs" role="group" aria-label="Trade discovery type">
      <button type="button" id="gh-mode-liquid" aria-pressed="true">Verified liquid flips</button>
@@ -220,19 +241,24 @@ function blank(){
    </div>
  </section>
  <section class="gp-guide-idea" aria-label="Next OSRS trade idea">
-  <div class="gh-trade-shell"><div class="gh-trade-scroll">
+  <div class="gh-trade-shell"><div class="gh-trade-scroll" role="region" tabindex="0" aria-label="Scrollable trade idea details">
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
   <h2 id="gh-item-name">Checking eligible trades…</h2>
-  <section id="gh-item-context" class="gh-item-context" hidden>
-   <h3>Item stats</h3>
-   <div id="gh-item-stats"></div>
-   <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
-   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
-   <small><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">OSRS Wiki · CC BY-NC-SA 3.0</a></small>
-  </section>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
+  <div class="gp-guide-instructions">
+    <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
+    <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
+  </div>
+  <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
+  <div class="gp-guide-totals">
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-margin-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
+   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-total-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
+  </div>
+  <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
+  <button type="button" id="gh-watch-toggle" class="gp-guide-secondary gh-watch-toggle" hidden aria-pressed="false">☆ Watch market</button>
+  <!-- Primary guidance first; optional references follow. -->
   <section id="gh-order-guide" class="gh-order-guide" aria-label="RuneScape Grand Exchange listing references" hidden>
    <h3>What prices should I enter into the GE?</h3>
    <p class="gh-quote-intro">OSRS does not publish a live order book. These are recent <strong>completed transactions</strong> and experimental limit-order targets, not outstanding offers.</p>
@@ -248,17 +274,13 @@ function blank(){
    <p id="gh-quote-meta" class="gh-quote-meta"></p>
    <p id="gh-quote-warning" class="gh-quote-warning"></p>
   </section>
-  <div class="gp-guide-instructions">
-    <p class="gp-guide-instruction" id="gh-instruction">Price observations are not guaranteed fills.</p>
-    <p class="gp-guide-instruction-sub" id="gh-instruction-extra"></p>
-  </div>
-  <button type="button" id="gh-empty-retry" class="gp-guide-secondary gh-empty-retry" hidden>↻ Retry market check</button>
-  <div class="gp-guide-totals">
-   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-margin-label">Potential after-tax margin</span><strong class="gp-guide-number" id="gh-margin">—</strong></div>
-   <div class="gp-guide-metric"><span class="gp-guide-label" id="gh-total-label">Illustrative total</span><strong class="gp-guide-number" id="gh-total">—</strong></div>
-  </div>
-  <p class="gp-guide-caution" id="gh-caution">Market conditions can change before your orders fill.</p>
-  <button type="button" id="gh-watch-toggle" class="gp-guide-secondary gh-watch-toggle" hidden aria-pressed="false">☆ Watch market</button>
+  <section id="gh-item-context" class="gh-item-context" hidden>
+   <h3>Item stats</h3>
+   <div id="gh-item-stats"></div>
+   <p id="gh-item-description" class="gh-item-stats-status" role="status"></p>
+   <a id="gh-item-wiki" target="_blank" rel="noopener noreferrer">Full stats, requirements &amp; sources ↗</a>
+   <small><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener noreferrer">OSRS Wiki · CC BY-NC-SA 3.0</a></small>
+  </section>
   </div><div class="gh-action-dock"><div class="gp-guide-controls">
     <button type="button" id="gh-previous" class="gp-guide-secondary" disabled>← Previous</button>
     <button type="button" id="gh-next" class="gp-guide-primary" disabled>Next →</button>
@@ -289,8 +311,8 @@ function blank(){
    </div>
    <p class="gh-trade-note">Record only confirmed Grand Exchange fills. Sales match recorded purchases FIFO; unmatched sales are rejected. Without actual sale tax, today's tax rule is an explicit assumption, including older trades.</p>
    <div class="gh-trade-row"><button type="submit" class="gp-guide-primary">Save fill</button><button type="button" id="gh-cancel-fill" class="gp-guide-light">Cancel</button></div>
-   <p class="gh-inline-status" id="gh-fill-feedback" aria-live="polite"></p>
   </form>
+  <p class="gh-inline-status" id="gh-fill-feedback" role="status" aria-live="polite"></p>
  </section>
  <details class="gh-osrs-settings" id="gh-settings">
   <summary>Account, budget and research settings</summary>
@@ -332,6 +354,15 @@ function blank(){
    </div>
  </details>
  <p class="gh-meta">Independent trading research · no automated Grand Exchange orders · no Jagex affiliation.</p>`;
+ // OSRS is an action-first desk. The current trade and its discovery mode
+ // belong immediately after the identity fascia; secondary account totals,
+ // feed diagnostics and search tooling remain intact further down. Reparent
+ // the EXISTING nodes before listeners attach so visual order and tab order
+ // agree, and no duplicate market controls or data values are introduced.
+ const header=h.querySelector(".gp-guide-header"),idea=h.querySelector(".gp-guide-idea");
+ const modes=h.querySelector(".gh-market-tabs");
+ idea.prepend(modes);
+ header.after(idea);
  return h;
 }
 function install(){
@@ -721,7 +752,13 @@ function moveGesture(ev){
   scrollPositions[g.from]=win.scrollY||0;
   g.scene=createScene(g.from,g.from==="gw2"?"osrs":"gw2");
   if(!g.scene){gesture=null;return;}
-  if(g.input==='pointer')try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
+  // Document capture-phase listeners already own the gesture. Retargeting
+  // a live touch pointer to the moving stage can produce an Android WebView
+  // pointercancel/touchcancel stream mid-drag; avoid native pointer capture
+  // for fingers. Preserve capture for pen input, whose pointer may leave
+  // the original element and has no Touch Events fallback.
+  if(g.input==='pointer'&&g.pointerType==='pen')
+   try{g.scene.stage.setPointerCapture?.(ev.pointerId);}catch{}
  }
  const now=gestureTime(ev);
  if(now-g.sampleTime>70){g.sampleX=g.lastX;g.sampleTime=g.lastTime;}
@@ -771,7 +808,7 @@ function guardDragClick(event){
 }
 function applySettings(){
  const budget=n(get("gh-budget-input").value),mode=get("gh-mode").value;
- if(!Number.isSafeInteger(budget)||budget<0||budget>9e12){txt("gh-status","Budget must be whole GP between 0 and 9 trillion.");return}
+ if(!Number.isSafeInteger(budget)||budget<0||budget>9e12){setMarketStatus("Budget must be whole GP between 0 and 9 trillion.","caution");return}
  state.budget=budget;state.mode=mode==="members"?"members":"f2p";
  state.restricted=get("gh-restricted").value==="clear"?"clear":"unknown";
  state.index=0;saveUser();buildIdeas();render();
@@ -854,7 +891,7 @@ async function refresh(force){
  if(state.loading)return;
  state.loading=true;
  state.priceError=null;
- txt("gh-status","Checking RuneScape Wiki price observations…");
+ setMarketStatus("Checking RuneScape Wiki price observations…","loading");
  if(get("gh-refresh"))get("gh-refresh").disabled=true;
  if(get("gh-empty-retry"))get("gh-empty-retry").hidden=true;
  render();
@@ -886,7 +923,7 @@ async function refresh(force){
    state.builtAt=Date.now();
    buildIdeas();
    if(state.ideas.length){
-    txt("gh-status","Latest observed prices received · verifying volume and liquidity. Research only.");
+    setMarketStatus("Latest observed prices received · verifying volume and liquidity. Research only.","loading");
     render();
    }
   }
@@ -900,11 +937,11 @@ async function refresh(force){
   state.stale=result.some(x=>x.stale);
   state.builtAt=Date.now();
   buildIdeas();
-  txt("gh-status",(state.stale?
+  setMarketStatus((state.stale?
    "Some API requests failed; using cached market observations. No new recommendations until every feed is verified · ":
    "Price evidence checked · ")+
    new Date(state.builtAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+
-   " · "+state.ideas.length+" eligible candidates");
+   " · "+state.ideas.length+" eligible candidates",state.stale?"caution":"verified");
  }catch(err){
   await navigationIdle();
   // Don't leave the card stuck in the loading state when even one endpoint
@@ -912,8 +949,8 @@ async function refresh(force){
   state.priceError=safe(err?.message||"Network request failed");
   state.stale=true;
   state.ideas=[];
-  txt("gh-status","RuneScape Wiki market feed unavailable: "+state.priceError+
-   ". Check connection, or retry the price check.");
+  setMarketStatus("RuneScape Wiki market feed unavailable: "+state.priceError+
+   ". Check connection, or retry the price check.","unavailable");
  }finally{
   // IMPORTANT: render only AFTER clearing the loading flag. Previously the
   // card was painted while loading=true and never painted again on empty
@@ -938,7 +975,7 @@ function toggleMarketWatch(){
  const idea=state.ideas[state.index];if(!idea)return;
  if(state.watchlist.has(idea.id))state.watchlist.delete(idea.id);
  else if(state.watchlist.size<200)state.watchlist.add(idea.id);
- else{txt("gh-status","Watchlist full (200 markets). Unwatch another before adding this one.");return;}
+ else{setMarketStatus("Watchlist full (200 markets). Unwatch another before adding this one.","caution");return;}
  saveUser();applyIdeasView();render();
 }
 function applyIdeasView(){
@@ -1352,6 +1389,11 @@ function navigate(dir){
  // Selected card is session-only: Next/Previous must never block on a
  // redundant synchronous localStorage write of unrelated account preferences.
  state.index=index;state.selectedId=state.ideas[index].id;state.chartRows=[];state.chartVisible=null;state.chartOpen=false;get("gh-chart").hidden=true;
+ // Each recommendation starts at its own title/price instructions, not partway
+ // through the previous recommendation's independent scrollable detail.
+ // Do not reset the document/game scroll position or persisted user settings.
+ const detailScroll=get("gh-osrs-root")?.querySelector(".gh-trade-scroll");
+ if(detailScroll&&detailScroll.scrollTop!==0)detailScroll.scrollTop=0;
  render();
 }
 function toggleFill(){
@@ -1366,6 +1408,7 @@ function openFill(item,side,qty,price){
  get("gh-fill-qty").value=qty;
  get('gh-fill-tax').value='';
  txt("gh-fill-feedback","");
+ delete get('gh-fill-feedback').dataset.state;
  f.scrollIntoView({behavior:"smooth",block:"nearest"});
  saveView();
 }
@@ -1402,6 +1445,7 @@ function recordFill(e){
  state.records=updated;
  // A second submit of the same completed form cannot manufacture a duplicate fill.
  get('gh-fill-form').hidden=true;state.fillItem=null;saveView();
+ get('gh-fill-feedback').dataset.state='saved';
  txt("gh-fill-feedback",side==="sell"?"Recorded verified sale · realised "+gp(updated.find(r=>r.rid===row.rid).gain):"Recorded purchase · waiting for a matching sale");
  render();
 }

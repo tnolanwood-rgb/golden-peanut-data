@@ -202,7 +202,7 @@ function buildIdea(host,s,view){
   const m=s.meta?.[choice.id],heading=el('h2','gp-guide-item-name',m?.name||choice.label);
   heading.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(heading,m?.rarity);
-  add(section,el('p','gp-guide-tier',state),heading);
+  section.append(el('p','gp-guide-tier',state));
   const art=el('div','gp-guide-item-icon');
   art.dataset.itemId=String(choice.id);
   root.GPRarity?.apply?.(art,m?.rarity);
@@ -212,7 +212,9 @@ function buildIdea(host,s,view){
    img.onerror=()=>{if(art.contains(img))art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();};
    art.append(img);
   }else art.textContent=(m?.name||choice.label).slice(0,1).toUpperCase();
-  heading.before(art);
+  const identityRow=el('div','gp-guide-item-identity');
+  identityRow.append(art,heading);
+  section.append(identityRow);
   const instructions=el('div','gp-guide-instructions');
   const buyLine=el('p','gp-guide-instruction'),sellLine=el('p','gp-guide-instruction-sub');
   if(tier==='research'){
@@ -375,6 +377,19 @@ function render(force=false){
   const content=el('div','gp-guide-content');
   renderTop(content,s);
   buildIdea(content,s,view);
+  // First-screen hierarchy: separate the Delivery Box into its own
+  // full-width instrument, then the actual trade, then the remaining three
+  // financial readouts. Never nest the large trade card inside the metrics
+  // grid: large-text content can otherwise overlap a later auto-grid row.
+  const financialGrid=content.querySelector('.gp-guide-metrics');
+  const delivery=financialGrid?.querySelector('.gp-guide-delivery-summary');
+  const currentIdea=content.querySelector('.gp-guide-idea');
+  if(financialGrid&&delivery&&currentIdea){
+   const hero=el('section','gp-guide-delivery-hero');
+   financialGrid.before(hero);
+   hero.append(delivery);
+   hero.after(currentIdea);
+  }
   const footer=el('footer','gp-guide-foot');
   add(footer,el('p','gp-guide-muted','You place, cancel and collect orders in GW2 yourself. The Golden Peanut reads data; it never trades on your behalf.'),
    button('Open all markets, orders, legendaries & settings',()=>advanced(false),'gp-guide-secondary'));

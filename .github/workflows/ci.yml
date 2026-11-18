@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Paired GE cold-start probe needs the exact recorded base commit
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -29,12 +31,74 @@ jobs:
           if ! test -x /usr/bin/chromium; then
             npx playwright-core install --with-deps chromium
           fi
+      - name: Capture current main Git commit, not the possibly stale PR base
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          test "${#current_main}" -eq 40
+          git fetch --no-tags origin "$current_main"
+          git cat-file -e "$current_main^{commit}"
+          echo "GE_OBSERVED_MAIN=$current_main" >> "$GITHUB_ENV"
+          echo "Read-only main identity captured for candidate and rollback rehearsal."
+      - name: Lock and verify checked-out Golden Experience candidate (offline only)
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GE_OBSERVED_MAIN"
+          candidate_commit="$(git rev-parse --verify HEAD)"
+          candidate_tree="$(git rev-parse --verify 'HEAD^{tree}')"
+          # This is the CI checkout (possibly GitHub's synthetic PR merge),
+          # not an assertion about the running production application.
+          manifest=artifacts/audit/golden-experience/ci-candidate-lock.json
+          python3 scripts/golden_experience_candidate.py prepare \
+            --commit "$candidate_commit" --tree "$candidate_tree" \
+            --baseline-main "$GE_OBSERVED_MAIN" --manifest "$manifest"
+          python3 scripts/golden_experience_candidate.py verify \
+            --commit "$candidate_commit" --tree "$candidate_tree" \
+            --observed-main "$GE_OBSERVED_MAIN" --manifest "$manifest"
+      - name: Rehearse frontend deploy and exact-byte rollback OFFLINE only
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/golden_experience_rollback_rehearsal.py \
+            --candidate "$(git rev-parse HEAD)" \
+            --rollback "$GE_OBSERVED_MAIN" \
+            --output artifacts/audit/golden-experience/offline-rollback.json
+      - name: Preview Golden Experience visual acceptance before full regressions
+        run: node tests/golden-experience.browser.cjs
       - name: Reproducible audit baseline
         run: python scripts/audit_baseline.py
       - name: Synthetic startup and chart payload benchmark
         run: |
           mkdir -p artifacts/audit
           node scripts/benchmark_startup.cjs > artifacts/audit/startup-benchmark.json
+      - name: Investigate synthetic OSRS cold-start tail against pinned baseline
+        run: GE_COLD_RUNS=6 node scripts/profile_golden_experience_cold.cjs
+      - name: Synthetic repeated-session retention probe
+        run: node scripts/benchmark_golden_experience_session.cjs
+      - name: Reproduce intermittent retained-session DOM growth
+        shell: bash
+        run: |
+          set -euo pipefail
+          for trial in 1 2 3; do
+            GE_SESSION_OUTPUT="artifacts/audit/golden-experience/session-repeat-${trial}.json" \
+              node scripts/benchmark_golden_experience_session.cjs
+          done
+      - name: Fail if main drifted during Golden Experience verification
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/golden-experience'
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed_now="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          test "${#observed_now}" -eq 40
+          test "$observed_now" = "$GE_OBSERVED_MAIN" || {
+            echo "::error::main advanced while this release candidate was being verified; redo the source and rollback lock"
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,6 +108,8 @@ jobs:
             artifacts/audit/*.json
             artifacts/audit/*.log
             artifacts/audit/swipe/**
+            artifacts/audit/golden-experience/osrs-cold-profile.json
+            artifacts/audit/golden-experience/**
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'

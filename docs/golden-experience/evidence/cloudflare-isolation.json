@@ -1,0 +1,35 @@
+{
+  "run_id": 43851667207,
+  "head_sha": "f05a47fb9e9209b987ceb4b04e71d9d32b6a22b3",
+  "operation": "inspect",
+  "deployment_steps": "skipped",
+  "metadata": {
+    "binding_presence": {
+      "preview": {
+        "d1_databases": false,
+        "durable_object_namespaces": false,
+        "env_vars": false,
+        "kv_namespaces": false,
+        "r2_buckets": false,
+        "services": false
+      },
+      "production": {
+        "d1_databases": false,
+        "durable_object_namespaces": false,
+        "env_vars": false,
+        "kv_namespaces": false,
+        "r2_buckets": false,
+        "services": false
+      }
+    },
+    "git_triggers": {
+      "preview_branch_excludes": null,
+      "preview_branch_includes": null,
+      "preview_deployment_setting": null,
+      "production_branch": null,
+      "production_deployments_enabled": null
+    },
+    "project": "thegoldenpeanut",
+    "source_type": null
+  }
+}

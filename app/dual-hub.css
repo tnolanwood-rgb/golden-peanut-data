@@ -111,7 +111,11 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 #gh-game-stage>.gh-game-panel{display:flow-root;width:100%;min-width:0}
 #gh-game-stage>.gh-game-panel[hidden]{display:none!important}
 #gh-game-stage.gh-stage-moving{isolation:isolate}
-#gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:none;will-change:transform;backface-visibility:hidden}
+/* Keep the original Android WebView touch target alive throughout a drag.
+ * Pointer-events:none on the moving panels invalidates the touch stream
+ * mid-gesture on Android (touchcancel before finger release). Incoming panel
+ * is already inert; final click is guarded by guardDragClick(). */
+#gh-game-stage.gh-stage-moving>.gh-game-panel{position:absolute;inset:0 auto auto 0;width:100%;min-width:0;pointer-events:auto;will-change:transform;backface-visibility:hidden}
 #gh-game-nav .gh-swipe-hint{text-align:center;color:#aabdae;font-size:11px;letter-spacing:.025em;line-height:1.25;margin:6px 0 0}
 @media(prefers-reduced-motion:reduce){#gh-game-stage>.gh-game-panel{transition:none!important;animation:none!important}}
 
@@ -280,3 +284,887 @@ body.gh-show-osrs #gh-osrs-root{display:block}
 
 #gh-osrs-root .gh-item-stats-status:empty{display:none}
 #gh-osrs-root .gh-item-context small{display:block;font-size:.65rem;margin-top:6px;opacity:.7}
+
+
+/* GOLDEN EXPERIENCE: shared, inexpensive surfaces and interaction tokens.
+ * Layer after existing game styles. No rarity, value-tier, currency or gesture
+ * geometry overrides: those remain game-native contracts. */
+:root{
+ --ge-bg:#0c1110;--ge-surface:#15231d;--ge-raised:#203027;
+ --ge-inset:#101a15;--ge-line:#35483d;--ge-line-strong:#637b69;
+ --ge-gold:#e2be78;--ge-ivory:#f3efe3;--ge-muted:#a9b8ae;
+ --ge-profit:#93d2ab;--ge-caution:#e9a09a;
+ --ge-font:system-ui,-apple-system,'Segoe UI',sans-serif;
+ --ge-text-xs:.75rem;--ge-text-sm:.875rem;--ge-text-base:1rem;
+ --ge-text-lg:1.25rem;--ge-text-xl:1.5rem;--ge-text-display:2rem;
+ --ge-space-1:4px;--ge-space-2:8px;--ge-space-3:12px;
+ --ge-space-4:16px;--ge-space-5:24px;--ge-space-6:32px;
+ --ge-radius-sm:10px;--ge-radius-md:16px;--ge-radius-lg:22px;
+ --ge-shadow:0 4px 14px #0003;--ge-inset-light:inset 0 1px 0 #ffffff08;
+ --ge-press:90ms;--ge-state:150ms;--ge-card:200ms;
+ --ge-ease:cubic-bezier(.2,.7,.25,1);
+ /* Bridge older research views to the same palette. */
+ --bg:var(--ge-bg);--panel:var(--ge-surface);--panel2:var(--ge-raised);
+ --line:var(--ge-line);--ink:var(--ge-ivory);--muted:var(--ge-muted);
+ --gold:var(--ge-gold);--mint:var(--ge-profit);--red:var(--ge-caution);
+ --focus-bg:var(--ge-bg);--focus-card:var(--ge-surface);--focus-card2:var(--ge-raised);
+ --focus-border:var(--ge-line);--focus-text:var(--ge-ivory);--focus-dim:var(--ge-muted);
+ --focus-accent:var(--ge-gold);--focus-good:var(--ge-profit);--focus-danger:var(--ge-caution);
+ --gh-bg:var(--ge-bg);--gh-panel:var(--ge-surface);--gh-border:var(--ge-line);
+ --gh-accent:var(--ge-gold);--gh-text:var(--ge-ivory);--gh-muted:var(--ge-muted);
+ color-scheme:dark;
+}
+body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
+ background:var(--ge-bg)!important;color:var(--ge-ivory)!important;
+}
+.gp-guided-root,#gh-osrs-root{font-family:var(--ge-font);color:var(--ge-ivory)}
+/* Opaque dock avoids backdrop compositing while the whole desk moves beneath it. */
+#gh-game-nav{background:var(--ge-bg);border-bottom-color:var(--ge-line);backdrop-filter:none}
+#gh-game-nav .gh-nav-inner{background:var(--ge-inset);border-color:var(--ge-line);padding:4px;border-radius:var(--ge-radius-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+#gh-game-nav button{color:var(--ge-muted);border-radius:12px;font-weight:650;font-size:var(--ge-text-sm);overflow-wrap:anywhere}
+#gh-game-nav button[aria-selected="true"]{background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-gold);box-shadow:var(--ge-inset-light)}
+#gh-game-nav .gh-swipe-hint{font-size:var(--ge-text-xs);color:var(--ge-muted);letter-spacing:0;margin-top:8px}
+
+.gp-guide-content{gap:var(--ge-space-4)}
+.gp-guide-header,#gh-osrs-root .gp-guide-header{
+ background:var(--ge-surface);border-color:var(--ge-line);border-top:0;
+ border-radius:0 0 var(--ge-radius-lg) var(--ge-radius-lg);padding:20px 16px;
+ box-shadow:var(--ge-inset-light);
+}
+.gp-guide-logo,#gh-osrs-root .gp-guide-logo{
+ background:var(--ge-inset);border-color:var(--ge-line);border-radius:var(--ge-radius-md);color:var(--ge-gold);
+}
+.gp-guide-title h1,#gh-osrs-root .gp-guide-title h1{
+ color:var(--ge-ivory);font-weight:750;letter-spacing:-.035em;font-size:clamp(1.375rem,5vw,1.875rem);
+}
+.gp-guide-title p,#gh-osrs-root .gp-guide-title p{color:var(--ge-muted);font-size:var(--ge-text-sm);line-height:1.45}
+.gp-guide-head-actions{gap:8px;margin-top:12px}
+.gp-guide-metrics{gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+.gp-guide-metric,#gh-osrs-root .gp-guide-metric{
+ background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-md);
+ padding:16px 14px;gap:10px;box-shadow:var(--ge-inset-light);
+}
+.gp-guide-label,#gh-osrs-root .gp-guide-label{color:var(--ge-muted);font-size:var(--ge-text-xs);font-weight:650;letter-spacing:.015em;line-height:1.5}
+.gp-guide-number{color:var(--ge-ivory);font-size:clamp(1.125rem,4.4vw,1.625rem);font-weight:750;line-height:1.35;letter-spacing:-.025em}
+.gp-guide-number,.money-inline,.money-value,.gh-coin-amount,.gh-ledger-row,.gp-price-money,.gh-research-value strong{
+ font-variant-numeric:tabular-nums lining-nums;
+}
+.gp-guide-muted,.gp-guide-metric small,.gp-guide-update,.gp-guide-position,
+#gh-osrs-root .gp-guide-muted,#gh-osrs-root .gp-guide-metric small,
+#gh-osrs-root .gp-guide-update,#gh-osrs-root .gp-guide-position{
+ color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6;
+}
+.gp-guide-delivery-summary,#gh-osrs-root .gp-guide-delivery-summary{
+ background:var(--ge-raised);border-color:var(--ge-line-strong);padding:18px 16px;
+}
+.gp-guide-delivery-summary>.gp-guide-label{color:var(--ge-gold)}
+.gp-guide-delivery-summary>.gp-guide-number{font-size:clamp(1.375rem,5.5vw,1.875rem)}
+.gp-guide-delivery-drawer{background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-md)}
+.gp-guide-delivery-drawer summary{color:var(--ge-ivory);padding:16px;min-height:48px}
+.gp-guide-delivery-drawer[open] summary{border-color:var(--ge-line)}
+.gp-guide-delivery-list{padding:8px 16px}
+
+.gp-guide-idea,#gh-osrs-root .gp-guide-idea{
+ background:var(--ge-surface);border-color:var(--ge-line);border-radius:var(--ge-radius-lg);
+ box-shadow:var(--ge-shadow),var(--ge-inset-light);padding:24px 18px 18px;
+}
+.gp-guide-idea h2,#gh-osrs-root .gp-guide-idea h2{
+ font-family:var(--ge-font);font-size:clamp(1.625rem,6vw,2.125rem);font-weight:750;line-height:1.25;letter-spacing:-.035em;
+}
+.gp-guide-item-icon,#gh-osrs-root .gp-guide-item-icon{background:var(--ge-inset);border-radius:14px}
+.gp-guide-tier{background:var(--ge-raised);color:var(--ge-ivory);font-size:var(--ge-text-xs);line-height:1.5;padding:6px 10px;border-radius:8px}
+.gp-guide-instruction{color:var(--ge-ivory);font-size:clamp(1.25rem,5vw,1.75rem);font-weight:700;line-height:1.5}
+.gp-guide-instruction-sub{color:var(--ge-ivory);font-size:clamp(1rem,4vw,1.25rem);line-height:1.6}
+.gp-guide-totals,#gh-osrs-root .gp-guide-totals{border-color:var(--ge-line);gap:12px}
+.gp-guide-totals .gp-guide-metric,#gh-osrs-root .gp-guide-totals .gp-guide-metric{background:transparent;border:0;box-shadow:none;padding:6px 0}
+.gp-guide-totals .gp-guide-number,#gh-osrs-root .gp-guide-totals .gp-guide-number{color:var(--ge-profit)}
+.gp-guide-caution{color:var(--ge-muted);font-size:var(--ge-text-sm);line-height:1.65}
+.gp-guide-foot{border-color:var(--ge-line)}
+#gh-osrs-root .gh-action-dock{background:var(--ge-surface);border-color:var(--ge-line);box-shadow:none;padding-top:16px}
+#gh-osrs-root .gh-trade-scroll{scrollbar-color:var(--ge-line-strong) var(--ge-inset)}
+
+.gp-guide-primary,#gh-osrs-root .gp-guide-primary{
+ background:var(--ge-gold);border-color:var(--ge-gold);color:var(--ge-bg);box-shadow:var(--ge-inset-light);
+}
+.gp-guide-secondary,.gp-guide-light,#gh-osrs-root .gp-guide-secondary,#gh-osrs-root .gp-guide-light{
+ background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory);box-shadow:var(--ge-inset-light);
+}
+.gp-guide-text{color:var(--ge-gold)}
+.gp-guide-primary,.gp-guide-secondary,.gp-guide-light,.gp-guide-text{
+ min-height:48px;border-radius:12px;font-size:var(--ge-text-sm);font-weight:650;
+}
+/* :active is delivered by the browser immediately, without adding input handlers
+ * or delaying clicks/submissions. Never use transition:all or an idle animation. */
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button{
+ touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+ transition:transform var(--ge-press) var(--ge-ease),filter var(--ge-state) var(--ge-ease);
+}
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button:active:not(:disabled){
+ transform:translateY(1px) scale(.985);filter:brightness(.93);
+}
+:is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) :is(button,a,input,select,summary):focus-visible{
+ outline:2px solid var(--ge-gold);outline-offset:3px;
+}
+
+#gh-osrs-root .gh-market-lab,#gh-osrs-root .gh-order-guide,#gh-osrs-root .gh-item-context,
+.gh-osrs-settings,.gh-osrs-ledger{background:var(--ge-inset);border-color:var(--ge-line);border-radius:var(--ge-radius-md)}
+#gh-osrs-root .gh-market-tabs{background:var(--ge-bg);border-color:var(--ge-line);grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
+#gh-osrs-root .gh-market-tabs button{color:var(--ge-muted);font-size:var(--ge-text-sm)}
+#gh-osrs-root .gh-market-tabs button[aria-pressed="true"]{background:var(--ge-raised);color:var(--ge-gold);border-color:var(--ge-line-strong)}
+#gh-osrs-root .gh-market-controls>label,#gh-osrs-root .gh-market-counts,#gh-osrs-root .gh-watch-filter{font-size:var(--ge-text-xs)}
+#gh-osrs-root .gh-market-controls input,#gh-osrs-root .gh-market-controls select{font-size:var(--ge-text-base)}
+#gh-osrs-root input,#gh-osrs-root select{background:var(--ge-bg);border-color:var(--ge-line-strong);color:var(--ge-ivory);border-radius:var(--ge-radius-sm)}
+#gh-osrs-root .gh-quote-grid>div,#gh-osrs-root .gh-quote-targets>div{background:var(--ge-surface);border-color:var(--ge-line)}
+#gh-osrs-root .gh-ledger-row{border-color:var(--ge-line)}
+#gh-osrs-root .gh-ledger-row small,#gh-osrs-root .gh-inline-status,
+#gh-osrs-root .gh-meta,#gh-osrs-root .gh-trade-note,.gh-osrs-settings p,.gh-osrs-ledger p{
+ color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6;
+}
+#gh-osrs-root .gh-inline-error{color:var(--ge-caution)}
+#gh-osrs-root #gh-fill-feedback:empty{display:none}
+#gh-osrs-root #gh-fill-feedback[data-state="saved"]{padding:12px 14px;border-left:3px solid var(--ge-profit);border-radius:0 10px 10px 0;background:var(--ge-raised);color:var(--ge-ivory);font-size:var(--ge-text-sm)}
+#gh-osrs-root .gh-research-evidence{background:var(--ge-raised);color:var(--ge-profit);border-color:var(--ge-profit)}
+#gh-osrs-root .gh-item-properties dt{opacity:1;color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.5}
+#gh-osrs-root .gh-item-context small{opacity:1;color:var(--ge-muted);font-size:var(--ge-text-xs)}
+#gh-osrs-root .gh-tier-key{border-color:var(--ge-line)}
+
+/* Shared chart surfaces; existing plot/axes and exact game colours remain intact. */
+.gp-price-dialog,.gh-research-dialog{background:var(--ge-bg);color:var(--ge-ivory);border-color:var(--ge-line-strong);box-shadow:0 16px 48px #0008;height:min(840px,calc(100dvh - 18px))}
+.gp-price-dialog::backdrop,.gh-research-dialog::backdrop{background:#000b;backdrop-filter:none}
+.gp-price-selection,.gp-price-range-summary,.gh-research-selected,.gh-range-summary{background:var(--ge-surface);border-color:var(--ge-line)}
+.gp-price-plot,.gh-research-plot{background:var(--ge-inset);border-color:var(--ge-line);min-height:235px}
+.gp-price-controls .gp-price-button,.gh-research-ranges button{border-radius:var(--ge-radius-sm);background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory);font-size:var(--ge-text-sm);min-height:46px}
+.gp-price-controls .gp-price-button.is-selected,.gh-research-ranges button.is-selected{background:var(--ge-gold);border-color:var(--ge-gold);color:var(--ge-bg)}
+.gp-price-close,.gh-research-close{background:var(--ge-raised);border-color:var(--ge-line-strong);color:var(--ge-ivory)}
+.gp-price-dialog .gp-price-muted,.gp-price-dialog .gp-price-footnote,.gh-research-note,.gh-research-foot{color:var(--ge-muted);font-size:var(--ge-text-xs);line-height:1.6}
+.gp-price-controls,.gh-research-ranges{grid-template-columns:repeat(auto-fit,minmax(min(100%,5rem),1fr))}
+/* The detailed workstation inherits the same tokens without restructuring tools. */
+.focus-edition .hero h1{color:var(--ge-ivory);text-shadow:none}
+.focus-edition .hero::after{height:1px;background:var(--ge-line);opacity:1}
+.focus-edition .focus-primary-nav{background:var(--ge-surface);box-shadow:0 -4px 14px #0003}
+.focus-edition .focus-nav-button.is-active{background:var(--ge-raised);color:var(--ge-gold)}
+.focus-edition .panel{background:var(--ge-surface);border-color:var(--ge-line);box-shadow:var(--ge-inset-light)}
+.focus-edition .focus-big-money{white-space:normal;overflow:visible;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.focus-edition .focus-big-money .focus-money{white-space:normal;flex-wrap:wrap}
+
+@media(max-width:390px){
+ .gp-guide-header,#gh-osrs-root .gp-guide-header{padding:16px 12px}
+ .gp-guide-idea,#gh-osrs-root .gp-guide-idea{padding:20px 14px 16px}
+ .gp-guide-metric,#gh-osrs-root .gp-guide-metric{padding:13px 11px}
+ .gp-guide-number{font-size:1.125rem}
+ .gp-guide-controls button,#gh-osrs-root .gp-guide-controls button{font-size:var(--ge-text-sm)}
+ #gh-game-nav button{font-size:.8125rem}
+}
+@media(prefers-reduced-motion:reduce){
+ :root{--ge-press:0ms;--ge-state:0ms;--ge-card:0ms}
+ :is(.focus-edition,.gp-guided-root,#gh-osrs-root,#gh-game-nav,.gp-price-dialog,.gh-research-dialog) button:active:not(:disabled){transform:none}
+}
+
+
+/* GOLDEN EXPERIENCE: Instrument face v1 — conspicuously different from the
+ * legacy card stack, but entirely CSS. No graphics downloads, filters, JS
+ * transitions, data writes or touch-gesture geometry changes.
+ * Deliberately keep rarity and official OSRS item-tier colours untouched. */
+#gh-panel-gw2{--ge-identity:#91c9b0;--ge-metal:#e2be78;--ge-wash:#19342a}
+#gh-panel-osrs{--ge-identity:#e4c080;--ge-metal:#f0d396;--ge-wash:#36301e}
+#gh-game-nav{
+ border-bottom:1px solid #526b55;
+ box-shadow:0 6px 18px #0005,inset 0 -1px 0 #ffffff0a;
+ background:linear-gradient(180deg,#17201a 0%,#0c1210 100%);
+}
+#gh-game-nav .gh-nav-inner{
+ border:1px solid #42564a;
+ border-radius:15px;
+ padding:4px;
+ background:linear-gradient(180deg,#0e1712,#142019);
+ box-shadow:inset 0 2px 7px #0008,0 1px 0 #ffffff0c;
+}
+#gh-game-nav button{
+ position:relative;min-height:46px;letter-spacing:.012em;
+ border:1px solid transparent;
+ transition:transform var(--ge-press) var(--ge-ease),background var(--ge-state) var(--ge-ease);
+}
+#gh-game-nav button[aria-selected="true"]{
+ background:linear-gradient(155deg,#293c30,#1b2c23);
+ box-shadow:inset 0 1px 0 #ffffff22,0 2px 8px #0004;
+ border-color:#546c58;
+}
+#gh-game-nav button[aria-selected="true"]::after{
+ content:"";position:absolute;bottom:4px;left:31%;right:31%;height:2px;
+ border-radius:2px;background:var(--ge-gold);
+ box-shadow:0 0 5px #e2be7833;
+}
+#gh-game-nav .gh-swipe-hint{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#aebeb0}
+
+/* A milled control fascia: the game identity occupies a deliberate hero area,
+ * not just another rectangular card. The large mark is decorative and static. */
+#gh-panel-gw2 .gp-guide-header,#gh-panel-osrs .gp-guide-header{
+ position:relative;isolation:isolate;overflow:hidden;
+ border:1px solid #465c4c;border-top:0;border-radius:0 0 24px 24px;
+ padding:44px 20px 23px;
+ background:
+  linear-gradient(110deg,#ffffff0b 0%,transparent 29%),
+  radial-gradient(ellipse at 100% 0%,#c4a1631b,transparent 55%),
+  linear-gradient(140deg,#25392e 0%,#16251d 64%,#101b16 100%);
+ box-shadow:inset 0 1px 0 #ffffff24,inset 0 -1px 0 #0009,0 7px 24px #0005;
+}
+#gh-panel-osrs .gp-guide-header{
+ background:
+  linear-gradient(110deg,#ffffff09 0%,transparent 27%),
+  radial-gradient(ellipse at 100% 0%,#d2a95d27,transparent 58%),
+  linear-gradient(140deg,#35372a 0%,#232c22 58%,#151d17 100%);
+ border-color:#746744;
+}
+#gh-panel-gw2 .gp-guide-header::before,#gh-panel-osrs .gp-guide-header::before{
+ position:absolute;top:15px;left:20px;
+ z-index:0;content:"01  /  GUILD WARS 2";
+ color:var(--ge-identity);font-size:10px;font-weight:800;
+ line-height:1.4;letter-spacing:.19em;
+}
+#gh-panel-osrs .gp-guide-header::before{content:"02  /  OLD SCHOOL RUNESCAPE"}
+#gh-panel-gw2 .gp-guide-header::after,#gh-panel-osrs .gp-guide-header::after{
+ content:"01";position:absolute;right:4px;top:16px;
+ font-size:clamp(86px,25vw,170px);line-height:1;font-weight:850;
+ letter-spacing:-.1em;color:#ffffff0b;z-index:-1;pointer-events:none;
+}
+#gh-panel-osrs .gp-guide-header::after{content:"02";color:#e3b86b10}
+#gh-panel-gw2 .gp-guide-header>*,#gh-panel-osrs .gp-guide-header>*{position:relative}
+#gh-panel-gw2 .gp-guide-logo,#gh-panel-osrs .gp-guide-logo{
+ border:1px solid #ac9a6b;width:57px;height:57px;flex:none;
+ display:grid;place-items:center;border-radius:17px;
+ background:linear-gradient(145deg,#344b38,#131e17);
+ box-shadow:inset 0 1px 0 #ffffff36,inset 0 -2px 5px #0009,0 2px 7px #0006;
+ color:#f3ce81;font-size:27px;
+}
+#gh-panel-osrs .gp-guide-logo{background:linear-gradient(145deg,#4b4329,#1d2118)}
+#gh-panel-gw2 .gp-guide-title h1,#gh-panel-osrs .gp-guide-title h1{
+ font-size:clamp(1.55rem,5.9vw,2.05rem);
+ font-weight:790;letter-spacing:-.055em;line-height:1.14;
+ text-shadow:0 1px 0 #0008;max-width:100%;
+}
+#gh-panel-gw2 .gp-guide-title p,#gh-panel-osrs .gp-guide-title p{
+ font-size:clamp(12px,2.8vw,14px);color:#c4cfc4;letter-spacing:.018em;line-height:1.5;
+}
+#gh-panel-gw2 .gp-guide-head-actions,#gh-panel-osrs .gp-guide-head-actions{margin-top:16px;gap:9px}
+#gh-panel-gw2 .gp-guide-head-actions button,#gh-panel-osrs .gp-guide-head-actions button{
+ border-radius:12px;background:linear-gradient(180deg,#2b4133,#1c2e24);
+ border:1px solid #5c7661;box-shadow:inset 0 1px 0 #ffffff1c,0 2px 4px #0003;
+}
+#gh-panel-osrs .gp-guide-head-actions .gp-guide-primary{
+ background:linear-gradient(180deg,#f3d797,#d9b574);
+ border-color:#f5dfac;color:#131e15;
+}
+
+/* Financial instrument cluster: one featured gauge and two restrained readouts.
+ * Full-width fourth GW2 readout prevents a dangling half-empty final row. */
+#gh-panel-gw2 .gp-guide-metrics,#gh-panel-osrs .gp-guide-metrics{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric{
+ position:relative;min-width:0;
+ border:1px solid #41584a;border-radius:15px;
+ background:linear-gradient(155deg,#172a21 0%,#102019 100%);
+ box-shadow:inset 0 1px 0 #ffffff10,0 3px 8px #0003;
+ padding:16px 13px;
+}
+#gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{
+ grid-column:1/-1;min-height:155px;display:flex;flex-direction:column;
+ justify-content:space-between;gap:12px;padding:22px 20px 19px;
+ border:1px solid #95845a;
+ background:
+  linear-gradient(90deg,#e2be78 0 3px,transparent 3px),
+  radial-gradient(ellipse at 90% 12%,#e2be7820,transparent 64%),
+  linear-gradient(136deg,#2a3e30,#172b21 66%,#14231a);
+ box-shadow:inset 0 1px 0 #ffffff25,0 6px 19px #0005;
+}
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{
+ background:
+  linear-gradient(90deg,#e9bf78 0 3px,transparent 3px),
+  radial-gradient(ellipse at 92% 10%,#e2b45d29,transparent 61%),
+  linear-gradient(136deg,#3a3928,#272f22 65%,#1a261c);
+}
+#gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric>.gp-guide-label,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-label{
+ color:#e9c786;text-transform:uppercase;font-size:11px;letter-spacing:.13em;font-weight:820;
+}
+#gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric>.gp-guide-number,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-number{
+ font-size:clamp(1.9rem,7vw,2.55rem);font-weight:790;
+ line-height:1.16;letter-spacing:-.05em;color:#faf0d6;
+ text-shadow:0 2px 10px #0004;overflow-wrap:anywhere;
+}
+#gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric small,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child small{
+ color:#c3d2c3;line-height:1.45;font-size:12px;max-width:44ch;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-label,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-label{
+ color:#bdcdbf;line-height:1.4;letter-spacing:.03em;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child{
+ grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;
+ align-items:center;gap:2px 10px;min-height:74px;padding:14px 17px;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child small{grid-column:1;grid-row:2}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>.gp-guide-number{
+ grid-column:2;grid-row:1/span 2;text-align:right;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-number,
+#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-number{
+ font-weight:780;line-height:1.2;letter-spacing:-.04em;
+}
+
+/* Recommendation chassis: inset brass strip, disciplined index plaque,
+ * display typography, clearer buy/sell sequence, no visual noise or filters. */
+#gh-panel-gw2 .gp-guide-idea,#gh-panel-osrs .gp-guide-idea{
+ position:relative;isolation:isolate;overflow:hidden;
+ border:1px solid #536550;border-radius:21px;
+ padding:28px 20px 20px;
+ background:
+  radial-gradient(ellipse at 100% 0%,#d6bb7d12,transparent 54%),
+  linear-gradient(160deg,#203229,#13231c 69%,#102019);
+ box-shadow:inset 0 1px 0 #ffffff24,0 8px 25px #0005;
+}
+#gh-panel-osrs .gp-guide-idea{
+ background:
+  radial-gradient(ellipse at 100% 0%,#e1c1801b,transparent 55%),
+  linear-gradient(160deg,#2b3529,#1b291f 65%,#142119);
+ border-color:#726e4f;
+}
+#gh-panel-gw2 .gp-guide-idea::before,#gh-panel-osrs .gp-guide-idea::before{
+ content:"";height:2px;position:absolute;top:0;left:20px;right:20px;
+ border-radius:3px;background:linear-gradient(90deg,#e6c480,transparent 85%);
+ pointer-events:none;
+}
+#gh-panel-gw2 .gp-guide-idea-top,#gh-panel-osrs .gp-guide-idea-top{
+ display:flex;align-items:center;gap:8px;justify-content:space-between;
+ padding-bottom:15px;margin-bottom:16px;
+ border-bottom:1px solid #ffffff18;
+}
+#gh-panel-gw2 .gp-guide-idea-top .gp-guide-label,
+#gh-panel-osrs .gp-guide-idea-top .gp-guide-label{
+ font-size:10px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#ebd196;
+}
+#gh-panel-gw2 .gp-guide-position,#gh-panel-osrs .gp-guide-position{
+ display:inline-flex;align-items:center;border:1px solid #607058;
+ border-radius:100px;background:#0d1914;padding:5px 9px;min-height:25px;
+ color:#c3d1c3;font-variant-numeric:tabular-nums;font-size:11px;
+}
+#gh-panel-gw2 .gp-guide-idea h2,#gh-panel-osrs .gp-guide-idea h2{
+ font-size:clamp(1.6rem,6.1vw,2.45rem);line-height:1.14;
+ letter-spacing:-.046em;font-weight:770;text-wrap:balance;
+ margin:10px 0 12px;
+}
+#gh-panel-gw2 .gp-guide-item-icon,#gh-panel-osrs .gp-guide-item-icon{
+ border:1px solid #738064;background:linear-gradient(145deg,#2c3b2d,#111e17);
+ border-radius:16px;box-shadow:inset 0 1px 0 #ffffff1f,0 3px 8px #0006;
+}
+#gh-panel-gw2 .gp-guide-tier,#gh-panel-osrs .gp-guide-tier{
+ border:1px solid #516450;background:#17281f;border-radius:100px;
+ padding:6px 11px;color:#cce0cf;
+}
+#gh-panel-gw2 .gp-guide-instructions,#gh-panel-osrs .gp-guide-instructions{
+ border-left:2px solid #c5a66e;padding-left:13px;
+}
+#gh-panel-gw2 .gp-guide-instruction,#gh-panel-osrs .gp-guide-instruction{
+ font-size:clamp(1.19rem,4.4vw,1.7rem);line-height:1.4;letter-spacing:-.02em;
+}
+#gh-panel-gw2 .gp-guide-instruction-sub,#gh-panel-osrs .gp-guide-instruction-sub{
+ font-size:clamp(1rem,3.7vw,1.2rem);
+}
+#gh-panel-gw2 .gp-guide-controls button,#gh-panel-osrs .gp-guide-controls button{
+ border-radius:13px;box-shadow:inset 0 1px 0 #ffffff14;
+}
+#gh-panel-osrs .gh-action-dock{
+ background:linear-gradient(180deg,#233429,#16241d);
+ box-shadow:0 -7px 16px #0004;
+ border-top:1px solid #706f51;
+}
+/* Better compositional scale at 200% text zoom without truncating names. */
+@media(max-width:390px){
+ #gh-panel-gw2 .gp-guide-header,#gh-panel-osrs .gp-guide-header{padding:42px 13px 19px}
+ #gh-panel-gw2 .gp-guide-header::before,#gh-panel-osrs .gp-guide-header::before{left:14px;font-size:9px}
+ #gh-panel-gw2 .gp-guide-header::after,#gh-panel-osrs .gp-guide-header::after{font-size:90px;top:23px}
+ #gh-panel-gw2 .gp-guide-title h1,#gh-panel-osrs .gp-guide-title h1{
+  font-size:clamp(1.04rem,5.4vw,1.45rem);
+  letter-spacing:-.04em;overflow-wrap:normal;
+ }
+ #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{padding:19px 15px;min-height:145px}
+ #gh-panel-gw2 .gp-guide-idea,#gh-panel-osrs .gp-guide-idea{padding:24px 14px 16px}
+ #gh-panel-gw2 .gp-guide-idea-top,#gh-panel-osrs .gp-guide-idea-top{gap:6px}
+}
+@media(prefers-reduced-motion:reduce){
+ #gh-game-nav button{transition:none}
+}
+
+
+/* GOLDEN EXPERIENCE: Instrument face v1.1 — deep workstation continuity and
+ * legibility at Android's largest text sizes.  No new network assets or
+ * touch-handler changes; all painting is idle, opaque CSS. */
+#gh-panel-gw2 .focus-top{
+ position:relative;margin:10px 0 16px;padding:16px 16px 14px;
+ border:1px solid #4a6651;border-radius:18px;
+ background:
+  linear-gradient(90deg,#bd9b61 0 2px,transparent 2px),
+  linear-gradient(155deg,#21362a 0%,#15251c 100%);
+ box-shadow:inset 0 1px 0 #ffffff17,0 5px 14px #0003;
+}
+#gh-panel-gw2 .focus-top h2{
+ color:#f5efdf;font-weight:790;letter-spacing:-.05em;
+}
+#gh-panel-gw2 .focus-kicker{
+ color:#e5c784;letter-spacing:.18em;font-size:10px;
+}
+#gh-panel-gw2 .focus-icon-button{
+ background:linear-gradient(145deg,#2b4433,#1c2b21);
+ border-color:#60816a;box-shadow:inset 0 1px 0 #ffffff13;
+}
+#gh-panel-gw2 .focus-today-profit{
+ border:1px solid #9b8759;border-radius:18px;
+ background:
+  radial-gradient(ellipse at 100% 0%,#d7bd7d16,transparent 56%),
+  linear-gradient(145deg,#2b4031,#182b20 82%);
+ box-shadow:inset 0 1px 0 #ffffff16,0 5px 15px #0004;
+}
+#gh-panel-gw2 .focus-summary-grid .focus-summary,
+#gh-panel-gw2 .focus-today-best,
+#gh-panel-gw2 .focus-destination-row{
+ border-color:#445d4b;background:linear-gradient(145deg,#1b2e23,#13241b);
+ box-shadow:inset 0 1px 0 #ffffff12;
+}
+#gh-panel-gw2 .focus-today-best-header{
+ border-bottom:1px solid #4b614e;
+ background:linear-gradient(140deg,#283b2c,#192b21);
+ padding:17px 15px;
+}
+#gh-panel-gw2 .focus-today-best-header strong{
+ color:#e8c985;letter-spacing:.09em;
+}
+#gh-panel-gw2 .focus-destination-row{
+ border-radius:15px;box-shadow:inset 0 1px 0 #ffffff18,0 2px 8px #0002;
+}
+#gh-panel-gw2 .focus-primary-nav{
+ border-top:1px solid #57694f;
+ background:linear-gradient(180deg,#1c3024,#101f18);
+ box-shadow:0 -5px 17px #0006;
+}
+#gh-panel-gw2 .focus-nav-button{
+ border:1px solid transparent;
+}
+#gh-panel-gw2 .focus-nav-button.is-active{
+ color:#f5d394;background:linear-gradient(145deg,#314633,#223629);
+ border:1px solid #536e58;box-shadow:inset 0 1px 0 #ffffff1c;
+}
+/* Honour enlarged OS accessibility text without making the fixed game selector
+ * consume half the viewport. Keep logical tap targets and actual values; cap
+ * only chrome/readout typography rather than enforcing truncation. */
+@media(max-width:450px){
+ #gh-game-nav button{font-size:min(.8125rem,20px);line-height:1.28}
+ #gh-game-nav .gh-swipe-hint{font-size:min(.6875rem,14px);line-height:1.35}
+ #gh-panel-gw2 .gp-guide-title h1,
+ #gh-panel-osrs .gp-guide-title h1{font-size:min(1.45rem,34px)}
+ #gh-panel-gw2 .gp-guide-title p,
+ #gh-panel-osrs .gp-guide-title p{font-size:min(.875rem,20px)}
+ #gh-panel-gw2 .gp-guide-head-actions button,
+ #gh-panel-osrs .gp-guide-head-actions button{font-size:min(.875rem,22px);line-height:1.4}
+ #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric>.gp-guide-number,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-number{
+  font-size:min(clamp(1.9rem,7vw,2.55rem),44px);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-number,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-number{
+  font-size:min(clamp(1.125rem,4.4vw,1.625rem),28px);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-label,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric>.gp-guide-label{
+  font-size:min(.75rem,19px);line-height:1.42;
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric small,
+ #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric small{
+  font-size:min(.75rem,19px);line-height:1.48;
+ }
+ #gh-panel-gw2 .gp-guide-idea h2,
+ #gh-panel-osrs .gp-guide-idea h2{font-size:min(clamp(1.6rem,6.1vw,2.45rem),40px)}
+ #gh-panel-gw2 .gp-guide-idea .gp-guide-instruction,
+ #gh-panel-osrs .gp-guide-idea .gp-guide-instruction{
+  font-size:min(clamp(1.19rem,4.4vw,1.7rem),28px);
+ }
+ #gh-panel-gw2 .gp-guide-controls button,
+ #gh-panel-osrs .gp-guide-controls button{font-size:min(.875rem,22px)}
+ #gh-panel-gw2 .gp-guide-idea .gp-guide-label,
+ #gh-panel-osrs .gp-guide-idea .gp-guide-label{font-size:min(.75rem,17px)}
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child{
+  grid-template-columns:minmax(0,1fr) minmax(0,max-content);
+ }
+ #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>.gp-guide-number{
+  min-width:0;max-width:100%;
+ }
+ #gh-panel-gw2 .focus-top{padding:13px 12px}
+}
+
+
+/* GE RESPONSIVE FINANCIAL — real text scaling drives breakpoints.
+ * Hard-coded two-column gauges become very narrow when Android enlarges
+ * root fonts. 10rem means two readouts fit on standard phones, but the grid
+ * naturally stacks them for 200% text, without JS or a display-size guess. */
+#gh-panel-gw2 .gp-guide-metrics,#gh-panel-osrs .gp-guide-metrics{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child{
+ /* Override the inherited vertical direction: otherwise flex-wrap forms
+  * tall columns and stretches an ordinary 7-day readout into a huge card. */
+ display:flex;flex-direction:row;flex-wrap:wrap;
+ align-items:center;align-content:center;justify-content:space-between;
+ gap:3px 11px;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>.gp-guide-label{
+ flex:1 1 10rem;min-width:0;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>.gp-guide-number{
+ flex:0 1 auto;margin-left:auto;min-width:0;max-width:100%;text-align:right;
+ overflow-wrap:anywhere;
+}
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>small{
+ flex:1 0 100%;min-width:0;
+}
+
+
+/* GE OSRS BUDGET INTEGRITY — keep normal trading budgets visually whole.
+ * The browser used overflow-wrap:anywhere to maroon the last zero of a
+ * 250,000,000 gp budget on a second line at enlarged Android font sizes.
+ * Limit only this prominent long financial readout, not all body text.
+ * Truly exceptional-length figures may still break to avoid clipping. */
+@media(max-width:450px){
+ #gh-osrs-root #gh-budget-metric.gh-coin-amount{
+  font-size:clamp(20px,6.2vw,28px);
+  letter-spacing:-.04em;min-width:0;max-width:100%;
+ }
+ #gh-osrs-root #gh-budget-metric.gh-coin-amount span{
+  overflow-wrap:break-word;word-break:normal;
+ }
+}
+
+/* GE-02: Premium OSRS research and personal ledgers.
+ * These are static, scoped surfaces; no new assets, scripts, polling or animations.
+ * Observed prices remain distinct from suggested order targets. */
+#gh-panel-osrs .gh-market-lab{
+ border-color:#6c674a;
+ background:linear-gradient(150deg,#293429,#17271e 78%);
+ box-shadow:inset 0 1px 0 #ffffff17,0 3px 10px #0003;
+}
+#gh-panel-osrs .gh-market-tabs{box-shadow:inset 0 2px 6px #0005}
+#gh-panel-osrs .gh-market-controls>label{color:#ecd5a3;line-height:1.5}
+#gh-panel-osrs .gh-market-counts{border-top:1px solid #ffffff17;padding-top:10px}
+#gh-panel-osrs .gh-order-guide{
+ border-color:#697f61;border-radius:16px;
+ background:linear-gradient(150deg,#1c3125,#111f19);
+ box-shadow:inset 0 1px 0 #ffffff13;
+ padding:clamp(12px,3vw,18px);gap:13px;
+}
+#gh-panel-osrs .gh-order-guide>h3{color:#f0d49a;font-size:1rem;line-height:1.35;font-weight:780}
+#gh-panel-osrs .gh-quote-grid,#gh-panel-osrs .gh-quote-targets{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,8.25rem),1fr));gap:9px;
+}
+#gh-panel-osrs .gh-quote-grid>div,#gh-panel-osrs .gh-quote-targets>div{
+ min-width:0;border-color:#536b54;border-radius:12px;
+ background:linear-gradient(155deg,#263a2d,#1b2b22);
+ padding:12px 11px;box-shadow:inset 0 1px 0 #ffffff14;
+}
+#gh-panel-osrs .gh-quote-targets>div{
+ border-color:#897650;background:linear-gradient(145deg,#353926,#242d21);
+}
+#gh-panel-osrs .gh-quote-grid strong,#gh-panel-osrs .gh-quote-targets strong{
+ font-size:clamp(1rem,3.7vw,1.3rem);line-height:1.4;
+ letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+#gh-panel-osrs .gh-quote-targets strong{color:#f1d08e}
+#gh-panel-osrs .gh-item-context{
+ border-color:#4f6754;border-radius:15px;
+ background:linear-gradient(150deg,#13251c,#101d17);
+ padding:16px 15px;box-shadow:inset 0 1px 0 #ffffff10;
+}
+#gh-panel-osrs .gh-item-context>h3{
+ color:#e9ca8c;font-size:1rem;font-weight:780;
+ border-bottom:1px solid #ffffff17;padding-bottom:10px;
+}
+#gh-panel-osrs .gh-item-properties{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr));
+ gap:9px;margin:13px 0;
+}
+#gh-panel-osrs .gh-item-properties>div{
+ min-width:0;border:1px solid #3e5746;border-radius:10px;
+ background:#1b3023;padding:10px 11px;
+}
+#gh-panel-osrs .gh-item-properties dt{letter-spacing:.02em}
+#gh-panel-osrs .gh-item-properties dd{
+ font-weight:750;line-height:1.5;font-variant-numeric:tabular-nums;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger){
+ border-color:#495e4b;border-radius:15px;
+ background:linear-gradient(145deg,#182820,#101c16);
+ box-shadow:inset 0 1px 0 #ffffff0d;overflow:hidden;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary{
+ list-style:none;display:flex;align-items:center;
+ justify-content:space-between;gap:12px;
+ min-width:0;min-height:54px;padding:14px 16px;
+ color:#edcc8b;font-size:.875rem;line-height:1.45;
+ border-bottom:1px solid transparent;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary::-webkit-details-marker{display:none}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>summary::after{
+ content:"+";display:grid;place-items:center;flex:0 0 27px;
+ width:27px;height:27px;border:1px solid #536953;
+ border-radius:8px;background:#21352a;color:#e9c985;font-size:20px;line-height:1;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)[open]>summary{
+ border-bottom-color:#4b5d49;
+}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)[open]>summary::after{content:"−"}
+#gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>.gh-settings-body{padding:14px 16px 18px}
+#gh-panel-osrs .gh-field-grid label{min-width:0;line-height:1.5;gap:7px}
+#gh-panel-osrs .gh-ledger-row{
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));
+ gap:8px 12px;align-items:center;padding:13px 0;font-variant-numeric:tabular-nums;
+}
+#gh-panel-osrs .gh-ledger-row>*{min-width:0;overflow-wrap:anywhere}
+#gh-panel-osrs #gh-holdings-list .gh-ledger-row button{
+ min-height:46px;justify-self:stretch;
+}
+@media(max-width:390px){
+ #gh-panel-osrs .gh-order-guide{padding:12px 10px}
+ #gh-panel-osrs .gh-item-context{padding:14px 12px}
+ #gh-panel-osrs :is(.gh-osrs-settings,.gh-osrs-ledger)>.gh-settings-body{padding:12px}
+}
+
+/* GE-02 owned-item precision: separate the item name, remaining quantity and
+ * actual sale action in the independently retained OSRS holdings panel. */
+#gh-panel-osrs #gh-holdings .gh-settings-body>h2{
+ margin:0 0 8px;font:780 1.05rem/1.35 var(--ge-font);
+ letter-spacing:-.025em;color:#ecd08e;
+}
+#gh-panel-osrs #gh-holdings .gh-settings-body>p{line-height:1.6}
+#gh-panel-osrs .gh-ledger-row strong{
+ display:block;line-height:1.4;overflow-wrap:anywhere;font-weight:760;
+}
+#gh-panel-osrs .gh-ledger-row small{
+ display:block;margin-top:5px;line-height:1.5;
+ white-space:normal;overflow-wrap:anywhere;
+}
+#gh-panel-osrs #gh-holdings-list .gh-ledger-row{
+ border-radius:11px;border:1px solid #3f5b48;
+ background:linear-gradient(145deg,#1c3125,#13231b);
+ padding:13px 12px;margin:10px 0 0;
+}
+
+/* GE-02 GW2 research readability: preserve real numbers, rarity and row data.
+ * Static opaque rows only; no listeners, animations or dependencies. */
+#gh-panel-gw2 .focus-market-row{
+ min-height:94px;gap:11px;padding:14px 12px;
+ border-bottom-color:#445947;background:#17291f;
+}
+#gh-panel-gw2 .focus-market-row:hover,
+#gh-panel-gw2 .focus-market-row:focus-visible{background:#263d2f}
+#gh-panel-gw2 .focus-market-title{min-width:0;flex:1 1 0}
+#gh-panel-gw2 .focus-market-title strong{
+ font-size:clamp(14px,.92rem,20px);font-weight:760;line-height:1.35;
+}
+#gh-panel-gw2 .focus-market-title small{
+ font-size:clamp(12px,.78rem,17px);line-height:1.55;
+ margin-top:6px;color:#c5d2c1;
+}
+#gh-panel-gw2 .focus-market-values{
+ min-width:0;max-width:41%;flex:0 1 40%;gap:5px;
+ align-items:flex-end;text-align:right;
+ font-variant-numeric:tabular-nums lining-nums;
+}
+#gh-panel-gw2 .focus-market-values strong{
+ font-size:clamp(13px,.84rem,18px);line-height:1.45;
+ font-weight:780;white-space:normal;overflow-wrap:anywhere;
+}
+#gh-panel-gw2 .focus-market-values small{
+ font-size:clamp(11px,.72rem,16px);line-height:1.5;
+ white-space:normal;overflow-wrap:anywhere;color:#bbcbbc;
+}
+#gh-panel-gw2 .focus-market-values .focus-money{
+ flex-wrap:wrap;justify-content:flex-end;
+}
+#gh-panel-gw2 .focus-chevron{flex:0 0 auto;color:#d1bb86}
+@media(max-width:390px){
+ #gh-panel-gw2 .focus-market-row{gap:9px;padding:13px 9px}
+ #gh-panel-gw2 .focus-market-values{max-width:40%;flex-basis:38%}
+ #gh-panel-gw2 .focus-item-art{flex-shrink:0}
+}
+
+/* GE-02: Android enlarged-font status control. The advanced GW2 research
+ * notice is secondary explanatory text, not a giant full-screen hero.
+ * Preserve every word/price and a generously tappable research action while
+ * capping only these nonfinancial chrome labels at 200% root scaling. */
+#gh-panel-gw2 #focus-deep-progress{
+ font-size:min(.875rem,20px);line-height:1.55;
+ padding:12px 10px 14px;overflow-wrap:break-word;
+}
+#gh-panel-gw2 .focus-deep-actions .focus-button{
+ font-size:min(.875rem,19px);line-height:1.4;
+ min-height:48px;padding:11px 15px;
+}
+
+
+/* GE-02 evidence instrument — distinguish a verified Wiki feed, partial
+ * cached data, loading and outright failure. These states are presentation
+ * of existing engine decisions, never new price/fill claims. */
+#gh-panel-osrs #gh-status{
+ --ge-status:#a8c4b2;
+ position:relative;display:block;min-height:54px;min-width:0;
+ margin:12px 0 14px;padding:12px 14px 12px 15px;
+ border:1px solid #4b6552;border-left:3px solid var(--ge-status);
+ border-radius:0 12px 12px 0;
+ background:linear-gradient(115deg,#1a3126,#14241c);
+ color:#d3e2d4;font-size:min(.875rem,20px);line-height:1.58;
+ box-shadow:inset 0 1px 0 #ffffff0b;
+ overflow-wrap:break-word;
+}
+#gh-panel-osrs #gh-status::before{
+ content:"MARKET EVIDENCE · STATUS";
+ display:block;color:var(--ge-status);margin:0 0 5px;
+ font-size:min(.67rem,13px);font-weight:820;letter-spacing:.12em;
+ line-height:1.35;
+}
+#gh-panel-osrs #gh-status[data-state="loading"]{
+ --ge-status:#e8c47f;border-color:#6a6545;
+ background:linear-gradient(115deg,#302d1c,#1e271e);
+}
+#gh-panel-osrs #gh-status[data-state="loading"]::before{content:"MARKET EVIDENCE · CHECKING"}
+#gh-panel-osrs #gh-status[data-state="verified"]{
+ --ge-status:#9bd6b3;border-color:#537960;
+ background:linear-gradient(115deg,#1b3628,#14271d);
+}
+#gh-panel-osrs #gh-status[data-state="verified"]::before{content:"MARKET FEEDS · CHECKED"}
+#gh-panel-osrs #gh-status[data-state="caution"]{
+ --ge-status:#f0cb8a;border-color:#796948;
+ background:linear-gradient(115deg,#382c1b,#25271b);
+ color:#f1dfc0;
+}
+#gh-panel-osrs #gh-status[data-state="caution"]::before{content:"MARKET EVIDENCE · LIMITED"}
+#gh-panel-osrs #gh-status[data-state="unavailable"]{
+ --ge-status:#f2aaa5;border-color:#89574b;
+ background:linear-gradient(115deg,#392621,#28211d);
+ color:#ffe3d7;
+}
+#gh-panel-osrs #gh-status[data-state="unavailable"]::before{content:"MARKET FEED · UNAVAILABLE"}
+#gh-panel-osrs .gh-inline-error{
+ color:#ffc1b5;background:#34241e;border-left:3px solid #e4a49a;
+ border-radius:0 9px 9px 0;padding:9px 11px;line-height:1.55;
+}
+#gh-panel-osrs .gh-inline-error:empty{display:none}
+
+/* GW2 market research status belongs to the same carefully designed family.
+ * Keep all text readable in 200%-font mode; add no compositing filters. */
+#gh-panel-gw2 #focus-deep-progress:not(:empty){
+ position:relative;background:linear-gradient(145deg,#1c3327,#14271d);
+ border:1px solid #445f4e;border-left:3px solid #9bbea4;
+ border-radius:0 12px 12px 0;
+ padding:13px 13px 14px;line-height:1.55;
+ color:#d2e2d4;overflow-wrap:break-word;
+}
+#gh-panel-gw2 #focus-deep-progress.focus-deep-active{
+ border-color:#85734e;border-left-color:#e6c17c;
+ background:linear-gradient(145deg,#343121,#252a1e);
+ color:#f4e2bb;
+}
+
+/* Preserve the meaningful semantic status stripe after each state's shorthand
+ * border-color; no gradients/animation/opacity dependency for recognition. */
+#gh-panel-osrs #gh-status[data-state]{border-left-color:var(--ge-status)}
+
+
+/* GE-02 extreme-name contract: full item names remain discoverable even at
+ * 200% font size. Do not ellipsize rarity-coloured names or rely on overflow
+ * hidden to hide a long unbroken market label in a premium trade instrument.
+ * Layout only: original metadata/colour/market ranking are preserved. */
+#gh-panel-gw2 .gp-guide-idea h2,
+#gh-panel-osrs .gp-guide-idea h2,
+#gh-panel-osrs #gh-item-name,
+#gh-panel-gw2 .focus-market-title strong,
+#gh-panel-gw2 .focus-market-title small{
+ min-width:0;max-width:100%;overflow-wrap:anywhere;
+ word-break:normal;hyphens:auto;
+}
+
+/* GE-02 Android text scaling: a 570px card at 150–200% text can expose
+ * only the market name while concealing the actual trade plan behind its
+ * inner scroll. Grow the steady card viewport with rem-scale typography
+ * while preserving the default-size viewport geometry and fixed action dock.
+ * This changes no gestures, data, truncation, game scroll or animation. */
+@media(max-width:450px){
+ #gh-panel-osrs #gh-osrs-root .gh-trade-shell{
+  height:clamp(570px,max(74dvh,35rem),1040px);
+ }
+}
+
+/* GE-02 accessible decision evidence: these material qualifiers were
+ * fixed at 12px even at 150–200% Android text settings. Scale them with
+ * the reader's type size; do not truncate, abbreviate or hide trade risks. */
+#gh-panel-osrs #gh-osrs-root .gh-research-evidence{
+ font-size:clamp(14px,.85rem,22px);
+ line-height:1.55;
+ overflow-wrap:anywhere;
+}
+#gh-panel-osrs #gh-osrs-root .gh-value-tier-caption{
+ font-size:clamp(14px,.78rem,20px);
+ line-height:1.5;
+ overflow-wrap:anywhere;
+}
+
+/* Action-first OSRS desk: real buy/sell decision follows the identity header.
+ * The same discovery-mode tabs are reparented into the primary instrument,
+ * while search, source status, budget and realised-ledger data are retained
+ * below. DOM order == visual/keyboard order; no CSS order reflow tricks. */
+#gh-panel-osrs .gp-guide-idea > .gh-market-tabs{
+ width:100%;flex:none;margin:0 0 14px;align-self:stretch;
+ border-color:#88744a;border-radius:13px;
+ background:linear-gradient(145deg,#111d17,#253124);
+}
+#gh-panel-osrs .gp-guide-idea > .gh-market-tabs button[aria-pressed="true"]{
+ background:linear-gradient(145deg,#514930,#343e2b);
+ color:#f6d893;border-color:#927b4d;
+ box-shadow:inset 0 1px 0 #ffffff18;
+}
+#gh-panel-osrs .gp-guide-idea + .gp-guide-metrics{margin-top:16px}
+#gh-panel-osrs .gh-market-lab{margin-top:12px}
+
+/* Action-first GW2 trading instrument. The Delivery Box is first and keeps
+ * its premium full-width gauge. The existing recommendation comes next,
+ * followed by the three retained financial readouts. The card is a real
+ * DOM child between them (so screen readers and keyboard see the same order).
+ */
+#gh-panel-gw2 .gp-guide-delivery-hero{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:0;
+}
+#gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric{
+ min-width:0;border-radius:15px;display:flex;flex-direction:column;
+}
+#gh-panel-gw2 .gp-guide-content>.gp-guide-idea{
+ min-width:0;margin:3px 0 0;
+}
+#gh-panel-gw2 .gp-guide-content>.gp-guide-metrics{
+ min-width:0;
+}
+#gh-panel-gw2 .gp-guide-item-identity{
+ display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;
+ gap:14px;min-width:0;
+}
+#gh-panel-gw2 .gp-guide-item-identity .gp-guide-item-icon{margin:0}
+#gh-panel-gw2 .gp-guide-item-identity h2{min-width:0;margin:0;overflow-wrap:anywhere}
+@media(max-width:390px){
+ #gh-panel-gw2 .gp-guide-item-identity{grid-template-columns:70px minmax(0,1fr);gap:10px}
+ #gh-panel-gw2 .gp-guide-item-identity .gp-guide-item-icon{
+  width:70px;height:70px;flex-basis:70px;
+ }
+}
+@media(min-width:700px){
+ #gh-panel-gw2 .gp-guide-item-identity{grid-template-columns:76px minmax(0,1fr)}
+}

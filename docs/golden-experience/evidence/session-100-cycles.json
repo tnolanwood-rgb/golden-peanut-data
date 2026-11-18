@@ -1,0 +1,54 @@
+{
+  "conditions": "Headless desktop Chromium, synthetic two-item market, 5 warmup then 100 GW2↔OSRS + cached-chart cycles, reduced-motion navigation, explicit GC before each sample. Accelerated repeatability/leak probe, not hours of Android use or physical memory/power proof.",
+  "chromium": "156.0.8078.79",
+  "samples": [
+    {
+      "cycles": 0,
+      "heapUsedBytes": 2865140,
+      "nodes": 961,
+      "ledgerRows": 0,
+      "game": "osrs",
+      "marker": "untouched"
+    },
+    {
+      "cycles": 25,
+      "heapUsedBytes": 2940192,
+      "nodes": 961,
+      "ledgerRows": 0,
+      "game": "osrs",
+      "marker": "untouched"
+    },
+    {
+      "cycles": 50,
+      "heapUsedBytes": 2976088,
+      "nodes": 961,
+      "ledgerRows": 0,
+      "game": "osrs",
+      "marker": "untouched"
+    },
+    {
+      "cycles": 75,
+      "heapUsedBytes": 3000484,
+      "nodes": 961,
+      "ledgerRows": 0,
+      "game": "osrs",
+      "marker": "untouched"
+    },
+    {
+      "cycles": 100,
+      "heapUsedBytes": 3007264,
+      "nodes": 961,
+      "ledgerRows": 0,
+      "game": "osrs",
+      "marker": "untouched"
+    }
+  ],
+  "calls": {
+    "mapping": 1,
+    "latest": 1,
+    "5m": 1,
+    "1h": 1,
+    "timeseries": 1
+  },
+  "errors": []
+}

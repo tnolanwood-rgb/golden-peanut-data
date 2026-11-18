@@ -14,6 +14,65 @@ async function request(url,ms=9500){
   if(!r.ok)throw Error('public feed HTTP '+r.status);return await r.json();}
  finally{clearTimeout(t);}
 }
+/* The compact index is parsed in a Worker and delivered in bounded chunks.
+ * Structured-cloning the full 40k-row object in one Worker.onmessage callback
+ * still blocks Android WebView. Build the ID map incrementally on the UI thread. */
+const SCRIPT_URL=typeof document!=='undefined'&&document.currentScript?.src||'';
+function requestIndexParsed(url,ms=8000,now=Date.now()){
+ if(typeof document==='undefined')return request(url,ms).then(body=>parseIndex(body,now));
+ if(typeof Worker!=='function'||!SCRIPT_URL)return Promise.reject(Error('Background market-index worker unavailable'));
+ return new Promise((resolve,reject)=>{
+  let worker;
+  try{worker=new Worker(new URL('./public-market-index-worker.js?v=20261118-worker-chunks-v2',SCRIPT_URL));}
+  catch(error){reject(Error('Could not start market-index worker: '+String(error?.message||error).slice(0,100)));return;}
+  let settled=false,header=null,byId=new Map();
+  const finish=(error,value)=>{
+   if(settled)return;settled=true;clearTimeout(timer);worker.terminate();
+   if(error)reject(error);else resolve(value);
+  };
+  const timer=setTimeout(()=>finish(Error('Market-index worker timed out')),ms+4000);
+  worker.onmessage=event=>{
+   const message=event.data||{};
+   if(message.type==='error'){finish(Error(message.error||'Market-index worker failed'));return;}
+   if(message.type==='start'){
+    if(header){finish(Error('Duplicate market-index worker header'));return;}
+    const age=now-Number(message.generated_at)*1000;
+    if(message.schema!=='golden-peanut-index-v1'||!Number.isSafeInteger(message.generated_at)||
+       !Number.isSafeInteger(message.count)||message.count<1000||
+       age< -3600000||age>MAX_CATALOGUE_AGE){
+     finish(Error('Invalid or outdated compact market index'));return;
+    }
+    header={count:message.count,generation:message.generation||null,generatedAt:message.generated_at*1000,ageMs:age};
+    return;
+   }
+   if(message.type==='chunk'){
+    if(!header||!Array.isArray(message.items)||!message.items.length||message.items.length>250){
+     finish(Error('Invalid market-index worker chunk'));return;
+    }
+    for(const row of message.items){
+     if(!Array.isArray(row)||row.length!==4||!valid(row[0])||
+        typeof row[1]!=='string'||!row[1]||row[1].length>150||
+        typeof row[2]!=='string'||typeof row[3]!=='string'||byId.has(row[0])){
+      finish(Error('Invalid compact market index entry'));return;
+     }
+     byId.set(row[0],{id:row[0],name:row[1],type:row[2],rarity:row[3]});
+    }
+    if(byId.size>header.count)finish(Error('Compact market index exceeds declared count'));
+    return;
+   }
+   if(message.type==='done'){
+    if(!header||byId.size!==header.count){finish(Error('Incomplete compact market index'));return;}
+    finish(null,{source:'golden-peanut-index-labels-only',byId,generation:header.generation,
+     generatedAt:header.generatedAt,ageMs:header.ageMs,usableForLiveTrades:false});
+    return;
+   }
+   finish(Error('Unknown market-index worker message'));
+  };
+  worker.onerror=event=>finish(Error('Market-index worker error: '+String(event.message||'unknown').slice(0,100)));
+  worker.onmessageerror=()=>finish(Error('Market-index worker returned unreadable data'));
+  worker.postMessage({url,timeoutMs:ms});
+ });
+}
 function parseOwn(body,now=Date.now()){
  if(body?.schema!=='golden-peanut-public-v1'||!Number.isSafeInteger(body.generated_at)||!Array.isArray(body.items))throw Error('Wrong public market feed schema');
  const age=now-body.generated_at*1000;if(age< -3600000||age>MAX_CATALOGUE_AGE)throw Error('Public market feed outdated');
@@ -51,15 +110,6 @@ function parseFlipOut(body){
 /* The public feed is re-fetched on each browser launch, but item names and
  * types rarely change. Persist ONLY new/changed metadata; never overwrite
  * previously saved item icons with the feed's icon-free catalogue records. */
-function missingMetadata(state,result){
- const changed={};
- for(const [id,r] of result.byId){
-  const old=state?.meta?.[id]||{};
-  if(old.name===r.name&&(old.type||'')===(r.type||'')&&(old.rarity||'')===(r.rarity||''))continue;
-  changed[id]={...old,id,name:r.name,type:r.type||old.type||'',rarity:r.rarity||old.rarity||''};
- }
- return changed;
-}
 function hydrate(state,result){
  if(!state?.meta)return;
  let additions=0;
@@ -74,6 +124,37 @@ function hydrate(state,result){
  state.externalMarketStatus={source:result.source,items:result.byId.size,indexed:additions,at:result.generatedAt,
   coverage:result.coverage,warning:'Daily quotes and outstanding quantities are not executions'};
 }
+/* Startup's complete label index can contain tens of thousands of rows. Keep
+ * each JS/IndexedDB batch bounded and yield between batches so catalogue
+ * hydration cannot monopolise Android WebView's UI thread after a worker reply. */
+async function hydrateIndex(state,result){
+ if(!state?.meta)return;
+ let additions=0,processed=0,batch={},batchSize=0;
+ const persist=async()=>{
+  if(batchSize&&state.db?.putMetadataBatch)await state.db.putMetadataBatch(batch);
+  batch={};batchSize=0;
+ };
+ const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+ for(const [id,r] of result.byId){
+  const old=state.meta[id]||{};
+  if(old.name!==r.name||(old.type||'')!==(r.type||'')||(old.rarity||'')!==(r.rarity||'')){
+   state.meta[id]={...r,...old,id,name:r.name,type:r.type||old.type,rarity:r.rarity||old.rarity,
+    details:r.details||old.details};
+   if(!old.name)additions++;
+   batch[id]={...old,id,name:r.name,type:r.type||old.type||'',rarity:r.rarity||old.rarity||''};
+   batchSize++;
+  }
+  processed++;
+  if(batchSize>=500||processed%1000===0){
+   await persist();
+   await yieldUI();
+  }
+ }
+ await persist();
+ result.addedNames=additions;
+ state.externalMarketStatus={source:result.source,items:result.byId.size,indexed:additions,at:result.generatedAt,
+  coverage:result.coverage,warning:'Daily quotes and outstanding quantities are not executions'};
+}
 async function load(state,{force=false,now=Date.now()}={}){
  if(loaded&&!force&&loaded.loadedAt&&now-loaded.loadedAt<3600000){hydrate(state,loaded);return loaded;}
  if(loading&&!force)return loading;
@@ -82,10 +163,7 @@ async function load(state,{force=false,now=Date.now()}={}){
   catch(e){lastError=String(e?.message||e).slice(0,120);try{result=parseFlipOut(await request(FLIP+'tradeable_items.json',9000));}
    catch(e2){lastError+='; '+String(e2?.message||e2).slice(0,120);return null;}}
   result.loadedAt=now;loaded=result;
-  const changed=missingMetadata(state,result);
-  hydrate(state,result);
-  if(state?.db?.putMetadataBatch&&Object.keys(changed).length)
-   await state.db.putMetadataBatch(changed);
+  await hydrateIndex(state,result);
   return result;
  })();
  try{return await loading;}finally{loading=null;}
@@ -96,24 +174,24 @@ async function load(state,{force=false,now=Date.now()}={}){
  * by falling back to the full validated feed without losing user data. */
 async function loadIndex(state,{force=false,now=Date.now()}={}){
  if(loaded&&!force&&loaded.loadedAt&&now-loaded.loadedAt<3600000){
-  hydrate(state,loaded);return loaded;
+  await hydrateIndex(state,loaded);return loaded;
  }
  if(indexLoaded&&!force&&indexLoaded.loadedAt&&now-indexLoaded.loadedAt<3600000){
-  hydrate(state,indexLoaded);return indexLoaded;
+  await hydrateIndex(state,indexLoaded);return indexLoaded;
  }
  if(indexLoading&&!force)return indexLoading;
  indexLoading=(async()=>{
   let result;
-  try{result=parseIndex(await request(OWN+'market_index.json',8000),now);}
+  try{result=await requestIndexParsed(OWN+'market_index.json',8000,now);}
   catch(e){
-   lastError='Compact startup index unavailable: '+String(e?.message||e).slice(0,100);
-   return load(state,{force,now});
+   // Never fall back to parsing the multi-megabyte full quote snapshot during
+   // startup. Local metadata remains intact; explicit deep discovery can still
+   // call load() when the owner deliberately requests that heavier operation.
+   lastError='Compact startup index unavailable: '+String(e?.message||e).slice(0,120);
+   return null;
   }
   result.loadedAt=now;indexLoaded=result;
-  const changed=missingMetadata(state,result);
-  hydrate(state,result);
-  if(state?.db?.putMetadataBatch&&Object.keys(changed).length)
-   await state.db.putMetadataBatch(changed);
+  await hydrateIndex(state,result);
   return result;
  })();
  try{return await indexLoading;}finally{indexLoading=null;}

@@ -25,11 +25,46 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
    (!g||GoldenDualHub.diagnostics().game===g),game,{timeout:5000});
   await tick();
  };
- const send=(type,x,y=350,extra=[])=>cdp.send('Input.dispatchTouchEvent',{type,
-  touchPoints:['touchEnd','touchCancel'].includes(type)?[]:[{x,y,id:1},...extra]});
+ // Keep one stable contact plane for each manually dispatched touch stream.
+ // The old implicit y=350 could become a price/search input after the larger
+ // fascia, where input protection MUST block a game swipe.
+ let touchStreamY=350;
+ const send=async(type,x,y=null,extra=[])=>{
+  if(type==='touchStart'){
+   if(y===null){
+    const game=(await state()).game;
+    const eligible=await contactY(game,x);
+    if(Number.isFinite(eligible))touchStreamY=eligible;
+   }else touchStreamY=y;
+  }else if(y!==null)touchStreamY=y;
+  return cdp.send('Input.dispatchTouchEvent',{type,
+   touchPoints:['touchEnd','touchCancel'].includes(type)?[]:[{x,y:touchStreamY,id:1},...extra]});
+ };
  const state=()=>page.evaluate(()=>GoldenDualHub.diagnostics());
  const switchTo=async game=>{await page.evaluate(g=>GoldenDualHub.switchGame(g),game);await idle(game);await page.waitForTimeout(80);};
  const scroll=async y=>{await page.evaluate(y=>scrollTo({top:y,behavior:'instant'}),y);await tick();};
+ // The premium header/hero legitimately changes document geometry. At a fixed
+ // document scroll, y=350 can land in a text input, whose swipe is deliberately
+ // guarded. Select an actual visible recommendation surface instead and assert
+ // that the hit-test is inside the game/eligible scroll panel, never a control.
+ const contactY=async(from,x)=>page.evaluate(({from,x})=>{
+  const selectors=from==='osrs'?
+   ['#gh-panel-osrs .gh-trade-scroll','#gh-panel-osrs .gp-guide-idea',
+    '#gh-panel-osrs .gh-market-lab','#gh-panel-osrs .gp-guide-metrics',
+    '#gh-panel-osrs .gp-guide-header']:
+   ['#gh-panel-gw2 .gp-guide-idea','#gh-panel-gw2 .gp-guide-metrics',
+    '#gh-panel-gw2 .gp-guide-header'];
+  for(const selector of selectors){
+   const panel=document.querySelector(selector);if(!panel)continue;
+   const rect=panel.getBoundingClientRect();
+   for(let y=Math.max(155,Math.ceil(rect.top)+12);y<Math.min(innerHeight-40,rect.bottom-8);y+=12){
+    const hit=document.elementFromPoint(x,y);
+    if(hit?.closest(selector)&&!hit.closest('button,input,textarea,select,a,summary,label,[role="slider"],[contenteditable]'))
+     return y;
+   }
+  }
+  return null;
+ },{from,x});
  const startRecord=async(name,from)=>page.evaluate(({name,from})=>{
   const other=from==='gw2'?'osrs':'gw2';
   window.__swipeCapture={name,from,other,frames:[],domUpdates:0,domTargets:[],writes:[],recording:true};
@@ -88,11 +123,13 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   assert.deepEqual(data.writes,[],data.name+': no synchronous persistence during movement');
   return data;
  };
- const drag=async(name,from,points,{cancel=false,pause=16,y=350,expected}={})=>{
+ const drag=async(name,from,points,{cancel=false,pause=16,y=null,expected}={})=>{
+  const chosenY=y===null?await contactY(from,points[0]):y;
+  assert.ok(Number.isFinite(chosenY),name+': no visible noninteractive swipe surface at initial touch point');
   await startRecord(name,from);
-  await send('touchStart',points[0],y);
+  await send('touchStart',points[0],chosenY);
   for(const x of points.slice(1)){
-   await send('touchMove',x,y);if(pause)await page.waitForTimeout(pause);
+   await send('touchMove',x,chosenY);if(pause)await page.waitForTimeout(pause);
    // Native input delivery may be coalesced until the next rendering frame.
    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
    const expectedOffset=from==='gw2'?Math.max(-390,Math.min(0,x-points[0])):Math.min(412,Math.max(0,x-points[0]));
@@ -102,16 +139,18 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
     assert.ok(Math.abs(actual.dragOffset-expectedOffset)<1.5,name+': pages must track finger distance: '+actual.dragOffset+' vs '+expectedOffset);
    }
   }
-  await send(cancel?'touchCancel':'touchEnd',points.at(-1),y);
+  await send(cancel?'touchCancel':'touchEnd',points.at(-1),chosenY);
   return endRecord(expected|| (cancel?from:from==='gw2'?'osrs':'gw2'));
  };
  const flick=async(name,from,points)=>{
+  const y=await contactY(from,points[0]);
+  assert.ok(Number.isFinite(y),name+': quick flick must begin on an actual visible recommendation surface');
   await startRecord(name,from);
   // Replay device event timestamps 20ms apart. Assertion/trace overhead must
   // not turn a physical quick flick into a 150ms synthetic slow drag.
   const stamp=Date.now()/1000-.1;
   for(let i=0;i<points.length;i++)await cdp.send('Input.dispatchTouchEvent',{
-   type:i?'touchMove':'touchStart',touchPoints:[{x:points[i],y:350,id:1}],timestamp:stamp+i*.02});
+   type:i?'touchMove':'touchStart',touchPoints:[{x:points[i],y,id:1}],timestamp:stamp+i*.02});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[],timestamp:stamp+points.length*.02});
   await endRecord(from==='gw2'?'osrs':'gw2');
   const release=(await state()).lastRelease;
@@ -202,20 +241,39 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await drag('different-scroll-slow-gw2','gw2',[325,310,295,280,265,250,235,220,205,190,175,160,145,130,115],{pause:24});
   assert.ok(Math.abs(await page.evaluate(()=>scrollY)-480)<2,'OSRS document position restored');
 
-  // The target point must really be inside the overflow scroller, not just
-  // dispatched at one of its DOM nodes while it is offscreen.
-  const inside=await page.evaluate(()=>document.elementFromPoint(80,420)?.closest('.gh-trade-scroll')!==null);
+  // This is a real rendered recommendation hit-test; a fixed 420px starts
+  // in the research controls when the premium header is taller.
+  const nestedY=await contactY('osrs',80);
+  assert.ok(Number.isFinite(nestedY),'recommendation scroller must have a visible touch contact point');
+  const inside=await page.evaluate(y=>document.elementFromPoint(80,y)?.closest('.gh-trade-scroll')!==null,nestedY);
   assert.equal(inside,true,'native touch must start inside the recommendation box');
   const nestedBefore=await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop);
-  await drag('nested-card-horizontal','osrs',[65,90,120,155,190,225,265],{y:420});
+  await drag('nested-card-horizontal','osrs',[65,90,120,155,190,225,265],{y:nestedY});
   await switchTo('osrs');
   assert.equal(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop),nestedBefore,'horizontal card swipe preserves its vertical position');
   const docBefore=await page.evaluate(()=>scrollY);
-  await send('touchStart',180,690);
-  for(let y=675;y>=450;y-=15){await send('touchMove',181,y);await page.waitForTimeout(20);}
-  await page.waitForTimeout(120);await send('touchEnd',181,450);await page.waitForTimeout(180);
+  // The action-first screen moves the trade card above the budget dashboard.
+  // A fixed y=690 now lands outside the scroller. Hit-test a visible,
+  // noninteractive point on the actual trade content instead.
+  const verticalY=await page.evaluate(()=>{
+   const area=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+   const rect=area.getBoundingClientRect(),x=180;
+   const floor=Math.max(155,Math.ceil(rect.top)+25);
+   for(let y=Math.min(innerHeight-60,Math.floor(rect.bottom)-32);y>=floor;y-=10){
+    const hit=document.elementFromPoint(x,y);
+    if(hit?.closest('.gh-trade-scroll')&&!hit.closest('button,input,textarea,select,a,summary,label,[role="slider"]'))return y;
+   }
+   return null;
+  });
+  assert.ok(Number.isFinite(verticalY)&&verticalY>=155,
+   'Vertical native gesture must start on the visible recommendation content');
+  const verticalEnd=Math.max(85,verticalY-225);
+  await send('touchStart',180,verticalY);
+  for(let y=verticalY-15;y>=verticalEnd;y-=15){await send('touchMove',181,y);await page.waitForTimeout(20);}
+  await page.waitForTimeout(120);await send('touchEnd',181,verticalEnd);await page.waitForTimeout(180);
   assert.equal((await state()).game,'osrs');assert.equal((await state()).dragging,false);
-  assert.ok(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop)>nestedBefore+80,'vertical native touch must actually scroll recommendation content');
+  assert.ok(await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop)>nestedBefore+80,
+   'vertical native touch must actually scroll recommendation content');
   assert.ok(Math.abs(await page.evaluate(()=>scrollY)-docBefore)<2,'contained vertical scrolling must not move the document');
 
   await drag('cancelled-touch','osrs',[65,100,145,195],{cancel:true,expected:'osrs'});
@@ -278,7 +336,11 @@ const report={conditions:'Headless Chromium mobile touch emulation; synthetic da
   await page.evaluate(()=>GoldenDualHub.switchGame('osrs'));await page.waitForTimeout(35);
   await page.setViewportSize({width:412,height:915});await idle('osrs');
   await scroll(400);
-  await drag('resized-412','osrs',[65,110,155,200,245,290],{y:350});
+  // Locate the recommendation after responsive typography changes. A fixed
+  // document coordinate can land in the market search input, where navigation
+  // is intentionally excluded to preserve editing and text selection.
+  const resizedY=await page.locator('.gh-trade-scroll').evaluate(n=>Math.min(innerHeight-60,Math.max(160,n.getBoundingClientRect().top+35)));
+  await drag('resized-412','osrs',[65,110,155,200,245,290],{y:resizedY});
   await page.setViewportSize({width:390,height:844});await switchTo('osrs');await scroll(480);
 
   // A market response arriving during a held drag must defer JSON/scan/DOM

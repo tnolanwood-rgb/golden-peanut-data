@@ -9,6 +9,17 @@ public class NavigationPolicyTest {
         for (String url : new String[]{"http://thegoldenpeanut.pages.dev", "https://thegoldenpeanut.pages.dev.evil.test", "https://user@thegoldenpeanut.pages.dev", "https://thegoldenpeanut.pages.dev:8443", "file:///sdcard/a", "intent://app", "javascript:alert(1)", "https://evil.test/", "not a uri"})
             assertFalse(url, NavigationPolicy.isInternal(url));
     }
+    @Test public void missingBundledFrontendFilesNeverUseRemoteWebsite() {
+        for (String path : new String[]{"/", "/index.html", "/dual-hub.js",
+                "/nested/focus-edition.css", "/manifest.webmanifest", "/icons/gp-48.png"})
+            assertTrue("local frontend: " + path, NavigationPolicy.isBundledFrontendAsset(path));
+        for (String path : new String[]{"/api/account/wallet", "/market_public.json",
+                "/market_history.json", "/account/wallet", "/api/v2/osrs/timeseries",
+                "/", "/a.js/../account", "/icons/../api/data.png"})
+            if (!path.equals("/")) assertFalse("remote or unsafe: " + path,
+                    NavigationPolicy.isBundledFrontendAsset(path));
+        assertFalse(NavigationPolicy.isBundledFrontendAsset(null));
+    }
     @Test public void publicBrowserLinksRejectCredentialsAndUnsafeSchemes() {
         assertTrue(NavigationPolicy.isHttps("https://example.com/a"));
         assertFalse(NavigationPolicy.isHttps("https://user:password@example.com"));

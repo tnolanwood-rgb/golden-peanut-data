@@ -44,11 +44,32 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "com.goldenhub.dual.preview"
           sha256sum "$APK" > android/app/build/outputs/apk/debug/SHA256SUMS.txt
+      - name: Prove APK embeds the exact reviewed frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          CHECKS=android/app/build/outputs/apk/debug/BUNDLED-ASSETS.txt
+          printf 'GitHub checked-out source: %s\n' "$GITHUB_SHA" > "$CHECKS"
+          count=0
+          while IFS= read -r -d '' path; do
+            rel="${path#app/}"
+            if [[ "$rel" == "_headers" ]]; then continue; fi
+            if ! unzip -p "$APK" "assets/hub/$rel" | cmp - "$path"; then
+              echo "::error::APK asset differs from source: $rel"
+              exit 1
+            fi
+            sha256sum "$path" >> "$CHECKS"
+            count=$((count + 1))
+          done < <(find app -type f -print0 | sort -z)
+          test "$count" -ge 30
+          echo "Verified $count Android APK assets byte-for-byte against checked-out app/"
       - uses: actions/upload-artifact@v4
         with:
           name: golden-hub-cloudflare-preview-apk
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/debug/SHA256SUMS.txt
+            android/app/build/outputs/apk/debug/BUNDLED-ASSETS.txt
             android/app/build/reports/
           retention-days: 30

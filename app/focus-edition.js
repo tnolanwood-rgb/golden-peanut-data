@@ -292,7 +292,19 @@ function installEdgeSwipeBack(){
  },{passive:true});
  document.addEventListener('touchcancel',()=>{touch=null;},{passive:true});
 }
-function labelText(id,value){const x=$(id);if(x)x.textContent=value;}
+function labelText(id,value){const x=$(id);if(x&&x.textContent!==String(value))x.textContent=String(value);}
+// Repeated account/metadata updates used to recreate six image/denomination
+// nodes per unchanged wallet or week figure in the hidden Advanced home.
+// Retain their decoded image nodes and focus unless the actual amount changes.
+// No value, precision, accounting, or cache schema changes.
+function stableTodayMoney(id,value){
+ const host=$(id);if(!host)return;
+ const signature=Number.isFinite(value)?String(value):'not-verified';
+ if(host.dataset.geTodayMoney===signature&&host.childElementCount===1&&
+    host.firstElementChild?.classList.contains('focus-money'))return;
+ host.replaceChildren(money(value,'focus-money-big'));
+ host.dataset.geTodayMoney=signature;
+}
 function button(text,fn,cls='focus-button'){const b=h('button',cls,text);b.type='button';b.addEventListener('click',fn);return b;}
 function syncNow(){const b=$('gp57-refresh');if(b&&!b.disabled){b.click();labelText('focus-sync-state','Checking account and opportunities…');}else labelText('focus-sync-state',"Account isn't ready to refresh yet.");}
 function showResearch(section){if($('focus-research')?.hidden)pushHistoryForResearch();lastResearchFocus=document.activeElement;const box=$('focus-research');box.hidden=false;document.body.classList.add('focus-modal-open');const engine=$('focus-engine');engine.hidden=false;const adv=$('gp57-advanced');if(adv)adv.open=true;
@@ -412,13 +424,23 @@ function openHomeMarket(id,kind){
 function userSnapshot(){const s=State();return s?.snapshot?.account===s.account?s.snapshot:null;}
 function renderSevenDayProfitStrip(s,day){
  const host=$('focus-week-strip-list');if(!host||!day)return;
- const previousDay=host.dataset.baseDay,top=host.scrollTop,hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const hasHistory=!!s?.summary&&Number(s.summary.totalRecords)>=0;
+ const data=Array.from({length:7},(_,i)=>{
+  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+  return {date,amount:hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN};
+ });
+ // An unchanged account refresh must not replace seven rows and 21+
+ // denomination icons, lose focus or force the browser to relayout. Check
+ // the actual seven displayed day/value pairs, not a timer or object identity.
+ // A completed trade, UK day rollover, or no-history->verified transition
+ // still invalidates immediately and preserves the exact monetary values.
+ const signature=JSON.stringify([day,hasHistory,data.map(x=>[x.date,Number.isFinite(x.amount)?x.amount:null])]);
+ if(host.dataset.geWeekSignature===signature&&host.childElementCount===7)return;
+ const previousDay=host.dataset.baseDay,top=host.scrollTop;
  const formatter=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric'});
  const rows=[];
- for(let i=0;i<7;i++){
-  const date=root.PeanutCore.shiftDay(day,-i),entry=s?.summary?.days?.[date];
+ for(const [i,{date,amount}] of data.entries()){
   const label=i===0?'Today':i===1?'Yesterday':formatter.format(new Date(date+'T12:00:00Z'));
-  const amount=hasHistory?(Number.isFinite(entry?.p100)?entry.p100/100:0):NaN;
   const row=h('div','focus-week-strip-row');
   row.dataset.profitDate=date;
   const name=h('span','focus-week-strip-day',label),value=h('strong','focus-week-strip-amount');
@@ -427,9 +449,8 @@ function renderSevenDayProfitStrip(s,day){
   row.append(name,value);rows.push(row);
  }
  host.replaceChildren(...rows);
- host.dataset.baseDay=day;
- // The global app refreshes frequently. Keep a user's scroll position within
- // the seven-day strip, but jump to Today when the UK calendar day changes.
+ host.dataset.baseDay=day;host.dataset.geWeekSignature=signature;
+ // Preserve an actively scrolled history strip on same-day refresh.
  host.scrollTop=previousDay===day?top:0;
 }
 let deliveryHeroSignature='';
@@ -507,16 +528,39 @@ function renderDeliveryBox(){
  }
  list.scrollTop=previousScroll;
 }
+// Retain the visible action card and button between account refreshes.
+// Rebuilding them on each poll throws away focus/press state and forces an
+// unnecessary layout and listener allocation, even when nothing changed.
+// The latest callback is updated separately: a reused button must never
+// execute a stale recommendation after the wallet/opportunity plan changes.
+let currentTodayAction=()=>{};
+function updateTodayAction(target,title,description,action,fn){
+ if(!target)return;
+ currentTodayAction=fn;
+ let copy=target.querySelector('.focus-action-copy'),control=target.querySelector('button.focus-button-primary');
+ if(!copy||!control||!target.querySelector('.focus-action-body')){
+  const body=h('div','focus-action-body');copy=h('div','focus-action-copy');
+  copy.append(h('strong','',title),h('p','focus-muted',description));
+  body.append(h('span','focus-action-symbol','◉'),copy);
+  control=button(action,()=>currentTodayAction?.(),'focus-button focus-button-primary');
+  target.replaceChildren(body,control);
+  return;
+ }
+ const heading=copy.querySelector('strong'),detail=copy.querySelector('p');
+ if(heading&&heading.textContent!==title)heading.textContent=title;
+ if(detail&&detail.textContent!==description)detail.textContent=description;
+ if(control.textContent!==action)control.textContent=action;
+}
 function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  const day=root.PeanutCore?.ukDay?.(Date.now());
  renderDeliveryBox();
  renderSevenDayProfitStrip(s,day);
- $('focus-wallet').replaceChildren(money(Number.isFinite(snap?.wallet)?snap.wallet:NaN,'focus-money-big'));
- $('focus-week').replaceChildren(money(Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN,'focus-money-big'));
+ stableTodayMoney('focus-wallet',Number.isFinite(snap?.wallet)?snap.wallet:NaN);
+ stableTodayMoney('focus-week',Number.isFinite(s.summary?.weekP100)?s.summary.weekP100/100:NaN);
  const at=snap?.walletAt||snap?.at;labelText('focus-account-at',at?'Account checked '+new Date(at).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Saved account · tap ↻ to check');
  labelText('focus-capital-note',snap?.buys?.length?'Already invested in buy orders: '+cash(root.PeanutCore.committedBuys(snap.buys))+' · '+num(snap.buys.length)+' active · tap below to inspect':'No standing buy orders currently verified.');
  renderGrowthGoal();
- const target=$('focus-next-action');target.replaceChildren();let title='',description='',action='',fn=()=>{};
+ const target=$('focus-next-action');let title='',description='',action='',fn=()=>{};
  if(!snap){title='Check your account';description='Load your wallet, orders and recent trades.';action='Check account';fn=syncNow;}
  else if(Number(snap.delivery?.coins)>0){title='Collect your Delivery Box';description='Ready in-game: '+cash(snap.delivery.coins)+'. Not spendable until collected.';action='Open delivery details';fn=()=>showResearch('gp57-delivery-detail');}
  else{const p=s.opportunityPlan,valid=p?.orders?.length&&Date.now()-s.opportunityAt<=25*60*1000;
@@ -537,13 +581,21 @@ function renderToday(){const s=State(),snap=userSnapshot();if(!s)return;
  if(single)single.hidden=hasFunded&&!needsCollection;
  if(shortcut)shortcut.hidden=hasFunded;
  if(!needsCollection&&snap?.buys?.length){const host=$('focus-capital-note');if(host){host.onclick=()=>goto('orders');host.classList.add('focus-clickable-summary');host.setAttribute('role','button');host.setAttribute('tabindex','0');host.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goto('orders');}};}}
- const main=h('div','focus-action-body');const msg=h('div','focus-action-copy');msg.append(h('strong','',title),h('p','focus-muted',description));main.append(h('span','focus-action-symbol','◉'),msg);target.append(main,button(action,fn,'focus-button focus-button-primary'));const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const count=mem?.markets.filter(x=>x.proven).length||0;labelText('focus-trade-count',count?num(count)+' historical winners screened for current profit':'Find trading opportunities in your saved history');
+ updateTodayAction(target,title,description,action,fn);const mem=root.GPGrowth?.allHistory(s.ledger||[],Date.now());const count=mem?.markets.filter(x=>x.proven).length||0;labelText('focus-trade-count',count?num(count)+' historical winners screened for current profit':'Find trading opportunities in your saved history');
  renderOperatingBook();renderOpportunityHome();renderPortfolioOutlook();
 }
 function renderOperatingBook(){
  const host=$('focus-operating-book'),s=State(),snap=userSnapshot(),p=s?.opportunityPlan;
- if(!host)return;host.replaceChildren();host.hidden=!snap||!p?.ok;if(host.hidden)return;
+ if(!host)return;
+ host.hidden=!snap||!p?.ok;
+ if(host.hidden){if(host.childElementCount)host.replaceChildren();delete host.dataset.geBookKey;return;}
  const committed=root.PeanutCore?.committedBuys?.(snap.buys||[])||0,book=p.activeBook;
+ const compare=p.capitalReview,flagged=compare?.releasedSelective||0;
+ const key=JSON.stringify([s?.account,committed,book?.eligible,
+  (book?.entries||[]).slice(0,4).map(v=>[v.id,itemName(v.id),v.scenarioUnits,v.conditionalWeek]),
+  compare?.committed,flagged]);
+ if(host.childElementCount&&host.dataset.geBookKey===key)return;
+ host.dataset.geBookKey=key;host.replaceChildren();
  host.append(h('strong','','Markets already working for you'));
  host.append(h('p','focus-muted',cash(committed)+' in standing buy orders. '+(book?.entries?.length?num(book.eligible)+' markets currently show repeat-trading evidence with positive quoted spreads.':'No current quote-verified earning comparison is available yet.')));
  if(book?.entries?.length){
@@ -554,7 +606,7 @@ function renderOperatingBook(){
   }
  }
  host.append(h('small','focus-muted','These are capacity scenarios, not guaranteed fills or expected profit.'));
- const compare=p.capitalReview,flagged=compare?.releasedSelective||0;
+
  if(compare?.committed>0){const line=h('p','focus-muted');line.textContent=flagged>0?
   cash(flagged)+' in orders worth reviewing for possible redeployment.':'Existing buy orders are assessed separately from your spendable wallet.';
   host.append(line);
@@ -1229,18 +1281,27 @@ function renderOpportunityHome(){
 }
 function renderPortfolioOutlook(){
  const host=$('focus-earnings-pace'),s=State(),t=tradeData('wallet');if(!host)return;
- host.replaceChildren();host.hidden=!t.valid; if(!t.valid)return;
- const book=root.GPOpportunity?.rankedMarkets?.(t.p);if(!book)return;
+ host.hidden=!t.valid;
+ if(host.hidden){if(host.childElementCount)host.replaceChildren();delete host.dataset.geOutlookKey;return;}
+ const book=root.GPOpportunity?.rankedMarkets?.(t.p);
+ if(!book){if(host.childElementCount)host.replaceChildren();delete host.dataset.geOutlookKey;return;}
+ const audit=s?.executionBacktest||root.GPExecution?.backtest(s?.executionLearning||{});
+ const ledger=s?.ledger||[],lastPurchase=ledger.length?Math.max(...ledger.slice(-1000).map(v=>v.purchased||0)):null;
+ const key=JSON.stringify([s?.account,book.overnightPortfolioScenario,t.p.spent,t.p.unallocated,
+  audit?.n,audit?.censoredWindows,audit?.skippedStarts,audit?.profitMAE,audit?.persistenceMAE,
+  ledger.length,lastPurchase,s?.summary?.weekP100]);
+ if(host.childElementCount&&host.dataset.geOutlookKey===key)return;
+ host.dataset.geOutlookKey=key;host.replaceChildren();
  const cover=h('div','focus-outlook-title');cover.append(h('strong','','Trading outlook · currently verified markets'));
  host.append(cover);
  const grid=h('div','focus-pace-grid');
  const make=(name,c)=>{const cell=h('div','focus-pace-cell');cell.append(h('small','',name),h('strong','',c===null?'Not estimated':cash(c)));grid.append(cell);};
- make('Expected net profit by tomorrow',book.overnightPortfolioScenario);
+ make('Conditional overnight net · if orders fill and resell',book.overnightPortfolioScenario);
  make('Buy capital + listing-fee reserve',t.p.spent||0);
  make('Wallet left unallocated',t.p.unallocated||0);
  host.append(grid);
  host.append(h('p','focus-muted','Only funded new purchases are totalled. Existing holdings and cancellation scenarios are separate. Unspent sale proceeds are not recycled in this forecast. No estimate is available without comparable execution evidence.'));
- const audit=s?.executionBacktest||root.GPExecution?.backtest(s?.executionLearning||{});
+
  if(audit)host.append(h('p','focus-muted','Walk-forward checks: '+audit.n+' held-out windows; '+audit.censoredWindows+' censored; '+audit.skippedStarts+' starts not observable. '+(audit.n?'Profit MAE '+cash(audit.profitMAE)+'; last-window baseline MAE '+cash(audit.persistenceMAE)+'.':'Live forecasting accuracy has not been established.')));
  host.append(h('p','focus-muted','Learning: '+num((s?.ledger||[]).length)+' preserved completed trade records feed the forecasts. Last recorded trade: '+
   (s?.ledger?.length?new Date(Math.max(...s.ledger.slice(-1000).map(x=>x.purchased||0))).toLocaleString('en-GB',{timeZone:'Europe/London'}):'none')+

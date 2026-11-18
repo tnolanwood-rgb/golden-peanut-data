@@ -1,0 +1,59 @@
+{
+  "schema": "golden-experience-paired-cold-start-v1",
+  "recorded_at": "2026-11-18",
+  "workflow_run": 44408826016,
+  "artifact_id": 14475418531,
+  "source_candidate": "73ec2f83ea45f88bcdd2a0efd025ed2a7e9db01f",
+  "baseline": "097f012c1f912411790dd7dce21434a9cdc497d2",
+  "conditions": "Six paired cold Chromium contexts per revision, 390x844 mobile-touch emulation, two-item synthetic OSRS feed, blocked external requests, identical intercepted static transport, CPU sampler on both, ABBA order. Not Android WebView, real network, hardware FPS or real-account performance.",
+  "baseline_metrics": {
+    "ready_ms": {
+      "median": 221.1,
+      "p95": 235.9,
+      "min": 209.8,
+      "max": 235.9
+    },
+    "trials_ms": [
+      235.9,
+      209.8,
+      226.4,
+      222.2,
+      216.8,
+      221.1
+    ],
+    "long_tasks": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "candidate_metrics": {
+    "ready_ms": {
+      "median": 226.2,
+      "p95": 234.4,
+      "min": 210.6,
+      "max": 234.4
+    },
+    "trials_ms": [
+      232.6,
+      215.9,
+      227.6,
+      210.6,
+      234.4,
+      226.2
+    ],
+    "long_tasks": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "interpretation": "Candidate median is 5.1ms slower in this six-trial sample; observed maxima and long-task counts are similar/zero. Treat as no material cold-start regression in this paired synthetic profile, not proof of universal or Android performance.",
+  "artifact_member": "audit/golden-experience/osrs-cold-profile.json"
+}

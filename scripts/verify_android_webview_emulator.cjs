@@ -1,0 +1,530 @@
+#!/usr/bin/env node
+'use strict';
+// Fresh CI Android emulator, independent preview package. This test NEVER
+// touches the owner's installation, stored accounts, GitHub trade collectors
+// or Cloudflare production services. Emulator != physical device.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {execFileSync}=require('node:child_process');
+const zlib=require('node:zlib');
+const APP='com.goldenhub.dual.preview';
+const ACTIVITY='com.goldenhub.dual.MainActivity';
+const OUTPUT='artifacts/audit/golden-experience/android-emulator';
+fs.mkdirSync(OUTPUT,{recursive:true});
+const result={schema:'golden-experience-android-webview-emulator-v1',
+  environment:'Android 35 AOSP Automated Test Device x86_64 emulator, independently identified debug APK',
+  limitations:'Not original installed APK, physical phone, battery or live account validation',
+  cases:[]};
+const adb=(...args)=>execFileSync('adb',args,{encoding:'utf8',timeout:30000}).trim();
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const mark=(name,detail)=>result.cases.push({name,pass:true,detail});
+// Android WebView exposes a PAGE CDP target, not a full Chromium browser.
+// Playwright connectOverCDP sends Browser.setDownloadBehavior and is rejected;
+// use Node 22's native WebSocket directly so testing stays on the real WebView.
+class AndroidWebViewPage {
+ constructor(socket,url) {
+  this.socket=socket;this.pageUrl=url;this.next=1;this.pending=new Map();
+  socket.addEventListener('message',event=>{
+   let message;
+   try{message=JSON.parse(String(event.data));}catch{return;}
+   if(!message.id)return;
+   const task=this.pending.get(message.id);if(!task)return;
+   this.pending.delete(message.id);clearTimeout(task.timer);
+   if(message.error)task.reject(new Error('CDP '+task.method+': '+JSON.stringify(message.error)));
+   else task.resolve(message.result||{});
+  });
+  socket.addEventListener('close',()=>{
+   for(const task of this.pending.values()){
+    clearTimeout(task.timer);task.reject(new Error('WebView debugging connection closed'));
+   }
+   this.pending.clear();
+  });
+ }
+ static async connect(rawUrl,pageUrl) {
+  const address=new URL(rawUrl);
+  address.hostname='127.0.0.1';address.port='9222';
+  const socket=new WebSocket(address.href);
+  await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(new Error('WebView CDP socket timed out')),5000);
+   socket.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
+   socket.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('WebView CDP socket error'));},{once:true});
+  });
+  const page=new AndroidWebViewPage(socket,pageUrl);
+  await page.send('Runtime.enable');
+  await page.send('Page.enable');
+  return page;
+ }
+ send(method,params={}) {
+  const id=this.next++;
+  return new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>{
+    this.pending.delete(id);reject(new Error('WebView CDP '+method+' timed out'));
+   },15000);
+   this.pending.set(id,{method,timer,resolve,reject});
+   this.socket.send(JSON.stringify({id,method,params}));
+  });
+ }
+ url(){return this.pageUrl;}
+ async evaluate(fn,arg) {
+  const input=typeof fn==='function'
+   ? '('+fn.toString()+')('+(arguments.length>1?JSON.stringify(arg):'')+')'
+   : String(fn);
+  const response=await this.send('Runtime.evaluate',{
+   expression:input,returnByValue:true,awaitPromise:true});
+  if(response.exceptionDetails)
+   throw new Error('WebView JavaScript exception: '+JSON.stringify(response.exceptionDetails).slice(0,500));
+  return response.result?.value;
+ }
+ async waitForFunction(fn,arg,options={}) {
+  const started=Date.now(),limit=options.timeout||15000;
+  while(Date.now()-started<limit){
+   if(await this.evaluate(fn,arg))return;
+   await sleep(150);
+  }
+  throw new Error('Android WebView waitForFunction timed out');
+ }
+ async screenshot({path:destination}) {
+  const screenshot=await this.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+  assert.ok(screenshot.data,'WebView screenshot empty');
+  fs.writeFileSync(destination,Buffer.from(screenshot.data,'base64'));
+ }
+ async close(){this.socket.close();}
+}
+async function locateWebView(){
+ let last='unknown';
+ for(let i=0;i<40;i++){
+  try{
+   const current=adb('shell','pidof',APP).split(/\s+/)[0];
+   if(!/^\d+$/.test(current))throw Error('Android preview process not started');
+   adb('forward','tcp:9222','localabstract:webview_devtools_remote_'+current);
+   const response=await fetch('http://127.0.0.1:9222/json/list',{signal:AbortSignal.timeout(3000)});
+   if(!response.ok)throw Error('WebView CDP HTTP '+response.status);
+   const targets=await response.json();
+   const found=targets.find(t=>t.url?.includes('private-dual-hub-preview.thegoldenpeanut.pages.dev'))
+    ||targets.find(t=>t.type==='page');
+   if(!found?.webSocketDebuggerUrl)throw Error('Android WebView page target is unavailable');
+   const page=await AndroidWebViewPage.connect(found.webSocketDebuggerUrl,found.url);
+   return {browser:{close:()=>page.close()},page,processId:current};
+  }catch(error){last=String(error?.message||error).slice(0,240);}
+  await sleep(750);
+ }
+ throw Error('Could not attach to debuggable Android WebView: '+last);
+}
+async function game(page,target){
+ await page.waitForFunction(g=>window.GoldenDualHub?.diagnostics?.()?.game===g,target,{timeout:20000});
+ assert.equal(await page.evaluate(()=>GoldenDualHub.diagnostics().game),target);
+}
+// A headless ATD can return a formally valid, totally black native PNG.
+// Do not mistake that framebuffer for visual acceptance. This check only
+// handles standard Android 8-bit RGBA captures; unknown PNG modes remain
+// explicitly unclassified rather than being guessed.
+function allBlackRgbaPng(png){
+ try{
+   if(png.length<40||png.readUInt32BE(16)<1||png.readUInt32BE(20)<1||
+      png[24]!==8||png[25]!==6||png[28]!==0)return null;
+   const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
+   let pos=8,idat=[];
+   while(pos+12<=png.length){
+     const length=png.readUInt32BE(pos),type=png.toString('ascii',pos+4,pos+8);
+     if(length>png.length-pos-12)return null;
+     if(type==='IDAT')idat.push(png.subarray(pos+8,pos+8+length));
+     pos+=length+12;
+     if(type==='IEND')break;
+   }
+   if(!idat.length)return null;
+   const raw=zlib.inflateSync(Buffer.concat(idat));
+   const rowBytes=width*4+1;
+   if(raw.length!==height*rowBytes)return null;
+   // PNG Sub/Up/Average/Paeth filters predict RGB from RGB; true solid black
+   // yields zero residual RGB bytes regardless of filter. Alpha is ignored.
+   for(let y=0;y<height;y++){
+     const row=y*rowBytes+1;
+     for(let x=0;x<width;x++){
+       const p=row+x*4;
+       if(raw[p]||raw[p+1]||raw[p+2])return false;
+     }
+   }
+   return true;
+ }catch{return null;}
+}
+async function screenshot(page,name){
+ const destination=path.join(OUTPUT,name+'.png');
+ // ATD omits standard launcher/UI services. CDP Page.captureScreenshot may
+ // hang even after native touch and Runtime CDP have succeeded. Preserve
+ // evidence with the actual Android framebuffer instead of hiding the cause.
+ let previousError=null;
+ try{
+   const png=execFileSync('adb',['exec-out','screencap','-p'],{
+     timeout:20000,maxBuffer:16*1024*1024});
+   const header=Buffer.from([137,80,78,71,13,10,26,10]);
+   if(png.length<3000||!png.subarray(0,8).equals(header))
+     throw new Error('ADB framebuffer was empty or not a PNG');
+   const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
+   if(width<320||height<320)throw new Error('Invalid framebuffer dimensions');
+   fs.writeFileSync(destination,png);
+   const black=allBlackRgbaPng(png);
+   (result.screenshots||=[]).push({
+     name,source:'adb-native-framebuffer',width,height,bytes:png.length,
+     allBlackFrame:black});
+   if(black===true){
+     result.visualCaptureUnsupported=true;
+     result.visualCaptureReason='ATD native framebuffer is all black; it is NOT visual QA evidence';
+   }
+   return;
+ }catch(captureError){previousError=captureError;}
+ try{
+   await page.screenshot({path:destination});
+   (result.screenshots||=[]).push({name,source:'webview-cdp-after-adb-failure'});
+ }catch(cdpError){
+   throw new Error('Both native framebuffer and CDP screenshots failed ('+
+     String(previousError?.message||previousError).slice(0,170)+'; '+
+     String(cdpError?.message||cdpError).slice(0,170)+')');
+ }
+}
+async function run(){
+ const apk='android/app/build/outputs/apk/debug/app-debug.apk';
+ assert.ok(fs.existsSync(apk),'Missing independently built Android preview APK');
+ // Do not warm the system launcher with synthetic input: it has produced
+ // a NexusLauncher ANR modal that steals all subsequent WebView touches.
+ // Device-level input timing is measured on the app's actual gesture below.
+ adb('install','-r',apk);
+ adb('shell','am','force-stop',APP);
+ const start=adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
+ assert.match(start,/Status:\s*ok/i);
+ const {browser,page,processId}=await locateWebView();
+ try{
+  await page.waitForFunction(()=>Boolean(window.GoldenDualHub?.diagnostics)&&
+    !!document.querySelector('#gh-game-stage'),null,{timeout:30000});
+  assert.match(page.url(),/^https:\/\/private-dual-hub-preview\.thegoldenpeanut\.pages\.dev\//);
+  const initial=await page.evaluate(()=>({
+   game:GoldenDualHub.diagnostics().game,width:innerWidth,height:innerHeight,
+   tabs:!!document.querySelector('#gh-tab-gw2')&&!!document.querySelector('#gh-tab-osrs')
+  }));
+  assert.ok(initial.tabs && ['gw2','osrs'].includes(initial.game),'Both game tabs must be available');
+  mark('cold-launch',{processId,initial});
+  // CDP can see a loaded WebView before Android has actually focused the
+  // Activity window. Input injected at that point can reach no DOM target at
+  // all, a harness failure that cannot be confused with app touchcancel.
+  let windowFocus='',launcherRecoveryAttempted=false;
+  for(let i=0;i<24;i++){
+    const lines=adb('shell','dumpsys','window').split('\n');
+    windowFocus=lines.find(x=>x.includes('mCurrentFocus='))||'focus line unavailable';
+    if(windowFocus.includes(APP))break;
+    const launcherAnr=windowFocus.match(/Application Not Responding: (com\.google\.android\.apps\.nexuslauncher|com\.android\.launcher3)(?:\s|$)/);
+    if(!launcherRecoveryAttempted&&launcherAnr){
+      // OS infrastructure fault (not this APK): either stock Android or
+      // Google launcher may ANR during software-rendered emulator startup.
+      // Only recover the exact system launcher once; never auto-dismiss an
+      // ANR belonging to the actual trading app under test.
+      launcherRecoveryAttempted=true;
+      result.launcherAnrRecoveryAttempted=true;
+      result.launcherAnrPackage=launcherAnr[1];
+      adb('shell','am','force-stop',launcherAnr[1]);
+      adb('shell','am','start','-W','-n',APP+'/'+ACTIVITY);
+    }
+    await sleep(200);
+  }
+  assert.ok(windowFocus.includes(APP),'Android preview Activity never received native input focus: '+windowFocus);
+  await page.waitForFunction(()=>document.visibilityState==='visible',null,{timeout:15000});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  mark('native-window-focus',{focusedApp:APP,launcherRecoveryAttempted});
+  if(initial.game!=='gw2')await page.evaluate(()=>GoldenDualHub.switchGame('gw2'));
+  await game(page,'gw2');
+  // Do not invoke CDP GPU screenshot capture immediately before Android's
+  // first touch stream; it can perturb a cold software-rendered emulator.
+  // Capture the original desk after a verified round trip instead.
+  const contact=await page.evaluate(()=>{
+   const x=innerWidth*.78;
+   for(const selector of ['#gh-panel-gw2 .gp-guide-idea',
+                          '#gh-panel-gw2 .gp-guide-metrics',
+                          '#gh-panel-gw2 .gp-guide-header']){
+    const panel=document.querySelector(selector);
+    if(!panel)continue;
+    const rect=panel.getBoundingClientRect();
+    for(let y=Math.max(130,rect.top+12);y<Math.min(innerHeight-45,rect.bottom-10);y+=12){
+     const hit=document.elementFromPoint(x,y);
+     if(hit?.closest(selector)&&!hit.closest('button,input,textarea,a,select,summary,label,[role="slider"]'))
+      return {x,y,cssWidth:innerWidth,cssHeight:innerHeight,dpr:devicePixelRatio};
+    }
+   }
+   return null;
+  });
+  assert.ok(contact,'No touch-safe GW2 visible surface to test');
+  const dims=adb('shell','wm','size').match(/(\d+)x(\d+)/);
+  assert.ok(dims,'Missing emulator screen dimensions');
+  const sw=Number(dims[1]),sh=Number(dims[2]),ratio=sw/contact.cssWidth;
+  const verticalInset=Math.max(0,(sh-contact.cssHeight*ratio)/2);
+  const y=Math.min(sh-80,Math.max(100,Math.round(verticalInset+contact.y*ratio)));
+  // The swipe's own capture-phase trace below proves that real Android input
+  // reached WebView. Do not precede it with ADB tap on the same touch surface:
+  // that extra OS gesture changed the stream in otherwise identical native runs.
+  await page.evaluate(()=>{
+    // Capture the native event stream without forced layout, synchronous
+    // computed styles or DOM writes inside handlers. The 64-event ring is
+    // diagnostic only; never change touch behaviour to make CI green.
+    const trace={start:0,move:0,end:0,cancel:0,first:null,last:null,
+      pointer:{down:0,move:0,up:0,cancel:0},events:[]};
+    window.__geAndroidTouchTrace=trace;
+    window.__geAndroidLongTasks=[];
+    window.__geAndroidLongFrames=[];
+    // Long Animation Frames provide script-level attribution on modern
+    // Android WebView. Unsupported versions simply omit this evidence.
+    try{
+      new PerformanceObserver(list=>{
+        const frames=window.__geAndroidLongFrames;
+        for(const e of list.getEntries())if(frames.length<16)
+          frames.push({start:Math.round(e.startTime),duration:Math.round(e.duration),
+            blockingDuration:Math.round(e.blockingDuration||0),
+            scripts:Array.from(e.scripts||[]).slice(0,8).map(s=>({
+              duration:Math.round(s.duration),function:s.sourceFunctionName||'',
+              url:(s.sourceURL||'').slice(0,110),invoker:s.invoker||''}))});
+      }).observe({type:'long-animation-frame',buffered:true});
+    }catch{}
+    // Test-only readback of slow synchronous layout queries while the swipe
+    // scene is acquired. Never change the site's gesture decisions or skip
+    // strict native event assertions. Only record slow reads (bounded).
+    window.__geAndroidSlowLayout=[];
+    const originalRect=Element.prototype.getBoundingClientRect;
+    window.__geAndroidOriginalRect=originalRect;
+    Element.prototype.getBoundingClientRect=function(...args){
+      const t=performance.now();
+      const bounds=originalRect.apply(this,args);
+      const elapsed=performance.now()-t;
+      if(elapsed>=12 && window.__geAndroidSlowLayout?.length<24){
+        window.__geAndroidSlowLayout.push({at:Math.round(t),
+          duration:Math.round(elapsed),id:this.id||'',
+          className:String(this.className||'').slice(0,65)});
+      }
+      return bounds;
+    };
+    try{
+      new PerformanceObserver(list=>{
+        const rows=window.__geAndroidLongTasks;
+        for(const e of list.getEntries())if(rows.length<32)
+          rows.push({start:Math.round(e.startTime),duration:Math.round(e.duration),name:e.name});
+      }).observe({entryTypes:['longtask']});
+    }catch{}
+    const record=(type,event,point)=>{
+      const hit=event.target;
+      const value={type,x:Math.round(point?.clientX??0),y:Math.round(point?.clientY??0),
+        time:Math.round(performance.now()),target:hit?.tagName||'',
+        className:String(hit?.className||'').slice(0,80),
+        connected:hit?.isConnected!==false,scrolling:Math.round(scrollY),
+        cancelable:event.cancelable,
+        game:window.GoldenDualHub?.diagnostics?.()?.game||null,
+        drag:Math.round(window.GoldenDualHub?.diagnostics?.()?.dragOffset||0)};
+      if(!trace.first)trace.first=value;
+      trace.last=value;
+      if(trace.events.length<64)trace.events.push(value);
+    };
+    for(const phase of ['start','move','end','cancel']){
+      addEventListener('touch'+phase,event=>{
+        trace[phase]++;
+        record('touch'+phase,event,event.changedTouches?.[0]);
+      },{capture:true,passive:true});
+    }
+    for(const phase of ['down','move','up','cancel']){
+      addEventListener('pointer'+phase,event=>{
+        trace.pointer[phase]++;
+        if(event.pointerType==='touch')record('pointer'+phase,event,event);
+      },{capture:true,passive:true});
+    }
+  });
+  const nativeSwipeStarted=Date.now();
+  adb('shell','input','swipe',String(Math.round(sw*.78)),String(y),
+      String(Math.round(sw*.18)),String(y),'350');
+  const nativeSwipeElapsedMs=Date.now()-nativeSwipeStarted;
+  let swipeFailure=null;
+  try{await game(page,'osrs');}catch(error){swipeFailure=error;}
+  const touch=await page.evaluate(point=>{
+    const target=document.elementFromPoint(point.x,point.y);
+    const panel=document.querySelector('#gh-panel-gw2');
+    const stage=document.querySelector('#gh-game-stage');
+    const ancestors=[];
+    for(let node=target;node&&ancestors.length<8;node=node.parentElement){
+      const css=getComputedStyle(node);
+      ancestors.push({tag:node.tagName,id:node.id||'',className:String(node.className||'').slice(0,65),
+        touchAction:css.touchAction,overflowY:css.overflowY,pointerEvents:css.pointerEvents});
+    }
+    return {
+      trace:window.__geAndroidTouchTrace,
+      longTasks:window.__geAndroidLongTasks||[],
+      longFrames:window.__geAndroidLongFrames||[],
+      slowLayoutReads:window.__geAndroidSlowLayout||[],
+      game:window.GoldenDualHub?.diagnostics?.()?.game||null,
+      diagnostics:window.GoldenDualHub?.diagnostics?.()||null,
+      viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio,
+        visualWidth:visualViewport?.width||null,visualHeight:visualViewport?.height||null,
+        visualOffsetTop:visualViewport?.offsetTop||0,visualScale:visualViewport?.scale||1},
+      documentScrollY:Math.round(scrollY),
+      panel:{hidden:panel?.hidden,inert:panel?.inert,connected:panel?.isConnected,
+        transform:panel?.style.transform,rect:panel?.getBoundingClientRect().toJSON()},
+      stage:{height:stage?.style.height,moving:stage?.classList.contains('gh-stage-moving')},
+      ancestors,
+      elementAtContact:target?.outerHTML?.slice(0,300)||null
+    };
+  },{x:contact.x,y:contact.y});
+  mark('native-android-input-diagnostics',{touch,contact,screen:[sw,sh],
+    deviceY:y,nativeSwipeElapsedMs});
+  // Restore the original DOM API before later correctness/scroll/lifecycle QA.
+  await page.evaluate(()=>{
+    if(window.__geAndroidOriginalRect)
+      Element.prototype.getBoundingClientRect=window.__geAndroidOriginalRect;
+    delete window.__geAndroidOriginalRect;
+  });
+  if(swipeFailure){
+    await screenshot(page,'gw2-after-unsuccessful-native-swipe');
+    console.error('ANDROID_WEBVIEW_INPUT_TRACE '+JSON.stringify({
+      trace:touch.trace,longTasks:touch.longTasks,longFrames:touch.longFrames,slowLayoutReads:touch.slowLayoutReads,viewport:touch.viewport,panel:touch.panel,
+      stage:touch.stage,ancestors:touch.ancestors,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs
+    }));
+    throw new Error('Android-native swipe did not switch games: '+
+      JSON.stringify({touch,contact,screen:[sw,sh],deviceY:y,nativeSwipeElapsedMs}).slice(0,1900));
+  }
+  assert.ok(touch.trace.end>=1 && touch.trace.cancel===0,
+    'Android gesture transition cannot pass on a cancelled touch stream: '+JSON.stringify(touch.trace));
+  console.log('NATIVE_ANDROID_FORWARD_TOUCH_ACCEPTED '+JSON.stringify({
+    from:'gw2',to:'osrs',touchEnd:touch.trace.end,touchCancel:touch.trace.cancel,
+    adbInputDurationMs:nativeSwipeElapsedMs,longTasks:touch.longTasks,
+    longFrames:touch.longFrames,slowLayoutReads:touch.slowLayoutReads}));
+  await screenshot(page,'osrs-native-swipe');
+  mark('native-android-swipe',{from:'gw2',to:'osrs',contactY:y,screen:[sw,sh]});
+
+  // A sideways gesture inside the native vertically scrollable OSRS idea
+  // must return to GW2, not be swallowed by the inner scroll container.
+  const reverse=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    if(!region)return null;
+    const rect=region.getBoundingClientRect(),x=innerWidth*.22;
+    for(let y=Math.max(150,rect.top+24);
+        y<Math.min(innerHeight-65,rect.bottom-24);y+=12){
+      const hit=document.elementFromPoint(x,y);
+      if(hit?.closest('.gh-trade-scroll') &&
+         !hit.closest('button,input,textarea,a,select,summary,label,svg,canvas,[role="slider"],[data-no-game-swipe]'))
+        return {x,y};
+    }
+    return null;
+  });
+  assert.ok(reverse,'No safe visible OSRS inner-scroll swipe surface');
+  const reverseY=Math.min(sh-80,Math.max(100,Math.round(verticalInset+reverse.y*ratio)));
+  adb('shell','input','swipe',String(Math.round(sw*.22)),String(reverseY),
+      String(Math.round(sw*.82)),String(reverseY),'350');
+  await game(page,'gw2');
+  await screenshot(page,'gw2-after-osrs-native-swipe');
+  await screenshot(page,'gw2-portrait');
+  mark('native-android-reverse-swipe',{from:'osrs',to:'gw2',contactY:reverseY});
+
+  // Create DOM-only overflow in the *actual* OSRS recommendation scroll
+  // surface, not fake trading data. Verify native vertical scrolling stays
+  // inside the panel rather than switching games or scrolling the document.
+  await page.evaluate(()=>window.GoldenDualHub.switchGame('osrs'));
+  await game(page,'osrs');
+  const vertical=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    if(!region)return null;
+    const fixture=document.createElement('div');
+    fixture.id='ge-emulator-scroll-fixture';
+    fixture.style.height='1400px';
+    fixture.setAttribute('aria-hidden','true');
+    region.append(fixture);
+    region.scrollTop=0;
+    const rect=region.getBoundingClientRect();
+    const upper=Math.max(140,rect.top+40),lower=Math.min(innerHeight-85,rect.bottom-35);
+    if(lower-upper<160)return null;
+    // A fixed coordinate can hit an action button or a sticky dock. Only
+    // accept a point visibly owned by the native scroll region, well below
+    // its top edge, and never reinterpret a non-scroll as a passing swipe.
+    const xs=[innerWidth*.69,innerWidth*.38,innerWidth*.17];
+    const ignored='button,input,textarea,a,select,summary,label,svg,canvas,[role="slider"],[data-no-game-swipe],.gh-action-dock';
+    let contact=null;
+    for(let y=lower-10;y>upper+150&&!contact;y-=10){
+      for(const x of xs){
+        const hit=document.elementFromPoint(x,y);
+        if(hit?.closest('.gh-trade-scroll')&&!hit.closest(ignored)){
+          contact={x,y,hit:hit.tagName,className:String(hit.className||'').slice(0,65)};
+          break;
+        }
+      }
+    }
+    if(!contact)return {invalid:true,rect:rect.toJSON(),upper,lower,
+      bodyY:scrollY,scrollHeight:region.scrollHeight,clientHeight:region.clientHeight};
+    return {x:contact.x,startY:contact.y,endY:upper+10,hit:contact,
+      before:region.scrollTop,bodyY:scrollY,scrollHeight:region.scrollHeight,
+      clientHeight:region.clientHeight};
+  });
+  assert.ok(vertical && !vertical.invalid && vertical.scrollHeight>vertical.clientHeight+300,
+    'OSRS scroll surface must contain visible, noninteractive overflow content: '+JSON.stringify(vertical));
+  await page.evaluate(()=>{
+    const trace={start:0,move:0,end:0,cancel:0,samples:[]};
+    window.__geVerticalTrace=trace;
+    for(const phase of ['start','move','end','cancel']){
+      document.addEventListener('touch'+phase,event=>{
+        const hit=event.target;
+        if(!hit?.closest?.('#gh-panel-osrs'))return;
+        const p=event.changedTouches?.[0];
+        trace[phase]++;
+        if(trace.samples.length<16)trace.samples.push({phase,x:Math.round(p?.clientX||0),
+          y:Math.round(p?.clientY||0),target:hit?.tagName||'',
+          className:String(hit?.className||'').slice(0,65),
+          defaultPrevented:event.defaultPrevented,
+          scrollerTop:Math.round(document.querySelector('#gh-panel-osrs .gh-trade-scroll')?.scrollTop||0)});
+      },{capture:true,passive:true});
+    }
+  });
+  const startV=Math.round(verticalInset+vertical.startY*ratio);
+  const endV=Math.round(verticalInset+vertical.endY*ratio);
+  const nativeStart=Date.now();
+  adb('shell','input','swipe',String(Math.round(vertical.x*ratio)),String(startV),
+      String(Math.round(vertical.x*ratio)),String(endV),'400');
+  const nativeElapsedMs=Date.now()-nativeStart;
+  const scrolling=await page.evaluate(()=>{
+    const region=document.querySelector('#gh-panel-osrs .gh-trade-scroll');
+    const state={top:region?.scrollTop||0,bodyY:scrollY,
+      game:window.GoldenDualHub?.diagnostics?.()?.game,
+      trace:window.__geVerticalTrace};
+    document.getElementById('ge-emulator-scroll-fixture')?.remove();
+    return state;
+  });
+  mark('native-osrs-vertical-diagnostics',{scrolling,vertical,startV,endV,nativeElapsedMs});
+  if(scrolling.top<=80)await screenshot(page,'osrs-vertical-scroll-failure');
+  assert.equal(scrolling.game,'osrs','Vertical recommendation scroll must not switch games');
+  assert.ok(scrolling.top>80,
+    'Android swipe must move OSRS nested scroll rather than trapping the gesture: '+
+    JSON.stringify({scrolling,vertical,startV,endV,nativeElapsedMs}));
+  assert.ok(Math.abs(scrolling.bodyY-vertical.bodyY)<3,
+    'Vertical nested swipe must not jump outer document');
+  mark('native-osrs-vertical-scroll',{scrollTop:scrolling.top,documentY:scrolling.bodyY});
+
+  await page.evaluate(()=>window.__goldenEmulatorMarker='same-webview-document');
+  adb('shell','settings','put','system','accelerometer_rotation','0');
+  adb('shell','settings','put','system','user_rotation','1');
+  await page.waitForFunction(()=>innerWidth>innerHeight,null,{timeout:18000});
+  assert.equal(await page.evaluate(()=>window.__goldenEmulatorMarker),'same-webview-document',
+               'Rotation unexpectedly reloaded the live WebView');
+  await game(page,'osrs');
+  await screenshot(page,'osrs-landscape');
+  mark('rotation-preserves-live-document',{game:'osrs'});
+  adb('shell','input','keyevent','KEYCODE_HOME');
+  await sleep(700);
+  adb('shell','am','start','-n',APP+'/'+ACTIVITY);
+  await page.waitForFunction(()=>document.visibilityState==='visible',null,{timeout:18000});
+  assert.equal(await page.evaluate(()=>window.__goldenEmulatorMarker),'same-webview-document',
+               'Android resume unexpectedly reloaded active document');
+  await game(page,'osrs');
+  mark('background-resume-preserves-live-document',{game:'osrs'});
+  await screenshot(page,'osrs-resumed');
+  result.pass=true;
+ } finally {
+  await browser.close();
+  try{adb('shell','settings','put','system','user_rotation','0');}catch{}
+ }
+}
+run().catch(error=>{
+ result.pass=false;
+ result.error=String(error?.stack||error).slice(0,1500);
+ console.error(result.error);process.exitCode=1;
+}).finally(()=>{
+ fs.writeFileSync(path.join(OUTPUT,'report.json'),JSON.stringify(result,null,2)+'\n');
+ console.log('Emulator verification: '+JSON.stringify({pass:result.pass,cases:result.cases.map(x=>x.name)}));
+});

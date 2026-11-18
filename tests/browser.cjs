@@ -85,8 +85,40 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await page.waitForSelector('#gp-guided-root:not([hidden])');
  assert.match(await page.locator('#gh-panel-gw2 .gp-guide-header h1').innerText(),/The Golden Peanut/);
  assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-idea').count(),1);
- assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics .gp-guide-metric').count(),4);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-delivery-hero > .gp-guide-metric').count(),1);
+ assert.equal(await page.locator('#gh-panel-gw2 .gp-guide-metrics > .gp-guide-metric').count(),3);
  assert.match(await page.locator('#gh-panel-gw2 .gp-guide-caution').innerText(),/not|No |unknown|guaranteed/i);
+ // GW2 action-first: preserve the user's top-priority Delivery Box, but the
+ // item and real buy guidance must be visible before the secondary wallet
+ // cluster. DOM order and geometry must match (no visual-only CSS reordering).
+ if(viewport.width===390){
+  const firstScreen=await page.evaluate(()=>{
+   const root=document.querySelector('#gp-guided-root'),
+    content=root.querySelector('.gp-guide-content'),
+    grid=root.querySelector('.gp-guide-metrics'),
+    delivery=root.querySelector('.gp-guide-delivery-hero>.gp-guide-delivery-summary'),
+    card=content.querySelector(':scope > .gp-guide-idea'),
+    title=card.querySelector('.gp-guide-item-name'),
+    buy=card.querySelector('.gp-guide-instruction'),
+    today=grid.querySelector(':scope > .gp-guide-metric'),
+    art=card.querySelector('.gp-guide-item-icon'),
+    row=card.querySelector('.gp-guide-item-identity');
+   const rect=n=>{const r=n?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,left:r.left,right:r.right}:null;};
+   return {height:innerHeight,grid:rect(grid),delivery:rect(delivery),card:rect(card),
+    title:rect(title),buy:rect(buy),today:rect(today),art:rect(art),row:rect(row),
+    position:[...content.children].map(n=>n.className),amounts:1+grid.querySelectorAll(':scope > .gp-guide-metric').length,
+    width:document.documentElement.scrollWidth};
+  });
+  assert.ok(firstScreen.delivery.bottom<firstScreen.card.top&&firstScreen.card.bottom<=firstScreen.today.top,
+   'GW2 delivery, trade, then wallet/profits must use real visual/DOM order: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.title&&firstScreen.title.top<firstScreen.height-35,
+   'GW2 qualified item should be visible on the first phone screen: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.buy&&firstScreen.buy.top<firstScreen.height,
+   'GW2 buy guidance should start on the first phone screen: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.art.top<firstScreen.row.bottom&&firstScreen.title.left>firstScreen.art.left,
+   'GW2 item identity is a compact one-row premium instrument: '+JSON.stringify(firstScreen));
+  assert.equal(firstScreen.amounts,4,'All four original finance readouts remain');
+ }
  // Repeated guided repaints and navigation must reuse the same opportunity
  // evaluation instead of rescreening thousands of markets for every tap.
  const guideBuilds=await page.evaluate(()=>{
@@ -371,6 +403,65 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    document.querySelector('#focus-delivery-caption')?.textContent.includes('ALL items at lowest sell listings');
  },null,{timeout:15000});
  assert.equal(await delivery.count(),1);
+ // GE-07: refreshes must not replace unchanged Delivery Box/action buttons.
+ // A live DOM replacement can drop the user's press/focus and create stutter.
+ await page.waitForFunction(()=>document.querySelectorAll('#gp57-item-prices .gp57-delivery-row').length===8,null,{timeout:15000});
+ const retainedNodes=await page.evaluate(async()=>{
+  const host=document.querySelector('#gp57-item-prices'),actions=document.querySelector('#gp57-actions');
+  const comparisons=[];
+  for(let i=0;i<8;i++){
+   const before={row:host.firstElementChild,action:actions.firstElementChild,
+    rowSignature:host.dataset.gp57RowsSignature,
+    actionSignature:actions.dataset.gp57ActionsSignature,
+    metrics:['gp57-wallet','gp57-collect','gp57-week','gp57-reserved','gp57-items-net']
+     .map(id=>{const n=document.getElementById(id);return {id,signature:n?.dataset.gp57MoneySignature,child:n?.firstChild,node:n};})};
+   GP57Desk.schedule();
+   await new Promise(resolve=>setTimeout(resolve,210));
+   const after={rowSignature:host.dataset.gp57RowsSignature,
+    actionSignature:actions.dataset.gp57ActionsSignature};
+   comparisons.push({
+    rowsUnchanged:before.rowSignature===after.rowSignature,
+    actionsUnchanged:before.actionSignature===after.actionSignature,
+    rowRetained:before.row===host.firstElementChild,
+    actionRetained:before.action===actions.firstElementChild,
+    // Only inspect stable-value figures; real incoming quotes should redraw.
+    moneyComparisons:before.metrics.map(m=>({
+     id:m.id,
+     sameValue:!!m.node&&m.node.dataset.gp57MoneySignature===m.signature,
+     artworkRetained:!!m.node&&m.node.firstChild===m.child
+    }))
+   });
+  }
+  return {rows:host.querySelectorAll('.gp57-delivery-row').length,
+   sameRowVersions:comparisons.filter(x=>x.rowsUnchanged).length,
+   sameActionVersions:comparisons.filter(x=>x.actionsUnchanged).length,
+   rowViolations:comparisons.filter(x=>x.rowsUnchanged&&!x.rowRetained),
+   actionViolations:comparisons.filter(x=>x.actionsUnchanged&&!x.actionRetained),
+   moneyComparable:comparisons.flatMap(x=>x.moneyComparisons).filter(x=>x.sameValue).length,
+   moneyViolations:comparisons.flatMap(x=>x.moneyComparisons)
+    .filter(x=>x.sameValue&&!x.artworkRetained),
+   comparisons};
+ });
+ assert.equal(retainedNodes.rows,8,'eight synthetic Delivery Box item types remain visible');
+ assert.ok(retainedNodes.sameRowVersions>=2,'at least two refreshes of identical delivery data must be compared: '+JSON.stringify(retainedNodes));
+ assert.ok(retainedNodes.sameActionVersions>=2,'at least two refreshes of identical actions must be compared');
+ assert.deepEqual(retainedNodes.rowViolations,[],'identical Delivery Box rows must survive refresh repaint');
+ assert.deepEqual(retainedNodes.actionViolations,[],'identical action buttons must survive refresh repaint');
+ assert.ok(retainedNodes.moneyComparable>=5,'unchanged GW2 coin metrics must be exercised');
+ assert.deepEqual(retainedNodes.moneyViolations,[],'unchanged GW2 monetary figures must retain official coin artwork DOM');
+ // A meaningful metadata change MUST invalidate the row fingerprint.
+ await page.evaluate(()=>{
+  window.__geOldDeliveryName=GoldenPeanutClean.State.meta[301].name;
+  GoldenPeanutClean.State.meta[301].name='Updated fixture item 301';
+  GP57Desk.schedule();
+ });
+ await page.waitForFunction(()=>document.querySelector('#gp57-item-prices')?.textContent.includes('Updated fixture item 301'));
+ await page.evaluate(()=>{
+  GoldenPeanutClean.State.meta[301].name=window.__geOldDeliveryName;
+  delete window.__geOldDeliveryName;
+  GP57Desk.schedule();
+ });
+ await page.waitForFunction(()=>document.querySelector('#gp57-item-prices')?.textContent.includes('Delivery fixture item 301'));
  assert.equal(await items.locator('.focus-delivery-row').count(),8,'show all eight grouped item types');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-delivery-quantity').innerText(),'×8','merge duplicate stacks');
  assert.equal(await items.locator('.focus-delivery-row[data-item-id="301"] .focus-item-art img').count(),1,'show verified GW2 item icon');
@@ -386,6 +477,22 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  });
  // Simple view must retain the official GW2 currency artwork, colours and explicit denomination letters.
  await page.evaluate(()=>GPGuided.open());
+ // Capture genuinely populated *synthetic* GW2 portfolio/Delivery Box state,
+ // rather than judging premium design only with an unconnected empty account.
+ // The existing test already generated eight item types, FIFO ledger and
+ // verified mock public quotes; this adds no real credentials/data/feed calls.
+ const geDir='artifacts/audit/golden-experience/populated';
+ fs.mkdirSync(geDir,{recursive:true});
+ await page.screenshot({path:geDir+'/gw2-guided-'+viewport.width+'.png',fullPage:true});
+ if(viewport.width===390){
+  await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+  await page.screenshot({path:geDir+'/gw2-guided-390-large-font.png',fullPage:true});
+  const bounds=await page.evaluate(()=>({viewport:document.documentElement.clientWidth,
+   scroll:document.documentElement.scrollWidth}));
+  assert.ok(bounds.scroll<=bounds.viewport+1,
+   'populated GW2 at 200% text must not horizontally overflow: '+JSON.stringify(bounds));
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+ }
  const hero=page.locator('#gh-panel-gw2 .gp-guide-delivery-summary .gp-guide-number');
  assert.equal(await hero.locator('.gp-guide-denom').count(),3);
  for(const [unit,metal] of [['g','gold'],['s','silver'],['c','copper']]){
@@ -398,6 +505,64 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  assert.equal(await hero.locator('.gp-guide-coinset').getAttribute('aria-label'),expectedDelivery.label,
   'simple view uses the existing verified gross Delivery Box total, not unverified coin-only balance');
  await page.getByRole('button',{name:'⚙ Details'}).click();
+ if(viewport.width===390){
+  // Rendered research rows must retain a legible hierarchy with 200% text.
+  const rows=page.locator('#gh-panel-gw2 .focus-market-row');
+  assert.ok(await rows.count()>=2,'fixture must contain GW2 research market rows');
+  const sample=await rows.first().evaluate(row=>{
+   const title=row.querySelector('.focus-market-title strong'),
+    detail=row.querySelector('.focus-market-title small'),
+    metric=row.querySelector('.focus-market-values strong');
+   return {title:parseFloat(getComputedStyle(title).fontSize),
+    detail:parseFloat(getComputedStyle(detail).fontSize),
+    metric:parseFloat(getComputedStyle(metric).fontSize),
+    width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
+  });
+  assert.ok(sample.detail>=12&&sample.title>=14&&sample.metric>=13,
+   'GW2 advanced research hierarchy must be legible: '+JSON.stringify(sample));
+  assert.ok(sample.scroll<=sample.width+1,'GW2 populated research must not overflow');
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:geDir+'/gw2-advanced-390.png',fullPage:true});
+  await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+  const large=await rows.first().evaluate(row=>({
+   detail:parseFloat(getComputedStyle(row.querySelector('.focus-market-title small')).fontSize),
+   width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth
+  }));
+  assert.ok(large.detail>=16,'GW2 advanced labels must scale at 200% text: '+JSON.stringify(large));
+  assert.ok(large.scroll<=large.width+1,'GW2 advanced large text must not overflow');
+  const extraLongTitle='UnbrokenGuildWarsTwoSyntheticCatalogueItemDesignationABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 · Never a real recommendation';
+  const longRow=await rows.first().evaluate((row,name)=>{
+   const title=row.querySelector('.focus-market-title strong'),old=title.textContent;
+   title.textContent=name;
+   const r=title.getBoundingClientRect(),range=document.createRange();
+   range.selectNodeContents(title);
+   const fragments=[...range.getClientRects()];
+   const geometry={complete:title.textContent===name,width:title.clientWidth,
+    scroll:title.scrollWidth,pageWidth:document.documentElement.clientWidth,
+    pageScroll:document.documentElement.scrollWidth,
+    inside:fragments.length>0&&fragments.every(x=>x.left>=r.left-1&&x.right<=r.right+1)};
+   title.textContent=old;
+   return geometry;
+  },extraLongTitle);
+  assert.ok(longRow.complete&&longRow.inside&&longRow.scroll<=longRow.width+1&&
+   longRow.pageScroll<=longRow.pageWidth+1,
+   'GW2 advanced long metadata must remain fully legible at 200% text: '+JSON.stringify(longRow));
+  const secondary=await page.evaluate(()=>{
+   const p=document.querySelector('#gh-panel-gw2 #focus-deep-progress');
+   const action=document.querySelector('#gh-panel-gw2 #focus-deep-retry');
+   return {noticeFont:parseFloat(getComputedStyle(p).fontSize),
+    buttonFont:parseFloat(getComputedStyle(action).fontSize),
+    noticeContent:p.textContent};
+  });
+  assert.ok(secondary.noticeFont>=16&&secondary.noticeFont<=21,
+   '200% text needs a legible but bounded explanatory research status: '+JSON.stringify(secondary));
+  assert.ok(secondary.buttonFont>=16&&secondary.buttonFont<=20,
+   '200% text needs readable research button without giant chrome: '+JSON.stringify(secondary));
+  assert.match(secondary.noticeContent,/Wider discovery is optional/);
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:geDir+'/gw2-advanced-390-large-font.png',fullPage:true});
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+ }
  assert.equal(expectedDelivery.full,true,'all public sell listings should be valued');
  assert.equal(expectedDelivery.unpriced,0,'no unpriced items when quotes exist');
  assert.equal(expectedDelivery.total,expectedDelivery.expected,'coins plus full gross ask value, BEFORE listing and exchange fees');
@@ -472,6 +637,100 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   };
   GPFocus.goto('today');GPFocus.render();
  });
+ // GW2 operating book should be a stable financial panel between refreshes.
+ // A real in-place change to conditional market profit must still invalidate it.
+ const bookStability=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,original=s.opportunityPlan;
+  s.opportunityPlan={...original,ok:true,activeBook:{...original?.activeBook,
+   eligible:1,entries:[{id:301,scenarioUnits:3,conditionalWeek:15000}]},
+   capitalReview:{...original?.capitalReview,committed:250000,releasedSelective:10000}};
+  try{
+   GPFocus.goto('today');GPFocus.render();
+   const host=document.querySelector('#focus-operating-book');
+   const first=host.firstElementChild,btn=host.querySelector('button'),before=host.textContent;
+   for(let i=0;i<6;i++)GPFocus.render();
+   const stable={row:host.firstElementChild===first,button:host.querySelector('button')===btn};
+   s.opportunityPlan.activeBook.entries[0].conditionalWeek=30000;GPFocus.render();
+   return {stable,updated:host.textContent!==before,replaced:host.firstElementChild!==first};
+  }finally{s.opportunityPlan=original;GPFocus.render();}
+ });
+ assert.deepEqual(bookStability,{stable:{row:true,button:true},updated:true,replaced:true},
+  'GW2 operating book must preserve unchanged DOM and refresh on scenario changes');
+ // The GW2 trading outlook also retains its exact DOM when inputs are
+ // stable. A real change to unallocated capital must update the displayed
+ // amount, and the overnight forecast must always be labelled conditional.
+ const outlookRetention=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,originalPlan=s.opportunityPlan,originalSnap=s.snapshot;
+  s.snapshot={...originalSnap,walletAt:new Date().toISOString()};
+  s.opportunityPlan={...originalPlan,ok:true,source:'wallet',at:Date.now(),
+   orders:[],budget:1000000,spent:0,unallocated:250000,activeBook:{entries:[]}};
+  try{
+   GPFocus.goto('today');GPFocus.render();
+   const host=document.querySelector('#focus-earnings-pace'),first=host.firstElementChild,
+    initial=host.textContent;
+   for(let i=0;i<6;i++)GPFocus.render();
+   const stable=host.firstElementChild===first;
+   s.opportunityPlan.unallocated=500000;GPFocus.render();
+   return {visible:!host.hidden,stable,updated:host.textContent!==initial,
+    replaced:host.firstElementChild!==first,conditional:host.textContent.includes('Conditional overnight net')};
+  }finally{s.opportunityPlan=originalPlan;s.snapshot=originalSnap;GPFocus.render();}
+ });
+ assert.deepEqual(outlookRetention,{visible:true,stable:true,updated:true,replaced:true,conditional:true},
+  'GW2 outlook must retain unchanged nodes, update genuine financial changes and distinguish scenarios');
+ // The focused next-action card must not be recreated by a routine redraw,
+ // but its visible recommendation must update on a real account change.
+ // Keep the original synthetic Delivery Box and restore it after this probe.
+ const nextActionIdentity=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,original=s.snapshot,
+   target=document.querySelector('#focus-next-action');
+  GPFocus.goto('today');GPFocus.render();
+  const before=target.firstElementChild,button=target.querySelector('button'),
+   initial=target.textContent;
+  for(let i=0;i<6;i++)GPFocus.render();
+  const unchanged={card:before===target.firstElementChild,button:button===target.querySelector('button')};
+  const coins=Number(original.delivery?.coins)||0;
+  s.snapshot={...original,delivery:{...original.delivery,coins:coins>0?0:10000}};
+  GPFocus.render();
+  const updated={card:before===target.firstElementChild,button:button===target.querySelector('button'),
+   changedText:target.textContent!==initial};
+  s.snapshot=original;GPFocus.render();
+  return {unchanged,updated};
+ });
+ assert.deepEqual(nextActionIdentity,{unchanged:{card:true,button:true},
+  updated:{card:true,button:true,changedText:true}},
+  'GW2 next action must preserve DOM/focus while reflecting changed account recommendations');
+ // GW2 Today: preserve decoded currency images and existing live nodes when
+ // repeated refreshes yield identical wallet/week values. Real changes must
+ // still invalidate immediately, with exact coin totals and no fake profit.
+ const stableToday=await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,
+   wallet=document.querySelector('#focus-wallet'),week=document.querySelector('#focus-week'),
+   beforeW=wallet.firstElementChild,beforeP=week.firstElementChild,
+   beforeWImg=wallet.querySelector('img'),beforePImg=week.querySelector('img'),
+   initialWallet=s.snapshot.wallet,initialWeek=s.summary.weekP100;
+  for(let i=0;i<6;i++)GPFocus.render();
+  const unchanged={wallet:wallet.firstElementChild===beforeW,
+   week:week.firstElementChild===beforeP,
+   walletIcon:wallet.querySelector('img')===beforeWImg,
+   weekIcon:week.querySelector('img')===beforePImg};
+  s.snapshot={...s.snapshot,wallet:initialWallet+10000};
+  GPFocus.render();
+  const changedWallet=wallet.firstElementChild!==beforeW&&
+   wallet.querySelector('.focus-money')?.title!==beforeW.title;
+  const preservedWeek=week.firstElementChild===beforeP;
+  const walletUpdated=wallet.firstElementChild;
+  s.summary.weekP100=initialWeek+10000;
+  GPFocus.render();
+  const changedWeek=week.firstElementChild!==beforeP;
+  const preservedWallet=wallet.firstElementChild===walletUpdated;
+  s.snapshot={...s.snapshot,wallet:initialWallet};
+  s.summary.weekP100=initialWeek;
+  GPFocus.render();
+  return {...unchanged,changedWallet,preservedWeek,changedWeek,preservedWallet};
+ });
+ assert.deepEqual(stableToday,{wallet:true,week:true,walletIcon:true,weekIcon:true,
+  changedWallet:true,preservedWeek:true,changedWeek:true,preservedWallet:true},
+  'unchanged home financial art should remain mounted while real changes repaint');
  const seven=page.locator('#focus-week-strip-list'),days=seven.locator('.focus-week-strip-row');
  assert.equal(await days.count(),7);
  assert.equal(await days.nth(0).locator('.focus-week-strip-day').innerText(),'Today');
@@ -494,8 +753,33 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
  await seven.evaluate(el=>{el.scrollTop=el.scrollHeight;});
  const position=await seven.evaluate(el=>el.scrollTop);
  assert.ok(position>0,'seven-day panel scrolls to older days');
- await page.evaluate(()=>GPFocus.render());
+ // Rendering identical figures must retain the actual item/coin nodes;
+ // changing a verified day must then invalidate the row (not freeze prices).
+ const weekIdentity=await page.evaluate(()=>{
+  window.__geWeekRow=document.querySelector('#focus-week-strip-list .focus-week-strip-row');
+  window.__geWeekCoin=window.__geWeekRow.querySelector('img');
+  GPFocus.render();GPFocus.render();
+  const row=document.querySelector('#focus-week-strip-list .focus-week-strip-row');
+  return {rowStable:row===window.__geWeekRow,coinStable:row.querySelector('img')===window.__geWeekCoin};
+ });
+ assert.equal(weekIdentity.rowStable,true,'unchanged GW2 week rows must not rebuild');
+ assert.equal(weekIdentity.coinStable,true,'unchanged week values retain official currency artwork');
  assert.ok((await seven.evaluate(el=>el.scrollTop))>0,'refresh preserves seven-day scroll position');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,day=PeanutCore.ukDay(Date.now());
+  const yesterday=PeanutCore.shiftDay(day,-1);
+  s.summary.days[yesterday].p100=-51000;
+  GPFocus.render();
+ });
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 10c',
+  'recorded historical profit updates immediately on new verified data');
+ await page.evaluate(()=>{
+  const s=GoldenPeanutClean.State,yesterday=PeanutCore.shiftDay(PeanutCore.ukDay(Date.now()),-1);
+  s.summary.days[yesterday].p100=-50000;
+  GPFocus.render();
+  delete window.__geWeekRow;delete window.__geWeekCoin;
+ });
+ assert.equal(await days.nth(1).locator('.focus-money').getAttribute('title'),'−0g 05s 00c');
  await page.evaluate(()=>{GoldenPeanutClean.State.summary={days:{},totalRecords:0,weekP100:0};GPFocus.render();});
  assert.equal(await days.count(),7,'an empty recorded period still renders seven days');
  assert.equal(await days.nth(0).locator('.focus-money').getAttribute('title'),'0g 00s 00c');

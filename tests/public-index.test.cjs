@@ -32,14 +32,15 @@ test('startup requests compact index, preserves existing icons and skips redunda
   assert.equal(urls[0].cache,'no-cache','revalidation reduces unnecessary full transfers');
   assert.match(state.meta[1].icon,/render.guildwars2.com/);
   assert.equal(state.meta[2].name,'Market Item 2');
-  assert.equal(makeState.writes.length,1);
-  assert.equal(Object.keys(makeState.writes[0]).length,999);
+  assert.equal(makeState.writes.length,2);
+  assert.deepEqual(makeState.writes.map(x=>Object.keys(x).length),[500,499]);
+  assert.ok(makeState.writes.every(x=>Object.keys(x).length<=500));
   const oldRef=state.meta[1],oldRef2=state.meta[2];
   await api.loadIndex(state,{now:now+1000});
   assert.equal(urls.length,1,'warm startup avoids second network transfer');
   assert.equal(state.meta[1],oldRef,'unchanged metadata must keep its object reference');
   assert.equal(state.meta[2],oldRef2,'second cold hydration does not rebuild item objects');
-  assert.equal(makeState.writes.length,1);
+  assert.equal(makeState.writes.length,2,'warm reload adds no metadata writes');
  }finally{global.fetch=original;}
 });
 test('deep discovery still requests complete, validated public quotations when a compact index is loaded',async()=>{
@@ -55,20 +56,59 @@ test('deep discovery still requests complete, validated public quotations when a
   assert.equal(urls.filter(x=>x.includes('market_public.json')).length,1);
  }finally{global.fetch=original;}
 });
-test('old deployment without the compact file falls back to validated full feed',async()=>{
+test('missing compact index never triggers a full-catalogue parse during startup',async()=>{
  const api=fresh(),original=global.fetch,urls=[];
  makeState.writes=[];
  global.fetch=async(url)=>{
   urls.push(String(url));
-  if(String(url).endsWith('market_index.json'))return {ok:false,status:404};
-  return {ok:true,json:async()=>full};
+  return {ok:false,status:404};
  };
  try{
-  const state=makeState(),result=await api.loadIndex(state,{now});
-  assert.equal(result.source,'golden-peanut-github-public');
-  assert.equal(urls.length,2);
-  assert.equal(state.meta[1000].name,'Market Item 1000');
+  const state=makeState(),before=state.meta[1],result=await api.loadIndex(state,{now});
+  assert.equal(result,null);
+  assert.equal(urls.length,1,'startup must not request market_public.json after index failure');
+  assert.equal(state.meta[1],before,'existing user metadata is preserved');
+  assert.equal(state.meta[1000],undefined);
+  assert.match(api.status().lastError,/HTTP 404/);
  }finally{global.fetch=original;}
+});
+test('browser startup uses the dedicated worker and does not parse the index on the UI thread',async()=>{
+ const apiModule='../app/public-market-feed.js';
+ const originalFetch=global.fetch,originalWorker=global.Worker,originalDocument=global.document;
+ let workerUrl='',terminated=false;
+ class FakeWorker{
+  constructor(url){workerUrl=String(url);}
+  postMessage(message){
+   assert.ok(message.url.endsWith('market_index.json'));
+   queueMicrotask(()=>{
+    this.onmessage({data:{type:'start',schema:index.schema,generated_at:index.generated_at,count:index.count,generation:index.generation}});
+    for(let offset=0;offset<index.items.length;offset+=250)
+     this.onmessage({data:{type:'chunk',items:index.items.slice(offset,offset+250)}});
+    this.onmessage({data:{type:'done'}});
+   });
+  }
+  terminate(){terminated=true;}
+ }
+ try{
+  global.document={currentScript:{src:'https://preview.example/app/public-market-feed.js?v=test'}};
+  global.Worker=FakeWorker;
+  global.fetch=async()=>{throw Error('main-thread fetch must not parse the compact index');};
+  delete require.cache[require.resolve(apiModule)];
+  const api=require(apiModule),state=makeState();
+  let heartbeat=false;
+  const heartbeatTimer=setTimeout(()=>{heartbeat=true;},0);
+  const result=await api.loadIndex(state,{now});
+  clearTimeout(heartbeatTimer);
+  assert.equal(heartbeat,true,'UI event loop must run between bounded hydration batches');
+  assert.equal(result.source,'golden-peanut-index-labels-only');
+  assert.ok(workerUrl.includes('public-market-index-worker.js'));
+  assert.equal(terminated,true);
+ }finally{
+  global.fetch=originalFetch;
+  if(originalWorker===undefined)delete global.Worker;else global.Worker=originalWorker;
+  if(originalDocument===undefined)delete global.document;else global.document=originalDocument;
+  delete require.cache[require.resolve(apiModule)];
+ }
 });
 test('two simultaneous chart openings only fetch one 21-day history',async()=>{
  const api=fresh(),original=global.fetch;

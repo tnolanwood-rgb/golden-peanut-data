@@ -1,0 +1,71 @@
+{
+  "conditions": "Synthetic Chromium chart loading/cache/viewport checks; no real account or Android claims",
+  "states": [
+    {
+      "game": "osrs",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "width": 318,
+      "scroll": 318,
+      "axisLabelPx": 15.107142857142858,
+      "open": true
+    },
+    {
+      "game": "osrs",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 388,
+      "scroll": 388,
+      "axisLabelPx": 15.085714285714285,
+      "open": true
+    },
+    {
+      "game": "osrs",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "width": 808,
+      "scroll": 808,
+      "axisLabelPx": 16.03359375,
+      "open": true
+    },
+    {
+      "game": "gw2",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "width": 318,
+      "scroll": 318,
+      "axisLabelPx": 15,
+      "open": true
+    },
+    {
+      "game": "gw2",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 388,
+      "scroll": 388,
+      "axisLabelPx": 15,
+      "open": true
+    },
+    {
+      "game": "gw2",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "width": 798,
+      "scroll": 798,
+      "axisLabelPx": 16.147058823529413,
+      "open": true
+    }
+  ]
+}
