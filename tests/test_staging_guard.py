@@ -66,15 +66,20 @@ class StagingGuardTests(unittest.TestCase):
                     with self.assertRaises(mod.StagingUnsafe):
                         mod.validate(sample)
 
-    def test_unknown_config_and_missing_binding_inventory_blocked(self):
+    def test_unknown_config_blocked_and_documented_optional_bindings_safe(self):
         sample = fixture()
         sample["result"]["deployment_configs"]["preview"]["future_secret"] = {"x": 1}
         with self.assertRaises(mod.StagingUnsafe):
             mod.validate(sample)
         sample = fixture()
         del sample["result"]["deployment_configs"]["production"]["d1_databases"]
-        with self.assertRaises(mod.StagingUnsafe):
-            mod.validate(sample)
+        self.assertTrue(mod.validate(sample)["both_environments_binding_free"])
+        for key in ("ai_bindings", "browsers", "hyperdrive_bindings",
+                    "mtls_certificates", "queue_producers", "vectorize_bindings"):
+            sample = fixture()
+            sample["result"]["deployment_configs"]["preview"][key] = {"PRIVATE": "binding"}
+            with self.assertRaises(mod.StagingUnsafe):
+                mod.validate(sample)
 
     def test_missing_environment_and_unverified_response_blocked(self):
         sample = fixture()
