@@ -101,6 +101,7 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --ignore-scripts
+          python3 -m pip install --disable-pip-version-check PyYAML==6.0.3
           if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
           python3 scripts/check_release.py
           npm test
