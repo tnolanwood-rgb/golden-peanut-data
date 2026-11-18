@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -73,6 +74,12 @@ jobs:
               raise SystemExit('Unexpected production branch; refusing to deploy')
           print('Verified Cloudflare Pages project and main production branch.')
           PY
+      - name: Verify frozen production predecessor and exact isolated staging candidate
+        id: release_preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/golden_experience_release_guard.py preflight
       - name: Embed exact GitHub release identity in the published static bundle
         shell: bash
         run: |
@@ -89,6 +96,7 @@ jobs:
           },separators=(',',':'))+'\n',encoding='utf-8')
           PY
       - name: Deploy reviewed UI to existing production Pages project
+        id: deploy
         shell: bash
         run: |
           npx --yes wrangler@4 pages deploy app --project-name thegoldenpeanut --branch main
@@ -98,8 +106,16 @@ jobs:
           python3 scripts/verify_live_release.py --origin https://thegoldenpeanut.pages.dev --attempts 10
       - name: Verify real production touch navigation
         run: node scripts/verify_swipe_production.cjs
+      - name: Automatically restore verified previous Cloudflare Pages deployment on failure
+        if: ${{ failure() && steps.release_preflight.outcome == 'success' && steps.deploy.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/golden_experience_release_guard.py rollback
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: production-swipe-verification
-          path: artifacts/audit/swipe-production/
+          name: golden-experience-production-release-evidence
+          path: |
+            artifacts/audit/swipe-production/
+            artifacts/audit/golden-experience-production-rollback.json
