@@ -73,6 +73,16 @@ function requestIndexParsed(url,ms=8000,now=Date.now()){
   worker.postMessage({url,timeoutMs:ms});
  });
 }
+function parseOwn(body,now=Date.now()){
+ if(body?.schema!=='golden-peanut-public-v1'||!Number.isSafeInteger(body.generated_at)||!Array.isArray(body.items))throw Error('Wrong public market feed schema');
+ const age=now-body.generated_at*1000;if(age< -3600000||age>MAX_CATALOGUE_AGE)throw Error('Public market feed outdated');
+ const byId=new Map();
+ for(const r of body.items){if(!Array.isArray(r)||r.length!==8||!valid(r[0])||typeof r[1]!=='string'||!r[1]||
+  r[1].length>150||!r.slice(4).every(x=>Number.isSafeInteger(x)&&x>=0))continue;
+  byId.set(r[0],{...(body.metadata?.[r[0]]||{}),id:r[0],name:r[1],type:r[2],rarity:r[3],buy:r[4],sell:r[5],buyQty:r[6],sellQty:r[7],quoteAt:body.quote_times?.[r[0]]||body.generated_at});}
+ if(byId.size<1000||byId.size!==body.items.length||body.count!==byId.size||(body.coverage?.quotes_complete===true&&body.coverage.universe!==byId.size))throw Error('Public item catalogue incomplete');
+ return {coverage:body.coverage||null,generation:body.generation||null,source:'golden-peanut-github-public',byId,generatedAt:body.generated_at*1000,ageMs:age,usableForLiveTrades:false};
+}
 function parseIndex(body,now=Date.now()){
  if(body?.schema!=='golden-peanut-index-v1'||!Number.isSafeInteger(body.generated_at)||
     !Number.isSafeInteger(body.count)||!Array.isArray(body.items))throw Error('Invalid compact market index');

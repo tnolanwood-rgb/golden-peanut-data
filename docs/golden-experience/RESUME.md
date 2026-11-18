@@ -1,5 +1,8 @@
 # Resume Golden Experience
 
+## 18 Nov 2026 — bounded-worker candidate audit found a missing helper; restoring it
+The first chunked-worker candidate `491e85b5` triggered all three workflows. Preview APK packaging succeeded. The regression audit failed in the browser test stage because the helper replacement accidentally removed the existing `parseOwn` full-catalogue parser; the resulting repeated `parseOwn is not defined` errors are a real regression, not a test-only failure. Restored the original validated parser without changing its semantics. Re-run CI and native QA are required before accepting the chunked-worker change.
+
 ## 18 Nov 2026 — second native trace identifies remaining main-thread catalogue work
 Run [44402383543](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44402383543), artifact **14472881931**, passed all nine native functional checks (forward swipe 19 moves / one end / zero cancels; reverse, vertical scroll, rotation and resume also pass). It still recorded a **1,707ms** long task, attributed to `public-market-feed.js` `Worker.onmessage`. This confirms the single-message worker response still incurs expensive structured cloning plus synchronous map construction/hydration on the UI thread. AOSP screenshots remain all black and are not visual QA.
 The next correction sends 250-row worker chunks, validates/builds the item map incrementally on the main thread, and uses the already-batched/yielding `hydrateIndex` path. It also corrects the two failing JS tests exposed by audit 44402383428. No improvement is claimed until full CI and a new native trace pass.

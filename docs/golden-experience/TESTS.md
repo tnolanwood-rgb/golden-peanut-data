@@ -1,3 +1,6 @@
+## 18 Nov 2026 — bounded-worker candidate audit found a missing helper; restoring it
+The first chunked-worker candidate `491e85b5` triggered all three workflows. Preview APK packaging succeeded. The regression audit failed in the browser test stage because the helper replacement accidentally removed the existing `parseOwn` full-catalogue parser; the resulting repeated `parseOwn is not defined` errors are a real regression, not a test-only failure. Restored the original validated parser without changing its semantics. Re-run CI and native QA are required before accepting the chunked-worker change.
+
 ## 18 Nov — second worker diagnosis and bounded chunk follow-up
 Native 44402383543 / artifact 14472881931: all nine functional checks passed, but a 1,707ms `Worker.onmessage` long task remained. Root cause: full 40k-row object was sent as one structured-clone message and then parsed into a Map / hydrated synchronously. Follow-up changes worker protocol to 250-row chunks, incrementally validates/builds the Map, and calls yielding `hydrateIndex`. CI 44402383428 also exposed two failing tests: a stale single-batch write expectation and a worker test not exercising a chunk protocol. These are corrected in the current candidate; verification pending.
 
