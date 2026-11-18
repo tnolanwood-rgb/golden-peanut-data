@@ -78,7 +78,7 @@ test('browser startup uses the dedicated worker and does not parse the index on 
  class FakeWorker{
   constructor(url){workerUrl=String(url);}
   postMessage(message){
-   assert.match(message.url,/market_index\\.json$/);
+   assert.ok(message.url.endsWith('market_index.json'));
    queueMicrotask(()=>this.onmessage({data:{ok:true,body:index}}));
   }
   terminate(){terminated=true;}
@@ -91,7 +91,7 @@ test('browser startup uses the dedicated worker and does not parse the index on 
   const api=require(apiModule),state=makeState();
   const result=await api.loadIndex(state,{now});
   assert.equal(result.source,'golden-peanut-index-labels-only');
-  assert.match(workerUrl,/public-market-index-worker\\.js/);
+  assert.ok(workerUrl.includes('public-market-index-worker.js'));
   assert.equal(terminated,true);
  }finally{
   global.fetch=originalFetch;
