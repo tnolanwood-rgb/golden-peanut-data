@@ -76,7 +76,7 @@ jobs:
               'schema':'golden-peanut-pages-release-v1',
               'commit':os.environ['BASE_SHA'],
               'source':'isolated-golden-experience-hosted-qa',
-              'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\\n')
+              'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\n')
           if check(staging,candidate)!=39:
               sys.exit('BLOCKED: expected current staging candidate mismatch')
           deployments=api(staging_name+'/deployments?per_page=30')
