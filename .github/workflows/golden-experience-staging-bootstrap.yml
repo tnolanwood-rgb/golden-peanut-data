@@ -1,0 +1,84 @@
+name: Golden Experience — Isolated Cloudflare Staging Bootstrap
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-staging-bootstrap.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-safe-staging-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  create-or-verify-staging:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create only the independent, unbound staging Pages project when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, sys, time, urllib.error, urllib.request
+          sys.path.insert(0, 'scripts')
+          from staging_guard import validate, StagingUnsafe
+          account = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+          token = os.environ.get('CLOUDFLARE_API_TOKEN', '')
+          if not re.fullmatch(r'[a-fA-F0-9]{32}', account) or not token:
+              raise SystemExit('BLOCKED: required Cloudflare account/token unavailable')
+          root = 'https://api.cloudflare.com/client/v4/accounts/' + account + '/pages/projects'
+          headers = {'Authorization': 'Bearer ' + token, 'Accept': 'application/json'}
+          def request(path, method='GET', payload=None, missing_ok=False):
+              data = None if payload is None else json.dumps(payload).encode('utf-8')
+              req = urllib.request.Request(root+path, data=data, method=method,
+                  headers={**headers, **({'Content-Type':'application/json'} if data else {})})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as res:
+                      body=json.load(res)
+              except urllib.error.HTTPError as err:
+                  if missing_ok and err.code==404:
+                      return None
+                  raise SystemExit('BLOCKED: Cloudflare '+method+' failed with HTTP '+str(err.code))
+              except (OSError, ValueError) as err:
+                  raise SystemExit('BLOCKED: Cloudflare '+method+' unavailable: '+type(err).__name__)
+              if body.get('success') is not True or not isinstance(body.get('result'), dict):
+                  raise SystemExit('BLOCKED: Cloudflare '+method+' returned invalid response')
+              return body['result']
+          production=request('/thegoldenpeanut')
+          if (production.get('name'),production.get('production_branch'),
+              production.get('subdomain')) != ('thegoldenpeanut','main','thegoldenpeanut.pages.dev'):
+              raise SystemExit('BLOCKED: existing production identity changed')
+          staging=request('/golden-experience-staging',missing_ok=True)
+          if staging is None:
+              print('Independent staging absent; requesting a NEW direct-upload project (not production).')
+              created=request('',method='POST',payload={
+                  'name':'golden-experience-staging',
+                  'production_branch':'golden-experience-staging'})
+              if created.get('name')!='golden-experience-staging':
+                  raise SystemExit('BLOCKED: unexpected staging creation result')
+              for attempt in range(5):
+                  staging=request('/golden-experience-staging',missing_ok=True)
+                  if staging: break
+                  time.sleep(2)
+          if staging is None:
+              raise SystemExit('BLOCKED: staging creation did not read back')
+          try:
+              proof=validate(staging)
+          except (StagingUnsafe,ValueError) as err:
+              raise SystemExit('BLOCKED: staging isolation guard refused project: '+str(err)[:180])
+          print('PASS: independent staging provisioned and Cloudflare-readback validated.')
+          print(json.dumps(proof,sort_keys=True))
+          print('No deployment, production write, Worker/D1 write or APK change performed.')
+          PY
