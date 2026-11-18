@@ -15,7 +15,7 @@ on:
         description: 'Exact existing Cloudflare Pages project name (preview mode only)'
         required: false
         type: string
-        default: 'thegoldenpeanut'
+        default: 'golden-experience-staging'
 
 permissions:
   contents: read
@@ -34,7 +34,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
       GP_PROJECT_NAME: ${{ inputs.project_name }}
       GP_OPERATION: ${{ inputs.operation }}
-      GP_PREVIEW_BRANCH: golden-peanut-reviewed
+      GP_PREVIEW_BRANCH: golden-experience-staging
     steps:
       - name: Verify credentials and inspect existing Pages projects
         shell: bash
@@ -76,15 +76,18 @@ jobs:
           if choice == 'inspect':
               print('Existing Cloudflare Pages projects (names only; no secrets):')
               for row in projects:
-                  print(' - ' + str(row.get('name', '?')) + ' [production branch: ' + str(row.get('production_branch') or 'unknown') + ']')
-                  # Report trigger/binding metadata only, never environment values.
-                  source = row.get('source') or {}
-                  config = source.get('config') or {}
+                  # Report only non-secret isolation metadata.
+                  source = row.get('source')
+                  config = (source or {}).get('config') or {}
                   bindings = {}
                   for mode, deployment in (row.get('deployment_configs') or {}).items():
                       bindings[mode] = {key: bool(deployment.get(key)) for key in
                           ('d1_databases', 'kv_namespaces', 'r2_buckets', 'services', 'durable_object_namespaces', 'env_vars')}
-                  print(json.dumps({'project': row.get('name'), 'source_type': source.get('type'),
+                  print(json.dumps({'project': row.get('name'),
+                      'subdomain': row.get('subdomain'),
+                      'domains': row.get('domains'),
+                      'production_branch': row.get('production_branch'),
+                      'source_type': (source or {}).get('type'),
                       'git_triggers': {key: config.get(key) for key in
                           ('production_branch', 'production_deployments_enabled', 'preview_deployment_setting', 'preview_branch_includes', 'preview_branch_excludes')},
                       'binding_presence': bindings}, sort_keys=True))
@@ -95,9 +98,33 @@ jobs:
           match = next((row for row in projects if row.get('name') == project), None)
           if not match:
               sys.exit('Requested project name was not found among the existing Pages projects')
-          if preview == match.get('production_branch'):
-              sys.exit('Unsafe: preview branch equals the Pages production branch')
-          print('Validated existing Pages project for PREVIEW only: ' + project)
+          # Fail closed: this workflow may deploy only to one separately named,
+          # independently hosted, unbound Pages project. Never reuse production.
+          if project != 'golden-experience-staging' or project == 'thegoldenpeanut':
+              sys.exit('Unsafe project name: only golden-experience-staging is permitted')
+          if match.get('subdomain') != 'golden-experience-staging':
+              sys.exit('Unsafe or unverified staging pages.dev subdomain')
+          if match.get('production_branch') != 'golden-experience-staging':
+              sys.exit('Staging production branch must be golden-experience-staging')
+          if match.get('domains') != []:
+              sys.exit('Staging custom-domain inventory must be explicitly empty')
+          if match.get('source') is not None:
+              sys.exit('Git-connected Pages projects are not permitted for isolated staging')
+          configs = match.get('deployment_configs')
+          required_bindings = ('d1_databases', 'kv_namespaces', 'r2_buckets',
+                               'services', 'durable_object_namespaces', 'env_vars')
+          if not isinstance(configs, dict) or not {'production', 'preview'}.issubset(configs):
+              sys.exit('Both production and preview deployment configurations must be readable')
+          for mode in ('production', 'preview'):
+              deployment = configs[mode]
+              if not isinstance(deployment, dict):
+                  sys.exit('Staging deployment configuration is unreadable')
+              for key in required_bindings:
+                  if key not in deployment or deployment[key] not in (None, [], {}):
+                      sys.exit('Staging has a missing, unknown or non-empty private binding: ' + mode + '.' + key)
+          if preview != 'golden-experience-staging':
+              sys.exit('Unexpected staging deployment branch')
+          print('Verified independent, unbound staging Pages project; preview deployment may proceed: ' + project)
           PY
       - name: Checkout reviewed Golden Peanut development source
         if: inputs.operation == 'preview'
