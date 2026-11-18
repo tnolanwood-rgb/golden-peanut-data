@@ -1,0 +1,128 @@
+name: Golden Experience — Production Rollback Target and Release Preflight
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-production-preflight.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-production-preflight-readonly
+  cancel-in-progress: false
+
+jobs:
+  readonly-production-preflight:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      BASE_SHA: 41e3ef709059922ccae7f7e5570ac7764eeb3817
+      CANDIDATE_SHA: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Confirm exact source trees and both live hosts; inspect rollback deployment identity READ ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE_SHA" || { echo 'FAIL: main has changed; release lock invalid'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/pe-baseline" "$RUNNER_TEMP/pe-candidate" artifacts/audit/golden-experience-production-preflight
+          git archive "$BASE_SHA" app | tar -xf - -C "$RUNNER_TEMP/pe-baseline"
+          git archive "$CANDIDATE_SHA" app | tar -xf - -C "$RUNNER_TEMP/pe-candidate"
+          python3 - <<'PY'
+          import json, os, pathlib, re, sys, urllib.request
+          from datetime import datetime, timezone
+          sys.path.insert(0,'scripts')
+          from staging_guard import validate
+          from verify_live_release import check
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_API_TOKEN','')
+          if not re.fullmatch('[a-fA-F0-9]{32}',account) or not token:
+              sys.exit('FAIL: missing account-scoped Cloudflare credential')
+          root='https://api.cloudflare.com/client/v4/accounts/'+account+'/pages/projects/'
+          def get(relative):
+              request=urllib.request.Request(root+relative,headers={
+                  'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with urllib.request.urlopen(request,timeout=30) as resp: data=json.load(resp)
+              if data.get('success') is not True:
+                  sys.exit('FAIL: Cloudflare inspection unsuccessful')
+              return data.get('result')
+          prod=get('thegoldenpeanut')
+          stage=get('golden-experience-staging')
+          if (prod.get('name'),prod.get('subdomain'),prod.get('production_branch')) != (
+              'thegoldenpeanut','thegoldenpeanut.pages.dev','main'):
+              sys.exit('FAIL: production project changed')
+          proof=validate(stage)
+          baseline=pathlib.Path(os.environ['RUNNER_TEMP'])/'pe-baseline/app'
+          candidate=pathlib.Path(os.environ['RUNNER_TEMP'])/'pe-candidate/app'
+          expected_live=baseline/'build-info.json'
+          if expected_live.exists(): sys.exit('FAIL: baseline source unexpectedly has generated build marker')
+          baseline_assets=check('https://thegoldenpeanut.pages.dev',baseline)
+          live=json.loads(urllib.request.urlopen('https://thegoldenpeanut.pages.dev/build-info.json',timeout=20).read())
+          if live.get('commit')!=os.environ['BASE_SHA'] or live.get('origin')!='thegoldenpeanut.pages.dev':
+              sys.exit('FAIL: live predecessor build identity drift')
+          staged_marker={'schema':'golden-peanut-pages-release-v1',
+              'commit':os.environ['CANDIDATE_SHA'],
+              'source':'isolated-golden-experience-hosted-qa',
+              'origin':'golden-experience-staging.pages.dev'}
+          (candidate/'build-info.json').write_text(json.dumps(staged_marker,separators=(',',':'))+'\n')
+          staged_assets=check('https://golden-experience-staging.pages.dev',candidate)
+          staging_live=json.loads(urllib.request.urlopen('https://golden-experience-staging.pages.dev/build-info.json',timeout=20).read())
+          if staging_live!=staged_marker: sys.exit('FAIL: staged build identity drift')
+          # Read latest actual Cloudflare Pages deployment records for both projects;
+          # log ONLY safe identity/status fields, never private configuration.
+          report={'schema':'ge-production-preflight-readonly-v1',
+              'checked_utc':datetime.now(timezone.utc).isoformat(),
+              'candidate_commit':os.environ['CANDIDATE_SHA'],
+              'predecessor_commit':os.environ['BASE_SHA'],
+              'production_source_assets_verified':baseline_assets,
+              'staging_candidate_assets_verified':staged_assets,
+              'staging_isolation':proof,
+              'project_deployment_metadata':{}}
+          for project in ('thegoldenpeanut','golden-experience-staging'):
+              obj=prod if project=='thegoldenpeanut' else stage
+              rows=get(project+'/deployments?per_page=20')
+              if not isinstance(rows,list) or not rows:
+                  sys.exit('FAIL: deployments listing missing for '+project)
+              clean=[]
+              for dep in rows:
+                  if not isinstance(dep,dict): continue
+                  safe={'id':dep.get('id'),'environment':dep.get('environment'),
+                      'created_on':dep.get('created_on'),
+                      'latest_status':(dep.get('latest_stage') or {}).get('status'),
+                      'branch':((dep.get('deployment_trigger') or {}).get('metadata') or {}).get('branch')}
+                  clean.append(safe)
+              pointers={}
+              for key in ('latest_deployment','canonical_deployment'):
+                  v=obj.get(key)
+                  pointers[key]=v.get('id') if isinstance(v,dict) else None
+              report['project_deployment_metadata'][project]={'pointers':pointers,'latest_twenty':clean}
+              if project=='thegoldenpeanut':
+                  active=pointers.get('canonical_deployment') or pointers.get('latest_deployment')
+                  matching=next((d for d in clean if d['id']==active),None)
+                  if not active or not matching or matching['environment']!='production' or matching['latest_status']!='success':
+                      sys.exit('FAIL: live production rollback deployment not conclusively identified as successful')
+                  report['rollback_target_production_deployment_id']=active
+          out=pathlib.Path('artifacts/audit/golden-experience-production-preflight/preflight.json')
+          out.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
+          print('PASS: staged',staged_assets,'and production',baseline_assets,'exact public assets')
+          print('PASS: rollback target production deployment ID:',report['rollback_target_production_deployment_id'])
+          print('PASS: strict staging isolate and production read-only identity; no deploy/write')
+          PY
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE_SHA" || { echo 'FAIL: main changed during preflight'; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-experience-production-readonly-preflight
+          path: artifacts/audit/golden-experience-production-preflight/
+          retention-days: 30
+
+# This workflow is 100% READ ONLY in Cloudflare and GitHub. It cannot deploy or rollback.
