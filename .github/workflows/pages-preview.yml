@@ -1,6 +1,11 @@
 name: Golden Peanut — Inspect Cloudflare and Deploy Preview
 
 on:
+  push:
+    branches:
+      - feature/golden-experience
+    paths:
+      - '.github/workflows/pages-preview.yml'
   workflow_dispatch:
     inputs:
       operation:
@@ -32,8 +37,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
-      GP_PROJECT_NAME: ${{ inputs.project_name }}
-      GP_OPERATION: ${{ inputs.operation }}
+      GP_PROJECT_NAME: ${{ inputs.project_name || 'golden-experience-staging' }}
+      GP_OPERATION: ${{ inputs.operation || 'inspect' }}
       GP_PREVIEW_BRANCH: golden-experience-staging
     steps:
       - name: Verify credentials and inspect existing Pages projects
