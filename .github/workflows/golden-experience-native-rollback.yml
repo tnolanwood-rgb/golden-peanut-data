@@ -79,7 +79,7 @@ jobs:
               'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\n')
           if check(staging,candidate)!=39:
               sys.exit('BLOCKED: expected current staging candidate mismatch')
-          deployments=api(staging_name+'/deployments?per_page=30')
+          deployments=api(staging_name+'/deployments?per_page=20')
           if not isinstance(deployments,list): sys.exit('BLOCKED: deployment inventory incomplete')
           found={}
           for d in deployments:
