@@ -1,0 +1,60 @@
+{
+  "schema": "golden-experience-paired-cold-start-v1",
+  "recorded_at": "2026-11-18",
+  "exact_pr_head": "7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39",
+  "github_synthetic_candidate_head": "540829ea5a4dbcf342a5f0256121c4d877e2324f",
+  "workflow_run": 44412013261,
+  "artifact_id": 14478006137,
+  "baseline": "097f012c1f912411790dd7dce21434a9cdc497d2",
+  "conditions": "Six ABBA paired cold desktop Chromium contexts per revision, 390x844 mobile-touch emulation, two-item synthetic Wiki fixture, blocked external requests, identical intercepted static transport, CPU sampler on both. Not Android WebView, real network, hardware FPS, or real-account performance.",
+  "baseline_metrics": {
+    "ready_ms": {
+      "median": 220.3,
+      "p95": 227.7,
+      "min": 150.4,
+      "max": 227.7
+    },
+    "trials_ms": [
+      227.2,
+      224.3,
+      227.7,
+      150.4,
+      208.2,
+      216.3
+    ],
+    "long_tasks": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "candidate_metrics": {
+    "ready_ms": {
+      "median": 224.9,
+      "p95": 232,
+      "min": 208.1,
+      "max": 232
+    },
+    "trials_ms": [
+      216.3,
+      221.1,
+      228.7,
+      208.1,
+      232,
+      228.9
+    ],
+    "long_tasks": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "interpretation": "Correct six-sample median is 4.6ms slower for the candidate. Both revisions had zero long tasks in all six trials. This is no evidence of a material main-thread long-task regression in this synthetic profile, not a universal or Android performance guarantee.",
+  "source_member": "audit/golden-experience/osrs-cold-profile.json"
+}
