@@ -1,0 +1,43 @@
+name: Golden Experience — Independent Live Release Guard Preflight
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-release-guard-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-candidate-rollback-identity:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run actual production release guard in preflight-only mode against current main and staged exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'scripts')
+          from golden_experience_release_guard import preflight,BASE
+          preflight(BASE)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-experience-live-release-guard-preflight
+          path: artifacts/audit/golden-experience-production-rollback.json
+          retention-days: 30
+
+# Strict read-only production checks. NEVER deploys or rolls back production.
