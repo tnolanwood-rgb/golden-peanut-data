@@ -1,3 +1,6 @@
+## 18 Nov — second worker diagnosis and bounded chunk follow-up
+Native 44402383543 / artifact 14472881931: all nine functional checks passed, but a 1,707ms `Worker.onmessage` long task remained. Root cause: full 40k-row object was sent as one structured-clone message and then parsed into a Map / hydrated synchronously. Follow-up changes worker protocol to 250-row chunks, incrementally validates/builds the Map, and calls yielding `hydrateIndex`. CI 44402383428 also exposed two failing tests: a stale single-batch write expectation and a worker test not exercising a chunk protocol. These are corrected in the current candidate; verification pending.
+
 ## 18 Nov — worker offload reduced, but did not remove, the native long task
 At `fbd59e0`, native 44401725555 artifact 14474096115: all nine native function/lifecycle checks pass, but the main thread still blocks for 1,072ms in `Worker.onmessage`. New test verifies the browser event loop runs between 500-row metadata batches and IndexedDB writes are bounded. This follow-up is pending exact CI and native rerun.
 

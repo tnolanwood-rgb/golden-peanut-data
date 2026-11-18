@@ -1,5 +1,9 @@
 # Resume Golden Experience
 
+## 18 Nov 2026 — second native trace identifies remaining main-thread catalogue work
+Run [44402383543](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44402383543), artifact **14472881931**, passed all nine native functional checks (forward swipe 19 moves / one end / zero cancels; reverse, vertical scroll, rotation and resume also pass). It still recorded a **1,707ms** long task, attributed to `public-market-feed.js` `Worker.onmessage`. This confirms the single-message worker response still incurs expensive structured cloning plus synchronous map construction/hydration on the UI thread. AOSP screenshots remain all black and are not visual QA.
+The next correction sends 250-row worker chunks, validates/builds the item map incrementally on the main thread, and uses the already-batched/yielding `hydrateIndex` path. It also corrects the two failing JS tests exposed by audit 44402383428. No improvement is claimed until full CI and a new native trace pass.
+
 ## LATEST 18 NOV 2026 — GE-07 worker parse passed functionally; hydration batching pending
 Source `fbd59e0834f2ccef479ed6ff0115f19b2fecb7ea`: full regression and APK jobs are running; preview APK build passed. Native run 44401725555 passed all nine cases, but its artifact 14474096115 records a 1,072ms long task in `Worker.onmessage` after the swipe. The previous 1,663ms `Response.json.then` task is gone. New code now chunks metadata hydration/IndexedDB persistence into 500-row batches and yields between batches. **Next:** check exact CI, then repeat native AOSP ATD and inspect LoAF/longtask. If long task persists, split Worker reply structured-clone/Map validation into smaller or worker-side work. No strict gesture assertion may be relaxed.
 ## LATEST 18 NOV 2026 — first-swipe long-task source narrowed; worker fix pending verification

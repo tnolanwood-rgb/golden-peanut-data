@@ -80,7 +80,12 @@ test('browser startup uses the dedicated worker and does not parse the index on 
   constructor(url){workerUrl=String(url);}
   postMessage(message){
    assert.ok(message.url.endsWith('market_index.json'));
-   queueMicrotask(()=>this.onmessage({data:{ok:true,body:index}}));
+   queueMicrotask(()=>{
+    this.onmessage({data:{type:'start',schema:index.schema,generated_at:index.generated_at,count:index.count,generation:index.generation}});
+    for(let offset=0;offset<index.items.length;offset+=250)
+     this.onmessage({data:{type:'chunk',items:index.items.slice(offset,offset+250)}});
+    this.onmessage({data:{type:'done'}});
+   });
   }
   terminate(){terminated=true;}
  }

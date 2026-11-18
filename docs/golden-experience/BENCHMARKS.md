@@ -1,5 +1,9 @@
 # Performance evidence
 
+## 18 Nov 2026 — second native trace identifies remaining main-thread catalogue work
+Run [44402383543](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44402383543), artifact **14472881931**, passed all nine native functional checks (forward swipe 19 moves / one end / zero cancels; reverse, vertical scroll, rotation and resume also pass). It still recorded a **1,707ms** long task, attributed to `public-market-feed.js` `Worker.onmessage`. This confirms the single-message worker response still incurs expensive structured cloning plus synchronous map construction/hydration on the UI thread. AOSP screenshots remain all black and are not visual QA.
+The next correction sends 250-row worker chunks, validates/builds the item map incrementally on the main thread, and uses the already-batched/yielding `hydrateIndex` path. It also corrects the two failing JS tests exposed by audit 44402383428. No improvement is claimed until full CI and a new native trace pass.
+
 ## 18 Nov 2026 — worker parse succeeded; main-thread hydration became the next bottleneck
 At exact source `fbd59e0`, native run [44401725555](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44401725555), artifact **14474096115**, passed all nine functional cases. The original `Response.json.then` 1,663ms task disappeared, but a **1,072ms** task remained, now attributed to `public-market-feed.js` / `Worker.onmessage`. The worker had moved JSON parsing off-thread; the reply path still performed full Map validation, metadata comparison/hydration and one large IndexedDB batch synchronously. GE-07 follow-up now writes metadata in bounded 500-row batches and yields to the UI event loop between batches. The new exact native rerun must confirm whether the residual task is eliminated or whether structured-clone/Map validation also needs off-thread work. No performance improvement is certified yet.
 

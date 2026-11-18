@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 18 Nov 2026 — second native trace identifies remaining main-thread catalogue work
+Run [44402383543](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44402383543), artifact **14472881931**, passed all nine native functional checks (forward swipe 19 moves / one end / zero cancels; reverse, vertical scroll, rotation and resume also pass). It still recorded a **1,707ms** long task, attributed to `public-market-feed.js` `Worker.onmessage`. This confirms the single-message worker response still incurs expensive structured cloning plus synchronous map construction/hydration on the UI thread. AOSP screenshots remain all black and are not visual QA.
+The next correction sends 250-row worker chunks, validates/builds the item map incrementally on the main thread, and uses the already-batched/yielding `hydrateIndex` path. It also corrects the two failing JS tests exposed by audit 44402383428. No improvement is claimed until full CI and a new native trace pass.
+
 ## 18 Nov 2026 — worker parsing isolated; chunked hydration now under test
 At source `fbd59e0`, native run 44401725555 / artifact 14474096115 confirms all nine functional cases pass and the swipe completes (17 moves, 1 touchend, 0 cancel). The 1,663ms JSON.parse task moved off the main thread, but a 1,072ms `Worker.onmessage` task remained. Root work in the main reply path includes validation/Map construction, metadata hydration and the single large IndexedDB write. The follow-up now hydrates and persists metadata in 500-row batches with event-loop yields. Exact regression CI, APK packaging and a second native trace are pending. Do not mark smoothness fixed.
 ## 18 Nov 2026 — GE-07 startup market-index parse isolated; verification pending
