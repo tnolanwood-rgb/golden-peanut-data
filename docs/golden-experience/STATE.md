@@ -2,7 +2,7 @@
 
 ## 18 Nov 2026 — merged current main; exact merged-head regression, Android and APK gates GREEN
 
-Current feature head is `7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39`, a proper two-parent merge of the protected feature work and current main `41e3ef709059922ccae7f7e5570ac7764eeb3817`. PR #65 remains DRAFT. The two main-only commits contained exactly 37 public market-data JSON/index/history files; they are now present in this branch. App/runtime source was not changed by this merge.
+Verified app/data candidate is `7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39`, a proper two-parent merge of the protected feature work and current main `41e3ef709059922ccae7f7e5570ac7764eeb3817`. Current PR head `c2a69038320618ccda470df73fc14937c1f79984` adds documentation/evidence only; the verified runtime and merged data are unchanged. PR #65 remains DRAFT. The two main-only commits contained exactly 37 public market-data JSON/index/history files; they are now present in this branch. App/runtime source was not changed by this merge.
 
 All three exact merged-head workflows PASS:
 - [Full regression/audit #432](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44412013261), artifact **14478006137**: source/Python/JavaScript/browser checks, populated synthetic visual acceptance, startup/chart benchmark, six-pair cold-start profile, baseline/retention probes, three repeated 100-cycle retained-session probes, exact candidate lock, offline rollback rehearsal, main-drift guard and actionlint all passed.
