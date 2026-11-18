@@ -74,3 +74,9 @@ evidence/cloudflare-isolation.json. Existing main workflow unmodified; only this
 branch's inspect output was expanded, never settings. This strengthens the earlier
 limited branch evidence; it does not authorize deploying into the production project.
 New staging still requires a distinct project/origin with no private write access.
+
+
+## 18 Nov 2026 — exact PR head and current external boundaries
+PR #65 head `cca17780315ca8c923f3506edb931fc586d1ff99`: regression/audit #430, Android 35 emulator #59 and separate preview APK #91 all pass. Main is exactly `41e3ef709059922ccae7f7e5570ac7764eeb3817`; no drift at this checkpoint. The branch contains a fail-closed `pages-preview.yml` inspection/deploy workflow, but no successful feature-branch Cloudflare inspection is recorded. The last real Cloudflare readback is historical and identified only the production project `thegoldenpeanut`; it does not establish a separate staging project. No staging deployment or hosted rollback has occurred. The workflow push trigger only runs an inspection when its own workflow file changes; the protected manual dispatch still requires an authorized GitHub UI/account action. No Cloudflare secrets or account access are exposed to this assistant connection.
+
+Physical device and current installed package/signer/storage remain unverified. The old minimal WebView wrapper and bundled Capacitor APKs differ; do not assume site deploy updates bundled app copies. AOSP framebuffer is black. No production mutation, merge, deployment, Worker/D1 write or APK install occurred.

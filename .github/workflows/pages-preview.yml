@@ -170,4 +170,4 @@ jobs:
         run: |
           npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch "$GP_PREVIEW_BRANCH"
 
-# This workflow is manual-only. Production deployment is deliberately unavailable.
+# Manual inspect/preview; workflow-file-only push also runs inspect. Production deployment is deliberately unavailable.
