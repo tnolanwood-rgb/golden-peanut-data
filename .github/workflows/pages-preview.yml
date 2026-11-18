@@ -102,7 +102,7 @@ jobs:
           # independently hosted, unbound Pages project. Never reuse production.
           if project != 'golden-experience-staging' or project == 'thegoldenpeanut':
               sys.exit('Unsafe project name: only golden-experience-staging is permitted')
-          if match.get('subdomain') != 'golden-experience-staging':
+          if match.get('subdomain') != 'golden-experience-staging.pages.dev':
               sys.exit('Unsafe or unverified staging pages.dev subdomain')
           if match.get('production_branch') != 'golden-experience-staging':
               sys.exit('Staging production branch must be golden-experience-staging')
@@ -113,6 +113,15 @@ jobs:
           configs = match.get('deployment_configs')
           required_bindings = ('d1_databases', 'kv_namespaces', 'r2_buckets',
                                'services', 'durable_object_namespaces', 'env_vars')
+          all_binding_names = set(required_bindings) | {
+              'queues', 'hyperdrive', 'vectorize', 'analytics_engine_datasets',
+              'ai', 'browser', 'dispatch_namespaces', 'unsafe', 'vars',
+              'secrets', 'assets'
+          }
+          safe_config_names = {
+              'compatibility_date', 'compatibility_flags', 'build_image_major_version',
+              'fail_open', 'usage_model', 'placement', 'limits', 'observability'
+          }
           if not isinstance(configs, dict) or not {'production', 'preview'}.issubset(configs):
               sys.exit('Both production and preview deployment configurations must be readable')
           for mode in ('production', 'preview'):
@@ -121,7 +130,12 @@ jobs:
                   sys.exit('Staging deployment configuration is unreadable')
               for key in required_bindings:
                   if key not in deployment or deployment[key] not in (None, [], {}):
-                      sys.exit('Staging has a missing, unknown or non-empty private binding: ' + mode + '.' + key)
+                      sys.exit('Staging has a missing or non-empty private binding: ' + mode + '.' + key)
+              for key, value in deployment.items():
+                  if key not in all_binding_names and key not in safe_config_names:
+                      sys.exit('Staging has an unknown configuration field: ' + mode + '.' + key)
+                  if key in all_binding_names and value not in (None, [], {}):
+                      sys.exit('Staging has a non-empty private binding: ' + mode + '.' + key)
           if preview != 'golden-experience-staging':
               sys.exit('Unexpected staging deployment branch')
           print('Verified independent, unbound staging Pages project; preview deployment may proceed: ' + project)
