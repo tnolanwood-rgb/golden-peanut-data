@@ -55,20 +55,50 @@ test('deep discovery still requests complete, validated public quotations when a
   assert.equal(urls.filter(x=>x.includes('market_public.json')).length,1);
  }finally{global.fetch=original;}
 });
-test('old deployment without the compact file falls back to validated full feed',async()=>{
+test('missing compact index never triggers a full-catalogue parse during startup',async()=>{
  const api=fresh(),original=global.fetch,urls=[];
  makeState.writes=[];
  global.fetch=async(url)=>{
   urls.push(String(url));
-  if(String(url).endsWith('market_index.json'))return {ok:false,status:404};
-  return {ok:true,json:async()=>full};
+  return {ok:false,status:404};
  };
  try{
-  const state=makeState(),result=await api.loadIndex(state,{now});
-  assert.equal(result.source,'golden-peanut-github-public');
-  assert.equal(urls.length,2);
-  assert.equal(state.meta[1000].name,'Market Item 1000');
+  const state=makeState(),before=state.meta[1],result=await api.loadIndex(state,{now});
+  assert.equal(result,null);
+  assert.equal(urls.length,1,'startup must not request market_public.json after index failure');
+  assert.equal(state.meta[1],before,'existing user metadata is preserved');
+  assert.equal(state.meta[1000],undefined);
+  assert.match(api.status().lastError,/HTTP 404/);
  }finally{global.fetch=original;}
+});
+test('browser startup uses the dedicated worker and does not parse the index on the UI thread',async()=>{
+ const apiModule='../app/public-market-feed.js';
+ const originalFetch=global.fetch,originalWorker=global.Worker,originalDocument=global.document;
+ let workerUrl='',terminated=false;
+ class FakeWorker{
+  constructor(url){workerUrl=String(url);}
+  postMessage(message){
+   assert.match(message.url,/market_index\\.json$/);
+   queueMicrotask(()=>this.onmessage({data:{ok:true,body:index}}));
+  }
+  terminate(){terminated=true;}
+ }
+ try{
+  global.document={currentScript:{src:'https://preview.example/app/public-market-feed.js?v=test'}};
+  global.Worker=FakeWorker;
+  global.fetch=async()=>{throw Error('main-thread fetch must not parse the compact index');};
+  delete require.cache[require.resolve(apiModule)];
+  const api=require(apiModule),state=makeState();
+  const result=await api.loadIndex(state,{now});
+  assert.equal(result.source,'golden-peanut-index-labels-only');
+  assert.match(workerUrl,/public-market-index-worker\\.js/);
+  assert.equal(terminated,true);
+ }finally{
+  global.fetch=originalFetch;
+  if(originalWorker===undefined)delete global.Worker;else global.Worker=originalWorker;
+  if(originalDocument===undefined)delete global.document;else global.document=originalDocument;
+  delete require.cache[require.resolve(apiModule)];
+ }
 });
 test('two simultaneous chart openings only fetch one 21-day history',async()=>{
  const api=fresh(),original=global.fetch;

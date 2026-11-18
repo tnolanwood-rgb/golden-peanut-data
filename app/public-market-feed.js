@@ -14,6 +14,34 @@ async function request(url,ms=9500){
   if(!r.ok)throw Error('public feed HTTP '+r.status);return await r.json();}
  finally{clearTimeout(t);}
 }
+/* The compact index is ~1.5 MB. JSON.parse inside Response.json() can block
+ * Android WebView's UI thread long enough to interrupt an otherwise-correct
+ * swipe. Parse it in a same-origin worker; never fall back to a large main-thread
+ * startup parse if workers are unavailable. Node tests retain the fetch path. */
+const SCRIPT_URL=typeof document!=='undefined'&&document.currentScript?.src||'';
+function requestIndexBody(url,ms=8000){
+ if(typeof document==='undefined')return request(url,ms);
+ if(typeof Worker!=='function'||!SCRIPT_URL)return Promise.reject(Error('Background market-index worker unavailable'));
+ return new Promise((resolve,reject)=>{
+  let worker;
+  try{worker=new Worker(new URL('./public-market-index-worker.js?v=20261118-worker-parse-v1',SCRIPT_URL));}
+  catch(error){reject(Error('Could not start market-index worker: '+String(error?.message||error).slice(0,100)));return;}
+  let settled=false;
+  const finish=(error,value)=>{
+   if(settled)return;settled=true;clearTimeout(timer);worker.terminate();
+   if(error)reject(error);else resolve(value);
+  };
+  const timer=setTimeout(()=>finish(Error('Market-index worker timed out')),ms+1500);
+  worker.onmessage=event=>{
+   const data=event.data||{};
+   if(data.ok===true)finish(null,data.body);
+   else finish(Error(data.error||'Market-index worker failed'));
+  };
+  worker.onerror=event=>finish(Error('Market-index worker error: '+String(event.message||'unknown').slice(0,100)));
+  worker.onmessageerror=()=>finish(Error('Market-index worker returned unreadable data'));
+  worker.postMessage({url,timeoutMs:ms});
+ });
+}
 function parseOwn(body,now=Date.now()){
  if(body?.schema!=='golden-peanut-public-v1'||!Number.isSafeInteger(body.generated_at)||!Array.isArray(body.items))throw Error('Wrong public market feed schema');
  const age=now-body.generated_at*1000;if(age< -3600000||age>MAX_CATALOGUE_AGE)throw Error('Public market feed outdated');
@@ -104,10 +132,13 @@ async function loadIndex(state,{force=false,now=Date.now()}={}){
  if(indexLoading&&!force)return indexLoading;
  indexLoading=(async()=>{
   let result;
-  try{result=parseIndex(await request(OWN+'market_index.json',8000),now);}
+  try{result=parseIndex(await requestIndexBody(OWN+'market_index.json',8000),now);}
   catch(e){
-   lastError='Compact startup index unavailable: '+String(e?.message||e).slice(0,100);
-   return load(state,{force,now});
+   // Never fall back to parsing the multi-megabyte full quote snapshot during
+   // startup. Local metadata remains intact; explicit deep discovery can still
+   // call load() when the owner deliberately requests that heavier operation.
+   lastError='Compact startup index unavailable: '+String(e?.message||e).slice(0,120);
+   return null;
   }
   result.loadedAt=now;indexLoaded=result;
   const changed=missingMetadata(state,result);

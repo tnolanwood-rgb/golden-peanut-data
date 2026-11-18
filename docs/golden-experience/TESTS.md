@@ -1,3 +1,6 @@
+## 18 Nov — public market-index worker / Android latency follow-up (CI pending)
+Native run 44055560918 artifact 14316026977: all nine functional checks passed, but one 1,663ms long task followed the successful first swipe. LoAF attribution points to `public-market-feed.js` `Response.json.then`; startup invokes only compact `market_index.json` (1,550,013 bytes) through `loadIndex`. The response URL is not recorded, so exact attribution remains inferential. New worker tests assert browser startup uses the dedicated worker and that missing index never triggers full-catalogue fallback. Full CI and new Android trace are pending; no performance pass claimed.
+
 ## Native Android 35 emulator touch ownership VERIFIED — 16 November 2026
 
 ## 17 Nov — all automated code + native interaction gates GREEN; visual phone gate remains OPEN
