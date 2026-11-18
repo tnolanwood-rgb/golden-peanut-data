@@ -1,0 +1,126 @@
+name: Golden Experience — Hosted Browser Storage Continuity
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-storage-continuity.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-isolated-staging-qa
+  cancel-in-progress: false
+
+jobs:
+  same-origin-data:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      GP_BASELINE: 41e3ef709059922ccae7f7e5570ac7764eeb3817
+      GP_CANDIDATE: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify strict isolation + production unchanged + staging candidate currently hosted
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE"
+          mkdir -p "$RUNNER_TEMP/storage-baseline" "$RUNNER_TEMP/storage-candidate"
+          git archive "$GP_BASELINE" app | tar -xf - -C "$RUNNER_TEMP/storage-baseline"
+          git archive "$GP_CANDIDATE" app | tar -xf - -C "$RUNNER_TEMP/storage-candidate"
+          python3 - <<'PY'
+          import json,os,pathlib,sys,urllib.request
+          sys.path.insert(0,'scripts')
+          from staging_guard import validate
+          from verify_live_release import check
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_API_TOKEN','')
+          if len(account)!=32 or not token: sys.exit('BLOCKED: staging credentials unavailable')
+          def project(name):
+              req=urllib.request.Request(
+                'https://api.cloudflare.com/client/v4/accounts/'+account+'/pages/projects/'+name,
+                headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with urllib.request.urlopen(req,timeout=30) as response: data=json.load(response)
+              if data.get('success') is not True: sys.exit('BLOCKED: project unreadable')
+              return data['result']
+          prod=project('thegoldenpeanut')
+          if (prod.get('subdomain'),prod.get('production_branch')) != ('thegoldenpeanut.pages.dev','main'):
+              sys.exit('BLOCKED: production project identity changed')
+          print('Isolation:',validate(project('golden-experience-staging')))
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          baseline=root/'storage-baseline/app'
+          candidate=root/'storage-candidate/app'
+          if check('https://thegoldenpeanut.pages.dev',baseline)!=37: sys.exit('BLOCKED: production asset drift')
+          for name,folder,env in (('baseline',baseline,'GP_BASELINE'),('candidate',candidate,'GP_CANDIDATE')):
+              (folder/'build-info.json').write_text(json.dumps({
+                'schema':'golden-peanut-pages-release-v1','commit':os.environ[env],
+                'source':'isolated-golden-experience-hosted-qa',
+                'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\n')
+          if check('https://golden-experience-staging.pages.dev',candidate)!=39: sys.exit('BLOCKED: staging candidate drift')
+          print('PASS: initial host/source preflight and unchanged production')
+          PY
+      - name: Preserve one synthetic browser profile through actual hosted rollout and backout
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
+          verify_hosted() {
+            local kind="$1" expected="$2"
+            python3 - "$kind" "$expected" <<'PY'
+          import os,pathlib,sys,time,urllib.error
+          from scripts.verify_live_release import check
+          folder=pathlib.Path(os.environ['RUNNER_TEMP'])/('storage-'+sys.argv[1])/'app'
+          for attempt in range(18):
+              try:
+                  count=check('https://golden-experience-staging.pages.dev',folder)
+                  if count!=int(sys.argv[2]): raise ValueError('Count mismatch')
+                  print('PASS: hosted '+sys.argv[1]+' bytes '+str(count));break
+              except (OSError,ValueError,urllib.error.URLError):
+                  if attempt==17: raise
+                  time.sleep(8)
+          PY
+          }
+          restore_candidate() {
+            if [ "${RESTORED:-0}" != 1 ]; then
+              echo "Attempting staging-only candidate restore (including after a failed test)."
+              npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/storage-candidate/app" --project-name golden-experience-staging --branch golden-experience-staging || true
+            fi
+          }
+          trap restore_candidate EXIT
+          for phase in baseline-seed candidate-upgrade baseline-rollback candidate-restore; do
+            if [ "$phase" = baseline-seed ] || [ "$phase" = baseline-rollback ]; then kind=baseline; count=38; else kind=candidate; count=39; fi
+            echo "STAGING ONLY: $phase"
+            npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/storage-$kind/app" --project-name golden-experience-staging --branch golden-experience-staging
+            verify_hosted "$kind" "$count"
+            if [ "$phase" = baseline-seed ]; then action=seed; else action=verify; fi
+            node scripts/golden_experience_staging_storage.cjs "$action"
+          done
+          RESTORED=1
+          trap - EXIT
+          python3 - <<'PY'
+          import os,pathlib
+          from scripts.verify_live_release import check
+          baseline=pathlib.Path(os.environ['RUNNER_TEMP'])/'storage-baseline/app'
+          (baseline/'build-info.json').unlink()
+          assert check('https://thegoldenpeanut.pages.dev',baseline)==37
+          print('PASS: production 37 original assets still unchanged')
+          PY
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE"
+          echo "PASS: same-origin browser persisted synthetic localStorage and IndexedDB across baseline → candidate → baseline → candidate."
+          echo "Physical installed Android package/account storage is NOT tested by this synthetic workflow."
+
+# No production deploy, no real account/API data and no original Android APK mutation.
