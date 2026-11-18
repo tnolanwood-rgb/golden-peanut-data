@@ -16,6 +16,7 @@ BINDINGS = frozenset({
 SAFE_CONFIG = frozenset({
     "compatibility_date", "compatibility_flags", "build_image_major_version",
     "fail_open", "usage_model", "placement", "limits", "observability",
+    "always_use_latest_compatibility_date",
 })
 EMPTY = (None, {}, [])
 
