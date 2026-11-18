@@ -1,0 +1,148 @@
+name: Golden Experience — Hosted Staging and Rollback Rehearsal
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-hosted-qa.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-isolated-staging-qa
+  cancel-in-progress: false
+
+jobs:
+  hosted-rehearsal:
+    name: Exact candidate / baseline / rollback on isolated Pages
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      GP_CANDIDATE: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+      GP_BASELINE: 41e3ef709059922ccae7f7e5570ac7764eeb3817
+      GP_STAGING: https://golden-experience-staging.pages.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate staging guard and lock the exact predecessor and candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_staging_guard.py -v
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE" || { echo "BLOCKED: current main drifted"; exit 1; }
+          git cat-file -e "$GP_CANDIDATE^{commit}"
+          git cat-file -e "$GP_BASELINE^{commit}"
+          mkdir -p "$RUNNER_TEMP/ge-hosted/baseline" "$RUNNER_TEMP/ge-hosted/candidate" artifacts/audit/golden-experience-hosted
+          git archive "$GP_BASELINE" app | tar -xf - -C "$RUNNER_TEMP/ge-hosted/baseline"
+          git archive "$GP_CANDIDATE" app | tar -xf - -C "$RUNNER_TEMP/ge-hosted/candidate"
+          test -s "$RUNNER_TEMP/ge-hosted/baseline/app/index.html"
+          test -s "$RUNNER_TEMP/ge-hosted/candidate/app/index.html"
+          python3 - <<'PY'
+          import json, os, pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'ge-hosted'
+          for label,env in (('baseline','GP_BASELINE'),('candidate','GP_CANDIDATE')):
+              (root/label/'app'/'build-info.json').write_text(json.dumps({
+                  'schema':'golden-peanut-pages-release-v1',
+                  'commit':os.environ[env],
+                  'source':'isolated-golden-experience-hosted-qa',
+                  'origin':'golden-experience-staging.pages.dev',
+              },separators=(',',':'))+'\n',encoding='utf-8')
+          PY
+      - name: Real Cloudflare project readback, production unchanged, and live predecessor asset identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib, sys, urllib.error, urllib.request
+          sys.path.insert(0,'scripts')
+          from staging_guard import validate
+          from verify_live_release import check
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_API_TOKEN','')
+          if not token or len(account)!=32: sys.exit('BLOCKED: Cloudflare credentials absent')
+          root='https://api.cloudflare.com/client/v4/accounts/'+account+'/pages/projects/'
+          def get(name):
+              req=urllib.request.Request(root+name,headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with urllib.request.urlopen(req,timeout=30) as res: body=json.load(res)
+              if body.get('success') is not True: sys.exit('BLOCKED: Cloudflare identity read failed')
+              return body['result']
+          prod=get('thegoldenpeanut')
+          if (prod.get('name'),prod.get('subdomain'),prod.get('production_branch')) != ('thegoldenpeanut','thegoldenpeanut.pages.dev','main'):
+              sys.exit('BLOCKED: production project identity drift')
+          print('Staging isolation:',validate(get('golden-experience-staging')))
+          # Compare actual public production assets with baseline Git source before
+          # considering an uploaded baseline a meaningful rollback rehearsal.
+          baseline=pathlib.Path(os.environ['RUNNER_TEMP'])/'ge-hosted/baseline/app'
+          (baseline/'build-info.json').unlink()
+          count=check('https://thegoldenpeanut.pages.dev',baseline)
+          print('VERIFIED: currently hosted production matches predecessor source across',count,'static assets')
+          # Restore the staging-only identity marker, never alter production.
+          (baseline/'build-info.json').write_text(json.dumps({
+              'schema':'golden-peanut-pages-release-v1',
+              'commit':os.environ['GP_BASELINE'],'source':'isolated-golden-experience-hosted-qa',
+              'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\n')
+          PY
+      - name: Install locked dependencies for read-only hosted smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
+          python3 scripts/check_release.py
+          npm test
+      - name: Hosted baseline, candidate, verified rollback, restored candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$before" = "$GP_BASELINE" || { echo "BLOCKED: production main moved before staging deployment"; exit 1; }
+          for phase in baseline candidate rollback candidate-final; do
+            if [ "$phase" = baseline ] || [ "$phase" = rollback ]; then kind=baseline; else kind=candidate; fi
+            echo "Staging ONLY phase=$phase" | tee -a artifacts/audit/golden-experience-hosted/rehearsal.txt
+            npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/ge-hosted/$kind/app" \
+              --project-name golden-experience-staging --branch golden-experience-staging
+            python3 - "$kind" <<'PY'
+          import os,pathlib,sys
+          from scripts.verify_live_release import check
+          folder=pathlib.Path(os.environ['RUNNER_TEMP'])/'ge-hosted'/sys.argv[1]/'app'
+          count=check(os.environ['GP_STAGING'],folder)
+          print('PASS: staging exact-byte verification of',count,'public assets')
+          PY
+          done
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE" || { echo "BLOCKED: production main drift after staging"; exit 1; }
+          echo "PASS: current production branch preserved; candidate restored at staging" | tee -a artifacts/audit/golden-experience-hosted/rehearsal.txt
+      - name: Actual hosted two-game touch navigation (staging only)
+        shell: bash
+        env:
+          GP_EXPECTED_RELEASE_SHA: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+        run: |
+          set -euo pipefail
+          sed -e "s@https://thegoldenpeanut.pages.dev@https://golden-experience-staging.pages.dev@g" \
+              -e 's@swipe-production@swipe-staging@g' \
+              scripts/verify_swipe_production.cjs > scripts/verify_swipe_staging.cjs
+          node scripts/verify_swipe_staging.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-experience-hosted-qa-evidence
+          path: |
+            artifacts/audit/golden-experience-hosted/
+            artifacts/audit/swipe-staging/
+          retention-days: 30
+
+# Independent Cloudflare staging only; intentionally no production deployment,
+# main merge, account API reads, D1/Worker mutation, or Android APK replacement.
