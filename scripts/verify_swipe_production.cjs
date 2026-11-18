@@ -51,12 +51,36 @@ const {chromium}=require('playwright-core'),fs=require('node:fs'),assert=require
    fs.writeFileSync(dir+'/frames-'+i+'.json',JSON.stringify(frames));
   }
   assert.equal(await page.evaluate(()=>GoldenDualHub.diagnostics().selectedId),selected);
-  const before=await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop);
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:180,y:690,id:1}]});
-  for(let y=675;y>=450;y-=15){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:181,y,id:1}]});await page.waitForTimeout(20);}
-  await page.waitForTimeout(120);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(150);
-  const after=await page.locator('.gh-trade-scroll').evaluate(n=>n.scrollTop);
-  assert.ok(after>before+50,'Vertical touch actually scrolls the same recommendation box');
+  // Derive a real visible contact surface from this release's layout rather
+  // than assuming an old hardcoded screen coordinate hits the inner scroller.
+  const inner=page.locator('#gh-panel-osrs .gh-trade-scroll').first();
+  await inner.scrollIntoViewIfNeeded();
+  await inner.evaluate(el=>{el.scrollTop=0;});
+  await page.waitForTimeout(150);
+  const geometry=await inner.evaluate(el=>{
+    const rect=el.getBoundingClientRect();
+    const top=Math.max(90,Math.ceil(rect.top)+24);
+    const bottom=Math.min(innerHeight-28,Math.floor(rect.bottom)-24);
+    return {x:Math.round(Math.max(rect.left+22,Math.min(rect.right-22,rect.left+rect.width*.5))),
+      top,bottom,overflow:el.scrollHeight-el.clientHeight,docY:scrollY};
+  });
+  assert.ok(geometry.overflow>80,'OSRS inner scroll must contain enough content');
+  assert.ok(geometry.bottom-geometry.top>135,'OSRS inner scroll must be visibly touchable');
+  const x=geometry.x, y0=geometry.bottom-8, y1=Math.max(geometry.top+8,y0-200);
+  const validHit=await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('#gh-panel-osrs .gh-trade-scroll'),{x,y:y0});
+  assert.equal(validHit,true,'Native vertical touch must begin inside the real OSRS scroller');
+  const before=await inner.evaluate(el=>el.scrollTop);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y:y0,id:1}]});
+  for(let y=y0-15;y>=y1;y-=15){
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y,id:1}]});
+    await page.waitForTimeout(20);
+  }
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await page.waitForTimeout(180);
+  const after=await inner.evaluate(el=>el.scrollTop);
+  const docAfter=await page.evaluate(()=>scrollY);
+  assert.ok(after>before+50,'Native vertical gesture must scroll OSRS inner recommendations: '+JSON.stringify({before,after,geometry}));
+  assert.equal(docAfter,geometry.docY,'Native inner scroll must not move the document');
   assert.equal(await page.evaluate(()=>GoldenDualHub.diagnostics().game),'osrs');
   assert.deepEqual(errors,[]);
   await page.screenshot({path:dir+'/end.png'});
