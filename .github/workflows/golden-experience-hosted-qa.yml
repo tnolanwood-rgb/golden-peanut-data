@@ -117,11 +117,19 @@ jobs:
             npx --yes wrangler@4 pages deploy "$RUNNER_TEMP/ge-hosted/$kind/app" \
               --project-name golden-experience-staging --branch golden-experience-staging
             python3 - "$kind" <<'PY'
-          import os,pathlib,sys
+          import os,pathlib,sys,time,urllib.error
           from scripts.verify_live_release import check
           folder=pathlib.Path(os.environ['RUNNER_TEMP'])/'ge-hosted'/sys.argv[1]/'app'
-          count=check(os.environ['GP_STAGING'],folder)
-          print('PASS: staging exact-byte verification of',count,'public assets')
+          for attempt in range(18):
+              try:
+                  count=check(os.environ['GP_STAGING'],folder)
+                  print('PASS: staging exact-byte verification of',count,'public assets')
+                  break
+              except (OSError, ValueError, urllib.error.URLError) as err:
+                  print('Hosted staging warming/verification pending', attempt+1, '/18',type(err).__name__)
+                  if attempt==17:
+                      raise SystemExit('BLOCKED: staging exact-byte check never succeeded')
+                  time.sleep(10)
           PY
           done
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE" || { echo "BLOCKED: production main drift after staging"; exit 1; }
