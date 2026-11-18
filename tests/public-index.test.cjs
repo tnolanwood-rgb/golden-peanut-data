@@ -40,7 +40,7 @@ test('startup requests compact index, preserves existing icons and skips redunda
   assert.equal(urls.length,1,'warm startup avoids second network transfer');
   assert.equal(state.meta[1],oldRef,'unchanged metadata must keep its object reference');
   assert.equal(state.meta[2],oldRef2,'second cold hydration does not rebuild item objects');
-  assert.equal(makeState.writes.length,1);
+  assert.equal(makeState.writes.length,2,'warm reload adds no metadata writes');
  }finally{global.fetch=original;}
 });
 test('deep discovery still requests complete, validated public quotations when a compact index is loaded',async()=>{

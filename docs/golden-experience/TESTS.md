@@ -1,3 +1,6 @@
+## 18 Nov — chunked worker native performance result and remaining test correction
+Native run 44403468977 / artifact 14472878310 on `f0bd32b8`: all nine checks pass, zero long tasks; first-render/startup LoAF blocking 10ms and 33ms, gesture LoAF blocking 0ms. AOSP screenshots black; no physical-phone claim. Regression audit 44403469047: source, Python and browser verified; JS had one remaining assertion error because warm reload retains the two initial bounded writes. Corrected to assert cumulative count remains two. Exact-candidate rerun pending.
+
 ## 18 Nov 2026 — bounded-worker candidate audit found a missing helper; restoring it
 The first chunked-worker candidate `491e85b5` triggered all three workflows. Preview APK packaging succeeded. The regression audit failed in the browser test stage because the helper replacement accidentally removed the existing `parseOwn` full-catalogue parser; the resulting repeated `parseOwn is not defined` errors are a real regression, not a test-only failure. Restored the original validated parser without changing its semantics. Re-run CI and native QA are required before accepting the chunked-worker change.
 

@@ -1,5 +1,9 @@
 # Golden Experience — authoritative checkpoint
 
+## 18 Nov 2026 — chunked worker removes the native long task in AOSP rerun
+Run [44403468977](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44403468977), artifact **14472878310**, on candidate `f0bd32b8`: all nine native functional checks passed; forward swipe 17 moves / one end / zero cancels. The trace recorded **zero long tasks**. Remaining LoAFs were initial document render (167ms, 10ms blocking), app-script startup (83ms, 33ms blocking), and one 53ms gesture frame with 0ms blocking. This is a strong measured improvement over the prior 1,707ms `Worker.onmessage` long task, but still an AOSP emulator result, not a physical-phone certification. All AOSP framebuffer screenshots remain black, so this run is not visual QA evidence.
+Regression audit 44403469047 passed source/Python/browser checks but failed one stale assertion: after two bounded metadata writes, a warm reload correctly adds no writes, so the cumulative count remains two. The assertion now checks two. Re-run full CI and native QA on the exact corrected candidate before accepting.
+
 ## 18 Nov 2026 — bounded-worker candidate audit found a missing helper; restoring it
 The first chunked-worker candidate `491e85b5` triggered all three workflows. Preview APK packaging succeeded. The regression audit failed in the browser test stage because the helper replacement accidentally removed the existing `parseOwn` full-catalogue parser; the resulting repeated `parseOwn is not defined` errors are a real regression, not a test-only failure. Restored the original validated parser without changing its semantics. Re-run CI and native QA are required before accepting the chunked-worker change.
 
