@@ -72,6 +72,11 @@ jobs:
           production_baseline.unlink()
           if check(production,baseline)!=37:
               sys.exit('BLOCKED: expected production baseline mismatch')
+          production_baseline.write_text(json.dumps({
+              'schema':'golden-peanut-pages-release-v1',
+              'commit':os.environ['BASE_SHA'],
+              'source':'isolated-golden-experience-hosted-qa',
+              'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\\n')
           if check(staging,candidate)!=39:
               sys.exit('BLOCKED: expected current staging candidate mismatch')
           deployments=api(staging_name+'/deployments?per_page=30')
@@ -143,6 +148,7 @@ jobs:
                   report['stages'].append({'phase':'Cloudflare-native-restore-upgrade',
                                            'verified_files':verify(candidate,39)})
                   print('PASS: Cloudflare native rollback API restored all 39 upgraded staging assets')
+          production_baseline.unlink()
           if check(production,baseline)!=37:
               sys.exit('BLOCKED: production baseline changed during staging rehearsal')
           (pathlib.Path('artifacts/audit/golden-experience-native-rollback/report.json')).write_text(
