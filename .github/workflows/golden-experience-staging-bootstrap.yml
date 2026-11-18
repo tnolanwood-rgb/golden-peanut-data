@@ -1,4 +1,5 @@
 name: Golden Experience — Isolated Cloudflare Staging Bootstrap
+# Release-branch reinspection: documented Cloudflare compatibility flag is not a binding.
 
 on:
   push:
