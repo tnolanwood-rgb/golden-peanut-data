@@ -42,7 +42,7 @@ jobs:
           from datetime import datetime, timezone
           sys.path.insert(0,'scripts')
           from staging_guard import validate
-          from verify_live_release import check
+          from verify_live_release import check,remote_bytes
           account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
           token=os.getenv('CLOUDFLARE_API_TOKEN','')
           if not re.fullmatch('[a-fA-F0-9]{32}',account) or not token:
@@ -66,7 +66,7 @@ jobs:
           expected_live=baseline/'build-info.json'
           if expected_live.exists(): sys.exit('FAIL: baseline source unexpectedly has generated build marker')
           baseline_assets=check('https://thegoldenpeanut.pages.dev',baseline)
-          live=json.loads(urllib.request.urlopen('https://thegoldenpeanut.pages.dev/build-info.json',timeout=20).read())
+          live=json.loads(remote_bytes('https://thegoldenpeanut.pages.dev/build-info.json'))
           if live.get('commit')!=os.environ['BASE_SHA'] or live.get('origin')!='thegoldenpeanut.pages.dev':
               sys.exit('FAIL: live predecessor build identity drift')
           staged_marker={'schema':'golden-peanut-pages-release-v1',
@@ -75,7 +75,7 @@ jobs:
               'origin':'golden-experience-staging.pages.dev'}
           (candidate/'build-info.json').write_text(json.dumps(staged_marker,separators=(',',':'))+'\n')
           staged_assets=check('https://golden-experience-staging.pages.dev',candidate)
-          staging_live=json.loads(urllib.request.urlopen('https://golden-experience-staging.pages.dev/build-info.json',timeout=20).read())
+          staging_live=json.loads(remote_bytes('https://golden-experience-staging.pages.dev/build-info.json'))
           if staging_live!=staged_marker: sys.exit('FAIL: staged build identity drift')
           # Read latest actual Cloudflare Pages deployment records for both projects;
           # log ONLY safe identity/status fields, never private configuration.
