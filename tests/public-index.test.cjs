@@ -32,8 +32,9 @@ test('startup requests compact index, preserves existing icons and skips redunda
   assert.equal(urls[0].cache,'no-cache','revalidation reduces unnecessary full transfers');
   assert.match(state.meta[1].icon,/render.guildwars2.com/);
   assert.equal(state.meta[2].name,'Market Item 2');
-  assert.equal(makeState.writes.length,1);
-  assert.equal(Object.keys(makeState.writes[0]).length,999);
+  assert.equal(makeState.writes.length,2);
+  assert.deepEqual(makeState.writes.map(x=>Object.keys(x).length),[500,499]);
+  assert.ok(makeState.writes.every(x=>Object.keys(x).length<=500));
   const oldRef=state.meta[1],oldRef2=state.meta[2];
   await api.loadIndex(state,{now:now+1000});
   assert.equal(urls.length,1,'warm startup avoids second network transfer');
@@ -89,7 +90,11 @@ test('browser startup uses the dedicated worker and does not parse the index on 
   global.fetch=async()=>{throw Error('main-thread fetch must not parse the compact index');};
   delete require.cache[require.resolve(apiModule)];
   const api=require(apiModule),state=makeState();
+  let heartbeat=false;
+  const heartbeatTimer=setTimeout(()=>{heartbeat=true;},0);
   const result=await api.loadIndex(state,{now});
+  clearTimeout(heartbeatTimer);
+  assert.equal(heartbeat,true,'UI event loop must run between bounded hydration batches');
   assert.equal(result.source,'golden-peanut-index-labels-only');
   assert.ok(workerUrl.includes('public-market-index-worker.js'));
   assert.equal(terminated,true);

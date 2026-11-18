@@ -1,3 +1,6 @@
+## 18 Nov — worker offload reduced, but did not remove, the native long task
+At `fbd59e0`, native 44401725555 artifact 14474096115: all nine native function/lifecycle checks pass, but the main thread still blocks for 1,072ms in `Worker.onmessage`. New test verifies the browser event loop runs between 500-row metadata batches and IndexedDB writes are bounded. This follow-up is pending exact CI and native rerun.
+
 ## 18 Nov — public market-index worker / Android latency follow-up (CI pending)
 Native run 44055560918 artifact 14316026977: all nine functional checks passed, but one 1,663ms long task followed the successful first swipe. LoAF attribution points to `public-market-feed.js` `Response.json.then`; startup invokes only compact `market_index.json` (1,550,013 bytes) through `loadIndex`. The response URL is not recorded, so exact attribution remains inferential. New worker tests assert browser startup uses the dedicated worker and that missing index never triggers full-catalogue fallback. Full CI and new Android trace are pending; no performance pass claimed.
 

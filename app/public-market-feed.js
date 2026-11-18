@@ -102,6 +102,37 @@ function hydrate(state,result){
  state.externalMarketStatus={source:result.source,items:result.byId.size,indexed:additions,at:result.generatedAt,
   coverage:result.coverage,warning:'Daily quotes and outstanding quantities are not executions'};
 }
+/* Startup's complete label index can contain tens of thousands of rows. Keep
+ * each JS/IndexedDB batch bounded and yield between batches so catalogue
+ * hydration cannot monopolise Android WebView's UI thread after a worker reply. */
+async function hydrateIndex(state,result){
+ if(!state?.meta)return;
+ let additions=0,processed=0,batch={},batchSize=0;
+ const persist=async()=>{
+  if(batchSize&&state.db?.putMetadataBatch)await state.db.putMetadataBatch(batch);
+  batch={};batchSize=0;
+ };
+ const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+ for(const [id,r] of result.byId){
+  const old=state.meta[id]||{};
+  if(old.name!==r.name||(old.type||'')!==(r.type||'')||(old.rarity||'')!==(r.rarity||'')){
+   state.meta[id]={...r,...old,id,name:r.name,type:r.type||old.type,rarity:r.rarity||old.rarity,
+    details:r.details||old.details};
+   if(!old.name)additions++;
+   batch[id]={...old,id,name:r.name,type:r.type||old.type||'',rarity:r.rarity||old.rarity||''};
+   batchSize++;
+  }
+  processed++;
+  if(batchSize>=500||processed%1000===0){
+   await persist();
+   await yieldUI();
+  }
+ }
+ await persist();
+ result.addedNames=additions;
+ state.externalMarketStatus={source:result.source,items:result.byId.size,indexed:additions,at:result.generatedAt,
+  coverage:result.coverage,warning:'Daily quotes and outstanding quantities are not executions'};
+}
 async function load(state,{force=false,now=Date.now()}={}){
  if(loaded&&!force&&loaded.loadedAt&&now-loaded.loadedAt<3600000){hydrate(state,loaded);return loaded;}
  if(loading&&!force)return loading;
@@ -110,10 +141,7 @@ async function load(state,{force=false,now=Date.now()}={}){
   catch(e){lastError=String(e?.message||e).slice(0,120);try{result=parseFlipOut(await request(FLIP+'tradeable_items.json',9000));}
    catch(e2){lastError+='; '+String(e2?.message||e2).slice(0,120);return null;}}
   result.loadedAt=now;loaded=result;
-  const changed=missingMetadata(state,result);
-  hydrate(state,result);
-  if(state?.db?.putMetadataBatch&&Object.keys(changed).length)
-   await state.db.putMetadataBatch(changed);
+  await hydrateIndex(state,result);
   return result;
  })();
  try{return await loading;}finally{loading=null;}
@@ -127,7 +155,7 @@ async function loadIndex(state,{force=false,now=Date.now()}={}){
   hydrate(state,loaded);return loaded;
  }
  if(indexLoaded&&!force&&indexLoaded.loadedAt&&now-indexLoaded.loadedAt<3600000){
-  hydrate(state,indexLoaded);return indexLoaded;
+  await hydrateIndex(state,indexLoaded);return indexLoaded;
  }
  if(indexLoading&&!force)return indexLoading;
  indexLoading=(async()=>{
