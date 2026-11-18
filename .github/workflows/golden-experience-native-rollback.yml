@@ -1,0 +1,160 @@
+name: Golden Experience — Cloudflare Native Rollback API Staging Rehearsal
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-native-rollback.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-staging-native-rollback
+  cancel-in-progress: false
+
+jobs:
+  rollback-staging-only:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+      BASE_SHA: 41e3ef709059922ccae7f7e5570ac7764eeb3817
+      CANDIDATE_SHA: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check strict isolation, select only verified staging deployments, native rollback and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE_SHA" || { echo 'BLOCKED: main drift'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/native-baseline" "$RUNNER_TEMP/native-candidate" artifacts/audit/golden-experience-native-rollback
+          git archive "$BASE_SHA" app | tar -xf - -C "$RUNNER_TEMP/native-baseline"
+          git archive "$CANDIDATE_SHA" app | tar -xf - -C "$RUNNER_TEMP/native-candidate"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,sys,time,urllib.error,urllib.parse,urllib.request,uuid
+          from datetime import datetime, timezone
+          sys.path.insert(0,'scripts')
+          from staging_guard import validate
+          from verify_live_release import check, remote_bytes
+          account=os.getenv('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.getenv('CLOUDFLARE_API_TOKEN','')
+          if not token or not re.fullmatch('[a-fA-F0-9]{32}',account):
+              sys.exit('BLOCKED: missing Cloudflare credential')
+          root='https://api.cloudflare.com/client/v4/accounts/'+account+'/pages/projects/'
+          staging_name='golden-experience-staging'
+          staging='https://golden-experience-staging.pages.dev'
+          production='https://thegoldenpeanut.pages.dev'
+          baseline=pathlib.Path(os.environ['RUNNER_TEMP'])/'native-baseline/app'
+          candidate=pathlib.Path(os.environ['RUNNER_TEMP'])/'native-candidate/app'
+          for folder,sha in ((baseline,os.environ['BASE_SHA']),(candidate,os.environ['CANDIDATE_SHA'])):
+              marker={'schema':'golden-peanut-pages-release-v1','commit':sha,
+                'source':'isolated-golden-experience-hosted-qa','origin':'golden-experience-staging.pages.dev'}
+              (folder/'build-info.json').write_text(json.dumps(marker,separators=(',',':'))+'\n')
+          def api(relative, method='GET'):
+              req=urllib.request.Request(root+relative,method=method,headers={
+                  'Authorization':'Bearer '+token,'Accept':'application/json'})
+              with urllib.request.urlopen(req,timeout=30) as res: body=json.load(res)
+              if body.get('success') is not True: raise RuntimeError('Cloudflare denied '+method)
+              return body.get('result')
+          prod=api('thegoldenpeanut')
+          if (prod.get('name'),prod.get('production_branch'),prod.get('subdomain')) != ('thegoldenpeanut','main','thegoldenpeanut.pages.dev'):
+              sys.exit('BLOCKED: production identity not verified')
+          validate(api(staging_name))
+          # Production has a generated build-info from the last UI deploy, not necessarily current data-only main.
+          production_baseline=baseline/'build-info.json'
+          production_baseline.unlink()
+          if check(production,baseline)!=37:
+              sys.exit('BLOCKED: expected production baseline mismatch')
+          if check(staging,candidate)!=39:
+              sys.exit('BLOCKED: expected current staging candidate mismatch')
+          deployments=api(staging_name+'/deployments?per_page=30')
+          if not isinstance(deployments,list): sys.exit('BLOCKED: deployment inventory incomplete')
+          found={}
+          for d in deployments:
+              if d.get('environment')!='production' or (d.get('latest_stage') or {}).get('status')!='success':
+                  continue
+              id=d.get('id')
+              try: uuid.UUID(id)
+              except (TypeError,ValueError,AttributeError): continue
+              url=d.get('url','')
+              host=urllib.parse.urlsplit(url).hostname or ''
+              if not host.endswith('.'+staging_name+'.pages.dev') or not url.startswith('https://'):
+                  continue
+              for name,folder in (('candidate',candidate),('baseline',baseline)):
+                  if name in found: continue
+                  try:
+                      expected=hashlib.sha256((folder/'index.html').read_bytes()).hexdigest()
+                      for n in range(3):
+                          try:
+                              actual=hashlib.sha256(remote_bytes(url.rstrip('/')+'/index.html')).hexdigest()
+                              break
+                          except (OSError,urllib.error.URLError):
+                              if n==2: raise
+                              time.sleep(4)
+                      if expected==actual:
+                          found[name]={'id':id,'url':url}
+                  except (OSError,urllib.error.URLError,ValueError):
+                      continue
+              if len(found)==2: break
+          if len(found)!=2 or found['candidate']['id']==found['baseline']['id']:
+              sys.exit('BLOCKED: cannot identify distinct exact source staging deployments')
+          # Full immutable hash verification of each candidate before any POST.
+          if check(found['candidate']['url'],candidate)!=39:
+              sys.exit('BLOCKED: immutable staged candidate asset mismatch')
+          if check(found['baseline']['url'],baseline)!=38:
+              sys.exit('BLOCKED: immutable staged baseline asset mismatch')
+          now=api(staging_name)
+          pointer=(now.get('canonical_deployment') or {}).get('id') or (now.get('latest_deployment') or {}).get('id')
+          if pointer!=found['candidate']['id']:
+              sys.exit('BLOCKED: current canonical staged deployment not expected candidate')
+          report={'schema':'ge-cloudflare-native-rollback-staging-v1',
+            'checked_at':datetime.now(timezone.utc).isoformat(),
+            'environment':'isolated staging ONLY',
+            'production_written':False,
+            'baseline_deployment_id':found['baseline']['id'],
+            'candidate_deployment_id':found['candidate']['id'],
+            'stages':[]}
+          def verify(folder,n):
+              for i in range(18):
+                  try:
+                      count=check(staging,folder)
+                      if count!=n: raise ValueError('Unexpected asset count')
+                      return count
+                  except (OSError,ValueError,urllib.error.URLError):
+                      if i==17: raise RuntimeError('Staging hosted verification never converged')
+                      time.sleep(8)
+          rolled_back=False
+          try:
+              api(staging_name+'/deployments/'+found['baseline']['id']+'/rollback','POST')
+              rolled_back=True
+              report['stages'].append({'phase':'Cloudflare-native-rollback-to-baseline',
+                                        'verified_files':verify(baseline,38)})
+              print('PASS: Cloudflare native rollback API actually restored all 38 baseline staging assets')
+          finally:
+              if rolled_back:
+                  api(staging_name+'/deployments/'+found['candidate']['id']+'/rollback','POST')
+                  report['stages'].append({'phase':'Cloudflare-native-restore-upgrade',
+                                           'verified_files':verify(candidate,39)})
+                  print('PASS: Cloudflare native rollback API restored all 39 upgraded staging assets')
+          if check(production,baseline)!=37:
+              sys.exit('BLOCKED: production baseline changed during staging rehearsal')
+          (pathlib.Path('artifacts/audit/golden-experience-native-rollback/report.json')).write_text(
+              json.dumps(report,sort_keys=True,indent=2)+'\n')
+          print('PASS: production unchanged, both native rollback and restore independently verified')
+          PY
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE_SHA" || { echo 'BLOCKED: main drift after rehearsal'; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-experience-cloudflare-native-rollback-proof
+          path: artifacts/audit/golden-experience-native-rollback/
+          retention-days: 30
+
+# All POST paths are built with the literal staging_name. Never call production Pages write endpoints.
