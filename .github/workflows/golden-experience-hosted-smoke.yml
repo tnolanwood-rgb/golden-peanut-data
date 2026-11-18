@@ -1,0 +1,70 @@
+name: Golden Experience — Hosted Staging Touch Smoke
+
+on:
+  push:
+    branches:
+      - feature/golden-experience-release-staging
+    paths:
+      - '.github/workflows/golden-experience-hosted-smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: golden-experience-staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  hosted-touch:
+    if: github.repository == 'tnolanwood-rgb/golden-peanut-data' && github.ref == 'refs/heads/feature/golden-experience-release-staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GP_CANDIDATE: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+      GP_BASELINE: 41e3ef709059922ccae7f7e5570ac7764eeb3817
+      GP_STAGING: https://golden-experience-staging.pages.dev
+      GP_EXPECTED_RELEASE_SHA: 7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify exact current public staging assets and unchanged main, NO DEPLOY
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$GP_BASELINE" || { echo "BLOCKED: main drift"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/hosted-candidate"
+          git archive "$GP_CANDIDATE" app | tar -xf - -C "$RUNNER_TEMP/hosted-candidate"
+          python3 - <<'PY'
+          import json,os,pathlib
+          from scripts.verify_live_release import check
+          folder=pathlib.Path(os.environ['RUNNER_TEMP'])/'hosted-candidate/app'
+          (folder/'build-info.json').write_text(json.dumps({
+              'schema':'golden-peanut-pages-release-v1',
+              'commit':os.environ['GP_CANDIDATE'],'source':'isolated-golden-experience-hosted-qa',
+              'origin':'golden-experience-staging.pages.dev'},separators=(',',':'))+'\n')
+          print('PASS: staged candidate byte-for-byte match:',check(os.environ['GP_STAGING'],folder),'public assets')
+          PY
+      - name: Check six native Chromium game-switch gestures and actual inner vertical scroll on staged site
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          if ! test -x /usr/bin/chromium; then npx playwright-core install --with-deps chromium; fi
+          sed -e "s@https://thegoldenpeanut.pages.dev@https://golden-experience-staging.pages.dev@g" \
+              -e 's@swipe-production@swipe-staging@g' \
+              scripts/verify_swipe_production.cjs > scripts/verify_swipe_staging.cjs
+          node scripts/verify_swipe_staging.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-experience-staging-gesture-proof
+          path: artifacts/audit/swipe-staging/
+          retention-days: 30
+
+# Never writes to any Pages project; staging read-only, production untouched.
