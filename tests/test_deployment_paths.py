@@ -30,8 +30,12 @@ class DeploymentPathTests(unittest.TestCase):
         self.assertIn('ref: ${{ github.ref_name }}',workflow)
         self.assertNotIn('ref: development/7.16-evidence-engine',workflow)
         self.assertIn('npm run test:browser',workflow)
-        self.assertIn('golden-peanut-reviewed',workflow)
-        self.assertIn("default: 'thegoldenpeanut'",workflow)
+        self.assertIn('GP_PREVIEW_BRANCH: golden-experience-staging',workflow)
+        self.assertIn("default: 'golden-experience-staging'",workflow)
+        self.assertIn("match.get('subdomain') != 'golden-experience-staging.pages.dev'",workflow)
+        self.assertIn("project == 'thegoldenpeanut'",workflow)
+        self.assertIn("Staging has an unknown configuration field",workflow)
+        self.assertIn("Staging has a non-empty private binding",workflow)
 
     def test_static_assets_support_conditional_revalidation_not_forced_unstored_download(self):
         headers=(ROOT/'app/_headers').read_text(encoding='utf-8')
