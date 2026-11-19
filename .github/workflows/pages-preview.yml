@@ -116,8 +116,8 @@ jobs:
               sys.exit('Unsafe or unverified staging pages.dev subdomain')
           if match.get('production_branch') != 'golden-experience-staging':
               sys.exit('Staging production branch must be golden-experience-staging')
-          if match.get('domains') != []:
-              sys.exit('Staging custom-domain inventory must be explicitly empty')
+          # The shared validator below permits only an empty domain inventory
+          # or this project's own pages.dev host; it rejects production/custom hosts.
           if match.get('source') is not None:
               sys.exit('Git-connected Pages projects are not permitted for isolated staging')
           # Reuse the tested optional-field validator used by production preflight.
