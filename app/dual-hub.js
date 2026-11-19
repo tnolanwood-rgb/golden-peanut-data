@@ -208,7 +208,7 @@ function blank(){
  h.innerHTML=`
  <header class="gp-guide-header">
    <div class="gp-guide-logo" aria-hidden="true">▥</div>
-   <div class="gp-guide-title"><h1>The Golden Exchange</h1><p>One useful move at a time · Old School RuneScape</p></div>
+   <div class="gp-guide-title"><h1>The Golden Exchange</h1><p>Trading desk · Old School RuneScape</p></div>
    <div class="gp-guide-head-actions">
      <button id="gh-refresh" class="gp-guide-primary" type="button">↻ Update prices</button>
      <button id="gh-settings-toggle" class="gp-guide-secondary" type="button">⚙ Details</button>
@@ -243,8 +243,10 @@ function blank(){
  <section class="gp-guide-idea" aria-label="Next OSRS trade idea">
   <div class="gh-trade-shell"><div class="gh-trade-scroll" role="region" tabindex="0" aria-label="Scrollable trade idea details">
   <div class="gp-guide-idea-top"><span class="gp-guide-position" id="gh-position">Markets not checked</span><span class="gp-guide-tier" id="gh-risk">Live price research</span></div>
-  <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
-  <h2 id="gh-item-name">Checking eligible trades…</h2>
+  <div class="gh-item-identity">
+   <div class="gp-guide-item-icon" id="gh-item-icon" aria-hidden="true">▥</div>
+   <h2 id="gh-item-name">Checking eligible trades…</h2>
+  </div>
   <p class="gh-value-tier-caption" id="gh-value-tier" hidden></p>
   <p class="gh-research-evidence" id="gh-research-evidence" hidden></p>
   <div class="gp-guide-instructions">

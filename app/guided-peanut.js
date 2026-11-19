@@ -154,7 +154,7 @@ function renderTop(host,s){
  const head=el('header','gp-guide-header');
  const badge=el('div','gp-guide-logo','🥜');
  const identity=el('div','gp-guide-title');
- add(identity,el('h1','', 'The Golden Peanut'),el('p','gp-guide-muted','One useful move at a time · Guild Wars 2'));
+ add(identity,el('h1','', 'The Golden Peanut'),el('p','gp-guide-muted','Trading desk · Guild Wars 2'));
  const actions=el('div','gp-guide-head-actions');
  add(actions,button('↻ Check account',()=>$('focus-refresh')?.click(),'gp-guide-light'),button('⚙ Details',()=>advanced(false),'gp-guide-light'));
  add(head,badge,identity,actions);host.append(head);

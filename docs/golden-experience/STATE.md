@@ -1,3 +1,35 @@
+# 19 November 2026 — correction to the released phone layout
+
+AUTHORITATIVE CURRENT TASK: the upgrade IS ALREADY RELEASED. Live build-info and
+production run44425149344 confirm576e6863f1cad328457a309e5604df5ac38be759.
+The owner's phone screenshot shows that release. Do not tell them it is only on
+an unmerged development branch. Historical freeze/pending-release entries below
+are superseded by actual deployment evidence and the owner's19-Nov explicit
+instruction to fix and release the phone interface. No APK, storage, credential,
+Worker/D1 or collector change is authorized or needed for this visual correction.
+
+Working branch: fix/golden-experience-phone-polish-20261119, based on actual main576e686.
+Changes: remove decorative number/watermark hero, compact identity/actions/Delivery
+Box, quieter borders/surfaces, keep game colours and all financial qualifiers;
+OSRS item icon/title share one row like GW2. Existing swipe, caching, accounting,
+backup and manual-sale logic preserved. New first-screen assertions keep buy guidance
+within the first75% of a390×844 viewport for both populated synthetic desks.
+
+Local original-browser suite passed; final full suite in progress. Initial Python
+check caught obsolete workflow-string assertions after reusing the tested staging
+validator; corrected the integration assertions, not the binding safety rules.
+The new staging workflow writes exact build identity and verifies all deployed
+bytes, while preserving hard-coded separate project/origin and no private bindings.
+
+NEXT: finish full regression and actual screenshot review; commit/push, open PR,
+run exact-head CI/native emulator; deploy that exact app to independent staging,
+verify hosted assets/touch. Update the production release guard's predecessor from
+the now-obsolete pre-upgrade097f012 to the actual576e686, pin the staged candidate,
+then release via existing main workflow with rollback. Do not bypass that guard.
+Checkpoint SHA: git log -1 -- docs/golden-experience/STATE.md.
+
+---
+
 # Golden Experience — authoritative checkpoint
 
 ## 18 Nov 2026 — merged current main; exact merged-head regression, Android and APK gates GREEN

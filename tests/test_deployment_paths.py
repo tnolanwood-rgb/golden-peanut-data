@@ -34,8 +34,8 @@ class DeploymentPathTests(unittest.TestCase):
         self.assertIn("default: 'golden-experience-staging'",workflow)
         self.assertIn("match.get('subdomain') != 'golden-experience-staging.pages.dev'",workflow)
         self.assertIn("project == 'thegoldenpeanut'",workflow)
-        self.assertIn("Staging has an unknown configuration field",workflow)
-        self.assertIn("Staging has a non-empty private binding",workflow)
+        self.assertIn("from scripts.staging_guard import validate",workflow)
+        self.assertIn("validate(match)",workflow)
 
     def test_static_assets_support_conditional_revalidation_not_forced_unstored_download(self):
         headers=(ROOT/'app/_headers').read_text(encoding='utf-8')

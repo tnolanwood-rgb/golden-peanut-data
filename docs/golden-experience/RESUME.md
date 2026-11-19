@@ -1,3 +1,26 @@
+# 19 November — current phone polish and release
+
+Start with current STATE.md. Production already runs576e686, not097f012. User's
+screenshot confirms the deployed upgrade; current instruction explicitly authorizes
+fixing and releasing the phone UI. Older freeze/history sections are historical.
+Never change original APK, origin, user records, credentials, Workers/D1/collectors.
+
+Branch fix/golden-experience-phone-polish-20261119 is isolated from main deployment.
+Compact phone design replaces oversized decorative header/hero while preserving all
+trading information; OSRS icon/name now share a row. New test bounds first buy
+guidance to first75% of normal390×844 screens. Full test run currently pending;
+inspect artifacts/audit/phone-polish-final and exact PR-head checks.
+
+Next: final source tests/screenshots; source commit A and independent staging of A;
+then release-guard-only commit B pinned to A and actual production576e686. Existing
+guard still pins the pre-upgrade baseline and WILL correctly block until updated.
+Separate staging project is golden-experience-staging; no production reuse or private
+bindings. Require exact hashes, hosted touch smoke, regression/native QA, then use
+existing authorized merge/main deployment with prepared automatic rollback. Save
+actual deployed identity/results and a clean pushed checkpoint before ending.
+
+--- Older engineering history follows ---
+
 # Resume Golden Experience
 
 ## 18 Nov 2026 — merged current main; exact merged-head regression, Android and APK gates GREEN

@@ -41,6 +41,11 @@ jobs:
       GP_OPERATION: ${{ inputs.operation || 'inspect' }}
       GP_PREVIEW_BRANCH: golden-experience-staging
     steps:
+      - name: Checkout reviewed Golden Peanut development source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
       - name: Verify credentials and inspect existing Pages projects
         shell: bash
         run: |
@@ -115,42 +120,13 @@ jobs:
               sys.exit('Staging custom-domain inventory must be explicitly empty')
           if match.get('source') is not None:
               sys.exit('Git-connected Pages projects are not permitted for isolated staging')
-          configs = match.get('deployment_configs')
-          required_bindings = ('d1_databases', 'kv_namespaces', 'r2_buckets',
-                               'services', 'durable_object_namespaces', 'env_vars')
-          all_binding_names = set(required_bindings) | {
-              'queues', 'hyperdrive', 'vectorize', 'analytics_engine_datasets',
-              'ai', 'browser', 'dispatch_namespaces', 'unsafe', 'vars',
-              'secrets', 'assets'
-          }
-          safe_config_names = {
-              'compatibility_date', 'compatibility_flags', 'build_image_major_version',
-              'fail_open', 'usage_model', 'placement', 'limits', 'observability'
-          }
-          if not isinstance(configs, dict) or not {'production', 'preview'}.issubset(configs):
-              sys.exit('Both production and preview deployment configurations must be readable')
-          for mode in ('production', 'preview'):
-              deployment = configs[mode]
-              if not isinstance(deployment, dict):
-                  sys.exit('Staging deployment configuration is unreadable')
-              for key in required_bindings:
-                  if key not in deployment or deployment[key] not in (None, [], {}):
-                      sys.exit('Staging has a missing or non-empty private binding: ' + mode + '.' + key)
-              for key, value in deployment.items():
-                  if key not in all_binding_names and key not in safe_config_names:
-                      sys.exit('Staging has an unknown configuration field: ' + mode + '.' + key)
-                  if key in all_binding_names and value not in (None, [], {}):
-                      sys.exit('Staging has a non-empty private binding: ' + mode + '.' + key)
+          # Reuse the tested optional-field validator used by production preflight.
+          from scripts.staging_guard import validate
+          validate(match)
           if preview != 'golden-experience-staging':
               sys.exit('Unexpected staging deployment branch')
           print('Verified independent, unbound staging Pages project; preview deployment may proceed: ' + project)
           PY
-      - name: Checkout reviewed Golden Peanut development source
-        if: inputs.operation == 'preview'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-          persist-credentials: false
       - name: Validate application before preview
         if: inputs.operation == 'preview'
         shell: bash
@@ -164,6 +140,19 @@ jobs:
           npm run test:browser
           test -f app/index.html
           test -f app/opportunity-engine.js
+      - name: Record exact isolated staging source identity
+        if: inputs.operation == 'preview'
+        shell: bash
+        run: |
+          python3 - <<'PYBUILD'
+          import json, os, pathlib
+          pathlib.Path('app/build-info.json').write_text(json.dumps({
+              'schema': 'golden-peanut-pages-release-v1',
+              'commit': os.environ['GITHUB_SHA'],
+              'source': 'github-actions-isolated-staging',
+              'origin': 'golden-experience-staging.pages.dev'
+          }, separators=(',', ':')) + '\n')
+          PYBUILD
       - name: Deploy PREVIEW only to verified existing Pages project
         if: inputs.operation == 'preview'
         shell: bash
@@ -171,3 +160,7 @@ jobs:
           npx --yes wrangler@4 pages deploy app --project-name "$GP_PROJECT_NAME" --branch "$GP_PREVIEW_BRANCH"
 
 # Manual inspect/preview; workflow-file-only push also runs inspect. Production deployment is deliberately unavailable.
+
+      - name: Verify every isolated staging asset byte
+        if: inputs.operation == 'preview'
+        run: python3 scripts/verify_live_release.py --origin https://golden-experience-staging.pages.dev --attempts 10
