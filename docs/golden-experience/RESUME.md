@@ -1,3 +1,21 @@
+# 19 Nov — phone correction final release
+
+UI sourcebaa2259 is staged/byte-verified, CI/native Android PASS; actual hosted touch
+6 switches/0px jumps and216px inner scroll PASS. Production predecessor576e686.
+PR66 is authorized by the user's19-Nov fix-and-release instruction. Current code
+only adds the exact release/rollback pins and robust hosted-smoke coordinates to
+that already tested UI. Four synthetic release guard tests pass. Original user data,
+APK, origin and all private services stay untouched.
+
+Next: exact-head CI green, merge PR66 with merge commit (no bypass/auto-merge), watch
+main workflow guided-ui-production.yml, verify live build/assets/touch and record
+actual release. Automatic rollback target is576e686. Recheck remote main for drift
+before merge. If deployment blocks, fix preconditions rather than disabling guard.
+See current STATE/evidence; historical freeze/pre-upgrade notes below are obsolete
+for the already released576e686 and explicitly authorized phone correction.
+
+---
+
 # 19 November — current phone polish and release
 
 Start with current STATE.md. Production already runs576e686, not097f012. User's

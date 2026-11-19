@@ -22,9 +22,9 @@ import urllib.request
 from staging_guard import validate as validate_staging
 from verify_live_release import check, remote_bytes
 
-BASE = '41e3ef709059922ccae7f7e5570ac7764eeb3817'
-CANDIDATE = '7ca6d74808cefd2a0e66e74e4f2c4b3d94b69d39'
-OLD_BUILD = '097f012c1f912411790dd7dce21434a9cdc497d2'
+BASE = '576e6863f1cad328457a309e5604df5ac38be759'
+CANDIDATE = 'baa225995d95de804cc5516f217b6bdec401f087'
+OLD_BUILD = '576e6863f1cad328457a309e5604df5ac38be759'
 PROD = 'thegoldenpeanut'
 STAGING = 'golden-experience-staging'
 PROD_ORIGIN = 'https://thegoldenpeanut.pages.dev'
@@ -129,7 +129,7 @@ def preflight(sha):
     holder, baseline = predecessor()
     try:
         old_files = check(PROD_ORIGIN, baseline)
-        if old_files != 37:
+        if old_files != 38:
             abort('Unexpected baseline production asset count')
         old_marker = marker(PROD_ORIGIN)
         if old_marker.get('commit') != OLD_BUILD or old_marker.get('origin') != PROD + '.pages.dev':
@@ -153,7 +153,7 @@ def preflight(sha):
             'production_origin': PROD_ORIGIN, 'staging_origin': STAGE_ORIGIN,
             'baseline_assets': old_files, 'candidate_assets': new_files,
         }, indent=2, sort_keys=True) + '\n')
-        print('PASS: immutable main, 37 production baseline assets, 38 staged candidate '
+        print('PASS: immutable main, 38 production baseline assets, 38 staged candidate '
               'assets, independent staging, and rollback deployment locked.')
         print('READY FOR CONTROLLED SAME-ORIGIN WEB DEPLOY; NO APK OR ACCOUNT MIGRATION.')
     finally:
@@ -180,7 +180,7 @@ def rollback(sha):
     holder, baseline = predecessor()
     try:
         try:
-            old_valid = check(PROD_ORIGIN, baseline) == 37 and marker(PROD_ORIGIN).get('commit') == OLD_BUILD
+            old_valid = check(PROD_ORIGIN, baseline) == 38 and marker(PROD_ORIGIN).get('commit') == OLD_BUILD
         except (OSError, ValueError, urllib.error.URLError):
             old_valid = False
         if not old_valid:
@@ -189,7 +189,7 @@ def rollback(sha):
             api(PROD, '/deployments/' + rollback_id + '/rollback', method='POST')
         for attempt in range(18):
             try:
-                if check(PROD_ORIGIN, baseline) == 37 and marker(PROD_ORIGIN).get('commit') == OLD_BUILD:
+                if check(PROD_ORIGIN, baseline) == 38 and marker(PROD_ORIGIN).get('commit') == OLD_BUILD:
                     print('PASS: Original production frontend completely restored; '
                           'same origin and device storage preserved.')
                     return

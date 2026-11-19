@@ -1,0 +1,48 @@
+{
+  "origin": "https://golden-experience-staging.pages.dev",
+  "expected": "baa225995d95de804cc5516f217b6bdec401f087",
+  "conditions": "Actual public served assets, fresh Chromium mobile emulation; not a physical phone",
+  "results": [
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 67,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 48,
+      "maxJump": 0
+    },
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 90,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 42,
+      "maxJump": 0
+    },
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 44,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 41,
+      "maxJump": 0
+    }
+  ],
+  "status": "PASS",
+  "browser": "156.0.8078.79",
+  "verticalScrollDelta": 216,
+  "selectedIdPreserved": true,
+  "errors": []
+}

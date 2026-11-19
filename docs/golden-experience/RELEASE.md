@@ -1,3 +1,19 @@
+# Phone correction release19-Nov2026 — explicitly authorized
+
+Production is576e6863f1cad328457a309e5604df5ac38be759, not the historical097f012.
+Exact staged UI sourcebaa225995d95de804cc5516f217b6bdec401f087;38 source assets,
+39 with staging build marker; hashes, hosted touch, source CI and native emulator
+PASS. Release guard pins those actual identities and source asset counts. Existing
+main-only workflow remains the sole production deployment path and automatically
+restores the captured native Cloudflare deployment for576e686 on critical failure.
+Merge PR66 only after final exact-head checks pass and main has not diverged. Observe
+guided-ui-production.yml through preflight, deploy, all exact asset hashes and touch.
+No APK replacement, origin/storage migration, account-data access, Worker/D1 or
+collector action. Owner's19-Nov instruction explicitly authorizes this correction.
+Record actual merged/deployed SHA after success; do not describe staging as live.
+
+--- Historical release documentation follows ---
+
 # Protected release and rollback — INCOMPLETE, DO NOT EXECUTE
 
 ## 18 Nov 2026 — merged current main; exact merged-head regression, Android and APK gates GREEN
