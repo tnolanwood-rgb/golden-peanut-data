@@ -1,3 +1,17 @@
+# Phone correction19-Nov2026
+
+Local full baseline PASS:76 Python, current JS suite and all ten browser programs.
+Exact UI sourcebaa2259 full CI44428179575 and Android emulator44428179592 PASS.
+Independent staging44428172256 PASS;39 exact hosted hashes (38 source +build-info).
+Actual Chromium touch on staging:6 switches,0px Y jumps,216px vertical inner scroll,
+selected recommendation preserved, zero page errors. Source assets independently
+verified against local checkout. Four additional synthetic release-guard tests PASS.
+Initial staging attempt blocked its own default pages.dev host; the workflow now
+uses the shared tested host/binding validator. No production safety check disabled.
+No claim of original installed-package/device certification or physical-phone FPS.
+
+--- Earlier evidence ---
+
 ## 18 Nov 2026 — exact candidate `60557fd9` verification complete; residual cold-start caveat
 Protected PR #65 candidate `60557fd95111350bbe6b8282bfb97721ea830968`. All three exact-head workflows passed:
 - Full regression / audit [44404036193](https://github.com/tnolanwood-rgb/golden-peanut-data/actions/runs/44404036193): source, Python, JavaScript and browser baseline all VERIFIED; synthetic visual acceptance, startup/chart benchmark, OSRS cold-start profile, one 100-cycle retention probe and three repeated 100-cycle retention probes passed; main-drift guard and actionlint passed. Artifact **14474023001**.

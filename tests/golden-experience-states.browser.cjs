@@ -20,7 +20,10 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    const box=document.querySelector('#gh-osrs-root .gh-trade-scroll');
    const selectors=['#gh-item-name','.gh-research-evidence','.gp-guide-instructions',
     '.gp-guide-totals','#gh-caution','#gh-watch-toggle','#gh-order-guide','#gh-item-context'];
-   return selectors.map(sel=>({selector:sel,index:[...box.children].indexOf(box.querySelector(sel))}));
+   return selectors.map(sel=>{
+    const node=box.querySelector(sel),panel=node?.closest('.gh-item-identity')||node;
+    return {selector:sel,index:[...box.children].indexOf(panel)};
+   });
   });
   assert.ok(hierarchy.every(x=>x.index>=0),'The original trade panels must all remain: '+JSON.stringify(hierarchy));
   assert.deepEqual(hierarchy.map(x=>x.index),[...hierarchy.map(x=>x.index)].sort((a,b)=>a-b),
@@ -49,6 +52,8 @@ const out=process.env.GE_STATES_OUTPUT||'artifacts/audit/golden-experience/state
    'First market must be visible on 390x844 without scrolling: '+JSON.stringify(topDecision));
   assert.ok(topDecision.buy.top<topDecision.height,
    'First buy instruction must begin above the first fold: '+JSON.stringify(topDecision));
+  assert.ok(topDecision.buy.top<topDecision.height*.75,
+   'Phone chrome must leave the OSRS buy action in the first three quarters of the screen: '+JSON.stringify(topDecision));
   assert.ok(topDecision.budget.top>topDecision.idea.top,
    'Budget, completed profits, market diagnostics and filters remain after the priority trade');
   assert.equal(topDecision.modalButtons,2,'Both existing discovery mode buttons remain');

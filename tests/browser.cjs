@@ -115,6 +115,8 @@ try{for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
    'GW2 qualified item should be visible on the first phone screen: '+JSON.stringify(firstScreen));
   assert.ok(firstScreen.buy&&firstScreen.buy.top<firstScreen.height,
    'GW2 buy guidance should start on the first phone screen: '+JSON.stringify(firstScreen));
+  assert.ok(firstScreen.buy.top<firstScreen.height*.75,
+   'Phone header and Delivery Box must leave the trade action in the first three quarters of the screen: '+JSON.stringify(firstScreen));
   assert.ok(firstScreen.art.top<firstScreen.row.bottom&&firstScreen.title.left>firstScreen.art.left,
    'GW2 item identity is a compact one-row premium instrument: '+JSON.stringify(firstScreen));
   assert.equal(firstScreen.amounts,4,'All four original finance readouts remain');

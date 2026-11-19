@@ -1,3 +1,64 @@
+# 19 Nov — phone correction staged and verified; final release guard ready
+
+Actual production predecessor576e686; exact staged sourcebaa225995d95de804cc5516f217b6bdec401f087.
+Source/app bytes are unchanged since the complete passing local baseline (76 Python,
+all JavaScript and ten browser programs). Sourcebaa2259 CI44428179575 and Android
+emulator44428179592 both PASS. Separate staging deployment44428172256 PASS, including
+39 exact assets with generated identity; independent local readback verified38 source
+assets, and six real hosted native-Chromium-touch game switches had0px Y jumps,
+216px inner vertical scroll, selected item retained and no page errors.
+
+Local direct Chromium networking needed the workspace's configured egress proxy;
+opt-in proxy support is test-harness-only and never logs credentials. The successful
+hosted check used real staging bytes/data, not synthetic replacement prices.
+
+Release guard now pins current576e686 as predecessor, stagedbaa2259 as candidate,
+and38 source assets for both. Automatic native Pages rollback restores576e686 if
+postdeploy checks fail. Four synthetic guard tests pass (wrong predecessor inventory,
+wrong staging identity blocked, exact proof, no redundant rollback mutation).
+Original APK/storage/credentials/Workers/D1/collectors remain unchanged. No in-game
+trading action. Owner explicitly requested this correction be released19-Nov.
+
+Next: final exact-head CI, merge authorized PR66 and watch the main production
+pipeline. Confirm the actual live build marker and every asset, both games/touch;
+record the deployed SHA and latest checkpoint. No further visual source work needed
+for this correction. This is a focused correction to an existing released upgrade,
+not a claim that every historical Golden Experience/device acceptance gate is closed.
+
+---
+
+# 19 November 2026 — correction to the released phone layout
+
+AUTHORITATIVE CURRENT TASK: the upgrade IS ALREADY RELEASED. Live build-info and
+production run44425149344 confirm576e6863f1cad328457a309e5604df5ac38be759.
+The owner's phone screenshot shows that release. Do not tell them it is only on
+an unmerged development branch. Historical freeze/pending-release entries below
+are superseded by actual deployment evidence and the owner's19-Nov explicit
+instruction to fix and release the phone interface. No APK, storage, credential,
+Worker/D1 or collector change is authorized or needed for this visual correction.
+
+Working branch: fix/golden-experience-phone-polish-20261119, based on actual main576e686.
+Changes: remove decorative number/watermark hero, compact identity/actions/Delivery
+Box, quieter borders/surfaces, keep game colours and all financial qualifiers;
+OSRS item icon/title share one row like GW2. Existing swipe, caching, accounting,
+backup and manual-sale logic preserved. New first-screen assertions keep buy guidance
+within the first75% of a390×844 viewport for both populated synthetic desks.
+
+Local original-browser suite passed; final full suite in progress. Initial Python
+check caught obsolete workflow-string assertions after reusing the tested staging
+validator; corrected the integration assertions, not the binding safety rules.
+The new staging workflow writes exact build identity and verifies all deployed
+bytes, while preserving hard-coded separate project/origin and no private bindings.
+
+NEXT: finish full regression and actual screenshot review; commit/push, open PR,
+run exact-head CI/native emulator; deploy that exact app to independent staging,
+verify hosted assets/touch. Update the production release guard's predecessor from
+the now-obsolete pre-upgrade097f012 to the actual576e686, pin the staged candidate,
+then release via existing main workflow with rollback. Do not bypass that guard.
+Checkpoint SHA: git log -1 -- docs/golden-experience/STATE.md.
+
+---
+
 # Golden Experience — authoritative checkpoint
 
 ## 18 Nov 2026 — merged current main; exact merged-head regression, Android and APK gates GREEN

@@ -461,244 +461,138 @@ body.gp-guided-active,body.focus-edition.gp-guided-active,body.gh-show-osrs{
 }
 
 
-/* GOLDEN EXPERIENCE: Instrument face v1 — conspicuously different from the
- * legacy card stack, but entirely CSS. No graphics downloads, filters, JS
- * transitions, data writes or touch-gesture geometry changes.
- * Deliberately keep rarity and official OSRS item-tier colours untouched. */
-#gh-panel-gw2{--ge-identity:#91c9b0;--ge-metal:#e2be78;--ge-wash:#19342a}
-#gh-panel-osrs{--ge-identity:#e4c080;--ge-metal:#f0d396;--ge-wash:#36301e}
+/* Golden Experience phone edition: compact identity, clear action and quiet
+ * surfaces. Keep the game-native item colours and every financial qualifier.
+ * No added assets, animation loops, touch listeners or accounting changes. */
+#gh-panel-gw2{--ge-identity:#a3ccb6;--ge-metal:#e2be78;--ge-wash:#15251d}
+#gh-panel-osrs{--ge-identity:#e2be78;--ge-metal:#e2be78;--ge-wash:#25291c}
 #gh-game-nav{
- border-bottom:1px solid #526b55;
- box-shadow:0 6px 18px #0005,inset 0 -1px 0 #ffffff0a;
- background:linear-gradient(180deg,#17201a 0%,#0c1210 100%);
+ background:#0c1410;border-bottom:1px solid #2d4035;box-shadow:none;
+ padding-bottom:6px;
 }
 #gh-game-nav .gh-nav-inner{
- border:1px solid #42564a;
- border-radius:15px;
- padding:4px;
- background:linear-gradient(180deg,#0e1712,#142019);
- box-shadow:inset 0 2px 7px #0008,0 1px 0 #ffffff0c;
+ border:1px solid #304639;border-radius:13px;padding:3px;
+ background:#111d16;box-shadow:none;
 }
-#gh-game-nav button{
- position:relative;min-height:46px;letter-spacing:.012em;
- border:1px solid transparent;
- transition:transform var(--ge-press) var(--ge-ease),background var(--ge-state) var(--ge-ease);
-}
+#gh-game-nav button{position:relative;min-height:44px;border:0;letter-spacing:0}
 #gh-game-nav button[aria-selected="true"]{
- background:linear-gradient(155deg,#293c30,#1b2c23);
- box-shadow:inset 0 1px 0 #ffffff22,0 2px 8px #0004;
- border-color:#546c58;
+ color:#f0d297;background:#263a2e;border:0;box-shadow:inset 0 1px 0 #ffffff12;
 }
-#gh-game-nav button[aria-selected="true"]::after{
- content:"";position:absolute;bottom:4px;left:31%;right:31%;height:2px;
- border-radius:2px;background:var(--ge-gold);
- box-shadow:0 0 5px #e2be7833;
+#gh-game-nav button[aria-selected="true"]::after{content:none}
+#gh-game-nav .gh-swipe-hint{
+ font-size:11px;line-height:1.35;letter-spacing:0;text-transform:none;
+ color:#a9b8ae;margin-top:6px;
 }
-#gh-game-nav .gh-swipe-hint{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#aebeb0}
-
-/* A milled control fascia: the game identity occupies a deliberate hero area,
- * not just another rectangular card. The large mark is decorative and static. */
 #gh-panel-gw2 .gp-guide-header,#gh-panel-osrs .gp-guide-header{
- position:relative;isolation:isolate;overflow:hidden;
- border:1px solid #465c4c;border-top:0;border-radius:0 0 24px 24px;
- padding:44px 20px 23px;
- background:
-  linear-gradient(110deg,#ffffff0b 0%,transparent 29%),
-  radial-gradient(ellipse at 100% 0%,#c4a1631b,transparent 55%),
-  linear-gradient(140deg,#25392e 0%,#16251d 64%,#101b16 100%);
- box-shadow:inset 0 1px 0 #ffffff24,inset 0 -1px 0 #0009,0 7px 24px #0005;
+ position:relative;isolation:auto;overflow:visible;
+ grid-template-columns:36px minmax(0,1fr);gap:5px 10px;
+ padding:14px 4px 6px;border:0;border-radius:0;
+ background:transparent;box-shadow:none;
 }
-#gh-panel-osrs .gp-guide-header{
- background:
-  linear-gradient(110deg,#ffffff09 0%,transparent 27%),
-  radial-gradient(ellipse at 100% 0%,#d2a95d27,transparent 58%),
-  linear-gradient(140deg,#35372a 0%,#232c22 58%,#151d17 100%);
- border-color:#746744;
-}
-#gh-panel-gw2 .gp-guide-header::before,#gh-panel-osrs .gp-guide-header::before{
- position:absolute;top:15px;left:20px;
- z-index:0;content:"01  /  GUILD WARS 2";
- color:var(--ge-identity);font-size:10px;font-weight:800;
- line-height:1.4;letter-spacing:.19em;
-}
-#gh-panel-osrs .gp-guide-header::before{content:"02  /  OLD SCHOOL RUNESCAPE"}
-#gh-panel-gw2 .gp-guide-header::after,#gh-panel-osrs .gp-guide-header::after{
- content:"01";position:absolute;right:4px;top:16px;
- font-size:clamp(86px,25vw,170px);line-height:1;font-weight:850;
- letter-spacing:-.1em;color:#ffffff0b;z-index:-1;pointer-events:none;
-}
-#gh-panel-osrs .gp-guide-header::after{content:"02";color:#e3b86b10}
-#gh-panel-gw2 .gp-guide-header>*,#gh-panel-osrs .gp-guide-header>*{position:relative}
+#gh-panel-gw2 .gp-guide-header::before,#gh-panel-osrs .gp-guide-header::before,
+#gh-panel-gw2 .gp-guide-header::after,#gh-panel-osrs .gp-guide-header::after{content:none}
 #gh-panel-gw2 .gp-guide-logo,#gh-panel-osrs .gp-guide-logo{
- border:1px solid #ac9a6b;width:57px;height:57px;flex:none;
- display:grid;place-items:center;border-radius:17px;
- background:linear-gradient(145deg,#344b38,#131e17);
- box-shadow:inset 0 1px 0 #ffffff36,inset 0 -2px 5px #0009,0 2px 7px #0006;
- color:#f3ce81;font-size:27px;
+ width:36px;height:36px;flex:none;display:grid;place-items:center;
+ border:1px solid #53654b;border-radius:11px;background:#1c2d22;
+ box-shadow:none;color:#e2be78;font-size:22px;
 }
-#gh-panel-osrs .gp-guide-logo{background:linear-gradient(145deg,#4b4329,#1d2118)}
 #gh-panel-gw2 .gp-guide-title h1,#gh-panel-osrs .gp-guide-title h1{
- font-size:clamp(1.55rem,5.9vw,2.05rem);
- font-weight:790;letter-spacing:-.055em;line-height:1.14;
- text-shadow:0 1px 0 #0008;max-width:100%;
+ font-size:clamp(1.125rem,4.8vw,1.5rem);font-weight:680;
+ letter-spacing:-.035em;line-height:1.2;text-shadow:none;margin:0;
 }
 #gh-panel-gw2 .gp-guide-title p,#gh-panel-osrs .gp-guide-title p{
- font-size:clamp(12px,2.8vw,14px);color:#c4cfc4;letter-spacing:.018em;line-height:1.5;
+ font-size:.8125rem;line-height:1.4;color:#a9b8ae;letter-spacing:0;margin:3px 0 0;
 }
-#gh-panel-gw2 .gp-guide-head-actions,#gh-panel-osrs .gp-guide-head-actions{margin-top:16px;gap:9px}
+#gh-panel-gw2 .gp-guide-head-actions,#gh-panel-osrs .gp-guide-head-actions{
+ margin-top:7px;gap:8px;
+}
 #gh-panel-gw2 .gp-guide-head-actions button,#gh-panel-osrs .gp-guide-head-actions button{
- border-radius:12px;background:linear-gradient(180deg,#2b4133,#1c2e24);
- border:1px solid #5c7661;box-shadow:inset 0 1px 0 #ffffff1c,0 2px 4px #0003;
+ min-height:44px;padding:9px 12px;border-radius:10px;
+ background:#1a2c21;border:1px solid #405849;box-shadow:none;
+ font-weight:600;
 }
 #gh-panel-osrs .gp-guide-head-actions .gp-guide-primary{
- background:linear-gradient(180deg,#f3d797,#d9b574);
- border-color:#f5dfac;color:#131e15;
+ background:#e2be78;border-color:#e2be78;color:#142018;
 }
-
-/* Financial instrument cluster: one featured gauge and two restrained readouts.
- * Full-width fourth GW2 readout prevents a dangling half-empty final row. */
+#gh-panel-gw2 .gp-guide-content,#gh-panel-osrs .gp-guide-content{gap:14px}
 #gh-panel-gw2 .gp-guide-metrics,#gh-panel-osrs .gp-guide-metrics{
  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
 }
 #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric{
- position:relative;min-width:0;
- border:1px solid #41584a;border-radius:15px;
- background:linear-gradient(155deg,#172a21 0%,#102019 100%);
- box-shadow:inset 0 1px 0 #ffffff10,0 3px 8px #0003;
- padding:16px 13px;
+ min-width:0;border:1px solid #344b3d;border-radius:13px;
+ background:#15241b;box-shadow:none;padding:14px 13px;
 }
 #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{
- grid-column:1/-1;min-height:155px;display:flex;flex-direction:column;
- justify-content:space-between;gap:12px;padding:22px 20px 19px;
- border:1px solid #95845a;
- background:
-  linear-gradient(90deg,#e2be78 0 3px,transparent 3px),
-  radial-gradient(ellipse at 90% 12%,#e2be7820,transparent 64%),
-  linear-gradient(136deg,#2a3e30,#172b21 66%,#14231a);
- box-shadow:inset 0 1px 0 #ffffff25,0 6px 19px #0005;
-}
-#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{
- background:
-  linear-gradient(90deg,#e9bf78 0 3px,transparent 3px),
-  radial-gradient(ellipse at 92% 10%,#e2b45d29,transparent 61%),
-  linear-gradient(136deg,#3a3928,#272f22 65%,#1a261c);
+ grid-column:1/-1;min-height:0;display:flex;flex-direction:column;
+ gap:8px;padding:15px 16px;border:1px solid #68724e;border-radius:14px;
+ background:linear-gradient(115deg,#25372a,#17271e);box-shadow:inset 3px 0 0 #d3b574;
 }
 #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric>.gp-guide-label,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-label{
- color:#e9c786;text-transform:uppercase;font-size:11px;letter-spacing:.13em;font-weight:820;
+ color:#e2c58c;text-transform:none;font-size:.75rem;letter-spacing:.02em;font-weight:650;
 }
 #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric>.gp-guide-number,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child>.gp-guide-number{
- font-size:clamp(1.9rem,7vw,2.55rem);font-weight:790;
- line-height:1.16;letter-spacing:-.05em;color:#faf0d6;
- text-shadow:0 2px 10px #0004;overflow-wrap:anywhere;
+ font-size:clamp(1.6rem,6vw,2rem);line-height:1.25;font-weight:720;
+ letter-spacing:-.035em;color:#f3efe3;text-shadow:none;overflow-wrap:anywhere;
 }
 #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric small,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child small{
- color:#c3d2c3;line-height:1.45;font-size:12px;max-width:44ch;
+ font-size:.75rem;line-height:1.45;color:#b9c9bc;max-width:50ch;
 }
 #gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-label,
 #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-label{
- color:#bdcdbf;line-height:1.4;letter-spacing:.03em;
+ color:#b9c9bc;line-height:1.45;letter-spacing:0;
 }
-#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child{
- grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;
- align-items:center;gap:2px 10px;min-height:74px;padding:14px 17px;
-}
-#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child small{grid-column:1;grid-row:2}
-#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child>.gp-guide-number{
- grid-column:2;grid-row:1/span 2;text-align:right;
-}
-#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric>.gp-guide-number,
-#gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:not(:first-child)>.gp-guide-number{
- font-weight:780;line-height:1.2;letter-spacing:-.04em;
-}
-
-/* Recommendation chassis: inset brass strip, disciplined index plaque,
- * display typography, clearer buy/sell sequence, no visual noise or filters. */
+#gh-panel-gw2 .gp-guide-metrics>.gp-guide-metric:last-child{grid-column:1/-1}
 #gh-panel-gw2 .gp-guide-idea,#gh-panel-osrs .gp-guide-idea{
  position:relative;isolation:isolate;overflow:hidden;
- border:1px solid #536550;border-radius:21px;
- padding:28px 20px 20px;
- background:
-  radial-gradient(ellipse at 100% 0%,#d6bb7d12,transparent 54%),
-  linear-gradient(160deg,#203229,#13231c 69%,#102019);
- box-shadow:inset 0 1px 0 #ffffff24,0 8px 25px #0005;
+ border:1px solid #435c4a;border-radius:18px;padding:18px 16px;
+ background:linear-gradient(155deg,#1d3025,#13231b 70%);
+ box-shadow:inset 0 1px 0 #ffffff0d;
 }
-#gh-panel-osrs .gp-guide-idea{
- background:
-  radial-gradient(ellipse at 100% 0%,#e1c1801b,transparent 55%),
-  linear-gradient(160deg,#2b3529,#1b291f 65%,#142119);
- border-color:#726e4f;
-}
-#gh-panel-gw2 .gp-guide-idea::before,#gh-panel-osrs .gp-guide-idea::before{
- content:"";height:2px;position:absolute;top:0;left:20px;right:20px;
- border-radius:3px;background:linear-gradient(90deg,#e6c480,transparent 85%);
- pointer-events:none;
-}
+#gh-panel-gw2 .gp-guide-idea::before,#gh-panel-osrs .gp-guide-idea::before{content:none}
 #gh-panel-gw2 .gp-guide-idea-top,#gh-panel-osrs .gp-guide-idea-top{
- display:flex;align-items:center;gap:8px;justify-content:space-between;
- padding-bottom:15px;margin-bottom:16px;
- border-bottom:1px solid #ffffff18;
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ padding-bottom:10px;margin-bottom:4px;border:0;
 }
-#gh-panel-gw2 .gp-guide-idea-top .gp-guide-label,
-#gh-panel-osrs .gp-guide-idea-top .gp-guide-label{
- font-size:10px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#ebd196;
+#gh-panel-gw2 .gp-guide-idea-top .gp-guide-label,#gh-panel-osrs .gp-guide-idea-top .gp-guide-label{
+ font-size:.75rem;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:#d9c28e;
 }
 #gh-panel-gw2 .gp-guide-position,#gh-panel-osrs .gp-guide-position{
- display:inline-flex;align-items:center;border:1px solid #607058;
- border-radius:100px;background:#0d1914;padding:5px 9px;min-height:25px;
- color:#c3d1c3;font-variant-numeric:tabular-nums;font-size:11px;
+ color:#b9c9bc;background:transparent;border:0;padding:2px 0;
+ font-size:.75rem;line-height:1.4;font-variant-numeric:tabular-nums;
 }
 #gh-panel-gw2 .gp-guide-idea h2,#gh-panel-osrs .gp-guide-idea h2{
- font-size:clamp(1.6rem,6.1vw,2.45rem);line-height:1.14;
- letter-spacing:-.046em;font-weight:770;text-wrap:balance;
- margin:10px 0 12px;
+ font-size:clamp(1.5rem,5.6vw,2rem);line-height:1.2;font-weight:710;
+ letter-spacing:-.035em;text-wrap:pretty;margin:8px 0;
 }
 #gh-panel-gw2 .gp-guide-item-icon,#gh-panel-osrs .gp-guide-item-icon{
- border:1px solid #738064;background:linear-gradient(145deg,#2c3b2d,#111e17);
- border-radius:16px;box-shadow:inset 0 1px 0 #ffffff1f,0 3px 8px #0006;
+ border-radius:14px;border:1px solid #637951;background:#111f17;box-shadow:none;
 }
 #gh-panel-gw2 .gp-guide-tier,#gh-panel-osrs .gp-guide-tier{
- border:1px solid #516450;background:#17281f;border-radius:100px;
- padding:6px 11px;color:#cce0cf;
+ background:#14251b;border:1px solid #3e5845;border-radius:8px;
+ color:#bfd0c0;padding:5px 9px;font-size:.75rem;line-height:1.4;
 }
 #gh-panel-gw2 .gp-guide-instructions,#gh-panel-osrs .gp-guide-instructions{
- border-left:2px solid #c5a66e;padding-left:13px;
+ border-left:2px solid #d4b77d;padding-left:12px;
 }
 #gh-panel-gw2 .gp-guide-instruction,#gh-panel-osrs .gp-guide-instruction{
- font-size:clamp(1.19rem,4.4vw,1.7rem);line-height:1.4;letter-spacing:-.02em;
+ font-size:clamp(1.125rem,4.4vw,1.5rem);line-height:1.5;font-weight:650;
 }
 #gh-panel-gw2 .gp-guide-instruction-sub,#gh-panel-osrs .gp-guide-instruction-sub{
- font-size:clamp(1rem,3.7vw,1.2rem);
+ font-size:1rem;line-height:1.55;color:#cdd8cd;
 }
-#gh-panel-gw2 .gp-guide-controls button,#gh-panel-osrs .gp-guide-controls button{
- border-radius:13px;box-shadow:inset 0 1px 0 #ffffff14;
-}
-#gh-panel-osrs .gh-action-dock{
- background:linear-gradient(180deg,#233429,#16241d);
- box-shadow:0 -7px 16px #0004;
- border-top:1px solid #706f51;
-}
-/* Better compositional scale at 200% text zoom without truncating names. */
-@media(max-width:390px){
- #gh-panel-gw2 .gp-guide-header,#gh-panel-osrs .gp-guide-header{padding:42px 13px 19px}
- #gh-panel-gw2 .gp-guide-header::before,#gh-panel-osrs .gp-guide-header::before{left:14px;font-size:9px}
- #gh-panel-gw2 .gp-guide-header::after,#gh-panel-osrs .gp-guide-header::after{font-size:90px;top:23px}
- #gh-panel-gw2 .gp-guide-title h1,#gh-panel-osrs .gp-guide-title h1{
-  font-size:clamp(1.04rem,5.4vw,1.45rem);
-  letter-spacing:-.04em;overflow-wrap:normal;
- }
- #gh-panel-gw2 .gp-guide-delivery-hero>.gp-guide-metric,
- #gh-panel-osrs .gp-guide-metrics>.gp-guide-metric:first-child{padding:19px 15px;min-height:145px}
- #gh-panel-gw2 .gp-guide-idea,#gh-panel-osrs .gp-guide-idea{padding:24px 14px 16px}
- #gh-panel-gw2 .gp-guide-idea-top,#gh-panel-osrs .gp-guide-idea-top{gap:6px}
-}
-@media(prefers-reduced-motion:reduce){
- #gh-game-nav button{transition:none}
-}
+#gh-panel-gw2 .gp-guide-controls button,#gh-panel-osrs .gp-guide-controls button{border-radius:11px;box-shadow:none}
+#gh-panel-gw2 .gp-guide-primary-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#gh-panel-gw2 .gp-guide-primary-row button{min-width:0;font-size:.8125rem;padding:10px 9px}
+#gh-panel-osrs .gh-item-identity{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:12px;margin:8px 0 12px;min-width:0}
+#gh-panel-osrs .gh-item-identity .gp-guide-item-icon{margin:0}
+#gh-panel-osrs .gh-item-identity h2{margin:0;min-width:0}
+#gh-panel-osrs .gh-action-dock{background:#17281e;border-color:#3e5745;box-shadow:none}
+@media(prefers-reduced-motion:reduce){#gh-game-nav button{transition:none}}
 
 
 /* GOLDEN EXPERIENCE: Instrument face v1.1 — deep workstation continuity and

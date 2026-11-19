@@ -2,14 +2,20 @@
 // Fresh browser storage: no account credentials or private production APIs.
 const {chromium}=require('playwright-core'),fs=require('node:fs'),assert=require('node:assert/strict');
 (async()=>{
- const origin='https://thegoldenpeanut.pages.dev',dir='artifacts/audit/swipe-production';
+ const origin=process.env.GP_VERIFY_ORIGIN||'https://thegoldenpeanut.pages.dev',dir=process.env.GP_VERIFY_OUTPUT||'artifacts/audit/swipe-production';
+ assert.ok(['https://thegoldenpeanut.pages.dev','https://golden-experience-staging.pages.dev'].includes(origin),'Only the known public production/staging origins may be verified');
  const expected=process.env.GP_EXPECTED_RELEASE_SHA||process.env.GITHUB_SHA;
  assert.match(expected||'',/^[a-f0-9]{40}$/,'Expected production commit is required');
  fs.mkdirSync(dir,{recursive:true});
+ // Cloud workspaces may require their configured egress proxy. Keep it
+ // opt-in, pass credentials separately and never print the proxy URL.
+ const proxyURL=process.env.GP_VERIFY_PROXY?new URL(process.env.GP_VERIFY_PROXY):null;
+ const proxy=proxyURL?{server:proxyURL.origin,
+  ...(proxyURL.username?{username:decodeURIComponent(proxyURL.username),password:decodeURIComponent(proxyURL.password)}:{})}:undefined;
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),headless:true,args:['--no-sandbox']});
- const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,...(proxy?{proxy}:{})});
  const page=await context.newPage(),cdp=await context.newCDPSession(page),errors=[];
- const report={origin,expected,conditions:'Actual public production, fresh Chromium mobile emulation; not a physical phone',results:[]};
+ const report={origin,expected,conditions:'Actual public served assets, fresh Chromium mobile emulation; not a physical phone',results:[]};
  page.on('pageerror',e=>errors.push(e.message));
  try{
   const identity=await page.request.get(origin+'/build-info.json',{headers:{'Cache-Control':'no-cache'}});
@@ -30,7 +36,12 @@ const {chromium}=require('playwright-core'),fs=require('node:fs'),assert=require
      if(__capture)requestAnimationFrame(sample);
     };requestAnimationFrame(sample);
    });
-   const y=from==='osrs'?420:350,x0=from==='osrs'?65:325,sign=from==='osrs'?1:-1;
+   // Derive coordinates from the visible scroller after responsive layout changes.
+   if(from==='osrs')await page.locator('.gh-trade-scroll').scrollIntoViewIfNeeded();
+   const y=from==='osrs'?await page.locator('.gh-trade-scroll').evaluate(n=>{
+    const r=n.getBoundingClientRect(),nav=document.querySelector('#gh-game-nav').getBoundingClientRect();
+    return Math.max(nav.bottom+20,Math.min(innerHeight-60,r.top+Math.min(100,r.height/2)));
+   }):350,x0=from==='osrs'?65:325,sign=from==='osrs'?1:-1;
    if(from==='osrs')assert.equal(await page.evaluate(y=>!!document.elementFromPoint(65,y)?.closest('.gh-trade-scroll'),y),true,'Native swipe starts inside the recommendation scroller');
    const send=(type,x)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
    if(i===0)await page.screenshot({path:dir+'/start.png'});
