@@ -1,0 +1,43 @@
+{
+  "conditions": "Same synthetic OSRS fixture, 390x844 Chromium. Geometry only, not phone latency or account data.",
+  "results": [
+    {
+      "revision": "576e686",
+      "header": {
+        "top": 96.84375,
+        "height": 205.4375,
+        "bottom": 302.28125
+      },
+      "instruction": {
+        "top": 724.828125,
+        "height": 53.3125,
+        "bottom": 778.140625
+      },
+      "item": {
+        "top": 559.28125,
+        "height": 29.171875,
+        "bottom": 588.453125
+      },
+      "viewport": 844
+    },
+    {
+      "revision": "HEAD",
+      "header": {
+        "top": 87.84375,
+        "height": 126.4375,
+        "bottom": 214.28125
+      },
+      "instruction": {
+        "top": 575.453125,
+        "height": 57.125,
+        "bottom": 632.578125
+      },
+      "item": {
+        "top": 373.375,
+        "height": 61.40625,
+        "bottom": 434.78125
+      },
+      "viewport": 844
+    }
+  ]
+}

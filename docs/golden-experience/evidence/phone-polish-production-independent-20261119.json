@@ -1,0 +1,48 @@
+{
+  "origin": "https://thegoldenpeanut.pages.dev",
+  "expected": "3da8e9c8439158b431f9296656019f23ec14ab80",
+  "conditions": "Actual public served assets, fresh Chromium mobile emulation; not a physical phone",
+  "results": [
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 65,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 46,
+      "maxJump": 0
+    },
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 44,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 41,
+      "maxJump": 0
+    },
+    {
+      "from": "osrs",
+      "next": "gw2",
+      "frames": 43,
+      "maxJump": 0
+    },
+    {
+      "from": "gw2",
+      "next": "osrs",
+      "frames": 43,
+      "maxJump": 0
+    }
+  ],
+  "status": "PASS",
+  "browser": "156.0.8078.79",
+  "verticalScrollDelta": 217,
+  "selectedIdPreserved": true,
+  "errors": []
+}

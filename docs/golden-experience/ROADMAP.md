@@ -1,3 +1,15 @@
+# Phone correction completed —19-Nov2026
+
+Focused phone correction is RELEASED as3da8e9c8439158b431f9296656019f23ec14ab80.
+Production44429762294 PASS: full tests, locked preflight,39 asset hashes, hosted
+swipes; rollback skipped. Independent6 swipes/0px jumps/217px inner scroll, selected
+item retained and zero errors. See current STATE and committed production evidence.
+No original APK/data/origin/private services changed. Historical broad-roadmap
+physical-device/bundled-APK limitations remain honest; they do not mean this deployed
+web correction is still only development. User explicitly authorized this release.
+
+--- Earlier records ---
+
 # Golden Experience roadmap
 
 ## GE-09 isolation gate added — offline configuration validation

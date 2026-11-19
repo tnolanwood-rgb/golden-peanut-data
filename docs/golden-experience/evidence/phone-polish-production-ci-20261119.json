@@ -1,0 +1,82 @@
+{
+  "conclusion": "success",
+  "headSha": "3da8e9c8439158b431f9296656019f23ec14ab80",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "Verify and deploy current GW2 site",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/setup-python@v5"
+        },
+        {
+          "conclusion": "success",
+          "name": "Validate release and browser behaviour"
+        },
+        {
+          "conclusion": "success",
+          "name": "Confirm the existing Cloudflare project and release credentials"
+        },
+        {
+          "conclusion": "success",
+          "name": "Verify frozen production predecessor and exact isolated staging candidate"
+        },
+        {
+          "conclusion": "success",
+          "name": "Embed exact GitHub release identity in the published static bundle"
+        },
+        {
+          "conclusion": "success",
+          "name": "Deploy reviewed UI to existing production Pages project"
+        },
+        {
+          "conclusion": "success",
+          "name": "Verify the EXACT deployed SHA-256 of every production asset"
+        },
+        {
+          "conclusion": "success",
+          "name": "Verify real production touch navigation"
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Automatically restore verified previous Cloudflare Pages deployment on failure"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@v4"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/setup-python@v5"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4"
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job"
+        }
+      ]
+    }
+  ],
+  "run": 44429762294,
+  "status": "completed"
+}

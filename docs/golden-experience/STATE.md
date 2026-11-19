@@ -1,3 +1,36 @@
+# 19 November 2026 — PHONE CORRECTION RELEASED AND VERIFIED
+
+STATUS: VERIFIED (this focused phone-layout correction). Actual live version:
+3da8e9c8439158b431f9296656019f23ec14ab80 at https://thegoldenpeanut.pages.dev/.
+PR66 merged; production run44429762294 SUCCESS: full source/Python/JS/browser checks,
+exact predecessor/staging preflight, deployment,39 exact deployed asset hashes and
+real hosted touch smoke PASS. Automatic rollback was not needed. Independent fresh
+Chromium verification also PASS:6 game switches,0px Y discontinuity,217px inner
+vertical scroll, selected item retained, no page errors. This is browser evidence,
+not physical-phone FPS. Source44b1adb regression/native-emulator checks both PASS.
+
+Delivered: compact header with no decorative01/02 hero/watermark, restrained card
+surfaces, smaller Delivery Box, OSRS image/name on one row, unchanged official colours,
+financial meanings and trade controls. In matched390×844 synthetic OSRS captures,
+header205→126px; buy guidance725→575px. No extra requests/dependencies, APK replacement,
+origin/storage reset/migration, credentials, Worker/D1 or collector modifications.
+The owner explicitly authorized fixing and releasing this correction19-Nov.
+
+Current production and all code are released; do NOT tell the owner this work is
+only on an unmerged development branch. Read actual live build-info and GitHub refs
+before future status claims. Closing/reopening the original remote-WebView app loads
+the changed page; never ask to clear data or reinstall. This does not certify an
+unknown separately bundled APK or close every historical broad project/device gate.
+
+Continuity branch: fix/golden-experience-phone-polish-20261119. Latest documentation
+checkpoint is found with git log -1 -- docs/golden-experience/STATE.md. The checkpoint
+follows deployed main and changes documentation only. Requested correction complete;
+any further reported defect should be reproduced against actual live3da8e9c first.
+Evidence: evidence/phone-polish-production-ci-20261119.json,
+phone-polish-production-independent-20261119.json, phone-polish-layout-20261119.json.
+
+--- Historical engineering/release records follow ---
+
 # 19 Nov — phone correction staged and verified; final release guard ready
 
 Actual production predecessor576e686; exact staged sourcebaa225995d95de804cc5516f217b6bdec401f087.

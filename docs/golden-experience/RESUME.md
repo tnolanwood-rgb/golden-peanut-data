@@ -1,3 +1,26 @@
+# Current status19-Nov: RELEASED, not pending
+
+Live main/app3da8e9c8439158b431f9296656019f23ec14ab80; PR66 merged; production
+workflow44429762294 SUCCESS,39 exact asset hashes and hosted touch PASS. Independent
+6-switch/0px Y/217px vertical scroll/selection/no-error probe PASS. Final source
+44b1adb regression and Android-emulator checks PASS. Current code is deployed.
+
+Owner's screenshot criticism was addressed with compact header/Delivery Box, removal
+of decorative number heroes, quieter surfaces and matching OSRS/GW2 item identities.
+No APK/data/origin/credential/private-service change. Closing/reopening the original
+remote app loads the update; no reinstall/data clear. Do not claim physical FPS or
+unknown bundled-APK compatibility. Read actual Git refs AND live build-info before
+any further assertion; historical blocked/not-released notes below are obsolete.
+
+No remaining action for this focused correction. If user reports another problem,
+reproduce from live3da8e9c with their latest evidence before editing. Main production
+rollback guard now pins576e686 predecessor /baa2259 staged source; a FUTURE different
+release requires fresh tested predecessor/candidate pins and authorization, not a
+blind rerun. Current checkpoint branch fix/golden-experience-phone-polish-20261119,
+SHA via git log -1 -- docs/golden-experience/STATE.md. Preserve original account data.
+
+--- Historical records ---
+
 # 19 Nov — phone correction final release
 
 UI sourcebaa2259 is staged/byte-verified, CI/native Android PASS; actual hosted touch
